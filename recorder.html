@@ -64,54 +64,96 @@
             <!-- 背景选择区域 (初始隐藏) -->
             <div id="background-section" class="section hidden">
                 <div class="background-header">
-                    <h3>选择背景</h3>
-                    <p class="background-description">为您的视频添加专业背景</p>
+                    <h3>编辑和预览视频</h3>
+                    <p class="background-description">预览录制内容并添加专业背景</p>
                 </div>
                 
-                <div class="background-preview">
-                    <div id="preview-container" class="preview-container">
-                        <div id="preview-video" class="preview-video">
-                            <span class="preview-placeholder">视频预览</span>
+                <!-- 视频预览区域 -->
+                <div class="video-preview-section">
+                    <video id="video-preview" controls muted playsinline class="video-player"></video>
+                    <canvas id="preview-canvas" class="preview-canvas"></canvas>
+                </div>
+                
+                <!-- 设置面板 -->
+                <div class="settings-panel">
+                    <!-- 背景颜色选择 -->
+                    <div class="setting-group">
+                        <label class="setting-label">背景颜色</label>
+                        <div class="background-options">
+                            <div class="bg-option-wrapper">
+                                <button class="bg-option" data-color="#ffffff" data-name="纯白" style="background-color: #ffffff; border: 2px solid #dee2e6;"></button>
+                                <span class="bg-label">纯白</span>
+                            </div>
+                            <div class="bg-option-wrapper">
+                                <button class="bg-option" data-color="#f8f9fa" data-name="浅灰" style="background-color: #f8f9fa;"></button>
+                                <span class="bg-label">浅灰</span>
+                            </div>
+                            <div class="bg-option-wrapper">
+                                <button class="bg-option" data-color="#e9ecef" data-name="中灰" style="background-color: #e9ecef;"></button>
+                                <span class="bg-label">中灰</span>
+                            </div>
+                            <div class="bg-option-wrapper">
+                                <button class="bg-option" data-color="#1a1a1a" data-name="深黑" style="background-color: #1a1a1a;"></button>
+                                <span class="bg-label">深黑</span>
+                            </div>
+                            <div class="bg-option-wrapper">
+                                <button class="bg-option" data-color="#0066cc" data-name="商务蓝" style="background-color: #0066cc;"></button>
+                                <span class="bg-label">商务蓝</span>
+                            </div>
+                            <div class="bg-option-wrapper">
+                                <button class="bg-option" data-color="#10b981" data-name="青绿" style="background-color: #10b981;"></button>
+                                <span class="bg-label">青绿</span>
+                            </div>
                         </div>
                     </div>
-                    <p class="preview-note">预览效果：视频将居中显示，四周添加背景</p>
-                </div>
-                
-                <div class="background-options">
-                    <div class="bg-option-wrapper">
-                        <button class="bg-option" data-color="#ffffff" data-name="纯白" style="background-color: #ffffff; border: 2px solid #dee2e6;"></button>
-                        <span class="bg-label">纯白</span>
+                    
+                    <!-- 内边距选择 -->
+                    <div class="setting-group">
+                        <label class="setting-label">视频边距</label>
+                        <div class="padding-options">
+                            <button class="padding-option active" data-padding="60">标准</button>
+                            <button class="padding-option" data-padding="100">宽松</button>
+                            <button class="padding-option" data-padding="150">舒适</button>
+                            <button class="padding-option" data-padding="200">宽阔</button>
+                            <button class="padding-option" data-padding="custom">自定义</button>
+                        </div>
+                        <div id="custom-padding-input" class="custom-padding-input hidden">
+                            <input type="range" id="custom-padding-slider" min="0" max="300" value="60" step="10">
+                            <span class="padding-value">边距: <span id="custom-padding-value">60</span>px</span>
+                        </div>
                     </div>
-                    <div class="bg-option-wrapper">
-                        <button class="bg-option" data-color="#f8f9fa" data-name="浅灰" style="background-color: #f8f9fa;"></button>
-                        <span class="bg-label">浅灰</span>
-                    </div>
-                    <div class="bg-option-wrapper">
-                        <button class="bg-option" data-color="#e9ecef" data-name="中灰" style="background-color: #e9ecef;"></button>
-                        <span class="bg-label">中灰</span>
-                    </div>
-                    <div class="bg-option-wrapper">
-                        <button class="bg-option" data-color="#1a1a1a" data-name="深黑" style="background-color: #1a1a1a;"></button>
-                        <span class="bg-label">深黑</span>
-                    </div>
-                    <div class="bg-option-wrapper">
-                        <button class="bg-option" data-color="#0066cc" data-name="商务蓝" style="background-color: #0066cc;"></button>
-                        <span class="bg-label">商务蓝</span>
+                    
+                    <!-- 输出尺寸选择 -->
+                    <div class="setting-group">
+                        <label class="setting-label">输出尺寸</label>
+                        <div class="size-options">
+                            <button class="size-option active" data-ratio="16:9">16:9 横屏</button>
+                            <button class="size-option" data-ratio="1:1">1:1 正方形</button>
+                            <button class="size-option" data-ratio="9:16">9:16 竖屏</button>
+                            <button class="size-option" data-ratio="4:5">4:5 Instagram</button>
+                            <button class="size-option" data-ratio="custom">自定义</button>
+                        </div>
+                        <div id="custom-size-input" class="custom-size-input hidden">
+                            <input type="number" id="custom-width" placeholder="宽度" min="100" max="4096" value="1920">
+                            <span>×</span>
+                            <input type="number" id="custom-height" placeholder="高度" min="100" max="4096" value="1080">
+                        </div>
                     </div>
                 </div>
                 
                 <div class="background-info">
                     <div class="selected-info">
                         <span id="selected-bg-name">请选择背景颜色</span>
+                        <span id="selected-settings" class="settings-info">边距: 60px | 尺寸: 16:9</span>
                     </div>
                 </div>
                 
                 <div class="processing-controls">
                     <button id="apply-bg-btn" class="btn btn-primary" disabled>
-                        <span class="btn-text">应用背景</span>
+                        <span class="btn-text">应用并下载</span>
                         <span class="btn-loading hidden">处理中...</span>
                     </button>
-                    <button id="skip-bg-btn" class="btn btn-secondary">直接下载</button>
+                    <button id="skip-bg-btn" class="btn btn-secondary">直接下载原始视频</button>
                 </div>
             </div>
             
@@ -129,48 +171,7 @@
     <script src="popup/fileManager.js"></script>
     <script src="popup/backgroundProcessor.js"></script>
     <script src="popup/popup.js"></script>
-    <script>
-        // 等待DOM和PopupController加载完成
-        document.addEventListener('DOMContentLoaded', () => {
-            // 确保PopupController已定义
-            if (typeof PopupController === 'undefined') {
-                console.error('PopupController not defined');
-                return;
-            }
-
-            // 在独立页面中显示大号计时器
-            const originalStartTimer = PopupController.prototype.startRecordingTimer;
-            PopupController.prototype.startRecordingTimer = function() {
-                originalStartTimer.call(this);
-                const timerEl = document.getElementById('recording-timer');
-                const statusEl = document.getElementById('status-large');
-                if (timerEl) timerEl.style.display = 'block';
-                if (statusEl) statusEl.style.display = 'none';
-            };
-            
-            const originalUpdateTime = PopupController.prototype.updateRecordingTime;
-            PopupController.prototype.updateRecordingTime = function(duration) {
-                originalUpdateTime.call(this, duration);
-                const seconds = Math.floor(duration / 1000);
-                const minutes = Math.floor(seconds / 60);
-                const remainingSeconds = seconds % 60;
-                const timeString = `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-                const timerEl = document.getElementById('recording-timer');
-                if (timerEl) timerEl.textContent = timeString;
-            };
-            
-            const originalReset = PopupController.prototype.reset;
-            PopupController.prototype.reset = function() {
-                originalReset.call(this);
-                const timerEl = document.getElementById('recording-timer');
-                const statusEl = document.getElementById('status-large');
-                if (timerEl) timerEl.style.display = 'none';
-                if (statusEl) {
-                    statusEl.style.display = 'block';
-                    statusEl.textContent = '准备录制';
-                }
-            };
-        });
-    </script>
+    <script src="popup/videoPreviewExtensions.js"></script>
+    <script src="popup/recorderInit.js"></script>
 </body>
 </html>

@@ -63,10 +63,34 @@ class PopupController {
       skipBgBtn: document.getElementById('skip-bg-btn'),
       selectedBgName: document.getElementById('selected-bg-name'),
       previewContainer: document.getElementById('preview-container'),
+      
+      // 视频预览
+      videoPreview: document.getElementById('video-preview'),
+      previewCanvas: document.getElementById('preview-canvas'),
+      
+      // 新设置选项
+      paddingOptions: document.querySelectorAll('.padding-option'),
+      sizeOptions: document.querySelectorAll('.size-option'),
+      customSizeInput: document.getElementById('custom-size-input'),
+      customWidth: document.getElementById('custom-width'),
+      customHeight: document.getElementById('custom-height'),
+      selectedSettings: document.getElementById('selected-settings'),
+      customPaddingInput: document.getElementById('custom-padding-input'),
+      customPaddingSlider: document.getElementById('custom-padding-slider'),
+      customPaddingValue: document.getElementById('custom-padding-value'),
 
       // 进度显示
       progressFill: document.getElementById('progress-fill'),
       progressText: document.getElementById('progress-text')
+    };
+    
+    // 设置默认值
+    this.settings = {
+      backgroundColor: null,
+      padding: 60,
+      outputRatio: '16:9',
+      customWidth: 1920,
+      customHeight: 1080
     };
   }
 
@@ -102,8 +126,117 @@ class PopupController {
 
     // 背景选择
     this.elements.backgroundOptions.forEach(option => {
-      option.addEventListener('click', (e) => this.selectBackground(e.target));
+      option.addEventListener('click', (e) => {
+        this.selectBackground(e.currentTarget);
+        if (this.updateRealtimePreview) {
+          this.updateRealtimePreview();
+        }
+      });
     });
+    
+    // Padding 选项
+    this.elements.paddingOptions.forEach(option => {
+      option.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const paddingValue = e.currentTarget.dataset.padding;
+        console.log('[bindEvents] Padding option clicked:', paddingValue);
+        
+        // 直接在这里处理，不依赖 selectPadding 方法
+        // 移除所有选中状态
+        this.elements.paddingOptions.forEach(opt => {
+          opt.classList.remove('active');
+        });
+        
+        // 设置选中状态
+        e.currentTarget.classList.add('active');
+        
+        // 处理 padding 值
+        if (paddingValue === 'custom') {
+          // 显示自定义滑块
+          if (this.elements.customPaddingInput) {
+            this.elements.customPaddingInput.classList.remove('hidden');
+            if (this.elements.customPaddingSlider) {
+              this.elements.customPaddingSlider.value = this.settings.padding;
+              if (this.elements.customPaddingValue) {
+                this.elements.customPaddingValue.textContent = this.settings.padding;
+              }
+            }
+          }
+        } else {
+          // 隐藏自定义滑块
+          if (this.elements.customPaddingInput) {
+            this.elements.customPaddingInput.classList.add('hidden');
+          }
+          // 更新 padding 值
+          const newPadding = parseInt(paddingValue);
+          if (!isNaN(newPadding)) {
+            console.log('[bindEvents] Setting padding to:', newPadding);
+            this.settings.padding = newPadding;
+          }
+        }
+        
+        console.log('[bindEvents] Padding after update:', this.settings.padding);
+        
+        // 更新设置信息显示
+        if (this.updateSettingsInfo) {
+          this.updateSettingsInfo();
+        }
+        
+        // 更新实时预览
+        if (this.updateRealtimePreview) {
+          this.updateRealtimePreview();
+        }
+      });
+    });
+    
+    // Size 选项
+    this.elements.sizeOptions.forEach(option => {
+      option.addEventListener('click', (e) => {
+        if (this.selectSize) {
+          this.selectSize(e.currentTarget);
+        }
+        if (this.updateRealtimePreview) {
+          this.updateRealtimePreview();
+        }
+      });
+    });
+    
+    // 自定义尺寸输入
+    if (this.elements.customWidth) {
+      this.elements.customWidth.addEventListener('input', () => {
+        this.settings.customWidth = parseInt(this.elements.customWidth.value) || 1920;
+        if (this.updateRealtimePreview) {
+          this.updateRealtimePreview();
+        }
+      });
+    }
+    
+    if (this.elements.customHeight) {
+      this.elements.customHeight.addEventListener('input', () => {
+        this.settings.customHeight = parseInt(this.elements.customHeight.value) || 1080;
+        if (this.updateRealtimePreview) {
+          this.updateRealtimePreview();
+        }
+      });
+    }
+
+    // 自定义边距滑块
+    if (this.elements.customPaddingSlider) {
+      this.elements.customPaddingSlider.addEventListener('input', (e) => {
+        const value = parseInt(e.target.value);
+        this.settings.padding = value;
+        if (this.elements.customPaddingValue) {
+          this.elements.customPaddingValue.textContent = value;
+        }
+        if (this.updateSettingsInfo) {
+          this.updateSettingsInfo();
+        }
+        if (this.updateRealtimePreview) {
+          this.updateRealtimePreview();
+        }
+      });
+    }
 
     this.elements.applyBgBtn.addEventListener('click', () => this.applyBackground());
     this.elements.skipBgBtn.addEventListener('click', () => this.skipBackground());
@@ -202,6 +335,9 @@ class PopupController {
         this.transitionToStep('complete');
         // 显示背景选择指导
         this.showGuidance('background-selection');
+        
+        // 尝试加载视频预览
+        this.attemptLoadVideoPreview();
       }, 1000);
 
       console.log('Recording stopped successfully, video size:', videoBlob.size, 'bytes');
@@ -222,8 +358,9 @@ class PopupController {
     // 设置当前选项为选中状态
     selectedOption.classList.add('selected');
 
-    // 更新状态
+    // 更新状态和设置
     this.state.selectedBackground = selectedOption.dataset.color;
+    this.settings.backgroundColor = selectedOption.dataset.color;  // 同时更新settings
     const backgroundName = selectedOption.dataset.name || '未知背景';
 
     // 更新预览
@@ -236,6 +373,12 @@ class PopupController {
     this.elements.applyBgBtn.disabled = false;
 
     console.log('Background selected:', backgroundName, selectedOption.dataset.color);
+    
+    // 如果有实时预览功能，立即更新
+    if (this.updateRealtimePreview) {
+      console.log('Updating realtime preview after background selection');
+      this.updateRealtimePreview();
+    }
   }
 
   // 应用背景
@@ -256,24 +399,42 @@ class PopupController {
       // 添加按钮加载状态
       this.elements.applyBgBtn.classList.add('loading');
 
-      // 创建背景配置
+      // 创建背景配置，使用当前设置的边距
       const backgroundConfig = {
         type: 'solid-color',
-        color: this.state.selectedBackground,
-        padding: 60, // 增大到60px内边距，让视频周围有更多空间
-        videoPosition: 'center'
+        color: this.state.selectedBackground || this.settings.backgroundColor,
+        backgroundColor: this.state.selectedBackground || this.settings.backgroundColor,
+        padding: this.settings.padding || 60, // 使用用户选择的边距设置
+        videoPosition: 'center',
+        outputRatio: this.settings.outputRatio,
+        customWidth: this.settings.customWidth,
+        customHeight: this.settings.customHeight
       };
+
+      console.log('Applying background with config:', backgroundConfig);
 
       this.updateProgress(30, '正在应用背景...');
 
-      // 处理视频背景，传递进度回调
-      const processedVideoBlob = await this.backgroundProcessor.applyBackground(
-        this.state.recordedVideo,
-        backgroundConfig,
-        (progress, message) => {
-          this.updateProgress(progress, message);
-        }
-      );
+      let processedVideoBlob;
+      
+      try {
+        // 尝试处理视频背景
+        processedVideoBlob = await this.backgroundProcessor.applyBackground(
+          this.state.recordedVideo,
+          backgroundConfig,
+          (progress, message) => {
+            this.updateProgress(progress, message);
+          }
+        );
+      } catch (processingError) {
+        console.error('视频处理失败，使用原始视频:', processingError);
+        
+        // 显示警告信息
+        this.showMessage('背景处理失败，将下载原始视频', 'warning');
+        
+        // 使用原始视频
+        processedVideoBlob = this.state.recordedVideo;
+      }
 
       this.updateProgress(80, '正在准备下载...');
 
@@ -1597,6 +1758,14 @@ class PopupController {
             this.transitionToStep('complete');
             // 显示背景选择指导
             this.showGuidance('background-selection');
+            
+            // 确保视频预览被加载
+            console.log('Ensuring video preview is loaded after user stopped recording');
+            if (this.loadVideoPreview && this.state.recordedVideo) {
+              setTimeout(() => {
+                this.loadVideoPreview();
+              }, 200);
+            }
           }, 1000);
           
           console.log('Recording stopped by user, video saved successfully');
@@ -1715,6 +1884,280 @@ class PopupController {
     this.state.selectedBackground = null;
   }
 
+  // 尝试加载视频预览
+  attemptLoadVideoPreview() {
+    console.log('[attemptLoadVideoPreview] Called');
+    console.log('[attemptLoadVideoPreview] recordedVideo exists:', !!this.state.recordedVideo);
+    
+    if (this.state.recordedVideo) {
+      // 直接调用内置的 loadVideoPreview 方法
+      this.loadVideoPreview();
+    } else {
+      console.error('[attemptLoadVideoPreview] No recorded video available');
+    }
+  }
+  
+  // 加载视频预览
+  loadVideoPreview() {
+    console.log('[loadVideoPreview] Called');
+    console.log('[loadVideoPreview] recordedVideo size:', this.state.recordedVideo?.size);
+    console.log('[loadVideoPreview] previewCanvas element:', this.elements.previewCanvas);
+    console.log('[loadVideoPreview] videoPreview element:', this.elements.videoPreview);
+    
+    if (!this.state.recordedVideo) {
+      console.warn('[loadVideoPreview] No recorded video to preview');
+      return;
+    }
+    
+    if (!this.elements.videoPreview || !this.elements.previewCanvas) {
+      console.warn('[loadVideoPreview] Preview elements not found');
+      return;
+    }
+    
+    try {
+      // 创建视频 URL
+      const videoUrl = URL.createObjectURL(this.state.recordedVideo);
+      console.log('[loadVideoPreview] Created video URL:', videoUrl);
+      
+      // 显示视频预览区域
+      const previewSection = document.querySelector('.video-preview-section');
+      if (previewSection) {
+        previewSection.style.display = 'block';
+        console.log('[loadVideoPreview] Preview section shown');
+      }
+      
+      const video = this.elements.videoPreview;
+      const canvas = this.elements.previewCanvas;
+      const ctx = canvas.getContext('2d');
+      
+      // 隐藏 video 元素，显示 canvas
+      video.style.display = 'none';
+      canvas.style.display = 'block';
+      
+      // 保存视频引用和上下文
+      this.previewVideo = video;
+      this.previewCanvas = canvas;
+      this.previewCtx = ctx;
+      
+      // 设置视频加载完成的回调
+      video.onloadedmetadata = () => {
+        console.log('[loadVideoPreview] Video metadata loaded:', {
+          duration: video.duration,
+          width: video.videoWidth,
+          height: video.videoHeight
+        });
+        
+        // 设置 canvas 尺寸
+        const containerWidth = canvas.parentElement.offsetWidth || 400;
+        const aspectRatio = video.videoHeight / video.videoWidth;
+        canvas.width = containerWidth;
+        canvas.height = containerWidth * aspectRatio;
+        
+        // 初始化背景颜色（如果有选中的）
+        this.currentBackgroundColor = this.state.selectedBackground || '#f0f0f0';
+        
+        // 开始渲染循环
+        this.startCanvasPreview();
+        
+        // 尝试播放视频（静音）
+        video.muted = true;
+        video.loop = true;
+        video.play().then(() => {
+          console.log('[loadVideoPreview] Video playing');
+        }).catch(err => {
+          console.log('[loadVideoPreview] Auto-play blocked:', err);
+          // 显示第一帧
+          video.currentTime = 0.1;
+          // 手动触发一次渲染
+          this.renderPreviewFrame();
+        });
+      };
+      
+      // 错误处理
+      video.onerror = (err) => {
+        console.error('[loadVideoPreview] Video load error:', err);
+        console.error('[loadVideoPreview] Video error details:', video.error);
+      };
+      
+      // 设置视频源
+      video.src = videoUrl;
+      video.load();
+      
+      console.log('[loadVideoPreview] Video source set and loading initiated');
+      
+      // 30秒后清理 URL
+      setTimeout(() => {
+        URL.revokeObjectURL(videoUrl);
+        console.log('[loadVideoPreview] Video URL revoked');
+      }, 30000);
+      
+    } catch (error) {
+      console.error('[loadVideoPreview] Error loading video preview:', error);
+      this.showErrorMessage('视频预览加载失败：' + error.message);
+    }
+  }
+  
+  // 开始 canvas 预览循环
+  startCanvasPreview() {
+    console.log('[startCanvasPreview] Starting preview render loop');
+    
+    // 停止之前的动画循环
+    if (this.previewAnimationId) {
+      cancelAnimationFrame(this.previewAnimationId);
+    }
+    
+    const renderLoop = () => {
+      if (this.previewVideo && !this.previewVideo.paused && !this.previewVideo.ended) {
+        this.renderPreviewFrame();
+      }
+      this.previewAnimationId = requestAnimationFrame(renderLoop);
+    };
+    
+    renderLoop();
+  }
+  
+  // 渲染预览帧
+  renderPreviewFrame() {
+    if (!this.previewVideo || !this.previewCanvas || !this.previewCtx) {
+      return;
+    }
+    
+    const video = this.previewVideo;
+    const canvas = this.previewCanvas;
+    const ctx = this.previewCtx;
+    
+    // 获取边距设置
+    const originalPadding = this.settings?.padding || 60;
+    const bgColor = this.currentBackgroundColor || '#f0f0f0';
+    
+    // 调试：只在padding改变时输出日志
+    if (this._lastPadding !== originalPadding) {
+      console.log('[renderPreviewFrame] Padding changed from', this._lastPadding, 'to', originalPadding);
+      this._lastPadding = originalPadding;
+    }
+    
+    // 计算预览缩放比例
+    // 预览 canvas 的宽度是容器宽度，通常比实际输出小很多
+    // 我们需要按比例缩放 padding
+    const previewScale = canvas.width / (video.videoWidth + originalPadding * 2);
+    const scaledPadding = originalPadding * previewScale;
+    
+    // 清除画布并填充背景色
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // 计算视频在画布中的位置和大小（考虑缩放后的边距）
+    const maxVideoWidth = canvas.width - (scaledPadding * 2);
+    const maxVideoHeight = canvas.height - (scaledPadding * 2);
+    
+    const videoAspectRatio = video.videoWidth / video.videoHeight;
+    const canvasAspectRatio = maxVideoWidth / maxVideoHeight;
+    
+    let videoDrawWidth, videoDrawHeight;
+    
+    if (videoAspectRatio > canvasAspectRatio) {
+      // 视频更宽，以宽度为准
+      videoDrawWidth = maxVideoWidth;
+      videoDrawHeight = maxVideoWidth / videoAspectRatio;
+    } else {
+      // 视频更高，以高度为准
+      videoDrawHeight = maxVideoHeight;
+      videoDrawWidth = maxVideoHeight * videoAspectRatio;
+    }
+    
+    // 居中绘制视频
+    const videoX = (canvas.width - videoDrawWidth) / 2;
+    const videoY = (canvas.height - videoDrawHeight) / 2;
+    
+    // 添加圆角效果（可选）
+    const borderRadius = 8;
+    ctx.save();
+    ctx.beginPath();
+    
+    // 检查是否支持 roundRect，如果不支持则使用普通矩形
+    if (ctx.roundRect) {
+      ctx.roundRect(videoX, videoY, videoDrawWidth, videoDrawHeight, borderRadius);
+    } else {
+      // 手动绘制圆角矩形路径
+      ctx.moveTo(videoX + borderRadius, videoY);
+      ctx.lineTo(videoX + videoDrawWidth - borderRadius, videoY);
+      ctx.quadraticCurveTo(videoX + videoDrawWidth, videoY, videoX + videoDrawWidth, videoY + borderRadius);
+      ctx.lineTo(videoX + videoDrawWidth, videoY + videoDrawHeight - borderRadius);
+      ctx.quadraticCurveTo(videoX + videoDrawWidth, videoY + videoDrawHeight, videoX + videoDrawWidth - borderRadius, videoY + videoDrawHeight);
+      ctx.lineTo(videoX + borderRadius, videoY + videoDrawHeight);
+      ctx.quadraticCurveTo(videoX, videoY + videoDrawHeight, videoX, videoY + videoDrawHeight - borderRadius);
+      ctx.lineTo(videoX, videoY + borderRadius);
+      ctx.quadraticCurveTo(videoX, videoY, videoX + borderRadius, videoY);
+      ctx.closePath();
+    }
+    
+    ctx.clip();
+    
+    // 绘制视频帧
+    ctx.drawImage(video, videoX, videoY, videoDrawWidth, videoDrawHeight);
+    
+    ctx.restore();
+    
+    // 添加边框（可选）
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    
+    if (ctx.roundRect) {
+      ctx.roundRect(videoX, videoY, videoDrawWidth, videoDrawHeight, borderRadius);
+    } else {
+      // 手动绘制圆角矩形边框
+      ctx.moveTo(videoX + borderRadius, videoY);
+      ctx.lineTo(videoX + videoDrawWidth - borderRadius, videoY);
+      ctx.quadraticCurveTo(videoX + videoDrawWidth, videoY, videoX + videoDrawWidth, videoY + borderRadius);
+      ctx.lineTo(videoX + videoDrawWidth, videoY + videoDrawHeight - borderRadius);
+      ctx.quadraticCurveTo(videoX + videoDrawWidth, videoY + videoDrawHeight, videoX + videoDrawWidth - borderRadius, videoY + videoDrawHeight);
+      ctx.lineTo(videoX + borderRadius, videoY + videoDrawHeight);
+      ctx.quadraticCurveTo(videoX, videoY + videoDrawHeight, videoX, videoY + videoDrawHeight - borderRadius);
+      ctx.lineTo(videoX, videoY + borderRadius);
+      ctx.quadraticCurveTo(videoX, videoY, videoX + borderRadius, videoY);
+      ctx.closePath();
+    }
+    
+    ctx.stroke();
+  }
+  
+  // 更新实时预览
+  updateRealtimePreview() {
+    console.log('[updateRealtimePreview] Updating preview with new settings');
+    
+    // 如果有正在预览的视频，更新背景色并重新渲染
+    if (this.previewVideo && this.previewCanvas && this.previewCtx) {
+      // 更新当前背景色
+      if (this.state.selectedBackground) {
+        this.currentBackgroundColor = this.state.selectedBackground;
+      }
+      
+      // 立即渲染一帧以显示更新
+      this.renderPreviewFrame();
+      
+      console.log('[updateRealtimePreview] Preview updated with background:', this.currentBackgroundColor);
+    }
+  }
+  
+  // 清理预览资源
+  cleanupPreview() {
+    if (this.previewAnimationId) {
+      cancelAnimationFrame(this.previewAnimationId);
+      this.previewAnimationId = null;
+    }
+    
+    if (this.previewVideo) {
+      this.previewVideo.pause();
+      this.previewVideo.src = '';
+      this.previewVideo = null;
+    }
+    
+    this.previewCanvas = null;
+    this.previewCtx = null;
+    this.currentBackgroundColor = null;
+  }
+
   // 验证录制的视频
   validateRecordedVideo(videoBlob) {
     if (!videoBlob || !(videoBlob instanceof Blob)) {
@@ -1816,7 +2259,287 @@ class PopupController {
   }
 }
 
+// 添加视频预览扩展方法
+function addVideoPreviewExtensions() {
+  console.log('[Extensions] Adding video preview methods to PopupController');
+  
+  if (!window.PopupController || !window.PopupController.prototype) {
+    console.error('[Extensions] PopupController not found!');
+    return false;
+  }
+  
+  // 添加 loadVideoPreview 方法
+  PopupController.prototype.loadVideoPreview = function() {
+    console.log('[Extensions] loadVideoPreview called');
+    
+    if (!this.state.recordedVideo) {
+      console.warn('[Extensions] No recorded video to preview');
+      return;
+    }
+    
+    if (!this.elements.videoPreview) {
+      console.warn('[Extensions] Video preview element not found');
+      return;
+    }
+    
+    try {
+      const videoUrl = URL.createObjectURL(this.state.recordedVideo);
+      console.log('[Extensions] Created video URL:', videoUrl);
+      
+      // 显示视频预览区域
+      const previewSection = document.querySelector('.video-preview-section');
+      if (previewSection) {
+        previewSection.style.display = 'block';
+      }
+      
+      const video = this.elements.videoPreview;
+      video.style.display = 'block';
+      
+      if (this.elements.previewCanvas) {
+        this.elements.previewCanvas.style.display = 'none';
+      }
+      
+      video.onloadedmetadata = function() {
+        console.log('[Extensions] Video metadata loaded');
+        video.play().catch(function(err) {
+          console.log('[Extensions] Auto-play blocked:', err);
+          video.currentTime = 0.1;
+        });
+      };
+      
+      video.onerror = function(err) {
+        console.error('[Extensions] Video load error:', err);
+      };
+      
+      video.src = videoUrl;
+      video.load();
+      
+      console.log('[Extensions] Video loading initiated');
+      
+      setTimeout(function() {
+        URL.revokeObjectURL(videoUrl);
+      }, 30000);
+      
+    } catch (error) {
+      console.error('[Extensions] Error loading video preview:', error);
+    }
+  };
+  
+  // 添加选择边距的方法  
+  PopupController.prototype.selectPadding = function(selectedOption) {
+    console.log('[selectPadding] Called with:', selectedOption, selectedOption.dataset.padding);
+    console.log('[selectPadding] Current padding before update:', this.settings.padding);
+    
+    if (!this.elements.paddingOptions) {
+      console.error('[selectPadding] paddingOptions not found!');
+      return;
+    }
+    
+    // 移除所有选中状态
+    this.elements.paddingOptions.forEach(option => {
+      option.classList.remove('active');
+    });
+    
+    // 设置选中状态
+    selectedOption.classList.add('active');
+    
+    // 获取padding值
+    const paddingValue = selectedOption.dataset.padding;
+    
+    // 检查是否选择了自定义选项
+    if (paddingValue === 'custom') {
+      console.log('[selectPadding] Custom padding selected');
+      // 显示自定义滑块输入
+      if (this.elements.customPaddingInput) {
+        this.elements.customPaddingInput.classList.remove('hidden');
+        // 确保滑块值反映当前设置
+        if (this.elements.customPaddingSlider) {
+          this.elements.customPaddingSlider.value = this.settings.padding;
+          if (this.elements.customPaddingValue) {
+            this.elements.customPaddingValue.textContent = this.settings.padding;
+          }
+        }
+      }
+      // custom 时不改变当前的 padding 值，等待用户通过滑块调整
+    } else {
+      // 隐藏自定义滑块输入
+      if (this.elements.customPaddingInput) {
+        this.elements.customPaddingInput.classList.add('hidden');
+      }
+      // 设置固定的边距值
+      const newPadding = parseInt(paddingValue);
+      if (!isNaN(newPadding)) {
+        console.log('[selectPadding] Setting padding to:', newPadding);
+        this.settings.padding = newPadding;
+      } else {
+        console.error('[selectPadding] Invalid padding value:', paddingValue);
+      }
+    }
+    
+    console.log('[selectPadding] Padding after update:', this.settings.padding);
+    
+    // 更新设置信息显示
+    if (this.updateSettingsInfo) {
+      this.updateSettingsInfo();
+    }
+    
+    // 更新实时预览
+    if (this.updateRealtimePreview) {
+      console.log('[selectPadding] Calling updateRealtimePreview with padding:', this.settings.padding);
+      this.updateRealtimePreview();
+    } else {
+      console.error('[selectPadding] updateRealtimePreview not found!');
+    }
+  };
+  
+  PopupController.prototype.selectSize = function(selectedOption) {
+    if (!this.elements.sizeOptions) return;
+    
+    this.elements.sizeOptions.forEach(function(option) {
+      option.classList.remove('active');
+    });
+    
+    selectedOption.classList.add('active');
+    this.settings.outputRatio = selectedOption.dataset.ratio;
+    
+    if (this.elements.customSizeInput) {
+      if (this.settings.outputRatio === 'custom') {
+        this.elements.customSizeInput.classList.remove('hidden');
+      } else {
+        this.elements.customSizeInput.classList.add('hidden');
+      }
+    }
+    
+    if (this.updateSettingsInfo) {
+      this.updateSettingsInfo();
+    }
+    
+    console.log('[Extensions] Size ratio selected:', this.settings.outputRatio);
+  };
+  
+  PopupController.prototype.updateSettingsInfo = function() {
+    if (!this.elements.selectedSettings) return;
+    
+    const paddingText = '边距: ' + this.settings.padding + 'px';
+    let sizeText;
+    
+    if (this.settings.outputRatio === 'custom') {
+      sizeText = '尺寸: ' + this.settings.customWidth + '×' + this.settings.customHeight;
+    } else {
+      sizeText = '比例: ' + this.settings.outputRatio;
+    }
+    
+    this.elements.selectedSettings.textContent = paddingText + ' | ' + sizeText;
+  };
+  
+  PopupController.prototype.calculateOutputSize = function() {
+    let width, height;
+    
+    if (this.settings.outputRatio === 'custom') {
+      width = this.settings.customWidth || 1920;
+      height = this.settings.customHeight || 1080;
+    } else {
+      const ratios = {
+        '16:9': { w: 1920, h: 1080 },
+        '1:1': { w: 1080, h: 1080 },
+        '9:16': { w: 1080, h: 1920 },
+        '4:5': { w: 1080, h: 1350 }
+      };
+      
+      const ratio = ratios[this.settings.outputRatio] || ratios['16:9'];
+      width = ratio.w;
+      height = ratio.h;
+    }
+    
+    return {
+      originalWidth: width,
+      originalHeight: height,
+      width: Math.floor(width * 0.2),
+      height: Math.floor(height * 0.2)
+    };
+  };
+  
+  console.log('[Extensions] Video preview methods added successfully');
+  return true;
+}
+
 // 初始化popup控制器
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOMContentLoaded - Creating PopupController');
+  
+  // 先添加扩展方法，再创建控制器实例
+  const extensionsAdded = addVideoPreviewExtensions();
+  console.log('Extensions added:', extensionsAdded);
+  
+  // 创建控制器实例
   window.popupController = new PopupController();
+  
+  // 初始化设置信息显示
+  if (window.popupController.updateSettingsInfo) {
+    window.popupController.updateSettingsInfo();
+  }
+  
+  // 确保方法正确绑定到实例
+  console.log('Checking selectPadding method:', typeof window.popupController.selectPadding);
+  console.log('Prototype has selectPadding:', 'selectPadding' in window.popupController);
+  
+  // 不需要重新绑定事件，因为已经在 bindEvents 中处理了
+  // 只需要验证方法是否存在
+  if (window.popupController.selectPadding) {
+    console.log('selectPadding method is available');
+    
+    // 设置默认选中的边距选项
+    const defaultPaddingOption = document.querySelector('.padding-option[data-padding="60"]');
+    if (defaultPaddingOption && !document.querySelector('.padding-option.active')) {
+      defaultPaddingOption.classList.add('active');
+    }
+  } else {
+    console.error('selectPadding method not found on popupController!');
+  }
+  
+  // 由于脚本加载顺序已经修正，videoPreviewExtensions.js 在 popup.js 之后加载
+  // 所以这里只需要等待一小段时间确保扩展加载完成
+  setTimeout(() => {
+    if (window.videoPreviewExtensionsLoaded) {
+      console.log('Video preview extensions confirmed loaded');
+      // 验证方法是否存在
+      if (typeof window.popupController.loadVideoPreview === 'function') {
+        console.log('loadVideoPreview method is available and ready');
+      } else {
+        console.error('loadVideoPreview method NOT available!');
+        console.log('Available methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.popupController)));
+      }
+    } else {
+      console.warn('Video preview extensions not loaded yet, but should be loaded soon');
+    }
+  }, 500);
+  
+  // 调试: 监听状态变化并手动触发视频预览
+  const originalSetState = window.popupController.setState.bind(window.popupController);
+  window.popupController.setState = function(newState) {
+    console.log('[Debug] setState called with:', newState);
+    originalSetState(newState);
+    
+    // 如果状态变为 complete 且有录制的视频
+    if (this.state.currentStep === 'complete' && this.state.recordedVideo) {
+      console.log('[Debug] Complete state detected with video, manually loading preview');
+      setTimeout(() => {
+        if (typeof this.loadVideoPreview === 'function') {
+          console.log('[Debug] Calling loadVideoPreview manually');
+          this.loadVideoPreview();
+        } else {
+          console.log('[Debug] loadVideoPreview not available, waiting...');
+          // 再次尝试
+          setTimeout(() => {
+            if (typeof this.loadVideoPreview === 'function') {
+              console.log('[Debug] loadVideoPreview now available, calling it');
+              this.loadVideoPreview();
+            } else {
+              console.error('[Debug] loadVideoPreview still not available!');
+            }
+          }, 500);
+        }
+      }, 500);
+    }
+  };
 });

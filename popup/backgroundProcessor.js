@@ -7,6 +7,64 @@ class BackgroundProcessor {
     this.ctx = null;
     this.videoElement = null;
     this.isProcessing = false;
+    this.worker = null;
+    this.initWorker();
+  }
+  
+  // 初始化 Web Worker
+  initWorker() {
+    try {
+      this.worker = new Worker('popup/videoProcessor.worker.js');
+      console.log('Video processor worker initialized');
+      
+      // 设置 Worker 消息处理
+      this.worker.onmessage = (e) => {
+        this.handleWorkerMessage(e.data);
+      };
+      
+      this.worker.onerror = (error) => {
+        console.error('Worker error:', error);
+        this.workerCallback && this.workerCallback(null, error);
+      };
+    } catch (error) {
+      console.error('Failed to initialize worker:', error);
+      // 回退到主线程处理
+      this.worker = null;
+    }
+  }
+  
+  // 处理 Worker 消息
+  handleWorkerMessage(data) {
+    const { type, progress, message, blob, error, imageData, dimensions } = data;
+    
+    switch (type) {
+      case 'progress':
+        if (this.progressCallback) {
+          this.progressCallback(progress, message);
+        }
+        break;
+        
+      case 'complete':
+        if (this.workerCallback) {
+          this.workerCallback(blob, null);
+        }
+        break;
+        
+      case 'error':
+        if (this.workerCallback) {
+          this.workerCallback(null, new Error(error));
+        }
+        break;
+        
+      case 'preview':
+        if (this.previewCallback) {
+          this.previewCallback(imageData, dimensions);
+        }
+        break;
+        
+      default:
+        console.log('Unknown worker message type:', type);
+    }
   }
   
   // 应用背景到视频
@@ -22,6 +80,9 @@ class BackgroundProcessor {
       
       // 验证背景配置
       this.validateBackgroundConfig(backgroundConfig);
+      
+      // 直接使用主线程处理，跳过Worker（Worker实现不完整）
+      console.log('Using main thread processing');
       
       if (progressCallback) progressCallback(20, '加载视频...');
       
@@ -66,6 +127,57 @@ class BackgroundProcessor {
       this.cleanup();
       this.isProcessing = false;
     }
+  }
+  
+  // 使用 Worker 处理视频
+  async processWithWorker(videoBlob, backgroundConfig, progressCallback) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        // 保存回调
+        this.progressCallback = progressCallback;
+        this.workerCallback = (blob, error) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve(blob);
+          }
+          // 清理回调
+          this.progressCallback = null;
+          this.workerCallback = null;
+        };
+        
+        // 获取视频信息
+        const videoElement = await this.createVideoElement(videoBlob);
+        const videoInfo = this.getVideoInfo(videoElement);
+        
+        // 准备配置
+        const config = {
+          ...backgroundConfig,
+          videoWidth: videoInfo.width,
+          videoHeight: videoInfo.height,
+          duration: videoInfo.duration
+        };
+        
+        // 发送消息给 Worker
+        this.worker.postMessage({
+          action: 'processVideo',
+          data: {
+            videoBlob: videoBlob,
+            config: config
+          }
+        });
+        
+        console.log('Video processing delegated to worker');
+        
+        // 清理临时视频元素
+        this.videoElement = null;
+        URL.revokeObjectURL(videoElement.src);
+        
+      } catch (error) {
+        console.error('Worker processing failed:', error);
+        reject(error);
+      }
+    });
   }
   
   // 创建视频元素
@@ -175,6 +287,12 @@ class BackgroundProcessor {
   async processVideoWithCanvas(videoElement, canvas, ctx, layout, backgroundConfig, progressCallback) {
     try {
       console.log('Starting video processing with background...');
+      console.log('Video element state:', {
+        duration: videoElement.duration,
+        readyState: videoElement.readyState,
+        videoWidth: videoElement.videoWidth,
+        videoHeight: videoElement.videoHeight
+      });
       
       // 获取支持的MIME类型
       const mimeType = this.getSupportedMimeType();
@@ -183,13 +301,26 @@ class BackgroundProcessor {
       const stream = canvas.captureStream(30); // 30 FPS
       console.log('Canvas stream created:', {
         active: stream.active,
-        tracks: stream.getTracks().length
+        tracks: stream.getTracks().length,
+        trackSettings: stream.getVideoTracks()[0]?.getSettings()
       });
       
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: mimeType,
-        videoBitsPerSecond: 2500000 // 2.5 Mbps
-      });
+      // 使用更保守的编码参数
+      const recorderOptions = {
+        mimeType: mimeType
+        // 不设置 videoBitsPerSecond，让浏览器使用默认值
+      };
+      
+      // 尝试创建MediaRecorder
+      let mediaRecorder;
+      try {
+        console.log('Creating MediaRecorder with options:', recorderOptions);
+        mediaRecorder = new MediaRecorder(stream, recorderOptions);
+      } catch (err) {
+        console.warn('Failed with options, trying without options:', err);
+        // 如果失败，尝试不带选项
+        mediaRecorder = new MediaRecorder(stream);
+      }
       
       const recordedChunks = [];
       
@@ -197,21 +328,52 @@ class BackgroundProcessor {
       mediaRecorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
           recordedChunks.push(event.data);
-          console.log('Chunk received:', event.data.size, 'bytes');
+          console.log('Chunk received:', event.data.size, 'bytes, total chunks:', recordedChunks.length);
+        } else {
+          console.warn('Empty data chunk received');
         }
       };
       
       // 创建Promise来等待录制完成
       const recordingPromise = new Promise((resolve, reject) => {
         mediaRecorder.onstop = () => {
-          console.log('MediaRecorder stopped, creating blob...');
+          console.log('MediaRecorder stopped, creating blob from', recordedChunks.length, 'chunks');
+          
+          // 验证是否有数据
+          if (recordedChunks.length === 0) {
+            reject(new Error('没有录制到任何数据'));
+            return;
+          }
+          
           try {
+            // 计算总大小
+            const totalSize = recordedChunks.reduce((sum, chunk) => sum + chunk.size, 0);
+            console.log('Total chunks size:', totalSize, 'bytes');
+            
+            if (totalSize === 0) {
+              reject(new Error('录制的数据为空'));
+              return;
+            }
+            
             const processedBlob = new Blob(recordedChunks, {
               type: mimeType
             });
-            console.log('Processed video created, size:', processedBlob.size, 'bytes');
+            
+            console.log('Processed video created:', {
+              size: processedBlob.size,
+              type: processedBlob.type,
+              chunks: recordedChunks.length
+            });
+            
+            // 验证生成的Blob
+            if (processedBlob.size === 0) {
+              reject(new Error('生成的视频文件为空'));
+              return;
+            }
+            
             resolve(processedBlob);
           } catch (error) {
+            console.error('Error creating blob:', error);
             reject(error);
           }
         };
@@ -223,8 +385,16 @@ class BackgroundProcessor {
       });
       
       // 开始录制
-      console.log('Starting MediaRecorder...');
-      mediaRecorder.start(100); // 100ms chunks
+      console.log('Starting MediaRecorder with state:', mediaRecorder.state);
+      
+      // 不指定时间间隔，让MediaRecorder自己决定
+      try {
+        mediaRecorder.start();
+        console.log('MediaRecorder started successfully');
+      } catch (err) {
+        console.error('Failed to start MediaRecorder:', err);
+        throw new Error('无法启动视频录制器: ' + err.message);
+      }
       
       // 播放视频并实时渲染到画布
       await this.playAndRenderVideo(
@@ -237,11 +407,20 @@ class BackgroundProcessor {
       );
       
       // 停止录制
-      console.log('Stopping MediaRecorder...');
-      mediaRecorder.stop();
+      console.log('Stopping MediaRecorder, current state:', mediaRecorder.state);
+      
+      // 确保MediaRecorder仍在录制状态
+      if (mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        console.log('MediaRecorder stop called');
+      } else {
+        console.warn('MediaRecorder was not recording, state:', mediaRecorder.state);
+      }
       
       // 等待录制完成并返回结果
-      return await recordingPromise;
+      const result = await recordingPromise;
+      console.log('Recording promise resolved, result size:', result.size);
+      return result;
       
     } catch (error) {
       console.error('Canvas video processing error:', error);
@@ -299,7 +478,8 @@ class BackgroundProcessor {
             if (animationId) {
               cancelAnimationFrame(animationId);
             }
-            setTimeout(resolve, 100); // 给一点时间确保最后的数据被录制
+            // 给更多时间确保最后的数据被录制
+            setTimeout(resolve, 500);
             return;
           }
           
@@ -345,17 +525,31 @@ class BackgroundProcessor {
       
       // 设置超时保护
       const timeoutDuration = isFinite(duration) && duration > 0
-        ? Math.max(30000, duration * 1000 * 2) // 视频时长的2倍
+        ? Math.max(60000, duration * 1000 * 3) // 视频时长的3倍，最少1分钟
         : 300000; // 5分钟
         
-      setTimeout(() => {
-        if (!videoElement.ended && frameCount === 0) {
+      const timeoutId = setTimeout(() => {
+        if (!videoElement.ended) {
+          console.warn('Video processing timeout, frameCount:', frameCount);
           if (animationId) {
             cancelAnimationFrame(animationId);
           }
-          reject(new Error('视频处理超时'));
+          // 如果已经渲染了一些帧，仍然尝试解决
+          if (frameCount > 0) {
+            console.log('Timeout but frames were rendered, resolving anyway');
+            setTimeout(resolve, 1000);
+          } else {
+            reject(new Error('视频处理超时'));
+          }
         }
       }, timeoutDuration);
+      
+      // 在resolve时清除超时
+      const originalResolve = resolve;
+      resolve = (...args) => {
+        clearTimeout(timeoutId);
+        originalResolve(...args);
+      };
     });
   }
   

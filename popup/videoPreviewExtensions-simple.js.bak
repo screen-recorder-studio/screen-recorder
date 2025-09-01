@@ -1,0 +1,188 @@
+// Video Preview Extensions for Popup Controller - Simplified Version
+// 扩展功能：视频预览、实时背景预览、padding选择、尺寸选择
+
+(function() {
+  console.log('[VideoPreviewExtensions] Script executing immediately');
+  
+  // 立即尝试添加方法
+  let attempts = 0;
+  const maxAttempts = 100;
+  
+  function tryAddMethods() {
+    attempts++;
+    
+    if (!window.PopupController || !window.PopupController.prototype) {
+      console.log(`[VideoPreviewExtensions] Attempt ${attempts}: PopupController not ready`);
+      if (attempts < maxAttempts) {
+        setTimeout(tryAddMethods, 100);
+      }
+      return;
+    }
+    
+    console.log('[VideoPreviewExtensions] PopupController found! Adding methods now.');
+    
+    // 加载视频预览 - 核心方法
+    PopupController.prototype.loadVideoPreview = function() {
+      console.log('[VideoPreview] loadVideoPreview called');
+      console.log('[VideoPreview] state:', this.state);
+      console.log('[VideoPreview] elements:', this.elements);
+      
+      if (!this.state.recordedVideo) {
+        console.warn('[VideoPreview] No recorded video available');
+        return;
+      }
+      
+      if (!this.elements.videoPreview) {
+        console.warn('[VideoPreview] Video preview element not found');
+        return;
+      }
+      
+      // 创建视频 URL
+      const videoUrl = URL.createObjectURL(this.state.recordedVideo);
+      console.log('[VideoPreview] Created video URL:', videoUrl);
+      
+      // 显示视频预览区域
+      const previewSection = document.querySelector('.video-preview-section');
+      if (previewSection) {
+        previewSection.style.display = 'block';
+        console.log('[VideoPreview] Preview section shown');
+      }
+      
+      // 设置视频元素
+      const video = this.elements.videoPreview;
+      video.style.display = 'block';
+      
+      // 隐藏 canvas（如果存在）
+      if (this.elements.previewCanvas) {
+        this.elements.previewCanvas.style.display = 'none';
+      }
+      
+      // 设置视频源并播放
+      video.onloadedmetadata = () => {
+        console.log('[VideoPreview] Video metadata loaded:', {
+          duration: video.duration,
+          width: video.videoWidth,
+          height: video.videoHeight
+        });
+        
+        // 尝试播放
+        video.play().catch(err => {
+          console.log('[VideoPreview] Auto-play blocked, user can play manually');
+          video.currentTime = 0.1; // 显示第一帧
+        });
+      };
+      
+      video.onerror = (e) => {
+        console.error('[VideoPreview] Video load error:', e);
+      };
+      
+      video.src = videoUrl;
+      video.load();
+      
+      console.log('[VideoPreview] Video source set and loading');
+      
+      // 30秒后清理 URL
+      setTimeout(() => {
+        URL.revokeObjectURL(videoUrl);
+        console.log('[VideoPreview] Video URL revoked');
+      }, 30000);
+    };
+    
+    // 选择 Padding
+    PopupController.prototype.selectPadding = function(selectedOption) {
+      this.elements.paddingOptions.forEach(option => {
+        option.classList.remove('active');
+      });
+      selectedOption.classList.add('active');
+      this.settings.padding = parseInt(selectedOption.dataset.padding);
+      this.updateSettingsInfo();
+      console.log('[VideoPreview] Padding selected:', this.settings.padding);
+    };
+    
+    // 选择输出尺寸
+    PopupController.prototype.selectSize = function(selectedOption) {
+      this.elements.sizeOptions.forEach(option => {
+        option.classList.remove('active');
+      });
+      selectedOption.classList.add('active');
+      this.settings.outputRatio = selectedOption.dataset.ratio;
+      
+      if (this.settings.outputRatio === 'custom') {
+        this.elements.customSizeInput.classList.remove('hidden');
+      } else {
+        this.elements.customSizeInput.classList.add('hidden');
+      }
+      
+      this.updateSettingsInfo();
+      console.log('[VideoPreview] Size selected:', this.settings.outputRatio);
+    };
+    
+    // 更新设置信息显示
+    PopupController.prototype.updateSettingsInfo = function() {
+      if (this.elements.selectedSettings) {
+        const paddingText = `边距: ${this.settings.padding}px`;
+        const sizeText = this.settings.outputRatio === 'custom' 
+          ? `尺寸: ${this.settings.customWidth}×${this.settings.customHeight}`
+          : `尺寸: ${this.settings.outputRatio}`;
+        this.elements.selectedSettings.textContent = `${paddingText} | ${sizeText}`;
+      }
+    };
+    
+    // 计算输出尺寸
+    PopupController.prototype.calculateOutputSize = function() {
+      let width, height;
+      
+      if (this.settings.outputRatio === 'custom') {
+        width = this.settings.customWidth;
+        height = this.settings.customHeight;
+      } else {
+        const ratios = {
+          '16:9': { w: 1920, h: 1080 },
+          '1:1': { w: 1080, h: 1080 },
+          '9:16': { w: 1080, h: 1920 },
+          '4:5': { w: 1080, h: 1350 }
+        };
+        const ratio = ratios[this.settings.outputRatio] || ratios['16:9'];
+        width = ratio.w;
+        height = ratio.h;
+      }
+      
+      return {
+        originalWidth: width,
+        originalHeight: height,
+        width: Math.floor(width * 0.2), // 预览缩放
+        height: Math.floor(height * 0.2)
+      };
+    };
+    
+    // 标记扩展已加载
+    window.videoPreviewExtensionsLoaded = true;
+    console.log('[VideoPreviewExtensions] All methods added successfully!');
+    
+    // 验证方法
+    console.log('[VideoPreviewExtensions] Verification:');
+    console.log('- loadVideoPreview:', typeof PopupController.prototype.loadVideoPreview);
+    console.log('- selectPadding:', typeof PopupController.prototype.selectPadding);
+    console.log('- selectSize:', typeof PopupController.prototype.selectSize);
+    console.log('- updateSettingsInfo:', typeof PopupController.prototype.updateSettingsInfo);
+    
+    // 如果已有实例，立即应用
+    if (window.popupController) {
+      console.log('[VideoPreviewExtensions] Existing instance found, methods now available');
+      
+      // 如果已有录制的视频，尝试加载
+      if (window.popupController.state && 
+          window.popupController.state.currentStep === 'complete' && 
+          window.popupController.state.recordedVideo) {
+        console.log('[VideoPreviewExtensions] Video ready, loading preview in 500ms');
+        setTimeout(() => {
+          window.popupController.loadVideoPreview();
+        }, 500);
+      }
+    }
+  }
+  
+  // 立即开始尝试
+  tryAddMethods();
+  
+})();
