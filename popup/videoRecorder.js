@@ -51,10 +51,36 @@ class VideoRecorder {
       // 验证流是否有效
       this.validateStream(this.stream);
       
-      // 设置录制选项
+      // 设置高质量录制选项 - 根据实际分辨率动态调整
+      const videoTrack = this.stream.getVideoTracks()[0];
+      const settings = videoTrack ? videoTrack.getSettings() : {};
+      const width = settings.width || 1920;
+      const height = settings.height || 1080;
+      const pixels = width * height;
+      
+      // 动态计算最优比特率
+      let videoBitrate;
+      if (pixels >= 3840 * 2160) {
+        videoBitrate = 50000000; // 50 Mbps for 4K
+      } else if (pixels >= 2560 * 1440) {
+        videoBitrate = 30000000; // 30 Mbps for 2K  
+      } else if (pixels >= 1920 * 1080) {
+        videoBitrate = 25000000; // 25 Mbps for FHD
+      } else {
+        videoBitrate = 15000000; // 15 Mbps minimum
+      }
+      
+      console.log('Dynamic bitrate calculation:', {
+        resolution: `${width}x${height}`,
+        pixels: pixels,
+        bitrate: `${videoBitrate / 1000000} Mbps`
+      });
+      
       const options = {
         mimeType: this.getSupportedMimeType(),
-        videoBitsPerSecond: 2500000 // 2.5 Mbps
+        videoBitsPerSecond: videoBitrate,
+        // 提升音频质量
+        audioBitsPerSecond: 192000
       };
       
       // 创建MediaRecorder实例
@@ -86,13 +112,20 @@ class VideoRecorder {
         console.log('StreamId received:', response.streamId);
         
         // Chrome扩展需要特殊的约束格式
-        // 注意：mandatory格式在新版Chrome中已弃用，但在扩展中仍需要
+        // 添加高分辨率约束以确保最佳质量
         const constraints = {
           audio: false,
           video: {
             mandatory: {
               chromeMediaSource: 'desktop',
-              chromeMediaSourceId: response.streamId
+              chromeMediaSourceId: response.streamId,
+              // 设置高分辨率约束
+              minWidth: 1920,
+              minHeight: 1080,
+              maxWidth: 3840,  // 支持4K
+              maxHeight: 2160,
+              minFrameRate: 30,
+              maxFrameRate: 60
             }
           }
         };

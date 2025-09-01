@@ -255,7 +255,18 @@ class BackgroundProcessor {
   // 创建合成画布
   createCompositeCanvas(backgroundConfig, videoInfo) {
     const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { 
+      alpha: false,  // 不需要透明度，提高性能
+      desynchronized: true,  // 减少延迟
+      colorSpace: 'srgb',  // 确保颜色空间一致
+      willReadFrequently: false  // 优化性能
+    });
+    
+    // 设置最高质量渲染
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.filter = 'none';  // 避免默认滤镜
+    ctx.globalCompositeOperation = 'source-over';
     
     // 计算输出尺寸
     let outputWidth, outputHeight;
@@ -267,12 +278,49 @@ class BackgroundProcessor {
       outputWidth = backgroundConfig.customWidth || 1920;
       outputHeight = backgroundConfig.customHeight || 1080;
     } else {
-      // 使用预定义比例
+      // 使用预定义比例 - 根据源视频动态调整以保持高质量
+      // 确保所有比例都有足够的分辨率
+      const sourceWidth = videoInfo.width;
+      const sourceHeight = videoInfo.height;
+      
+      // 检测是否为高分辨率视频（4K 或更高）
+      const is4K = sourceWidth >= 3840 || sourceHeight >= 2160;
+      const is2K = sourceWidth >= 2560 || sourceHeight >= 1440;
+      
+      // 动态计算基础尺寸
+      let baseWidth, baseHeight;
+      if (is4K) {
+        baseWidth = 3840;
+        baseHeight = 2160;
+      } else if (is2K) {
+        baseWidth = 2560;
+        baseHeight = 1440;
+      } else {
+        baseWidth = 1920;
+        baseHeight = 1080;
+      }
+      
+      // 保证不小于源视频尺寸
+      baseWidth = Math.max(baseWidth, sourceWidth);
+      baseHeight = Math.max(baseHeight, sourceHeight);
+      
       const ratios = {
-        '16:9': { w: 1920, h: 1080 },
-        '1:1': { w: 1080, h: 1080 },
-        '9:16': { w: 1080, h: 1920 },
-        '4:5': { w: 1080, h: 1350 }
+        '16:9': { 
+          w: Math.max(baseWidth, 1920), 
+          h: Math.max(Math.round(baseWidth * 9 / 16), 1080) 
+        },
+        '1:1': { 
+          w: Math.max(baseWidth, baseHeight), 
+          h: Math.max(baseWidth, baseHeight) 
+        },
+        '9:16': { 
+          w: Math.max(Math.round(baseHeight * 9 / 16), 1080), 
+          h: Math.max(baseHeight, 1920) 
+        },
+        '4:5': { 
+          w: Math.max(Math.round(baseHeight * 4 / 5), 1080), 
+          h: Math.max(baseHeight, 1350) 
+        }
       };
       
       const ratio = ratios[backgroundConfig.outputRatio] || ratios['16:9'];
@@ -343,17 +391,40 @@ class BackgroundProcessor {
       const mimeType = this.getSupportedMimeType();
       
       // 创建MediaRecorder来录制合成后的视频
-      const stream = canvas.captureStream(30); // 30 FPS
+      // 检测系统性能以决定帧率
+      const isHighPerformance = navigator.hardwareConcurrency >= 8;
+      const targetFPS = isHighPerformance ? 60 : 30;  // 高性能系统使用60FPS
+      const stream = canvas.captureStream(targetFPS);
       console.log('Canvas stream created:', {
         active: stream.active,
         tracks: stream.getTracks().length,
         trackSettings: stream.getVideoTracks()[0]?.getSettings()
       });
       
-      // 使用更保守的编码参数
+      // 使用高质量编码参数 - 根据Canvas分辨率和帧率动态调整
+      const canvasPixels = canvas.width * canvas.height;
+      let videoBitrate;
+      if (canvasPixels >= 3840 * 2160) {
+        videoBitrate = targetFPS === 60 ? 60000000 : 40000000;  // 4K: 40-60 Mbps
+      } else if (canvasPixels >= 2560 * 1440) {
+        videoBitrate = targetFPS === 60 ? 40000000 : 25000000;  // 2K: 25-40 Mbps
+      } else if (canvasPixels >= 1920 * 1080) {
+        videoBitrate = targetFPS === 60 ? 25000000 : 20000000;  // FHD: 20-25 Mbps
+      } else {
+        videoBitrate = 15000000;  // 最低15 Mbps
+      }
+      
+      console.log('Background processor bitrate:', {
+        canvasSize: `${canvas.width}x${canvas.height}`,
+        targetFPS: targetFPS,
+        bitrate: `${videoBitrate / 1000000} Mbps`
+      });
+      
       const recorderOptions = {
-        mimeType: mimeType
-        // 不设置 videoBitsPerSecond，让浏览器使用默认值
+        mimeType: mimeType,
+        videoBitsPerSecond: videoBitrate,
+        // 提升音频比特率
+        audioBitsPerSecond: 192000
       };
       
       // 尝试创建MediaRecorder
@@ -749,13 +820,16 @@ class BackgroundProcessor {
     });
   }
   
-  // 获取支持的MIME类型
+  // 获取支持的MIME类型 - 优先使用高效编码器
   getSupportedMimeType() {
     const types = [
-      'video/webm;codecs=vp9',
-      'video/webm;codecs=vp8',
-      'video/webm',
-      'video/mp4'
+      'video/webm;codecs=vp9,opus',  // VP9 + Opus：最佳质量
+      'video/webm;codecs=vp9',       // VP9：高效压缩
+      'video/webm;codecs=vp8,opus',  // VP8 + Opus
+      'video/webm;codecs=vp8',       // VP8：兼容性好
+      'video/webm',                  // 默认WebM
+      'video/mp4;codecs=h264',       // H.264：硬件加速
+      'video/mp4'                    // 默认MP4
     ];
     
     for (const type of types) {
