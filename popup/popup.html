@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SaaS Video Recorder</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>视频录制器</h1>
+    </header>
+    
+    <main class="main">
+      <!-- 录制控制区域 -->
+      <div id="recording-section" class="section">
+        <div class="status-display">
+          <span id="status-text">准备录制</span>
+          <div id="recording-indicator" class="indicator"></div>
+        </div>
+        
+        <div class="controls">
+          <button id="start-btn" class="btn btn-primary">开始录制</button>
+          <button id="stop-btn" class="btn btn-secondary" disabled>停止录制</button>
+          <button id="open-recorder-btn" class="btn btn-primary" style="width: 100%; margin-top: 10px;">在新页面录制</button>
+        </div>
+        
+        <div class="recording-info">
+          <small id="recording-tip">点击开始录制当前标签页内容</small>
+        </div>
+      </div>
+      
+      <!-- 背景选择区域 (初始隐藏) -->
+      <div id="background-section" class="section hidden">
+        <div class="background-header">
+          <h3>选择背景</h3>
+          <p class="background-description">为您的视频添加专业背景</p>
+        </div>
+        
+        <div class="background-preview">
+          <div id="preview-container" class="preview-container">
+            <div id="preview-video" class="preview-video">
+              <span class="preview-placeholder">视频预览</span>
+            </div>
+          </div>
+          <p class="preview-note">预览效果：视频将居中显示，四周添加背景</p>
+        </div>
+        
+        <div class="background-options">
+          <div class="bg-option-wrapper">
+            <button class="bg-option" data-color="#ffffff" data-name="纯白" style="background-color: #ffffff; border: 2px solid #dee2e6;"></button>
+            <span class="bg-label">纯白</span>
+          </div>
+          <div class="bg-option-wrapper">
+            <button class="bg-option" data-color="#f8f9fa" data-name="浅灰" style="background-color: #f8f9fa;"></button>
+            <span class="bg-label">浅灰</span>
+          </div>
+          <div class="bg-option-wrapper">
+            <button class="bg-option" data-color="#e9ecef" data-name="中灰" style="background-color: #e9ecef;"></button>
+            <span class="bg-label">中灰</span>
+          </div>
+          <div class="bg-option-wrapper">
+            <button class="bg-option" data-color="#1a1a1a" data-name="深黑" style="background-color: #1a1a1a;"></button>
+            <span class="bg-label">深黑</span>
+          </div>
+          <div class="bg-option-wrapper">
+            <button class="bg-option" data-color="#0066cc" data-name="商务蓝" style="background-color: #0066cc;"></button>
+            <span class="bg-label">商务蓝</span>
+          </div>
+        </div>
+        
+        <div class="background-info">
+          <div class="selected-info">
+            <span id="selected-bg-name">请选择背景颜色</span>
+          </div>
+        </div>
+        
+        <div class="processing-controls">
+          <button id="apply-bg-btn" class="btn btn-primary" disabled>
+            <span class="btn-text">应用背景</span>
+            <span class="btn-loading hidden">处理中...</span>
+          </button>
+          <button id="skip-bg-btn" class="btn btn-secondary">直接下载</button>
+        </div>
+      </div>
+      
+      <!-- 进度显示区域 -->
+      <div id="progress-section" class="section hidden">
+        <div class="progress-bar">
+          <div id="progress-fill" class="progress-fill"></div>
+        </div>
+        <p id="progress-text">处理中...</p>
+      </div>
+    </main>
+  </div>
+  
+  <script src="videoRecorder.js"></script>
+  <script src="fileManager.js"></script>
+  <script src="backgroundProcessor.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

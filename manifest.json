@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "SaaS Video Recorder",
+  "version": "1.0.0",
+  "description": "Record SaaS product demos with custom backgrounds",
+  
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "desktopCapture",
+    "downloads",
+    "storage"
+  ],
+  
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "SaaS Video Recorder"
+  },
+  
+  "background": {
+    "service_worker": "background/background.js"
+  },
+  
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+  
+  "icons": {
+    "16": "assets/icon16.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  }
+}

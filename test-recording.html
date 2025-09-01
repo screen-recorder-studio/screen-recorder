@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>录制测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+        }
+        #status {
+            margin: 20px 0;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+        }
+        .recording {
+            background: #ffcccc;
+        }
+    </style>
+</head>
+<body>
+    <h1>简单录制测试</h1>
+    <div id="status">状态：准备就绪</div>
+    <button id="startBtn">开始录制</button>
+    <button id="stopBtn" disabled>停止录制</button>
+    
+    <script>
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        
+        document.getElementById('startBtn').addEventListener('click', async () => {
+            try {
+                // 直接使用getDisplayMedia
+                const stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: true,
+                    audio: false
+                });
+                
+                console.log('Got stream:', stream);
+                
+                mediaRecorder = new MediaRecorder(stream);
+                recordedChunks = [];
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                        console.log('Data available:', event.data.size);
+                    }
+                };
+                
+                mediaRecorder.onstart = () => {
+                    console.log('Recording started');
+                    document.getElementById('status').textContent = '状态：正在录制';
+                    document.getElementById('status').classList.add('recording');
+                    document.getElementById('startBtn').disabled = true;
+                    document.getElementById('stopBtn').disabled = false;
+                };
+                
+                mediaRecorder.onstop = () => {
+                    console.log('Recording stopped');
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'recording.webm';
+                    a.click();
+                };
+                
+                mediaRecorder.start();
+                console.log('MediaRecorder state:', mediaRecorder.state);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                alert('错误：' + error.message);
+            }
+        });
+        
+        document.getElementById('stopBtn').addEventListener('click', () => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                document.getElementById('status').textContent = '状态：已停止';
+                document.getElementById('status').classList.remove('recording');
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+            }
+        });
+    </script>
+</body>
+</html>
