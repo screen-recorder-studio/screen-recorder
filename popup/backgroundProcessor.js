@@ -257,26 +257,71 @@ class BackgroundProcessor {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     
-    // 计算输出尺寸，基于原视频尺寸加上padding
-    const padding = backgroundConfig.padding;
-    const outputWidth = videoInfo.width + padding * 2;
-    const outputHeight = videoInfo.height + padding * 2;
+    // 计算输出尺寸
+    let outputWidth, outputHeight;
+    const padding = backgroundConfig.padding || 60;
+    
+    // 根据outputRatio设置计算输出尺寸
+    if (backgroundConfig.outputRatio === 'custom') {
+      // 使用自定义尺寸
+      outputWidth = backgroundConfig.customWidth || 1920;
+      outputHeight = backgroundConfig.customHeight || 1080;
+    } else {
+      // 使用预定义比例
+      const ratios = {
+        '16:9': { w: 1920, h: 1080 },
+        '1:1': { w: 1080, h: 1080 },
+        '9:16': { w: 1080, h: 1920 },
+        '4:5': { w: 1080, h: 1350 }
+      };
+      
+      const ratio = ratios[backgroundConfig.outputRatio] || ratios['16:9'];
+      outputWidth = ratio.w;
+      outputHeight = ratio.h;
+    }
     
     canvas.width = outputWidth;
     canvas.height = outputHeight;
     
-    // 计算视频在画布中的位置（居中）
+    // 计算视频在画布中的位置和大小
+    // 考虑padding后的可用空间
+    const availableWidth = outputWidth - padding * 2;
+    const availableHeight = outputHeight - padding * 2;
+    
+    // 计算视频缩放以适应可用空间（保持纵横比）
+    const videoAspectRatio = videoInfo.width / videoInfo.height;
+    const targetAspectRatio = availableWidth / availableHeight;
+    
+    let videoWidth, videoHeight, videoX, videoY;
+    
+    if (videoAspectRatio > targetAspectRatio) {
+      // 视频更宽，以宽度为准
+      videoWidth = availableWidth;
+      videoHeight = availableWidth / videoAspectRatio;
+      videoX = padding;
+      videoY = padding + (availableHeight - videoHeight) / 2;
+    } else {
+      // 视频更高，以高度为准
+      videoHeight = availableHeight;
+      videoWidth = availableHeight * videoAspectRatio;
+      videoX = padding + (availableWidth - videoWidth) / 2;
+      videoY = padding;
+    }
+    
+    // 创建视频布局对象
     const videoLayout = {
-      x: padding,
-      y: padding,
-      width: videoInfo.width,
-      height: videoInfo.height
+      x: videoX,
+      y: videoY,
+      width: videoWidth,
+      height: videoHeight
     };
     
     console.log('Composite canvas created:', {
-      canvasWidth: outputWidth,
-      canvasHeight: outputHeight,
+      outputRatio: backgroundConfig.outputRatio,
+      canvasSize: { width: outputWidth, height: outputHeight },
+      videoOriginalSize: { width: videoInfo.width, height: videoInfo.height },
       videoLayout,
+      padding: padding,
       backgroundColor: backgroundConfig.color
     });
     

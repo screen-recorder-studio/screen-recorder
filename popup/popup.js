@@ -193,9 +193,46 @@ class PopupController {
     // Size 选项
     this.elements.sizeOptions.forEach(option => {
       option.addEventListener('click', (e) => {
-        if (this.selectSize) {
-          this.selectSize(e.currentTarget);
+        e.preventDefault();
+        e.stopPropagation();
+        const ratioValue = e.currentTarget.dataset.ratio;
+        console.log('[bindEvents] Size option clicked:', ratioValue);
+        
+        // 直接在这里处理，不依赖 selectSize 方法
+        // 移除所有选中状态
+        this.elements.sizeOptions.forEach(opt => {
+          opt.classList.remove('active');
+        });
+        
+        // 设置选中状态
+        e.currentTarget.classList.add('active');
+        
+        // 更新输出比例设置
+        this.settings.outputRatio = ratioValue;
+        console.log('[bindEvents] Output ratio set to:', this.settings.outputRatio);
+        
+        // 处理自定义尺寸输入显示/隐藏
+        if (this.elements.customSizeInput) {
+          if (ratioValue === 'custom') {
+            this.elements.customSizeInput.classList.remove('hidden');
+            // 确保自定义值被设置
+            if (this.elements.customWidth) {
+              this.elements.customWidth.value = this.settings.customWidth || 1920;
+            }
+            if (this.elements.customHeight) {
+              this.elements.customHeight.value = this.settings.customHeight || 1080;
+            }
+          } else {
+            this.elements.customSizeInput.classList.add('hidden');
+          }
         }
+        
+        // 更新设置信息显示
+        if (this.updateSettingsInfo) {
+          this.updateSettingsInfo();
+        }
+        
+        // 更新实时预览
         if (this.updateRealtimePreview) {
           this.updateRealtimePreview();
         }
@@ -2395,6 +2432,8 @@ function addVideoPreviewExtensions() {
   PopupController.prototype.selectSize = function(selectedOption) {
     if (!this.elements.sizeOptions) return;
     
+    console.log('[selectSize] Called with:', selectedOption.dataset.ratio);
+    
     this.elements.sizeOptions.forEach(function(option) {
       option.classList.remove('active');
     });
@@ -2410,11 +2449,18 @@ function addVideoPreviewExtensions() {
       }
     }
     
+    // 更新设置信息显示
     if (this.updateSettingsInfo) {
       this.updateSettingsInfo();
     }
     
-    console.log('[Extensions] Size ratio selected:', this.settings.outputRatio);
+    // 立即更新实时预览
+    if (this.updateRealtimePreview) {
+      console.log('[selectSize] Calling updateRealtimePreview with ratio:', this.settings.outputRatio);
+      this.updateRealtimePreview();
+    }
+    
+    console.log('[selectSize] Size ratio selected:', this.settings.outputRatio);
   };
   
   PopupController.prototype.updateSettingsInfo = function() {

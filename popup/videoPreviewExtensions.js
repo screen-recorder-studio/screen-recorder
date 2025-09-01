@@ -35,47 +35,139 @@
       // 获取当前设置
       const padding = this.settings.padding || 60;
       const backgroundColor = this.settings.backgroundColor || '#ffffff';
+      const outputRatio = this.settings.outputRatio || '16:9';
       
-      // 获取视频尺寸
-      const videoWidth = video.videoWidth;
-      const videoHeight = video.videoHeight;
+      // 获取原始视频尺寸
+      const originalVideoWidth = video.videoWidth;
+      const originalVideoHeight = video.videoHeight;
       
-      if (!videoWidth || !videoHeight) {
+      if (!originalVideoWidth || !originalVideoHeight) {
         console.error('[updateRealtimePreview] Invalid video dimensions');
         return;
       }
       
-      console.log('[updateRealtimePreview] Video dimensions:', videoWidth, 'x', videoHeight);
+      console.log('[updateRealtimePreview] Original video:', originalVideoWidth, 'x', originalVideoHeight);
+      console.log('[updateRealtimePreview] Output ratio:', outputRatio);
       console.log('[updateRealtimePreview] Padding:', padding);
       console.log('[updateRealtimePreview] Background color:', backgroundColor);
       
-      // 计算canvas尺寸（视频尺寸 + padding）
-      const canvasWidth = videoWidth + padding * 2;
-      const canvasHeight = videoHeight + padding * 2;
+      // 根据输出比例计算画布尺寸
+      let canvasWidth, canvasHeight;
+      let displayWidth, displayHeight;
       
-      // 设置canvas尺寸
+      // 获取容器尺寸作为限制
+      // 确保容器已经正确渲染，多次尝试获取宽度
+      let containerWidth = canvas.parentElement ? canvas.parentElement.offsetWidth : 0;
+      if (!containerWidth || containerWidth < 100) {
+        // 如果容器宽度太小，尝试获取视频预览区域的宽度
+        const previewSection = canvas.closest('.video-preview-section');
+        if (previewSection) {
+          containerWidth = previewSection.offsetWidth - 20; // 减去边框和内边距
+        }
+      }
+      // 使用合理的默认值
+      const maxWidth = containerWidth || 468;
+      const maxHeight = 600; // 设置最大高度限制，避免9:16时过高
+      
+      if (outputRatio === 'custom') {
+        // 使用自定义尺寸
+        const customW = this.settings.customWidth || 1920;
+        const customH = this.settings.customHeight || 1080;
+        const customAspectRatio = customH / customW;
+        
+        // 根据容器限制计算显示尺寸
+        if (customAspectRatio > maxHeight / maxWidth) {
+          // 高度受限
+          displayHeight = maxHeight;
+          displayWidth = maxHeight / customAspectRatio;
+        } else {
+          // 宽度受限
+          displayWidth = maxWidth;
+          displayHeight = maxWidth * customAspectRatio;
+        }
+        
+        // Canvas内部尺寸（2倍用于高清显示）
+        canvasWidth = displayWidth * 2;
+        canvasHeight = displayHeight * 2;
+      } else {
+        // 使用预定义比例
+        const ratios = {
+          '16:9': { w: 16, h: 9 },   // 使用比例而不是具体像素
+          '1:1': { w: 1, h: 1 },
+          '9:16': { w: 9, h: 16 },
+          '4:5': { w: 4, h: 5 }
+        };
+        
+        const targetRatio = ratios[outputRatio] || ratios['16:9'];
+        const aspectRatio = targetRatio.h / targetRatio.w;
+        
+        // 计算在容器限制内的最大显示尺寸
+        if (aspectRatio > maxHeight / maxWidth) {
+          // 高度受限（如9:16竖屏）
+          displayHeight = Math.min(maxHeight, maxWidth * aspectRatio);
+          displayWidth = displayHeight / aspectRatio;
+        } else {
+          // 宽度受限（如16:9横屏）
+          displayWidth = maxWidth;
+          displayHeight = maxWidth * aspectRatio;
+        }
+        
+        // Canvas内部尺寸（2倍用于高清显示）
+        canvasWidth = Math.floor(displayWidth * 2);
+        canvasHeight = Math.floor(displayHeight * 2);
+      }
+      
+      // 设置canvas实际尺寸（内部分辨率）
       canvas.width = canvasWidth;
       canvas.height = canvasHeight;
       
-      // 调整canvas显示大小以适应容器
-      const containerWidth = canvas.parentElement.offsetWidth;
-      const scale = containerWidth / canvasWidth;
-      canvas.style.width = containerWidth + 'px';
-      canvas.style.height = (canvasHeight * scale) + 'px';
+      // 设置canvas显示尺寸（CSS尺寸）
+      canvas.style.width = displayWidth + 'px';
+      canvas.style.height = displayHeight + 'px';
       
-      // 绘制背景
+      console.log('[updateRealtimePreview] Canvas internal size:', canvasWidth, 'x', canvasHeight);
+      console.log('[updateRealtimePreview] Canvas display size:', displayWidth, 'x', displayHeight);
+      
+      // 清空画布并填充背景
       ctx.fillStyle = backgroundColor;
       ctx.fillRect(0, 0, canvasWidth, canvasHeight);
       
-      // 绘制视频帧（居中）
+      // 计算视频在画布中的位置和大小
+      // 考虑padding后的可用空间
+      const availableWidth = canvasWidth - padding * 2;
+      const availableHeight = canvasHeight - padding * 2;
+      
+      // 计算视频缩放以适应可用空间
+      const videoAspectRatio = originalVideoWidth / originalVideoHeight;
+      const targetAspectRatio = availableWidth / availableHeight;
+      
+      let videoWidth, videoHeight, videoX, videoY;
+      
+      if (videoAspectRatio > targetAspectRatio) {
+        // 视频更宽，以宽度为准
+        videoWidth = availableWidth;
+        videoHeight = availableWidth / videoAspectRatio;
+        videoX = padding;
+        videoY = padding + (availableHeight - videoHeight) / 2;
+      } else {
+        // 视频更高，以高度为准
+        videoHeight = availableHeight;
+        videoWidth = availableHeight * videoAspectRatio;
+        videoX = padding + (availableWidth - videoWidth) / 2;
+        videoY = padding;
+      }
+      
+      // 绘制视频帧
       try {
-        ctx.drawImage(video, padding, padding, videoWidth, videoHeight);
+        ctx.drawImage(video, videoX, videoY, videoWidth, videoHeight);
+        console.log('[updateRealtimePreview] Video drawn at:', videoX, videoY, videoWidth, 'x', videoHeight);
+        console.log('[updateRealtimePreview] Canvas size:', canvasWidth, 'x', canvasHeight);
         console.log('[updateRealtimePreview] Preview updated successfully');
       } catch (error) {
         console.error('[updateRealtimePreview] Error drawing video:', error);
         // 如果绘制失败，显示占位符
         ctx.fillStyle = '#333333';
-        ctx.fillRect(padding, padding, videoWidth, videoHeight);
+        ctx.fillRect(videoX, videoY, videoWidth, videoHeight);
         ctx.fillStyle = '#ffffff';
         ctx.font = '20px sans-serif';
         ctx.textAlign = 'center';
