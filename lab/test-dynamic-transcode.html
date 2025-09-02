@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>动态 MP4 转码测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        video {
+            max-width: 100%;
+            margin: 10px 0;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #007bff;
+            transition: width 0.3s ease;
+        }
+        .file-info {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎯 动态 MP4 转码测试</h1>
+    <p>测试保持默认 WebM 录制，仅在导出 MP4 时进行动态转码</p>
+    
+    <div class="test-section">
+        <h2>1. 转码器支持检测</h2>
+        <button onclick="checkTranscoderSupport()">检测转码器支持</button>
+        <div id="supportResults"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. 录制 WebM 视频</h2>
+        <button id="recordBtn" onclick="startRecording()">开始录制 WebM</button>
+        <button id="stopBtn" onclick="stopRecording()" disabled>停止录制</button>
+        <div id="recordingResults"></div>
+        <video id="webmVideo" controls style="display: none;"></video>
+        <div id="webmInfo" class="file-info" style="display: none;"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. 动态转码为 MP4</h2>
+        <button id="transcodeBtn" onclick="transcodeToMP4()" disabled>转码为 MP4</button>
+        <div id="transcodeResults"></div>
+        <div class="progress-bar" id="progressBar" style="display: none;">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div id="progressText" style="display: none;"></div>
+        <video id="mp4Video" controls style="display: none;"></video>
+        <div id="mp4Info" class="file-info" style="display: none;"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. 质量对比</h2>
+        <div id="comparisonResults"></div>
+    </div>
+
+    <!-- 加载转码器 -->
+    <script src="popup/canvas-mp4-transcoder.js"></script>
+
+    <script>
+        let currentWebMBlob = null;
+        let currentMP4Blob = null;
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let transcoder = null;
+
+        // 1. 检测转码器支持
+        function checkTranscoderSupport() {
+            const resultsDiv = document.getElementById('supportResults');
+            resultsDiv.innerHTML = '';
+
+            try {
+                transcoder = new CanvasMP4Transcoder();
+                const status = transcoder.getStatus();
+
+                resultsDiv.innerHTML = `
+                    <div class="result ${status.supported ? 'success' : 'error'}">
+                        <strong>转码器状态:</strong><br>
+                        支持 MP4 转码: ${status.supported ? '✅ 是' : '❌ 否'}<br>
+                        支持的格式: ${status.supportedTypes.join(', ') || '无'}<br>
+                        最佳格式: ${transcoder.getBestMP4MimeType() || '无'}
+                    </div>
+                `;
+
+                if (status.supported) {
+                    resultsDiv.innerHTML += `
+                        <div class="result success">
+                            🎉 转码器准备就绪！可以进行 WebM → MP4 转码
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML += `
+                        <div class="result error">
+                            ⚠️ 浏览器不支持 MP4 转码，请使用支持 H.264 的现代浏览器
+                        </div>
+                    `;
+                }
+
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="result error">
+                        转码器加载失败: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // 2. 开始录制 WebM
+        async function startRecording() {
+            const resultsDiv = document.getElementById('recordingResults');
+            const recordBtn = document.getElementById('recordBtn');
+            const stopBtn = document.getElementById('stopBtn');
+
+            try {
+                resultsDiv.innerHTML = '<div class="result info">请求屏幕录制权限...</div>';
+
+                const stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { width: 1280, height: 720 },
+                    audio: false
+                });
+
+                // 使用 WebM 格式录制
+                const mimeType = getSupportedWebMMimeType();
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: mimeType,
+                    videoBitsPerSecond: 5000000
+                });
+
+                recordedChunks = [];
+
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) {
+                        recordedChunks.push(e.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    currentWebMBlob = new Blob(recordedChunks, { type: mimeType });
+                    
+                    const webmVideo = document.getElementById('webmVideo');
+                    const webmInfo = document.getElementById('webmInfo');
+                    
+                    webmVideo.src = URL.createObjectURL(currentWebMBlob);
+                    webmVideo.style.display = 'block';
+                    
+                    webmInfo.innerHTML = `
+                        <strong>WebM 视频信息:</strong><br>
+                        文件大小: ${formatFileSize(currentWebMBlob.size)}<br>
+                        MIME 类型: ${currentWebMBlob.type}<br>
+                        录制时间: ${new Date().toLocaleTimeString()}
+                    `;
+                    webmInfo.style.display = 'block';
+
+                    resultsDiv.innerHTML += `
+                        <div class="result success">
+                            ✅ WebM 录制完成！文件大小: ${formatFileSize(currentWebMBlob.size)}
+                        </div>
+                    `;
+
+                    // 启用转码按钮
+                    document.getElementById('transcodeBtn').disabled = false;
+
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                
+                recordBtn.disabled = true;
+                stopBtn.disabled = false;
+
+                resultsDiv.innerHTML += `
+                    <div class="result success">
+                        📹 开始录制 WebM 格式 (${mimeType})
+                    </div>
+                `;
+
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="result error">
+                        录制失败: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // 停止录制
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+
+            document.getElementById('recordBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+        }
+
+        // 3. 转码为 MP4
+        async function transcodeToMP4() {
+            if (!currentWebMBlob) {
+                alert('请先录制 WebM 视频');
+                return;
+            }
+
+            if (!transcoder) {
+                alert('转码器未初始化');
+                return;
+            }
+
+            const resultsDiv = document.getElementById('transcodeResults');
+            const progressBar = document.getElementById('progressBar');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const transcodeBtn = document.getElementById('transcodeBtn');
+
+            transcodeBtn.disabled = true;
+            progressBar.style.display = 'block';
+            progressText.style.display = 'block';
+
+            resultsDiv.innerHTML = '<div class="result info">开始转码...</div>';
+
+            try {
+                const startTime = Date.now();
+
+                currentMP4Blob = await transcoder.transcodeToMP4(currentWebMBlob, {
+                    quality: 'high',
+                    progressCallback: (percent, message) => {
+                        progressFill.style.width = `${percent}%`;
+                        progressText.textContent = `${message} (${percent.toFixed(1)}%)`;
+                    }
+                });
+
+                const duration = Date.now() - startTime;
+
+                // 显示 MP4 视频
+                const mp4Video = document.getElementById('mp4Video');
+                const mp4Info = document.getElementById('mp4Info');
+
+                mp4Video.src = URL.createObjectURL(currentMP4Blob);
+                mp4Video.style.display = 'block';
+
+                mp4Info.innerHTML = `
+                    <strong>MP4 视频信息:</strong><br>
+                    文件大小: ${formatFileSize(currentMP4Blob.size)}<br>
+                    MIME 类型: ${currentMP4Blob.type}<br>
+                    转码时间: ${duration}ms<br>
+                    压缩比: ${((1 - currentMP4Blob.size / currentWebMBlob.size) * 100).toFixed(1)}%
+                `;
+                mp4Info.style.display = 'block';
+
+                resultsDiv.innerHTML += `
+                    <div class="result success">
+                        🎉 MP4 转码成功！<br>
+                        转码时间: ${duration}ms<br>
+                        文件大小: ${formatFileSize(currentMP4Blob.size)}<br>
+                        压缩比: ${((1 - currentMP4Blob.size / currentWebMBlob.size) * 100).toFixed(1)}%
+                    </div>
+                `;
+
+                // 显示对比结果
+                showComparison();
+
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="result error">
+                        转码失败: ${error.message}
+                    </div>
+                `;
+            } finally {
+                transcodeBtn.disabled = false;
+                progressBar.style.display = 'none';
+                progressText.style.display = 'none';
+            }
+        }
+
+        // 显示质量对比
+        function showComparison() {
+            if (!currentWebMBlob || !currentMP4Blob) return;
+
+            const comparisonDiv = document.getElementById('comparisonResults');
+            
+            const webmSize = currentWebMBlob.size;
+            const mp4Size = currentMP4Blob.size;
+            const compressionRatio = ((1 - mp4Size / webmSize) * 100).toFixed(1);
+
+            comparisonDiv.innerHTML = `
+                <div class="result info">
+                    <strong>📊 格式对比:</strong><br><br>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr style="border-bottom: 1px solid #ddd;">
+                            <th style="text-align: left; padding: 8px;">格式</th>
+                            <th style="text-align: left; padding: 8px;">文件大小</th>
+                            <th style="text-align: left; padding: 8px;">MIME 类型</th>
+                            <th style="text-align: left; padding: 8px;">兼容性</th>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #ddd;">
+                            <td style="padding: 8px;">WebM (原始)</td>
+                            <td style="padding: 8px;">${formatFileSize(webmSize)}</td>
+                            <td style="padding: 8px;">${currentWebMBlob.type}</td>
+                            <td style="padding: 8px;">现代浏览器</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px;">MP4 (转码)</td>
+                            <td style="padding: 8px;">${formatFileSize(mp4Size)}</td>
+                            <td style="padding: 8px;">${currentMP4Blob.type}</td>
+                            <td style="padding: 8px;">通用兼容</td>
+                        </tr>
+                    </table><br>
+                    <strong>压缩效果:</strong> ${compressionRatio > 0 ? '减少' : '增加'} ${Math.abs(compressionRatio)}%<br>
+                    <strong>转码结论:</strong> ${compressionRatio > 0 ? '✅ 文件更小' : '⚠️ 文件更大'}
+                </div>
+            `;
+        }
+
+        // 获取支持的 WebM MIME 类型
+        function getSupportedWebMMimeType() {
+            const types = [
+                'video/webm;codecs=vp9',
+                'video/webm;codecs=vp8',
+                'video/webm'
+            ];
+
+            for (const type of types) {
+                if (MediaRecorder.isTypeSupported(type)) {
+                    return type;
+                }
+            }
+            return 'video/webm';
+        }
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // 页面加载时检测支持
+        window.onload = function() {
+            checkTranscoderSupport();
+        };
+    </script>
+</body>
+</html>

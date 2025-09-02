@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas MP4 转码测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        video {
+            max-width: 100%;
+            margin: 10px 0;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎯 Canvas MP4 转码可行性测试</h1>
+    
+    <div class="test-section">
+        <h2>1. MediaRecorder MIME 类型支持检测</h2>
+        <button onclick="testMimeSupport()">检测支持的格式</button>
+        <div id="mimeResults"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Canvas 流录制测试</h2>
+        <button onclick="testCanvasRecording()">测试 Canvas 录制</button>
+        <canvas id="testCanvas" width="640" height="480"></canvas>
+        <div id="canvasResults"></div>
+        <video id="canvasVideo" controls style="display: none;"></video>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. 视频重新编码测试</h2>
+        <input type="file" id="videoFile" accept="video/*">
+        <button onclick="testVideoReencoding()">测试重新编码</button>
+        <div id="reencodingResults"></div>
+        <video id="originalVideo" controls style="display: none;"></video>
+        <video id="reencodedVideo" controls style="display: none;"></video>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. MP4 直接录制测试</h2>
+        <button onclick="testDirectMP4Recording()">测试直接 MP4 录制</button>
+        <div id="mp4Results"></div>
+        <video id="mp4Video" controls style="display: none;"></video>
+    </div>
+
+    <script>
+        // 1. 检测 MIME 类型支持
+        function testMimeSupport() {
+            const resultsDiv = document.getElementById('mimeResults');
+            resultsDiv.innerHTML = '';
+            
+            const mimeTypes = [
+                // MP4 相关
+                'video/mp4',
+                'video/mp4;codecs=h264',
+                'video/mp4;codecs=avc1.42E01E',
+                'video/mp4;codecs=avc1.4D401E',
+                'video/mp4;codecs=avc1.64001E',
+                'video/mp4;codecs=h265',
+                'video/mp4;codecs=hev1.1.6.L93.B0',
+                
+                // WebM 相关
+                'video/webm',
+                'video/webm;codecs=vp8',
+                'video/webm;codecs=vp9',
+                'video/webm;codecs=vp9.0',
+                'video/webm;codecs=av01.0.04M.08',
+                
+                // 其他格式
+                'video/x-matroska',
+                'video/avi'
+            ];
+            
+            let mp4Supported = false;
+            let h264Supported = false;
+            
+            mimeTypes.forEach(mimeType => {
+                const supported = MediaRecorder.isTypeSupported(mimeType);
+                const resultClass = supported ? 'success' : 'error';
+                const resultText = supported ? '✅ 支持' : '❌ 不支持';
+                
+                if (supported && mimeType.includes('mp4')) {
+                    mp4Supported = true;
+                }
+                if (supported && mimeType.includes('h264')) {
+                    h264Supported = true;
+                }
+                
+                resultsDiv.innerHTML += `
+                    <div class="result ${resultClass}">
+                        ${mimeType}: ${resultText}
+                    </div>
+                `;
+            });
+            
+            // 总结
+            resultsDiv.innerHTML += `
+                <div class="result info">
+                    <strong>总结:</strong><br>
+                    MP4 容器支持: ${mp4Supported ? '✅' : '❌'}<br>
+                    H.264 编码支持: ${h264Supported ? '✅' : '❌'}<br>
+                    ${mp4Supported && h264Supported ? 
+                        '🎉 可以直接录制 MP4 格式!' : 
+                        '⚠️ 需要使用 WebM 格式录制'}
+                </div>
+            `;
+        }
+        
+        // 2. 测试 Canvas 录制
+        function testCanvasRecording() {
+            const canvas = document.getElementById('testCanvas');
+            const ctx = canvas.getContext('2d');
+            const resultsDiv = document.getElementById('canvasResults');
+            const video = document.getElementById('canvasVideo');
+            
+            resultsDiv.innerHTML = '<div class="result info">开始 Canvas 录制测试...</div>';
+            
+            // 绘制动画内容
+            let frame = 0;
+            function drawFrame() {
+                ctx.fillStyle = `hsl(${frame * 2}, 70%, 50%)`;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = 'white';
+                ctx.font = '48px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(`Frame ${frame}`, canvas.width/2, canvas.height/2);
+                
+                frame++;
+                if (frame < 90) { // 3秒动画
+                    requestAnimationFrame(drawFrame);
+                }
+            }
+            
+            // 尝试不同的 MIME 类型
+            const testFormats = [
+                'video/mp4;codecs=h264',
+                'video/mp4',
+                'video/webm;codecs=vp9',
+                'video/webm;codecs=vp8',
+                'video/webm'
+            ];
+            
+            let formatIndex = 0;
+            
+            function tryNextFormat() {
+                if (formatIndex >= testFormats.length) {
+                    resultsDiv.innerHTML += '<div class="result error">所有格式都失败了</div>';
+                    return;
+                }
+                
+                const mimeType = testFormats[formatIndex];
+                const supported = MediaRecorder.isTypeSupported(mimeType);
+                
+                if (!supported) {
+                    resultsDiv.innerHTML += `<div class="result error">${mimeType}: 不支持，跳过</div>`;
+                    formatIndex++;
+                    tryNextFormat();
+                    return;
+                }
+                
+                resultsDiv.innerHTML += `<div class="result info">尝试格式: ${mimeType}</div>`;
+                
+                const stream = canvas.captureStream(30);
+                const chunks = [];
+                
+                const recorder = new MediaRecorder(stream, {
+                    mimeType: mimeType,
+                    videoBitsPerSecond: 5000000
+                });
+                
+                recorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) {
+                        chunks.push(e.data);
+                    }
+                };
+                
+                recorder.onstop = () => {
+                    const blob = new Blob(chunks, { type: mimeType });
+                    const url = URL.createObjectURL(blob);
+                    
+                    video.src = url;
+                    video.style.display = 'block';
+                    
+                    resultsDiv.innerHTML += `
+                        <div class="result success">
+                            ✅ 成功录制: ${mimeType}<br>
+                            文件大小: ${(blob.size / 1024).toFixed(2)} KB<br>
+                            实际 MIME: ${blob.type}
+                        </div>
+                    `;
+                };
+                
+                recorder.onerror = (e) => {
+                    resultsDiv.innerHTML += `<div class="result error">录制失败: ${e.error}</div>`;
+                    formatIndex++;
+                    tryNextFormat();
+                };
+                
+                // 开始录制
+                frame = 0;
+                recorder.start();
+                drawFrame();
+                
+                // 3秒后停止
+                setTimeout(() => {
+                    recorder.stop();
+                }, 3000);
+            }
+            
+            tryNextFormat();
+        }
+        
+        // 3. 测试视频重新编码
+        async function testVideoReencoding() {
+            const fileInput = document.getElementById('videoFile');
+            const resultsDiv = document.getElementById('reencodingResults');
+            const originalVideo = document.getElementById('originalVideo');
+            const reencodedVideo = document.getElementById('reencodedVideo');
+            
+            if (!fileInput.files[0]) {
+                resultsDiv.innerHTML = '<div class="result error">请先选择一个视频文件</div>';
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            resultsDiv.innerHTML = '<div class="result info">开始重新编码测试...</div>';
+            
+            // 显示原始视频
+            originalVideo.src = URL.createObjectURL(file);
+            originalVideo.style.display = 'block';
+            
+            // 等待视频加载
+            originalVideo.onloadedmetadata = async () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                canvas.width = originalVideo.videoWidth;
+                canvas.height = originalVideo.videoHeight;
+                
+                // 尝试 MP4 编码
+                const targetMimeType = MediaRecorder.isTypeSupported('video/mp4;codecs=h264') 
+                    ? 'video/mp4;codecs=h264' 
+                    : 'video/webm;codecs=vp9';
+                
+                resultsDiv.innerHTML += `<div class="result info">使用格式: ${targetMimeType}</div>`;
+                
+                const stream = canvas.captureStream(30);
+                const chunks = [];
+                
+                const recorder = new MediaRecorder(stream, {
+                    mimeType: targetMimeType,
+                    videoBitsPerSecond: 8000000
+                });
+                
+                recorder.ondataavailable = (e) => chunks.push(e.data);
+                recorder.onstop = () => {
+                    const blob = new Blob(chunks, { type: targetMimeType });
+                    reencodedVideo.src = URL.createObjectURL(blob);
+                    reencodedVideo.style.display = 'block';
+                    
+                    resultsDiv.innerHTML += `
+                        <div class="result success">
+                            ✅ 重新编码完成<br>
+                            原始大小: ${(file.size / 1024 / 1024).toFixed(2)} MB<br>
+                            编码后大小: ${(blob.size / 1024 / 1024).toFixed(2)} MB<br>
+                            压缩比: ${((1 - blob.size / file.size) * 100).toFixed(1)}%<br>
+                            输出格式: ${blob.type}
+                        </div>
+                    `;
+                };
+                
+                // 开始录制和重新编码
+                recorder.start();
+                originalVideo.currentTime = 0;
+                originalVideo.play();
+                
+                function renderFrame() {
+                    if (!originalVideo.ended) {
+                        ctx.drawImage(originalVideo, 0, 0);
+                        requestAnimationFrame(renderFrame);
+                    } else {
+                        recorder.stop();
+                    }
+                }
+                
+                renderFrame();
+            };
+        }
+        
+        // 4. 测试直接 MP4 录制
+        async function testDirectMP4Recording() {
+            const resultsDiv = document.getElementById('mp4Results');
+            const video = document.getElementById('mp4Video');
+            
+            resultsDiv.innerHTML = '<div class="result info">测试直接 MP4 录制...</div>';
+            
+            try {
+                // 请求屏幕录制
+                const stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { width: 1280, height: 720 },
+                    audio: false
+                });
+                
+                // 尝试 MP4 格式
+                const mp4MimeTypes = [
+                    'video/mp4;codecs=h264',
+                    'video/mp4;codecs=avc1.42E01E',
+                    'video/mp4'
+                ];
+                
+                let selectedMimeType = null;
+                for (const mimeType of mp4MimeTypes) {
+                    if (MediaRecorder.isTypeSupported(mimeType)) {
+                        selectedMimeType = mimeType;
+                        break;
+                    }
+                }
+                
+                if (!selectedMimeType) {
+                    resultsDiv.innerHTML += '<div class="result error">❌ 浏览器不支持 MP4 录制</div>';
+                    return;
+                }
+                
+                resultsDiv.innerHTML += `<div class="result success">✅ 使用格式: ${selectedMimeType}</div>`;
+                
+                const chunks = [];
+                const recorder = new MediaRecorder(stream, {
+                    mimeType: selectedMimeType,
+                    videoBitsPerSecond: 8000000
+                });
+                
+                recorder.ondataavailable = (e) => chunks.push(e.data);
+                recorder.onstop = () => {
+                    const blob = new Blob(chunks, { type: selectedMimeType });
+                    video.src = URL.createObjectURL(blob);
+                    video.style.display = 'block';
+                    
+                    resultsDiv.innerHTML += `
+                        <div class="result success">
+                            🎉 直接 MP4 录制成功！<br>
+                            文件大小: ${(blob.size / 1024 / 1024).toFixed(2)} MB<br>
+                            MIME 类型: ${blob.type}<br>
+                            这意味着可以直接录制 MP4 格式！
+                        </div>
+                    `;
+                    
+                    stream.getTracks().forEach(track => track.stop());
+                };
+                
+                recorder.onerror = (e) => {
+                    resultsDiv.innerHTML += `<div class="result error">录制失败: ${e.error}</div>`;
+                    stream.getTracks().forEach(track => track.stop());
+                };
+                
+                recorder.start();
+                
+                // 5秒后停止录制
+                setTimeout(() => {
+                    recorder.stop();
+                }, 5000);
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `<div class="result error">获取屏幕录制权限失败: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

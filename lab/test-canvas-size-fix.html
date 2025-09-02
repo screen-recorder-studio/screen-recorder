@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试Canvas尺寸修复</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            margin: 5px;
+        }
+        
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .progress-container {
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #20c997);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        video {
+            max-width: 100%;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .size-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        
+        select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Canvas尺寸修复测试</h1>
+        <p class="subtitle">测试修复后的Canvas尺寸计算和编码器兼容性</p>
+        
+        <div class="test-section">
+            <h3>📹 1. 录制测试视频</h3>
+            <button id="startRecording">开始录制</button>
+            <button id="stopRecording" disabled>停止录制</button>
+            <div id="recordingStatus"></div>
+            <video id="recordedVideo" controls style="display: none;"></video>
+        </div>
+        
+        <div class="test-section">
+            <h3>📐 2. 测试Canvas尺寸计算</h3>
+            <label>输出比例:</label>
+            <select id="outputRatio">
+                <option value="16:9">16:9 横屏</option>
+                <option value="1:1">1:1 正方形</option>
+                <option value="9:16">9:16 竖屏</option>
+                <option value="4:5">4:5 Instagram</option>
+            </select>
+            <button id="testCanvasSize">测试Canvas尺寸计算</button>
+            <div id="canvasSizeStatus"></div>
+            <div id="canvasSizeInfo" class="size-info" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔧 3. 初始化导出器</h3>
+            <button id="initExporter">初始化导出器</button>
+            <div id="initStatus"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🚀 4. 测试修复后的MP4导出</h3>
+            <p>测试修复Canvas尺寸和编码器配置后的MP4导出</p>
+            <button id="testExport" disabled>测试修复后的MP4导出</button>
+            <div id="exportStatus"></div>
+            
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                    <div class="progress-text" id="progressText">准备中...</div>
+                </div>
+            </div>
+            
+            <video id="exportedVideo" controls style="display: none;"></video>
+        </div>
+        
+        <div class="test-section">
+            <h3>📊 5. 测试结果</h3>
+            <div id="testResults"></div>
+        </div>
+    </div>
+
+    <!-- 引入必要的脚本 -->
+    <script src="mediabunny-loader.js"></script>
+    <script src="popup/mediabunny-mp4-exporter.js"></script>
+    
+    <script>
+        class CanvasSizeFixTester {
+            constructor() {
+                this.mediaRecorder = null;
+                this.recordedBlob = null;
+                this.mp4Exporter = null;
+                this.recordedChunks = [];
+                
+                this.initializeElements();
+                this.bindEvents();
+            }
+            
+            initializeElements() {
+                this.elements = {
+                    startRecording: document.getElementById('startRecording'),
+                    stopRecording: document.getElementById('stopRecording'),
+                    recordingStatus: document.getElementById('recordingStatus'),
+                    recordedVideo: document.getElementById('recordedVideo'),
+                    
+                    outputRatio: document.getElementById('outputRatio'),
+                    testCanvasSize: document.getElementById('testCanvasSize'),
+                    canvasSizeStatus: document.getElementById('canvasSizeStatus'),
+                    canvasSizeInfo: document.getElementById('canvasSizeInfo'),
+                    
+                    initExporter: document.getElementById('initExporter'),
+                    initStatus: document.getElementById('initStatus'),
+                    
+                    testExport: document.getElementById('testExport'),
+                    exportStatus: document.getElementById('exportStatus'),
+                    progressContainer: document.getElementById('progressContainer'),
+                    progressFill: document.getElementById('progressFill'),
+                    progressText: document.getElementById('progressText'),
+                    exportedVideo: document.getElementById('exportedVideo'),
+                    
+                    testResults: document.getElementById('testResults')
+                };
+            }
+            
+            bindEvents() {
+                this.elements.startRecording.addEventListener('click', () => this.startRecording());
+                this.elements.stopRecording.addEventListener('click', () => this.stopRecording());
+                this.elements.testCanvasSize.addEventListener('click', () => this.testCanvasSizeCalculation());
+                this.elements.initExporter.addEventListener('click', () => this.initializeExporter());
+                this.elements.testExport.addEventListener('click', () => this.testFixedMP4Export());
+            }
+            
+            showStatus(element, message, type = 'info') {
+                element.innerHTML = `<div class="status ${type}">${message}</div>`;
+            }
+            
+            async startRecording() {
+                try {
+                    const stream = await navigator.mediaDevices.getDisplayMedia({
+                        video: { mediaSource: 'screen' }
+                    });
+                    
+                    this.recordedChunks = [];
+                    this.mediaRecorder = new MediaRecorder(stream);
+                    
+                    this.mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            this.recordedChunks.push(event.data);
+                        }
+                    };
+                    
+                    this.mediaRecorder.onstop = () => {
+                        this.recordedBlob = new Blob(this.recordedChunks, { type: 'video/webm' });
+                        this.elements.recordedVideo.src = URL.createObjectURL(this.recordedBlob);
+                        this.elements.recordedVideo.style.display = 'block';
+                        this.elements.testCanvasSize.disabled = false;
+                        this.showStatus(this.elements.recordingStatus, '✅ 录制完成！', 'success');
+                    };
+                    
+                    this.mediaRecorder.start();
+                    this.elements.startRecording.disabled = true;
+                    this.elements.stopRecording.disabled = false;
+                    this.showStatus(this.elements.recordingStatus, '🔴 正在录制...', 'info');
+                    
+                } catch (error) {
+                    this.showStatus(this.elements.recordingStatus, `❌ 录制失败: ${error.message}`, 'error');
+                }
+            }
+            
+            stopRecording() {
+                if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+                    this.mediaRecorder.stop();
+                    this.elements.startRecording.disabled = false;
+                    this.elements.stopRecording.disabled = true;
+                }
+            }
+            
+            async testCanvasSizeCalculation() {
+                if (!this.recordedBlob) {
+                    this.showStatus(this.elements.canvasSizeStatus, '❌ 请先录制视频', 'error');
+                    return;
+                }
+                
+                try {
+                    this.showStatus(this.elements.canvasSizeStatus, '🔍 正在测试Canvas尺寸计算...', 'info');
+                    
+                    // 创建视频元素
+                    const video = await this.createTestVideoElement(this.recordedBlob);
+                    
+                    // 测试不同输出比例的Canvas尺寸
+                    const outputRatio = this.elements.outputRatio.value;
+                    const backgroundConfig = {
+                        outputRatio: outputRatio,
+                        color: '#ffffff',
+                        padding: 60
+                    };
+                    
+                    // 模拟Canvas创建过程
+                    const testExporter = new MediabunnyMp4Exporter();
+                    const canvas = testExporter.createEditingCanvas(video, backgroundConfig);
+                    const layout = testExporter.calculateVideoLayout(video, canvas, backgroundConfig);
+                    
+                    // 显示计算结果
+                    this.displayCanvasSizeInfo(video, canvas, layout, backgroundConfig);
+                    this.showStatus(this.elements.canvasSizeStatus, '✅ Canvas尺寸计算完成！', 'success');
+                    
+                } catch (error) {
+                    this.showStatus(this.elements.canvasSizeStatus, `❌ 计算失败: ${error.message}`, 'error');
+                }
+            }
+            
+            async createTestVideoElement(videoBlob) {
+                return new Promise((resolve, reject) => {
+                    const video = document.createElement('video');
+                    video.muted = true;
+                    video.playsInline = true;
+                    video.preload = 'metadata';
+                    
+                    video.onloadedmetadata = () => resolve(video);
+                    video.onerror = reject;
+                    video.src = URL.createObjectURL(videoBlob);
+                });
+            }
+            
+            displayCanvasSizeInfo(video, canvas, layout, config) {
+                const pixels = canvas.width * canvas.height;
+                const megapixels = (pixels / 1000000).toFixed(2);
+                
+                const html = `
+                    <strong>Canvas尺寸计算结果:</strong><br>
+                    视频原始尺寸: ${video.videoWidth}x${video.videoHeight}<br>
+                    输出比例: ${config.outputRatio}<br>
+                    Canvas尺寸: ${canvas.width}x${canvas.height} (${megapixels}MP)<br>
+                    视频布局: x=${layout.x}, y=${layout.y}, w=${layout.width}, h=${layout.height}<br>
+                    边距: ${config.padding}px<br>
+                    <strong>兼容性检查:</strong><br>
+                    尺寸合理: ${canvas.width <= 2560 && canvas.height <= 2560 ? '✅' : '❌'}<br>
+                    像素数合理: ${pixels <= 6553600 ? '✅' : '❌'} (${megapixels}MP ≤ 6.55MP)
+                `;
+                this.elements.canvasSizeInfo.innerHTML = html;
+                this.elements.canvasSizeInfo.style.display = 'block';
+            }
+            
+            async initializeExporter() {
+                try {
+                    this.showStatus(this.elements.initStatus, '🔄 正在初始化 MP4 导出器...', 'info');
+                    
+                    this.mp4Exporter = new MediabunnyMp4Exporter();
+                    await this.mp4Exporter.initialize();
+                    
+                    this.elements.testExport.disabled = false;
+                    this.showStatus(this.elements.initStatus, '✅ MP4 导出器初始化成功！', 'success');
+                    
+                } catch (error) {
+                    this.showStatus(this.elements.initStatus, `❌ 初始化失败: ${error.message}`, 'error');
+                }
+            }
+            
+            async testFixedMP4Export() {
+                if (!this.recordedBlob) {
+                    this.showStatus(this.elements.exportStatus, '❌ 请先录制视频', 'error');
+                    return;
+                }
+                
+                if (!this.mp4Exporter) {
+                    this.showStatus(this.elements.exportStatus, '❌ 请先初始化导出器', 'error');
+                    return;
+                }
+                
+                try {
+                    this.elements.progressContainer.style.display = 'block';
+                    this.showStatus(this.elements.exportStatus, '🚀 开始修复后的MP4导出...', 'info');
+                    
+                    const outputRatio = this.elements.outputRatio.value;
+                    const backgroundConfig = {
+                        type: 'solid-color',
+                        color: '#ffffff',
+                        backgroundColor: '#ffffff',
+                        padding: 60,
+                        videoPosition: 'center',
+                        outputRatio: outputRatio
+                    };
+                    
+                    console.log('使用配置:', backgroundConfig);
+                    
+                    const result = await this.mp4Exporter.exportToMp4(this.recordedBlob, {
+                        quality: 'high',
+                        backgroundConfig: backgroundConfig,
+                        frameRate: 30,
+                        progressCallback: (progress, message) => {
+                            this.updateProgress(progress, message);
+                        }
+                    });
+                    
+                    // 显示导出的视频
+                    this.elements.exportedVideo.src = URL.createObjectURL(result.blob);
+                    this.elements.exportedVideo.style.display = 'block';
+                    
+                    this.showStatus(this.elements.exportStatus, '✅ 修复后MP4导出成功！', 'success');
+                    
+                    // 显示测试结果
+                    this.showTestResults(result, backgroundConfig);
+                    
+                } catch (error) {
+                    this.showStatus(this.elements.exportStatus, `❌ 导出失败: ${error.message}`, 'error');
+                    console.error('导出错误详情:', error);
+                } finally {
+                    this.elements.progressContainer.style.display = 'none';
+                }
+            }
+            
+            updateProgress(progress, message) {
+                this.elements.progressFill.style.width = `${progress * 100}%`;
+                this.elements.progressText.textContent = message;
+            }
+            
+            showTestResults(result, config) {
+                const html = `
+                    <div class="status success">
+                        <h4>🎉 Canvas尺寸修复测试成功！</h4>
+                        <p><strong>原始大小:</strong> ${(result.originalSize / 1024 / 1024).toFixed(2)} MB</p>
+                        <p><strong>导出大小:</strong> ${(result.finalSize / 1024 / 1024).toFixed(2)} MB</p>
+                        <p><strong>压缩率:</strong> ${result.compression.toFixed(1)}%</p>
+                        <p><strong>格式:</strong> ${result.format.toUpperCase()}</p>
+                        <p><strong>测试配置:</strong></p>
+                        <ul>
+                            <li>输出比例: ${config.outputRatio}</li>
+                            <li>背景色: ${config.color}</li>
+                            <li>边距: ${config.padding}px</li>
+                        </ul>
+                        <p><strong>修复效果:</strong> Canvas尺寸限制和编码器兼容性问题已解决</p>
+                    </div>
+                `;
+                this.elements.testResults.innerHTML = html;
+            }
+        }
+        
+        // 页面加载完成后初始化测试器
+        document.addEventListener('DOMContentLoaded', () => {
+            window.canvasTester = new CanvasSizeFixTester();
+        });
+    </script>
+</body>
+</html>

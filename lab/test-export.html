@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多格式导出测试</title>
+    <link rel="stylesheet" href="popup/formatSelector.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+        
+        .test-btn {
+            padding: 12px 24px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .test-btn:hover {
+            background: #2563eb;
+        }
+        
+        .file-input {
+            margin-bottom: 20px;
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e7f3ff;
+            border-radius: 6px;
+            color: #0066cc;
+        }
+        
+        .error {
+            background: #ffe7e7;
+            color: #cc0000;
+        }
+        
+        .success {
+            background: #e7ffe7;
+            color: #008800;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🎬 多格式视频导出测试</h1>
+        
+        <!-- 文件选择 -->
+        <div class="test-section">
+            <h3>1. 选择视频文件</h3>
+            <div class="file-input">
+                <input type="file" id="video-file" accept="video/*">
+            </div>
+            <video id="test-video" controls style="width: 100%; max-width: 500px; display: none;"></video>
+        </div>
+        
+        <!-- 功能测试 -->
+        <div class="test-section">
+            <h3>2. 测试功能</h3>
+            
+            <button class="test-btn" onclick="testFormatSelector()">
+                📦 打开格式选择器
+            </button>
+            
+            <button class="test-btn" onclick="testWebMExport()">
+                🎬 测试 WebM 导出
+            </button>
+            
+            <button class="test-btn" onclick="testMP4Export()">
+                📹 测试 MP4 导出
+            </button>
+            
+            <button class="test-btn" onclick="testGIFExport()">
+                🎞️ 测试 GIF 导出
+            </button>
+            
+            <button class="test-btn" onclick="testWorker()">
+                ⚙️ 测试 Worker
+            </button>
+        </div>
+        
+        <!-- 状态显示 -->
+        <div class="test-section">
+            <h3>3. 状态输出</h3>
+            <div id="status" class="status">
+                准备就绪...
+            </div>
+        </div>
+    </div>
+    
+    <!-- 格式选择器模态框 -->
+    <div id="format-selector-modal" class="format-selector-modal">
+        <!-- 内容将动态插入 -->
+    </div>
+    
+    <!-- 加载脚本 -->
+    <script src="popup/formatExportManager.js"></script>
+    <script src="popup/formatSelector.js"></script>
+    
+    <script>
+        let currentVideoBlob = null;
+        let formatSelector = null;
+        let exportManager = null;
+        
+        // 初始化
+        window.onload = function() {
+            // 初始化导出管理器
+            exportManager = new FormatExportManager();
+            
+            // 设置进度回调
+            exportManager.onExportProgress = (percent, message) => {
+                updateStatus(`进度: ${percent}% - ${message}`, 'info');
+                if (formatSelector) {
+                    formatSelector.updateProgress(percent, message);
+                }
+            };
+            
+            exportManager.onExportComplete = (result) => {
+                updateStatus(`导出完成！格式: ${result.format}`, 'success');
+                // 下载文件
+                downloadFile(result.blob, `export.${result.format}`);
+            };
+            
+            exportManager.onExportError = (error) => {
+                updateStatus(`导出失败: ${error.message}`, 'error');
+            };
+            
+            updateStatus('系统初始化完成', 'success');
+        };
+        
+        // 文件选择处理
+        document.getElementById('video-file').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                currentVideoBlob = file;
+                const video = document.getElementById('test-video');
+                video.src = URL.createObjectURL(file);
+                video.style.display = 'block';
+                updateStatus(`已加载视频: ${file.name} (${formatFileSize(file.size)})`, 'success');
+            }
+        });
+        
+        // 测试格式选择器
+        function testFormatSelector() {
+            if (!currentVideoBlob) {
+                updateStatus('请先选择视频文件', 'error');
+                return;
+            }
+            
+            const modal = document.getElementById('format-selector-modal');
+            
+            // 创建格式选择器
+            formatSelector = new FormatSelector(modal, {
+                defaultFormat: 'webm',
+                onFormatChange: (format) => {
+                    console.log('Format changed to:', format);
+                },
+                onExport: async (format, options) => {
+                    console.log('Export requested:', format, options);
+                    updateStatus(`开始导出 ${format.toUpperCase()} 格式...`, 'info');
+                    
+                    try {
+                        const result = await exportManager.exportVideo(
+                            currentVideoBlob,
+                            format,
+                            options
+                        );
+                        
+                        // 下载结果
+                        if (result.blob) {
+                            downloadFile(result.blob, `video.${format}`);
+                            formatSelector.hideProgress();
+                            setTimeout(() => formatSelector.close(), 1000);
+                        }
+                    } catch (error) {
+                        updateStatus(`导出失败: ${error.message}`, 'error');
+                        formatSelector.hideProgress();
+                    }
+                }
+            });
+            
+            // 设置视频信息
+            formatSelector.setVideoInfo({
+                size: currentVideoBlob.size,
+                duration: 0 // 需要从视频元素获取
+            });
+            
+            // 显示模态框
+            modal.classList.add('show');
+            updateStatus('格式选择器已打开', 'info');
+        }
+        
+        // 测试 WebM 导出
+        async function testWebMExport() {
+            if (!currentVideoBlob) {
+                updateStatus('请先选择视频文件', 'error');
+                return;
+            }
+            
+            updateStatus('开始 WebM 导出测试...', 'info');
+            
+            try {
+                const result = await exportManager.exportVideo(currentVideoBlob, 'webm', {
+                    quality: 'medium',
+                    compress: true
+                });
+                
+                updateStatus(`WebM 导出成功！大小: ${formatFileSize(result.blob.size)}`, 'success');
+                downloadFile(result.blob, 'test.webm');
+            } catch (error) {
+                updateStatus(`WebM 导出失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // 测试 MP4 导出
+        async function testMP4Export() {
+            if (!currentVideoBlob) {
+                updateStatus('请先选择视频文件', 'error');
+                return;
+            }
+            
+            updateStatus('开始 MP4 导出测试...', 'info');
+            
+            try {
+                const result = await exportManager.exportVideo(currentVideoBlob, 'mp4', {
+                    codec: 'h264',
+                    preset: 'medium',
+                    quality: 'medium'
+                });
+                
+                updateStatus(`MP4 导出成功！大小: ${formatFileSize(result.blob.size)}`, 'success');
+                downloadFile(result.blob, 'test.mp4');
+            } catch (error) {
+                updateStatus(`MP4 导出失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // 测试 GIF 导出
+        async function testGIFExport() {
+            if (!currentVideoBlob) {
+                updateStatus('请先选择视频文件', 'error');
+                return;
+            }
+            
+            updateStatus('开始 GIF 导出测试...', 'info');
+            
+            try {
+                const result = await exportManager.exportVideo(currentVideoBlob, 'gif', {
+                    width: 480,
+                    height: 270,
+                    fps: 10,
+                    quality: 10,
+                    maxDuration: 10
+                });
+                
+                updateStatus(`GIF 导出成功！大小: ${formatFileSize(result.blob.size)}`, 'success');
+                downloadFile(result.blob, 'test.gif');
+            } catch (error) {
+                updateStatus(`GIF 导出失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // 测试 Worker
+        function testWorker() {
+            updateStatus('测试 Export Worker...', 'info');
+            
+            const worker = new Worker('popup/export.worker.js');
+            
+            worker.onmessage = (event) => {
+                const { type, data } = event.data;
+                console.log('Worker message:', type, data);
+                
+                if (type === 'ready') {
+                    updateStatus('Worker 已就绪', 'success');
+                    
+                    // 发送测试任务
+                    if (currentVideoBlob) {
+                        worker.postMessage({
+                            type: 'analyze',
+                            data: { blob: currentVideoBlob }
+                        });
+                    }
+                } else if (type === 'analyze-complete') {
+                    updateStatus(`分析完成: 大小=${formatFileSize(data.size)}, 类型=${data.type}`, 'success');
+                    worker.terminate();
+                } else if (type === 'error') {
+                    updateStatus(`Worker 错误: ${data.message}`, 'error');
+                    worker.terminate();
+                }
+            };
+            
+            worker.onerror = (error) => {
+                updateStatus(`Worker 错误: ${error.message}`, 'error');
+            };
+        }
+        
+        // 更新状态
+        function updateStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = 'status';
+            
+            if (type === 'error') {
+                status.className += ' error';
+            } else if (type === 'success') {
+                status.className += ' success';
+            }
+            
+            console.log(`[${type.toUpperCase()}]`, message);
+        }
+        
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+        
+        // 下载文件
+        function downloadFile(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>

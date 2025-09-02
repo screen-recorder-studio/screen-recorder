@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>编码错误修复测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        video {
+            max-width: 100%;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #007bff;
+            transition: width 0.3s ease;
+        }
+        .config-panel {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .config-row {
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .config-row label {
+            min-width: 120px;
+        }
+        select, input {
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .attempt-log {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 编码错误修复测试</h1>
+    <p>测试修复后的 MP4 编码错误处理和降级机制</p>
+    
+    <div class="test-section">
+        <h2>1. 支持检测</h2>
+        <button onclick="testSupport()">检测 MP4 支持</button>
+        <div id="supportResults"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. 录制测试视频</h2>
+        <button id="recordBtn" onclick="startRecording()">开始录制</button>
+        <button id="stopBtn" onclick="stopRecording()" disabled>停止录制</button>
+        <div id="recordingResults"></div>
+        <video id="originalVideo" controls style="display: none;"></video>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. 编码参数测试</h2>
+        <div class="config-panel">
+            <div class="config-row">
+                <label>测试尺寸:</label>
+                <select id="sizeSelect">
+                    <option value="1280x720">1280×720 (HD)</option>
+                    <option value="1920x1080" selected>1920×1080 (FHD)</option>
+                    <option value="2560x1440">2560×1440 (2K)</option>
+                    <option value="3840x2160">3840×2160 (4K)</option>
+                    <option value="5000x3000">5000×3000 (超大)</option>
+                </select>
+            </div>
+            <div class="config-row">
+                <label>测试比特率:</label>
+                <select id="bitrateSelect">
+                    <option value="2000000">2 Mbps</option>
+                    <option value="5000000" selected>5 Mbps</option>
+                    <option value="10000000">10 Mbps</option>
+                    <option value="20000000">20 Mbps</option>
+                    <option value="50000000">50 Mbps (极高)</option>
+                </select>
+            </div>
+        </div>
+        <button id="testParamsBtn" onclick="testEncodingParams()" disabled>测试编码参数</button>
+        <div id="paramResults"></div>
+        <div class="attempt-log" id="attemptLog" style="display: none;"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. 完整转码测试</h2>
+        <button id="transcodeBtn" onclick="testFullTranscode()" disabled>测试完整转码</button>
+        <div id="transcodeResults"></div>
+        <div class="progress-bar" id="progressBar" style="display: none;">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div id="progressText" style="display: none;"></div>
+        <video id="transcodedVideo" controls style="display: none;"></video>
+    </div>
+
+    <!-- 加载必要的脚本 -->
+    <script src="popup/canvas-mp4-transcoder.js"></script>
+
+    <script>
+        let currentWebMBlob = null;
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let transcoder = null;
+        let attemptLog = [];
+
+        // 初始化
+        window.onload = function() {
+            transcoder = new CanvasMP4Transcoder();
+            
+            // 重写 console.log 来捕获尝试日志
+            const originalLog = console.log;
+            const originalWarn = console.warn;
+            
+            console.log = function(...args) {
+                if (args[0] && args[0].includes('🔧 尝试创建')) {
+                    attemptLog.push(`LOG: ${args.join(' ')}`);
+                    updateAttemptLog();
+                }
+                originalLog.apply(console, args);
+            };
+            
+            console.warn = function(...args) {
+                if (args[0] && (args[0].includes('❌ 尝试') || args[0].includes('🔄'))) {
+                    attemptLog.push(`WARN: ${args.join(' ')}`);
+                    updateAttemptLog();
+                }
+                originalWarn.apply(console, args);
+            };
+            
+            console.log('🔧 编码错误修复测试页面已加载');
+        };
+
+        // 更新尝试日志
+        function updateAttemptLog() {
+            const logDiv = document.getElementById('attemptLog');
+            logDiv.innerHTML = attemptLog.slice(-20).join('\n'); // 显示最近20条
+            logDiv.style.display = 'block';
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        // 测试支持
+        function testSupport() {
+            const resultsDiv = document.getElementById('supportResults');
+            const status = transcoder.getStatus();
+            
+            resultsDiv.innerHTML = `
+                <div class="result ${status.supported ? 'success' : 'error'}">
+                    <strong>MP4 转码支持:</strong> ${status.supported ? '✅ 支持' : '❌ 不支持'}<br>
+                    <strong>支持的格式:</strong><br>
+                    ${status.supportedTypes.map(type => `• ${type}`).join('<br>')}
+                </div>
+            `;
+        }
+
+        // 开始录制
+        async function startRecording() {
+            const resultsDiv = document.getElementById('recordingResults');
+            const recordBtn = document.getElementById('recordBtn');
+            const stopBtn = document.getElementById('stopBtn');
+
+            try {
+                resultsDiv.innerHTML = '<div class="result info">请求屏幕录制权限...</div>';
+
+                const stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { width: 1280, height: 720 },
+                    audio: false
+                });
+
+                const mimeType = getSupportedWebMMimeType();
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: mimeType,
+                    videoBitsPerSecond: 5000000
+                });
+
+                recordedChunks = [];
+
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) {
+                        recordedChunks.push(e.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    currentWebMBlob = new Blob(recordedChunks, { type: mimeType });
+                    
+                    const originalVideo = document.getElementById('originalVideo');
+                    originalVideo.src = URL.createObjectURL(currentWebMBlob);
+                    originalVideo.style.display = 'block';
+
+                    resultsDiv.innerHTML += `
+                        <div class="result success">
+                            ✅ 录制完成！文件大小: ${formatFileSize(currentWebMBlob.size)}
+                        </div>
+                    `;
+
+                    // 启用测试按钮
+                    document.getElementById('testParamsBtn').disabled = false;
+                    document.getElementById('transcodeBtn').disabled = false;
+
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                
+                recordBtn.disabled = true;
+                stopBtn.disabled = false;
+
+                resultsDiv.innerHTML += `
+                    <div class="result success">
+                        📹 开始录制 WebM 格式
+                    </div>
+                `;
+
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="result error">
+                        录制失败: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // 停止录制
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+
+            document.getElementById('recordBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+        }
+
+        // 测试编码参数
+        async function testEncodingParams() {
+            const resultsDiv = document.getElementById('paramResults');
+            const sizeSelect = document.getElementById('sizeSelect');
+            const bitrateSelect = document.getElementById('bitrateSelect');
+            
+            const [width, height] = sizeSelect.value.split('x').map(Number);
+            const bitrate = parseInt(bitrateSelect.value);
+            
+            attemptLog = []; // 清空日志
+            
+            resultsDiv.innerHTML = '<div class="result info">测试编码参数...</div>';
+            
+            try {
+                // 创建测试 Canvas
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#0066cc';
+                ctx.fillRect(0, 0, width, height);
+                ctx.fillStyle = 'white';
+                ctx.font = '48px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('测试', width/2, height/2);
+                
+                const stream = canvas.captureStream(30);
+                
+                // 测试安全参数计算
+                const safeBitrate = transcoder.getMaxSafeBitrate(width, height);
+                const { safeWidth, safeHeight } = transcoder.getSafeDimensions(width, height);
+                
+                resultsDiv.innerHTML += `
+                    <div class="result info">
+                        <strong>参数安全性检查:</strong><br>
+                        原始尺寸: ${width}×${height}<br>
+                        安全尺寸: ${safeWidth}×${safeHeight}<br>
+                        原始比特率: ${formatBitrate(bitrate)}<br>
+                        安全比特率: ${formatBitrate(safeBitrate)}<br>
+                        尺寸调整: ${width !== safeWidth || height !== safeHeight ? '是' : '否'}<br>
+                        比特率调整: ${bitrate > safeBitrate ? '是' : '否'}
+                    </div>
+                `;
+                
+                // 测试 MediaRecorder 创建
+                const testParams = {
+                    mimeType: transcoder.getSafeMP4MimeType(),
+                    bitrate: Math.min(bitrate, safeBitrate)
+                };
+                
+                try {
+                    const recorder = await transcoder.createSafeMediaRecorder(stream, testParams);
+                    
+                    resultsDiv.innerHTML += `
+                        <div class="result success">
+                            ✅ MediaRecorder 创建成功！<br>
+                            最终格式: ${testParams.mimeType}<br>
+                            最终比特率: ${formatBitrate(testParams.bitrate)}
+                        </div>
+                    `;
+                    
+                    // 清理
+                    recorder.stop();
+                    
+                } catch (error) {
+                    resultsDiv.innerHTML += `
+                        <div class="result error">
+                            ❌ MediaRecorder 创建失败: ${error.message}
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="result error">
+                        参数测试失败: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // 测试完整转码
+        async function testFullTranscode() {
+            if (!currentWebMBlob) {
+                alert('请先录制视频');
+                return;
+            }
+
+            const resultsDiv = document.getElementById('transcodeResults');
+            const progressBar = document.getElementById('progressBar');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const transcodeBtn = document.getElementById('transcodeBtn');
+
+            transcodeBtn.disabled = true;
+            progressBar.style.display = 'block';
+            progressText.style.display = 'block';
+            attemptLog = []; // 清空日志
+
+            resultsDiv.innerHTML = '<div class="result info">开始完整转码测试...</div>';
+
+            try {
+                const startTime = Date.now();
+
+                const result = await transcoder.transcodeToMP4(currentWebMBlob, {
+                    backgroundConfig: {
+                        color: '#0066cc',
+                        padding: 60,
+                        outputRatio: '16:9'
+                    },
+                    quality: 'high',
+                    progressCallback: (percent, message) => {
+                        progressFill.style.width = `${percent}%`;
+                        progressText.textContent = `${message} (${percent.toFixed(1)}%)`;
+                    }
+                });
+
+                const duration = Date.now() - startTime;
+
+                // 显示结果视频
+                const transcodedVideo = document.getElementById('transcodedVideo');
+                transcodedVideo.src = URL.createObjectURL(result);
+                transcodedVideo.style.display = 'block';
+
+                transcodedVideo.onloadedmetadata = () => {
+                    resultsDiv.innerHTML += `
+                        <div class="result success">
+                            🎉 完整转码成功！<br>
+                            转码时间: ${duration}ms<br>
+                            输出尺寸: ${transcodedVideo.videoWidth}×${transcodedVideo.videoHeight}<br>
+                            文件大小: ${formatFileSize(result.size)}<br>
+                            输出格式: ${result.type}<br>
+                            ${result.type.includes('mp4') ? '✅ 成功输出 MP4' : '⚠️ 降级到 WebM'}
+                        </div>
+                    `;
+                };
+
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="result error">
+                        完整转码失败: ${error.message}
+                    </div>
+                `;
+            } finally {
+                transcodeBtn.disabled = false;
+                progressBar.style.display = 'none';
+                progressText.style.display = 'none';
+            }
+        }
+
+        // 获取支持的 WebM MIME 类型
+        function getSupportedWebMMimeType() {
+            const types = [
+                'video/webm;codecs=vp9',
+                'video/webm;codecs=vp8',
+                'video/webm'
+            ];
+
+            for (const type of types) {
+                if (MediaRecorder.isTypeSupported(type)) {
+                    return type;
+                }
+            }
+            return 'video/webm';
+        }
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // 格式化比特率
+        function formatBitrate(bps) {
+            if (bps >= 1000000) {
+                return (bps / 1000000).toFixed(1) + ' Mbps';
+            } else if (bps >= 1000) {
+                return (bps / 1000).toFixed(1) + ' Kbps';
+            } else {
+                return bps + ' bps';
+            }
+        }
+    </script>
+</body>
+</html>

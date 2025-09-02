@@ -61,6 +61,7 @@ class PopupController {
       backgroundOptions: document.querySelectorAll('.bg-option'),
       applyBgBtn: document.getElementById('apply-bg-btn'),
       skipBgBtn: document.getElementById('skip-bg-btn'),
+      chooseFormatBtn: document.getElementById('choose-format-btn'),
       selectedBgName: document.getElementById('selected-bg-name'),
       previewContainer: document.getElementById('preview-container'),
       
@@ -133,6 +134,17 @@ class PopupController {
         }
       });
     });
+    
+    // 选择格式按钮
+    if (this.elements.chooseFormatBtn) {
+      this.elements.chooseFormatBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.openFormatSelector();
+      });
+      console.log('Choose format button event bound');
+    } else {
+      console.log('Choose format button not found');
+    }
     
     // Padding 选项
     this.elements.paddingOptions.forEach(option => {
@@ -1752,6 +1764,165 @@ class PopupController {
     console.log('UI updated for recording started');
   }
 
+  // 打开格式选择器
+  openFormatSelector() {
+    console.log('Opening format selector...');
+    
+    // 检查是否有录制的视频
+    if (!this.state.recordedVideo) {
+      this.showErrorMessage('请先录制视频');
+      return;
+    }
+    
+    // 获取模态框容器
+    const modal = document.getElementById('format-selector-modal');
+    if (!modal) {
+      console.error('Format selector modal not found');
+      return;
+    }
+    
+    // 初始化格式导出管理器（如果还没有）
+    if (!this.formatExportManager) {
+      if (window.FormatExportManager) {
+        this.formatExportManager = new FormatExportManager();
+        
+        // 设置进度回调
+        this.formatExportManager.onExportProgress = (percent, message) => {
+          console.log(`Export progress: ${percent}% - ${message}`);
+          if (this.formatSelector) {
+            this.formatSelector.updateProgress(percent, message);
+          }
+        };
+        
+        this.formatExportManager.onExportComplete = (result) => {
+          console.log('Export completed via callback:', result);
+          // 注意：下载已在 onExport 中处理，这里只处理 UI 清理
+          if (this.formatSelector) {
+            this.formatSelector.hideProgress();
+            setTimeout(() => this.formatSelector.close(), 1000);
+          }
+          modal.classList.remove('show');
+        };
+        
+        this.formatExportManager.onExportError = (error) => {
+          console.error('Export error:', error);
+          this.showErrorMessage(`导出失败: ${error.message}`);
+          if (this.formatSelector) {
+            this.formatSelector.hideProgress();
+          }
+        };
+      } else {
+        console.error('FormatExportManager not found');
+        this.showErrorMessage('格式导出管理器未加载');
+        return;
+      }
+    }
+    
+    // 创建格式选择器
+    if (!this.formatSelector) {
+      if (window.FormatSelector) {
+        this.formatSelector = new FormatSelector(modal, {
+          defaultFormat: 'webm',
+          onFormatChange: (format) => {
+            console.log('Format changed to:', format);
+          },
+          onExport: async (format, options) => {
+            console.log('Export requested:', format, options);
+
+            try {
+              // 为 MP4 导出添加编辑配置
+              const exportOptions = { ...options };
+              if (format === 'mp4') {
+                exportOptions.backgroundConfig = this.getCurrentBackgroundConfig();
+                console.log('🎨 MP4 导出包含编辑配置:', exportOptions.backgroundConfig);
+              }
+
+              const result = await this.formatExportManager.exportVideo(
+                this.state.recordedVideo,
+                format,
+                exportOptions
+              );
+              console.log('Export result:', result);
+
+              // 转码完成后立即下载文件
+              if (result && result.blob) {
+                this.downloadExportedFile(result.blob, result.format);
+
+                // 隐藏进度条并关闭模态框
+                if (this.formatSelector) {
+                  this.formatSelector.hideProgress();
+                  setTimeout(() => this.formatSelector.close(), 1000);
+                }
+
+                // 关闭模态框
+                const modal = document.getElementById('format-selector-modal');
+                if (modal) {
+                  modal.classList.remove('show');
+                }
+              }
+
+            } catch (error) {
+              console.error('Export failed:', error);
+              this.showErrorMessage(`导出失败: ${error.message}`);
+
+              // 隐藏进度条
+              if (this.formatSelector) {
+                this.formatSelector.hideProgress();
+              }
+            }
+          }
+        });
+        
+        // 设置视频信息
+        this.formatSelector.setVideoInfo({
+          size: this.state.recordedVideo.size,
+          duration: this.state.recordingDuration / 1000 // 转换为秒
+        });
+      } else {
+        console.error('FormatSelector not found');
+        this.showErrorMessage('格式选择器未加载');
+        return;
+      }
+    }
+    
+    // 显示模态框
+    modal.classList.add('show');
+    console.log('Format selector opened');
+  }
+  
+  // 获取当前背景配置
+  getCurrentBackgroundConfig() {
+    return {
+      type: 'solid-color',
+      color: this.state.selectedBackground || this.settings.backgroundColor || '#ffffff',
+      backgroundColor: this.state.selectedBackground || this.settings.backgroundColor || '#ffffff',
+      padding: this.settings.padding || 60,
+      videoPosition: 'center',
+      outputRatio: this.settings.outputRatio || '16:9',
+      customWidth: this.settings.customWidth,
+      customHeight: this.settings.customHeight
+    };
+  }
+
+  // 下载导出的文件
+  downloadExportedFile(blob, format) {
+    const filename = this.fileManager.generateDateFilename(
+      `saas-recording-export`,
+      format
+    );
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    this.showSuccessMessage(`视频已导出为 ${format.toUpperCase()} 格式`);
+  }
+  
   // 处理录制意外结束（用户手动停止屏幕共享）
   async handleRecordingEnded() {
     if (this.state.isRecording) {
@@ -2238,6 +2409,19 @@ class PopupController {
     };
 
     return backgroundMap[backgroundColor] || 'custom';
+  }
+
+  // 获取当前背景配置 - 用于MP4导出
+  getCurrentBackgroundConfig() {
+    return {
+      color: this.settings.backgroundColor || this.state.selectedBackground,
+      padding: this.settings.padding || 60,
+      outputRatio: this.settings.outputRatio || '16:9',
+      customWidth: this.settings.customWidth || 1920,
+      customHeight: this.settings.customHeight || 1080,
+      type: 'solid-color',
+      videoPosition: 'center'
+    };
   }
 
   // 键盘导航处理

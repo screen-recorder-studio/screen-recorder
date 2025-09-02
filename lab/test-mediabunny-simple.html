@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mediabunny 简单测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Mediabunny 简单测试</h1>
+    <div id="status">正在加载...</div>
+    <div id="results"></div>
+
+    <!-- 第三方库 -->
+    <script type="module">
+        // 动态导入 Mediabunny 并设置为全局变量
+        try {
+            console.log('🔄 开始加载 Mediabunny...');
+            const Mediabunny = await import('./libs/mediabunny.js');
+            window.Mediabunny = Mediabunny;
+            console.log('✅ Mediabunny 库已加载为全局变量', Object.keys(Mediabunny));
+            
+            // 触发自定义事件通知其他脚本
+            window.dispatchEvent(new CustomEvent('mediabunnyLoaded', { 
+                detail: { Mediabunny } 
+            }));
+            
+            updateStatus('✅ Mediabunny 库加载成功', 'success');
+        } catch (error) {
+            console.error('❌ Mediabunny 库加载失败:', error);
+            window.dispatchEvent(new CustomEvent('mediabunnyLoadError', { 
+                detail: { error } 
+            }));
+            
+            updateStatus(`❌ Mediabunny 库加载失败: ${error.message}`, 'error');
+        }
+    </script>
+
+    <!-- Mediabunny MP4 导出器 -->
+    <script src="popup/mediabunny-mp4-exporter.js"></script>
+
+    <script>
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+        }
+
+        function addResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const div = document.createElement('div');
+            div.textContent = message;
+            div.className = `status ${type}`;
+            resultsDiv.appendChild(div);
+        }
+
+        // 监听 Mediabunny 加载事件
+        window.addEventListener('mediabunnyLoaded', async () => {
+            console.log('📢 收到 Mediabunny 加载事件');
+            addResult('📢 收到 Mediabunny 加载事件', 'info');
+            
+            // 测试基本功能
+            await testBasicFunctionality();
+        });
+
+        window.addEventListener('mediabunnyLoadError', (event) => {
+            console.error('📢 收到 Mediabunny 加载错误事件:', event.detail.error);
+            addResult(`📢 Mediabunny 加载错误: ${event.detail.error.message}`, 'error');
+        });
+
+        async function testBasicFunctionality() {
+            addResult('🔍 开始测试基本功能...', 'info');
+            
+            // 测试 Mediabunny 库
+            if (typeof window.Mediabunny !== 'undefined') {
+                addResult('✅ Mediabunny 全局变量可用', 'success');
+                
+                // 测试关键类
+                const requiredClasses = ['Input', 'Output', 'Conversion', 'BlobSource', 'Mp4OutputFormat', 'BufferTarget'];
+                let allClassesAvailable = true;
+                
+                for (const className of requiredClasses) {
+                    if (window.Mediabunny[className]) {
+                        addResult(`✅ Mediabunny.${className} 可用`, 'success');
+                    } else {
+                        addResult(`❌ Mediabunny.${className} 不可用`, 'error');
+                        allClassesAvailable = false;
+                    }
+                }
+                
+                if (allClassesAvailable) {
+                    addResult('🎉 Mediabunny 所有必需类都可用！', 'success');
+                }
+            } else {
+                addResult('❌ Mediabunny 全局变量不可用', 'error');
+            }
+            
+            // 测试 MediabunnyMp4Exporter
+            if (typeof window.MediabunnyMp4Exporter !== 'undefined') {
+                addResult('✅ MediabunnyMp4Exporter 类可用', 'success');
+                
+                try {
+                    const exporter = new MediabunnyMp4Exporter();
+                    addResult('✅ MediabunnyMp4Exporter 实例化成功', 'success');
+                    addResult(`📊 初始支持状态: ${exporter.isSupported ? '支持' : '不支持'}`, 'info');
+                    
+                    // 尝试初始化
+                    try {
+                        await exporter.initialize();
+                        addResult('✅ MediabunnyMp4Exporter 初始化成功', 'success');
+                        addResult(`📊 初始化后支持状态: ${exporter.isSupported ? '支持' : '不支持'}`, 'info');
+                    } catch (initError) {
+                        addResult(`⚠️ MediabunnyMp4Exporter 初始化失败: ${initError.message}`, 'warning');
+                    }
+                } catch (error) {
+                    addResult(`❌ MediabunnyMp4Exporter 实例化失败: ${error.message}`, 'error');
+                }
+            } else {
+                addResult('❌ MediabunnyMp4Exporter 类不可用', 'error');
+            }
+            
+            updateStatus('🏁 测试完成', 'info');
+        }
+
+        // 页面加载完成后的初始状态
+        window.addEventListener('load', () => {
+            updateStatus('⏳ 等待 Mediabunny 库加载...', 'info');
+            
+            // 如果 5 秒后还没有加载事件，显示警告
+            setTimeout(() => {
+                if (typeof window.Mediabunny === 'undefined') {
+                    addResult('⚠️ 5秒后仍未收到 Mediabunny 加载事件', 'warning');
+                }
+            }, 5000);
+        });
+    </script>
+</body>
+</html>

@@ -4,13 +4,41 @@
 class FileManager {
   constructor() {
     this.downloadHistory = [];
+    this.webCodecsOptimizer = null;
+    this.useOptimizedExport = this.checkOptimizationSupport();
   }
   
-  // 下载Blob文件
-  async downloadBlob(blob, filename) {
+  // 检查是否支持优化导出
+  checkOptimizationSupport() {
+    // 检查 WebCodecs 支持
+    const webCodecsSupported = window.WebCodecsExportOptimizer && 
+                              WebCodecsExportOptimizer.isSupported();
+    
+    // 允许用户通过设置禁用
+    const userEnabled = localStorage.getItem('enableWebCodecsExport') !== 'false';
+    
+    if (webCodecsSupported && userEnabled) {
+      console.log('✅ WebCodecs 优化导出已启用');
+      return true;
+    } else if (!webCodecsSupported) {
+      console.log('⚠️ WebCodecs 不支持，使用标准导出');
+      return false;
+    } else {
+      console.log('ℹ️ WebCodecs 优化已被用户禁用');
+      return false;
+    }
+  }
+  
+  // 下载Blob文件（支持优化导出）
+  async downloadBlob(blob, filename, options = {}) {
     try {
       if (!blob || !(blob instanceof Blob)) {
         throw new Error('无效的文件数据');
+      }
+      
+      // 检查是否需要优化处理
+      if (this.useOptimizedExport && options.optimize !== false) {
+        blob = await this.optimizeBeforeDownload(blob, options);
       }
       
       if (!filename) {
@@ -205,6 +233,104 @@ class FileManager {
       isValid: this.validateFileType(blob),
       withinSizeLimit: this.checkFileSizeLimit(blob)
     };
+  }
+  
+  // 优化视频后再下载
+  async optimizeBeforeDownload(blob, options = {}) {
+    try {
+      console.log('🚀 开始优化视频导出...');
+      const startTime = performance.now();
+      
+      // 初始化优化器
+      if (!this.webCodecsOptimizer) {
+        this.webCodecsOptimizer = new WebCodecsExportOptimizer();
+      }
+      
+      // 配置优化选项
+      const optimizeOptions = {
+        quality: options.quality || 'high',
+        format: options.format || 'webm',
+        resolution: options.resolution || null,
+        bitrate: options.bitrate || 'auto',
+        progressCallback: options.progressCallback
+      };
+      
+      // 执行优化
+      const result = await this.webCodecsOptimizer.optimizedExport(
+        blob, 
+        optimizeOptions
+      );
+      
+      const processingTime = performance.now() - startTime;
+      
+      // 记录优化结果
+      console.log('✅ 视频优化完成:', {
+        originalSize: this.formatFileSize(blob.size),
+        optimizedSize: this.formatFileSize(result.blob.size),
+        compression: `${result.compression.toFixed(1)}%`,
+        time: `${processingTime.toFixed(0)}ms`
+      });
+      
+      // 如果启用了智能导出管理器，使用它进行二次优化
+      if (window.SmartExportManager && options.useSmartExport) {
+        const smartManager = new SmartExportManager();
+        const smartResult = await smartManager.smartExport(result.blob, {
+          quality: options.quality || 'high',
+          maxFileSize: options.maxFileSize,
+          progressCallback: options.progressCallback
+        });
+        return smartResult.blob;
+      }
+      
+      return result.blob;
+      
+    } catch (error) {
+      console.error('优化失败，使用原始文件:', error);
+      // 优化失败时返回原始文件
+      return blob;
+    }
+  }
+  
+  // 批量优化导出
+  async batchOptimizedDownload(blobs, options = {}) {
+    const results = [];
+    
+    for (let i = 0; i < blobs.length; i++) {
+      const blob = blobs[i];
+      const filename = options.filenames?.[i] || this.generateFilename(`video_${i + 1}`, 'webm');
+      
+      console.log(`处理视频 ${i + 1}/${blobs.length}`);
+      
+      // 优化并下载
+      const optimizedBlob = await this.optimizeBeforeDownload(blob, {
+        ...options,
+        progressCallback: (progress, message) => {
+          const overallProgress = (i / blobs.length + progress / 100 / blobs.length) * 100;
+          options.progressCallback?.(overallProgress, `视频 ${i + 1}: ${message}`);
+        }
+      });
+      
+      await this.downloadBlob(optimizedBlob, filename, { optimize: false });
+      results.push({ filename, size: optimizedBlob.size });
+    }
+    
+    return results;
+  }
+  
+  // 获取优化器状态
+  getOptimizerStatus() {
+    return {
+      supported: WebCodecsExportOptimizer?.isSupported() || false,
+      enabled: this.useOptimizedExport,
+      metrics: this.webCodecsOptimizer?.getMetrics() || null
+    };
+  }
+  
+  // 切换优化导出开关
+  toggleOptimizedExport(enabled) {
+    this.useOptimizedExport = enabled;
+    localStorage.setItem('enableWebCodecsExport', enabled ? 'true' : 'false');
+    console.log(`WebCodecs 优化导出已${enabled ? '启用' : '禁用'}`);
   }
   
   // 清理临时文件和资源

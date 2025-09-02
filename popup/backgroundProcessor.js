@@ -8,7 +8,22 @@ class BackgroundProcessor {
     this.videoElement = null;
     this.isProcessing = false;
     this.worker = null;
+    this.webCodecsOptimizer = null;
+    this.useWebCodecsOptimization = this.checkWebCodecsSupport();
     this.initWorker();
+  }
+  
+  // 检查 WebCodecs 支持
+  checkWebCodecsSupport() {
+    const supported = window.WebCodecsExportOptimizer && 
+                     WebCodecsExportOptimizer.isSupported();
+    if (supported) {
+      console.log('✅ BackgroundProcessor: WebCodecs 优化已启用');
+      this.webCodecsOptimizer = new WebCodecsExportOptimizer();
+    } else {
+      console.log('⚠️ BackgroundProcessor: WebCodecs 不可用，使用标准处理');
+    }
+    return supported;
   }
   
   // 初始化 Web Worker

@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>下载和尺寸修复测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        video {
+            max-width: 100%;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #007bff;
+            transition: width 0.3s ease;
+        }
+        .config-panel {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .config-row {
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .config-row label {
+            min-width: 120px;
+        }
+        select, input {
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .download-counter {
+            background-color: #fff3cd;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .size-info {
+            background-color: #e7f3ff;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 下载和尺寸修复测试</h1>
+    <p>测试修复后的单次下载和正确尺寸输出</p>
+    
+    <div class="test-section">
+        <h2>1. 录制测试视频</h2>
+        <button id="recordBtn" onclick="startRecording()">开始录制</button>
+        <button id="stopBtn" onclick="stopRecording()" disabled>停止录制</button>
+        <div id="recordingResults"></div>
+        <video id="originalVideo" controls style="display: none;"></video>
+        <div id="originalVideoInfo" class="size-info" style="display: none;"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. 编辑配置</h2>
+        <div class="config-panel">
+            <div class="config-row">
+                <label>背景颜色:</label>
+                <select id="backgroundSelect">
+                    <option value="#ffffff">纯白</option>
+                    <option value="#0066cc" selected>商务蓝</option>
+                    <option value="#00cc99">青绿</option>
+                    <option value="#000000">深黑</option>
+                </select>
+            </div>
+            <div class="config-row">
+                <label>边距:</label>
+                <select id="paddingSelect">
+                    <option value="30">小边距 (30px)</option>
+                    <option value="60" selected>中等边距 (60px)</option>
+                    <option value="120">大边距 (120px)</option>
+                </select>
+            </div>
+            <div class="config-row">
+                <label>输出比例:</label>
+                <select id="ratioSelect">
+                    <option value="16:9" selected>16:9 (宽屏)</option>
+                    <option value="1:1">1:1 (正方形)</option>
+                    <option value="9:16">9:16 (竖屏)</option>
+                    <option value="4:5">4:5 (社交媒体)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. 下载计数器</h2>
+        <div id="downloadCounter" class="download-counter">
+            下载次数: <span id="downloadCount">0</span>
+        </div>
+        <button onclick="resetDownloadCounter()">重置计数器</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. MP4 转码测试</h2>
+        <button id="transcodeBtn" onclick="testMP4Export()" disabled>导出 MP4（测试单次下载）</button>
+        <div id="transcodeResults"></div>
+        <div class="progress-bar" id="progressBar" style="display: none;">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div id="progressText" style="display: none;"></div>
+        <video id="mp4Video" controls style="display: none;"></video>
+        <div id="mp4VideoInfo" class="size-info" style="display: none;"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>5. 尺寸对比</h2>
+        <div id="sizeComparison"></div>
+    </div>
+
+    <!-- 加载必要的脚本 -->
+    <script src="popup/canvas-mp4-transcoder.js"></script>
+
+    <script>
+        let currentWebMBlob = null;
+        let currentMP4Blob = null;
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let transcoder = null;
+        let downloadCount = 0;
+
+        // 初始化
+        window.onload = function() {
+            transcoder = new CanvasMP4Transcoder();
+            setupDownloadMonitoring();
+            
+            console.log('🔧 下载和尺寸修复测试页面已加载');
+        };
+
+        // 设置下载监控
+        function setupDownloadMonitoring() {
+            // 监控 URL.createObjectURL 调用
+            const originalCreateObjectURL = URL.createObjectURL;
+            URL.createObjectURL = function(blob) {
+                if (blob.type.includes('video/mp4')) {
+                    downloadCount++;
+                    updateDownloadCounter();
+                    console.log(`🔽 检测到 MP4 下载 #${downloadCount}`);
+                }
+                return originalCreateObjectURL.call(this, blob);
+            };
+        }
+
+        // 更新下载计数器
+        function updateDownloadCounter() {
+            document.getElementById('downloadCount').textContent = downloadCount;
+            
+            if (downloadCount > 1) {
+                document.getElementById('downloadCounter').style.backgroundColor = '#f8d7da';
+                document.getElementById('downloadCounter').style.color = '#721c24';
+            } else {
+                document.getElementById('downloadCounter').style.backgroundColor = '#d4edda';
+                document.getElementById('downloadCounter').style.color = '#155724';
+            }
+        }
+
+        // 重置下载计数器
+        function resetDownloadCounter() {
+            downloadCount = 0;
+            updateDownloadCounter();
+        }
+
+        // 开始录制
+        async function startRecording() {
+            const resultsDiv = document.getElementById('recordingResults');
+            const recordBtn = document.getElementById('recordBtn');
+            const stopBtn = document.getElementById('stopBtn');
+
+            try {
+                resultsDiv.innerHTML = '<div class="result info">请求屏幕录制权限...</div>';
+
+                const stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { width: 1280, height: 720 },
+                    audio: false
+                });
+
+                const mimeType = getSupportedWebMMimeType();
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: mimeType,
+                    videoBitsPerSecond: 5000000
+                });
+
+                recordedChunks = [];
+
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) {
+                        recordedChunks.push(e.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    currentWebMBlob = new Blob(recordedChunks, { type: mimeType });
+                    
+                    const originalVideo = document.getElementById('originalVideo');
+                    originalVideo.src = URL.createObjectURL(currentWebMBlob);
+                    originalVideo.style.display = 'block';
+
+                    // 显示原始视频信息
+                    originalVideo.onloadedmetadata = () => {
+                        const originalInfo = document.getElementById('originalVideoInfo');
+                        originalInfo.innerHTML = `
+                            <strong>原始视频信息:</strong><br>
+                            尺寸: ${originalVideo.videoWidth} × ${originalVideo.videoHeight}<br>
+                            比例: ${(originalVideo.videoWidth / originalVideo.videoHeight).toFixed(2)}:1<br>
+                            文件大小: ${formatFileSize(currentWebMBlob.size)}<br>
+                            格式: ${currentWebMBlob.type}
+                        `;
+                        originalInfo.style.display = 'block';
+                    };
+
+                    resultsDiv.innerHTML += `
+                        <div class="result success">
+                            ✅ 录制完成！文件大小: ${formatFileSize(currentWebMBlob.size)}
+                        </div>
+                    `;
+
+                    // 启用转码按钮
+                    document.getElementById('transcodeBtn').disabled = false;
+
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                
+                recordBtn.disabled = true;
+                stopBtn.disabled = false;
+
+                resultsDiv.innerHTML += `
+                    <div class="result success">
+                        📹 开始录制 WebM 格式
+                    </div>
+                `;
+
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="result error">
+                        录制失败: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // 停止录制
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+
+            document.getElementById('recordBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+        }
+
+        // 获取编辑配置
+        function getEditingConfig() {
+            return {
+                type: 'solid-color',
+                color: document.getElementById('backgroundSelect').value,
+                backgroundColor: document.getElementById('backgroundSelect').value,
+                padding: parseInt(document.getElementById('paddingSelect').value),
+                videoPosition: 'center',
+                outputRatio: document.getElementById('ratioSelect').value
+            };
+        }
+
+        // 测试 MP4 导出
+        async function testMP4Export() {
+            if (!currentWebMBlob) {
+                alert('请先录制视频');
+                return;
+            }
+
+            const resultsDiv = document.getElementById('transcodeResults');
+            const progressBar = document.getElementById('progressBar');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const transcodeBtn = document.getElementById('transcodeBtn');
+
+            // 重置下载计数器
+            resetDownloadCounter();
+
+            transcodeBtn.disabled = true;
+            progressBar.style.display = 'block';
+            progressText.style.display = 'block';
+
+            resultsDiv.innerHTML = '<div class="result info">开始 MP4 转码（含编辑效果）...</div>';
+
+            try {
+                const startTime = Date.now();
+                const backgroundConfig = getEditingConfig();
+
+                console.log('🎨 编辑配置:', backgroundConfig);
+
+                currentMP4Blob = await transcoder.transcodeToMP4(currentWebMBlob, {
+                    backgroundConfig: backgroundConfig,
+                    quality: 'high',
+                    progressCallback: (percent, message) => {
+                        progressFill.style.width = `${percent}%`;
+                        progressText.textContent = `${message} (${percent.toFixed(1)}%)`;
+                    }
+                });
+
+                const duration = Date.now() - startTime;
+
+                // 模拟下载
+                const filename = `test-mp4-export-${Date.now()}.mp4`;
+                const url = URL.createObjectURL(currentMP4Blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                // 显示 MP4 视频
+                const mp4Video = document.getElementById('mp4Video');
+                mp4Video.src = URL.createObjectURL(currentMP4Blob);
+                mp4Video.style.display = 'block';
+
+                // 显示 MP4 视频信息
+                mp4Video.onloadedmetadata = () => {
+                    const mp4Info = document.getElementById('mp4VideoInfo');
+                    mp4Info.innerHTML = `
+                        <strong>MP4 视频信息:</strong><br>
+                        尺寸: ${mp4Video.videoWidth} × ${mp4Video.videoHeight}<br>
+                        比例: ${(mp4Video.videoWidth / mp4Video.videoHeight).toFixed(2)}:1<br>
+                        文件大小: ${formatFileSize(currentMP4Blob.size)}<br>
+                        格式: ${currentMP4Blob.type}<br>
+                        编辑效果: 背景 ${backgroundConfig.color}, 边距 ${backgroundConfig.padding}px, 比例 ${backgroundConfig.outputRatio}
+                    `;
+                    mp4Info.style.display = 'block';
+
+                    updateSizeComparison();
+                };
+
+                resultsDiv.innerHTML += `
+                    <div class="result success">
+                        🎉 MP4 转码和下载完成！<br>
+                        转码时间: ${duration}ms<br>
+                        文件名: ${filename}<br>
+                        下载次数: ${downloadCount} ${downloadCount === 1 ? '✅ 正常' : '❌ 重复下载'}
+                    </div>
+                `;
+
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="result error">
+                        MP4 转码失败: ${error.message}
+                    </div>
+                `;
+            } finally {
+                transcodeBtn.disabled = false;
+                progressBar.style.display = 'none';
+                progressText.style.display = 'none';
+            }
+        }
+
+        // 更新尺寸对比
+        function updateSizeComparison() {
+            const comparisonDiv = document.getElementById('sizeComparison');
+            
+            if (!currentWebMBlob || !currentMP4Blob) return;
+
+            const originalVideo = document.getElementById('originalVideo');
+            const mp4Video = document.getElementById('mp4Video');
+
+            if (!originalVideo.videoWidth || !mp4Video.videoWidth) return;
+
+            const originalRatio = originalVideo.videoWidth / originalVideo.videoHeight;
+            const mp4Ratio = mp4Video.videoWidth / mp4Video.videoHeight;
+            const expectedRatio = getExpectedRatio();
+
+            comparisonDiv.innerHTML = `
+                <div class="result info">
+                    <strong>📐 尺寸对比分析:</strong><br><br>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr style="border-bottom: 1px solid #ddd;">
+                            <th style="text-align: left; padding: 8px;">项目</th>
+                            <th style="text-align: left; padding: 8px;">原始视频</th>
+                            <th style="text-align: left; padding: 8px;">MP4 输出</th>
+                            <th style="text-align: left; padding: 8px;">预期</th>
+                            <th style="text-align: left; padding: 8px;">状态</th>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #ddd;">
+                            <td style="padding: 8px;">尺寸</td>
+                            <td style="padding: 8px;">${originalVideo.videoWidth}×${originalVideo.videoHeight}</td>
+                            <td style="padding: 8px;">${mp4Video.videoWidth}×${mp4Video.videoHeight}</td>
+                            <td style="padding: 8px;">包含背景和边距</td>
+                            <td style="padding: 8px;">${mp4Video.videoWidth > originalVideo.videoWidth ? '✅' : '❌'}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #ddd;">
+                            <td style="padding: 8px;">宽高比</td>
+                            <td style="padding: 8px;">${originalRatio.toFixed(2)}:1</td>
+                            <td style="padding: 8px;">${mp4Ratio.toFixed(2)}:1</td>
+                            <td style="padding: 8px;">${expectedRatio.toFixed(2)}:1</td>
+                            <td style="padding: 8px;">${Math.abs(mp4Ratio - expectedRatio) < 0.1 ? '✅' : '❌'}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px;">下载次数</td>
+                            <td style="padding: 8px;">-</td>
+                            <td style="padding: 8px;">${downloadCount}</td>
+                            <td style="padding: 8px;">1</td>
+                            <td style="padding: 8px;">${downloadCount === 1 ? '✅' : '❌'}</td>
+                        </tr>
+                    </table><br>
+                    <strong>总结:</strong><br>
+                    ${mp4Video.videoWidth > originalVideo.videoWidth ? '✅ 尺寸正确包含编辑效果' : '❌ 尺寸未包含编辑效果'}<br>
+                    ${Math.abs(mp4Ratio - expectedRatio) < 0.1 ? '✅ 输出比例正确' : '❌ 输出比例不正确'}<br>
+                    ${downloadCount === 1 ? '✅ 单次下载正常' : '❌ 存在重复下载问题'}
+                </div>
+            `;
+        }
+
+        // 获取预期比例
+        function getExpectedRatio() {
+            const ratioSelect = document.getElementById('ratioSelect').value;
+            const ratios = {
+                '16:9': 16/9,
+                '1:1': 1,
+                '9:16': 9/16,
+                '4:5': 4/5
+            };
+            return ratios[ratioSelect] || 16/9;
+        }
+
+        // 获取支持的 WebM MIME 类型
+        function getSupportedWebMMimeType() {
+            const types = [
+                'video/webm;codecs=vp9',
+                'video/webm;codecs=vp8',
+                'video/webm'
+            ];
+
+            for (const type of types) {
+                if (MediaRecorder.isTypeSupported(type)) {
+                    return type;
+                }
+            }
+            return 'video/webm';
+        }
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+    </script>
+</body>
+</html>

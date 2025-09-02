@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MP4 质量优化测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            background: #f8f9fa;
+        }
+        
+        .test-section h3 {
+            color: #495057;
+            margin-top: 0;
+        }
+        
+        canvas {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin: 10px;
+            background: #000;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .comparison-item {
+            text-align: center;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            background: white;
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .metric {
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .metric-label {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        
+        video {
+            max-width: 100%;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .download-links {
+            margin: 20px 0;
+        }
+        
+        .download-links a {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 5px;
+            transition: background 0.3s ease;
+        }
+        
+        .download-links a:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 MP4 质量优化测试</h1>
+        <p style="text-align: center; color: #666; font-size: 18px;">
+            测试文字模糊和画面抖动问题的解决方案
+        </p>
+        
+        <div class="test-section">
+            <h3>📹 创建测试视频</h3>
+            <p>首先创建一个包含文字内容的测试视频，用于对比优化效果。</p>
+            <button onclick="createTestVideo()">创建测试视频</button>
+            <canvas id="testCanvas" width="800" height="600" style="display: none;"></canvas>
+            <div id="testVideoStatus"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>⚖️ 质量对比测试</h3>
+            <p>对比优化前后的 MP4 导出质量。</p>
+            
+            <div class="comparison">
+                <div class="comparison-item">
+                    <h4>标准导出</h4>
+                    <button onclick="exportStandard()">导出标准 MP4</button>
+                    <div id="standardStatus"></div>
+                    <video id="standardVideo" controls style="display: none;"></video>
+                </div>
+
+                <div class="comparison-item">
+                    <h4>优化导出</h4>
+                    <button onclick="exportOptimized()">导出优化 MP4</button>
+                    <div id="optimizedStatus"></div>
+                    <video id="optimizedVideo" controls style="display: none;"></video>
+                </div>
+
+                <div class="comparison-item">
+                    <h4>Canvas 流导出</h4>
+                    <button onclick="exportCanvasStream()">导出 Canvas 流 MP4</button>
+                    <div id="canvasStreamStatus"></div>
+                    <video id="canvasStreamVideo" controls style="display: none;"></video>
+                </div>
+            </div>
+            
+            <div class="metrics" id="comparisonMetrics" style="display: none;">
+                <div class="metric">
+                    <div class="metric-value" id="standardSize">-</div>
+                    <div class="metric-label">标准文件大小</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="optimizedSize">-</div>
+                    <div class="metric-label">优化文件大小</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="qualityImprovement">-</div>
+                    <div class="metric-label">质量提升</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="processingTime">-</div>
+                    <div class="metric-label">处理时间</div>
+                </div>
+            </div>
+            
+            <div class="download-links" id="downloadLinks" style="display: none;">
+                <a href="#" id="downloadStandard">下载标准版本</a>
+                <a href="#" id="downloadOptimized">下载优化版本</a>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📊 详细分析</h3>
+            <div id="analysisResults"></div>
+        </div>
+    </div>
+
+    <!-- 引入必要的脚本 -->
+    <script src="mediabunny-loader.js"></script>
+    <script src="popup/mp4-quality-optimizer.js"></script>
+    <script src="popup/text-flicker-fix.js"></script>
+    <script src="popup/mediabunny-mp4-exporter.js"></script>
+    <script src="popup/canvas-stream-mp4-exporter.js"></script>
+    
+    <script>
+        // MP4 质量优化测试应用
+        class MP4QualityTest {
+            constructor() {
+                this.testVideoBlob = null;
+                this.standardBlob = null;
+                this.optimizedBlob = null;
+                this.mediabunny = null;
+                
+                this.initializeTest();
+            }
+            
+            async initializeTest() {
+                try {
+                    this.showStatus('testVideoStatus', '正在初始化测试环境...', 'info');
+                    
+                    // 等待 MediaBunny 加载
+                    if (window.mediabunnyLoader) {
+                        this.mediabunny = await window.mediabunnyLoader.waitForLoad();
+                        this.showStatus('testVideoStatus', '✅ MediaBunny 已加载，测试环境准备就绪', 'success');
+                    } else {
+                        this.showStatus('testVideoStatus', '⚠️ MediaBunny 加载器未找到，某些功能可能不可用', 'error');
+                    }
+                    
+                } catch (error) {
+                    console.error('测试环境初始化失败:', error);
+                    this.showStatus('testVideoStatus', `❌ 初始化失败: ${error.message}`, 'error');
+                }
+            }
+            
+            showStatus(elementId, message, type = 'info') {
+                const element = document.getElementById(elementId);
+                if (element) {
+                    element.innerHTML = `<div class="status ${type}">${message}</div>`;
+                }
+            }
+
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+        }
+        
+        // 全局测试实例
+        let qualityTest = null;
+        
+        // 初始化测试
+        document.addEventListener('DOMContentLoaded', () => {
+            qualityTest = new MP4QualityTest();
+        });
+        
+        // 创建测试视频
+        async function createTestVideo() {
+            try {
+                qualityTest.showStatus('testVideoStatus', '正在创建测试视频...', 'info');
+                
+                const canvas = document.getElementById('testCanvas');
+                const ctx = canvas.getContext('2d');
+                
+                // 绘制包含文字的测试内容
+                ctx.fillStyle = '#1a1a2e';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // 添加各种文字内容来测试清晰度
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 48px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('MP4 质量优化测试', canvas.width / 2, 100);
+                
+                ctx.font = '24px Arial';
+                ctx.fillText('这是一段测试文字，用于检验清晰度', canvas.width / 2, 150);
+                ctx.fillText('Test Text for Quality Assessment', canvas.width / 2, 180);
+                
+                // 添加小字体文字
+                ctx.font = '16px Arial';
+                ctx.fillText('小字体文字清晰度测试 - 16px', canvas.width / 2, 220);
+                ctx.fillText('Small font clarity test - 16px', canvas.width / 2, 240);
+                
+                // 添加更小的字体
+                ctx.font = '12px Arial';
+                ctx.fillText('极小字体测试 12px - 这里应该清晰可读', canvas.width / 2, 270);
+                
+                // 添加线条和图形来测试锯齿
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(50, 300);
+                ctx.lineTo(750, 300);
+                ctx.stroke();
+                
+                // 添加斜线测试
+                ctx.beginPath();
+                ctx.moveTo(100, 350);
+                ctx.lineTo(700, 450);
+                ctx.stroke();
+                
+                // 使用 Canvas 流创建视频
+                const stream = canvas.captureStream(30);
+                const mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'video/webm',
+                    videoBitsPerSecond: 5000000
+                });
+                
+                const chunks = [];
+                
+                return new Promise((resolve) => {
+                    mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            chunks.push(event.data);
+                        }
+                    };
+                    
+                    mediaRecorder.onstop = () => {
+                        qualityTest.testVideoBlob = new Blob(chunks, { type: 'video/webm' });
+                        stream.getTracks().forEach(track => track.stop());
+                        
+                        qualityTest.showStatus('testVideoStatus', 
+                            `✅ 测试视频创建完成 (${qualityTest.formatFileSize(qualityTest.testVideoBlob.size)})`, 
+                            'success'
+                        );
+                        resolve();
+                    };
+                    
+                    mediaRecorder.start();
+                    setTimeout(() => mediaRecorder.stop(), 3000); // 录制3秒
+                });
+                
+            } catch (error) {
+                console.error('创建测试视频失败:', error);
+                qualityTest.showStatus('testVideoStatus', `❌ 创建失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // 导出标准 MP4
+        async function exportStandard() {
+            if (!qualityTest.testVideoBlob) {
+                qualityTest.showStatus('standardStatus', '请先创建测试视频', 'error');
+                return;
+            }
+
+            try {
+                qualityTest.showStatus('standardStatus', '正在导出标准 MP4...', 'info');
+                const startTime = Date.now();
+
+                // 创建视频元素
+                const video = document.createElement('video');
+                video.src = URL.createObjectURL(qualityTest.testVideoBlob);
+                video.muted = true;
+
+                await new Promise((resolve, reject) => {
+                    video.onloadedmetadata = resolve;
+                    video.onerror = reject;
+                });
+
+                // 使用标准导出方法（不使用优化器）
+                if (!qualityTest.mediabunny) {
+                    throw new Error('MediaBunny 未加载');
+                }
+
+                const exporter = new MediabunnyMp4Exporter();
+
+                // 初始化导出器
+                await exporter.initialize();
+
+                // 创建标准背景配置
+                const backgroundConfig = {
+                    color: '#0066cc',
+                    padding: 60,
+                    outputRatio: '16:9'
+                };
+
+                const standardResult = await exporter.exportToMp4(
+                    qualityTest.testVideoBlob,
+                    {
+                        quality: 'medium', // 使用中等质量作为标准
+                        backgroundConfig: backgroundConfig,
+                        frameRate: 30,
+                        progressCallback: (progress, message) => {
+                            qualityTest.showStatus('standardStatus',
+                                `${message} (${Math.round(progress * 100)}%)`, 'info');
+                        }
+                    }
+                );
+
+                qualityTest.standardBlob = standardResult.blob;
+
+                const processingTime = Date.now() - startTime;
+
+                // 显示结果
+                const standardVideo = document.getElementById('standardVideo');
+                standardVideo.src = URL.createObjectURL(qualityTest.standardBlob);
+                standardVideo.style.display = 'block';
+
+                // 更新指标
+                document.getElementById('standardSize').textContent =
+                    qualityTest.formatFileSize(qualityTest.standardBlob.size);
+
+                // 设置下载链接
+                const downloadStandard = document.getElementById('downloadStandard');
+                downloadStandard.href = URL.createObjectURL(qualityTest.standardBlob);
+                downloadStandard.download = `standard-export-${Date.now()}.mp4`;
+
+                // 自动触发下载
+                const autoDownloadLink = document.createElement('a');
+                autoDownloadLink.href = URL.createObjectURL(qualityTest.standardBlob);
+                autoDownloadLink.download = `standard-export-${Date.now()}.mp4`;
+                document.body.appendChild(autoDownloadLink);
+                autoDownloadLink.click();
+                document.body.removeChild(autoDownloadLink);
+
+                qualityTest.showStatus('standardStatus',
+                    `✅ 标准 MP4 导出完成并已下载 (${qualityTest.formatFileSize(qualityTest.standardBlob.size)}, ${processingTime}ms)`,
+                    'success');
+
+                // 显示下载链接
+                document.getElementById('downloadLinks').style.display = 'block';
+
+            } catch (error) {
+                console.error('标准导出失败:', error);
+                qualityTest.showStatus('standardStatus', `❌ 导出失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 导出优化 MP4
+        async function exportOptimized() {
+            if (!qualityTest.testVideoBlob) {
+                qualityTest.showStatus('optimizedStatus', '请先创建测试视频', 'error');
+                return;
+            }
+
+            try {
+                qualityTest.showStatus('optimizedStatus', '正在导出优化 MP4...', 'info');
+                const startTime = Date.now();
+
+                // 创建视频元素
+                const video = document.createElement('video');
+                video.src = URL.createObjectURL(qualityTest.testVideoBlob);
+                video.muted = true;
+
+                await new Promise((resolve, reject) => {
+                    video.onloadedmetadata = resolve;
+                    video.onerror = reject;
+                });
+
+                // 使用优化导出方法
+                if (!qualityTest.mediabunny) {
+                    throw new Error('MediaBunny 未加载');
+                }
+
+                const exporter = new MediabunnyMp4Exporter();
+
+                // 初始化导出器
+                await exporter.initialize();
+
+                // 创建优化背景配置
+                const backgroundConfig = {
+                    color: '#0066cc',
+                    padding: 60,
+                    outputRatio: '16:9'
+                };
+
+                const optimizedResult = await exporter.exportToMp4(
+                    qualityTest.testVideoBlob,
+                    {
+                        quality: 'high', // 使用高质量进行优化
+                        backgroundConfig: backgroundConfig,
+                        frameRate: 30,
+                        progressCallback: (progress, message) => {
+                            qualityTest.showStatus('optimizedStatus',
+                                `${message} (${Math.round(progress * 100)}%)`, 'info');
+                        }
+                    }
+                );
+
+                qualityTest.optimizedBlob = optimizedResult.blob;
+
+                const processingTime = Date.now() - startTime;
+
+                // 显示结果
+                const optimizedVideo = document.getElementById('optimizedVideo');
+                optimizedVideo.src = URL.createObjectURL(qualityTest.optimizedBlob);
+                optimizedVideo.style.display = 'block';
+
+                // 更新指标
+                document.getElementById('optimizedSize').textContent =
+                    qualityTest.formatFileSize(qualityTest.optimizedBlob.size);
+
+                // 计算质量提升
+                if (qualityTest.standardBlob) {
+                    const improvement = ((qualityTest.optimizedBlob.size / qualityTest.standardBlob.size - 1) * 100).toFixed(1);
+                    document.getElementById('qualityImprovement').textContent = `+${improvement}%`;
+                }
+
+                document.getElementById('processingTime').textContent = `${processingTime}ms`;
+
+                // 设置下载链接
+                const downloadOptimized = document.getElementById('downloadOptimized');
+                downloadOptimized.href = URL.createObjectURL(qualityTest.optimizedBlob);
+                downloadOptimized.download = `optimized-export-${Date.now()}.mp4`;
+
+                // 自动触发下载
+                const autoDownloadLink = document.createElement('a');
+                autoDownloadLink.href = URL.createObjectURL(qualityTest.optimizedBlob);
+                autoDownloadLink.download = `optimized-export-${Date.now()}.mp4`;
+                document.body.appendChild(autoDownloadLink);
+                autoDownloadLink.click();
+                document.body.removeChild(autoDownloadLink);
+
+                qualityTest.showStatus('optimizedStatus',
+                    `✅ 优化 MP4 导出完成并已下载 (${qualityTest.formatFileSize(qualityTest.optimizedBlob.size)}, ${processingTime}ms)`,
+                    'success');
+
+                // 显示指标和下载链接
+                document.getElementById('comparisonMetrics').style.display = 'grid';
+                document.getElementById('downloadLinks').style.display = 'block';
+
+            } catch (error) {
+                console.error('优化导出失败:', error);
+                qualityTest.showStatus('optimizedStatus', `❌ 导出失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 导出 Canvas 流 MP4
+        async function exportCanvasStream() {
+            if (!qualityTest.testVideoBlob) {
+                qualityTest.showStatus('canvasStreamStatus', '请先创建测试视频', 'error');
+                return;
+            }
+
+            try {
+                qualityTest.showStatus('canvasStreamStatus', '正在导出 Canvas 流 MP4...', 'info');
+                const startTime = Date.now();
+
+                // 创建视频元素
+                const video = document.createElement('video');
+                video.src = URL.createObjectURL(qualityTest.testVideoBlob);
+                video.muted = true;
+
+                await new Promise((resolve, reject) => {
+                    video.onloadedmetadata = resolve;
+                    video.onerror = reject;
+                });
+
+                // 使用 Canvas 流导出方法
+                if (!window.CanvasStreamMp4Exporter) {
+                    throw new Error('CanvasStreamMp4Exporter 未加载');
+                }
+
+                const exporter = new CanvasStreamMp4Exporter();
+
+                // 初始化导出器
+                await exporter.initialize();
+
+                // 创建 Canvas 流背景配置
+                const backgroundConfig = {
+                    color: '#0066cc',
+                    padding: 60,
+                    outputRatio: '16:9'
+                };
+
+                const canvasStreamResult = await exporter.exportVideoToMp4(
+                    qualityTest.testVideoBlob,
+                    {
+                        quality: 'high', // 使用高质量
+                        backgroundConfig: backgroundConfig,
+                        frameRate: 30,
+                        duration: 3, // 导出3秒
+                        progressCallback: (progress, message) => {
+                            qualityTest.showStatus('canvasStreamStatus',
+                                `${message} (${Math.round(progress * 100)}%)`, 'info');
+                        }
+                    }
+                );
+
+                qualityTest.canvasStreamBlob = canvasStreamResult.blob;
+
+                const processingTime = Date.now() - startTime;
+
+                // 显示结果
+                const canvasStreamVideo = document.getElementById('canvasStreamVideo');
+                canvasStreamVideo.src = URL.createObjectURL(qualityTest.canvasStreamBlob);
+                canvasStreamVideo.style.display = 'block';
+
+                // 自动触发下载
+                const autoDownloadLink = document.createElement('a');
+                autoDownloadLink.href = URL.createObjectURL(qualityTest.canvasStreamBlob);
+                autoDownloadLink.download = `canvas-stream-export-${Date.now()}.mp4`;
+                document.body.appendChild(autoDownloadLink);
+                autoDownloadLink.click();
+                document.body.removeChild(autoDownloadLink);
+
+                qualityTest.showStatus('canvasStreamStatus',
+                    `✅ Canvas 流 MP4 导出完成并已下载 (${qualityTest.formatFileSize(qualityTest.canvasStreamBlob.size)}, ${processingTime}ms)`,
+                    'success');
+
+            } catch (error) {
+                console.error('Canvas 流导出失败:', error);
+                qualityTest.showStatus('canvasStreamStatus', `❌ 导出失败: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

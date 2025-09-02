@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快速尺寸测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        video {
+            max-width: 100%;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+        }
+        .comparison {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .video-item {
+            flex: 1;
+            text-align: center;
+        }
+        .size-info {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>⚡ 快速尺寸测试</h1>
+    
+    <div class="result info">
+        <strong>测试目标：</strong>验证 MP4 转码的输出尺寸是否正确包含编辑效果
+    </div>
+    
+    <button onclick="runQuickTest()">开始快速测试</button>
+    <button onclick="runFullTest()" id="fullTestBtn" disabled>完整测试（需要录制）</button>
+    
+    <div id="results"></div>
+    
+    <div class="comparison" id="videoComparison" style="display: none;">
+        <div class="video-item">
+            <h4>原始视频</h4>
+            <video id="originalVideo" controls></video>
+            <div id="originalInfo" class="size-info"></div>
+        </div>
+        <div class="video-item">
+            <h4>转码后视频</h4>
+            <video id="transcodedVideo" controls></video>
+            <div id="transcodedInfo" class="size-info"></div>
+        </div>
+    </div>
+
+    <script src="popup/canvas-mp4-transcoder.js"></script>
+    <script src="popup/backgroundProcessor.js"></script>
+    <script>
+        let transcoder = null;
+        let backgroundProcessor = null;
+        let testWebMBlob = null;
+
+        window.onload = function() {
+            transcoder = new CanvasMP4Transcoder();
+            backgroundProcessor = new BackgroundProcessor();
+            console.log('⚡ 快速尺寸测试已加载');
+        };
+
+        // 快速测试（使用模拟数据）
+        async function runQuickTest() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="result info">正在进行快速测试...</div>';
+
+            try {
+                // 1. 创建模拟视频信息
+                const videoInfo = {
+                    width: 1280,
+                    height: 720,
+                    duration: 5,
+                    aspectRatio: 1280 / 720
+                };
+
+                // 2. 测试配置
+                const backgroundConfig = {
+                    color: '#0066cc',
+                    padding: 60,
+                    outputRatio: '1:1'
+                };
+
+                console.log('📊 模拟视频信息:', videoInfo);
+                console.log('🎨 测试配置:', backgroundConfig);
+
+                // 3. BackgroundProcessor 计算
+                const bgResult = backgroundProcessor.createCompositeCanvas(backgroundConfig, videoInfo);
+                console.log('🔧 BackgroundProcessor 结果:', {
+                    canvasSize: { width: bgResult.canvas.width, height: bgResult.canvas.height },
+                    layout: bgResult.layout
+                });
+
+                // 4. MP4 Transcoder 计算
+                const transcoderResult = transcoder.createEditingCanvas(backgroundConfig, videoInfo);
+                console.log('🔧 MP4 Transcoder 结果:', {
+                    canvasSize: { width: transcoderResult.canvas.width, height: transcoderResult.canvas.height },
+                    layout: transcoderResult.layout
+                });
+
+                // 5. 对比结果
+                const canvasSizeMatch = bgResult.canvas.width === transcoderResult.canvas.width && 
+                                       bgResult.canvas.height === transcoderResult.canvas.height;
+
+                const expectedSize = Math.max(1280, 720) + 60 * 2; // 1:1 比例 + 边距
+
+                resultsDiv.innerHTML = `
+                    <div class="result ${canvasSizeMatch ? 'success' : 'error'}">
+                        <strong>📐 快速测试结果:</strong><br><br>
+                        
+                        <strong>输入:</strong><br>
+                        • 原始视频: ${videoInfo.width} × ${videoInfo.height}<br>
+                        • 背景色: ${backgroundConfig.color}<br>
+                        • 边距: ${backgroundConfig.padding}px<br>
+                        • 输出比例: ${backgroundConfig.outputRatio}<br><br>
+                        
+                        <strong>计算结果:</strong><br>
+                        • BackgroundProcessor: ${bgResult.canvas.width} × ${bgResult.canvas.height}<br>
+                        • MP4 Transcoder: ${transcoderResult.canvas.width} × ${transcoderResult.canvas.height}<br>
+                        • 预期尺寸: 约 ${expectedSize} × ${expectedSize}<br><br>
+                        
+                        <strong>一致性检查:</strong><br>
+                        ${canvasSizeMatch ? '✅ 两种方法计算结果一致' : '❌ 两种方法计算结果不一致'}<br>
+                        ${transcoderResult.canvas.width > videoInfo.width ? '✅ 包含编辑效果' : '❌ 未包含编辑效果'}
+                    </div>
+                `;
+
+                // 启用完整测试
+                document.getElementById('fullTestBtn').disabled = false;
+
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="result error">
+                        快速测试失败: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // 完整测试（需要录制）
+        async function runFullTest() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML += '<div class="result info">开始完整测试，需要录制屏幕...</div>';
+
+            try {
+                // 1. 录制屏幕
+                const stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { width: 1280, height: 720 },
+                    audio: false
+                });
+
+                const mimeType = getSupportedWebMMimeType();
+                const recorder = new MediaRecorder(stream, {
+                    mimeType: mimeType,
+                    videoBitsPerSecond: 5000000
+                });
+
+                const chunks = [];
+
+                recorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) {
+                        chunks.push(e.data);
+                    }
+                };
+
+                recorder.onstop = async () => {
+                    testWebMBlob = new Blob(chunks, { type: mimeType });
+                    
+                    // 显示原始视频
+                    const originalVideo = document.getElementById('originalVideo');
+                    originalVideo.src = URL.createObjectURL(testWebMBlob);
+                    
+                    originalVideo.onloadedmetadata = async () => {
+                        document.getElementById('originalInfo').innerHTML = `
+                            尺寸: ${originalVideo.videoWidth} × ${originalVideo.videoHeight}<br>
+                            时长: ${originalVideo.duration.toFixed(2)}秒<br>
+                            大小: ${formatFileSize(testWebMBlob.size)}
+                        `;
+
+                        // 进行转码
+                        await performTranscodeTest();
+                    };
+
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                recorder.start();
+                
+                // 3秒后停止录制
+                setTimeout(() => {
+                    if (recorder.state === 'recording') {
+                        recorder.stop();
+                    }
+                }, 3000);
+
+                resultsDiv.innerHTML += '<div class="result info">📹 录制中... (3秒)</div>';
+
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="result error">
+                        完整测试失败: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // 执行转码测试
+        async function performTranscodeTest() {
+            const resultsDiv = document.getElementById('results');
+            
+            try {
+                resultsDiv.innerHTML += '<div class="result info">正在转码...</div>';
+
+                const result = await transcoder.transcodeToMP4(testWebMBlob, {
+                    backgroundConfig: {
+                        color: '#0066cc',
+                        padding: 60,
+                        outputRatio: '1:1'
+                    },
+                    quality: 'high',
+                    progressCallback: (percent, message) => {
+                        console.log(`转码进度: ${percent}% - ${message}`);
+                    }
+                });
+
+                // 显示转码后视频
+                const transcodedVideo = document.getElementById('transcodedVideo');
+                transcodedVideo.src = URL.createObjectURL(result);
+                
+                transcodedVideo.onloadedmetadata = () => {
+                    const originalVideo = document.getElementById('originalVideo');
+                    
+                    document.getElementById('transcodedInfo').innerHTML = `
+                        尺寸: ${transcodedVideo.videoWidth} × ${transcodedVideo.videoHeight}<br>
+                        时长: ${transcodedVideo.duration.toFixed(2)}秒<br>
+                        大小: ${formatFileSize(result.size)}<br>
+                        格式: ${result.type}
+                    `;
+
+                    // 显示对比结果
+                    const sizeIncreased = transcodedVideo.videoWidth > originalVideo.videoWidth;
+                    const isSquare = Math.abs(transcodedVideo.videoWidth - transcodedVideo.videoHeight) < 10;
+
+                    resultsDiv.innerHTML += `
+                        <div class="result ${sizeIncreased && isSquare ? 'success' : 'warning'}">
+                            <strong>🎬 完整测试结果:</strong><br><br>
+                            
+                            <strong>尺寸变化:</strong><br>
+                            • 原始: ${originalVideo.videoWidth} × ${originalVideo.videoHeight}<br>
+                            • 转码后: ${transcodedVideo.videoWidth} × ${transcodedVideo.videoHeight}<br>
+                            • 尺寸增加: ${sizeIncreased ? '✅ 是' : '❌ 否'}<br>
+                            • 1:1 比例: ${isSquare ? '✅ 是' : '❌ 否'}<br><br>
+                            
+                            <strong>预期效果:</strong><br>
+                            • 蓝色背景: ${result.type.includes('webm') ? '⚠️ WebM格式' : '✅ 应该有'}<br>
+                            • 60px 边距: ${sizeIncreased ? '✅ 应该有' : '❌ 可能没有'}<br>
+                            • 正方形输出: ${isSquare ? '✅ 正确' : '❌ 不正确'}<br><br>
+                            
+                            ${sizeIncreased && isSquare ? 
+                                '🎉 测试通过！尺寸计算正确。' : 
+                                '⚠️ 测试未完全通过，可能需要进一步调试。'}
+                        </div>
+                    `;
+
+                    // 显示视频对比
+                    document.getElementById('videoComparison').style.display = 'flex';
+                };
+
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="result error">
+                        转码测试失败: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // 获取支持的 WebM MIME 类型
+        function getSupportedWebMMimeType() {
+            const types = [
+                'video/webm;codecs=vp9',
+                'video/webm;codecs=vp8',
+                'video/webm'
+            ];
+
+            for (const type of types) {
+                if (MediaRecorder.isTypeSupported(type)) {
+                    return type;
+                }
+            }
+            return 'video/webm';
+        }
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+    </script>
+</body>
+</html>

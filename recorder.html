@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SaaS Video Recorder - 录制中</title>
     <link rel="stylesheet" href="popup/popup.css">
+    <link rel="stylesheet" href="popup/formatSelector.css">
     <style>
         body {
             width: 100%;
@@ -154,6 +155,10 @@
                         <span class="btn-loading hidden">处理中...</span>
                     </button>
                     <button id="skip-bg-btn" class="btn btn-secondary">直接下载原始视频</button>
+                    <button id="choose-format-btn" class="btn btn-secondary">
+                        <span class="btn-icon">📦</span>
+                        <span>选择格式</span>
+                    </button>
                 </div>
             </div>
             
@@ -167,11 +172,51 @@
         </main>
     </div>
     
+    <!-- 格式选择器模态框 -->
+    <div id="format-selector-modal" class="format-selector-modal">
+        <!-- 格式选择器内容将动态插入 -->
+    </div>
+    
+    <!-- 混合录制方案 -->
+    <script src="popup/hybrid-recorder.js"></script>
+    <script src="universal-recorder.js"></script>
+    
+    <!-- Mediabunny 加载器 -->
+    <script src="mediabunny-loader.js"></script>
+    <!-- <script src="libs/mp4box.all.js"></script> -->
+    <!-- <script src="libs/gif.js"></script> -->
+    <!-- <script src="libs/gif.worker.js"></script> -->
+
+    <!-- 智能导出管理 -->
+    <script src="popup/mp4-quality-optimizer.js"></script>
+    <script src="popup/text-flicker-fix.js"></script>
+    <script src="popup/smart-text-renderer.js"></script>
+    <script src="popup/mediabunny-mp4-exporter.js"></script>
+    <script src="popup/smart-export-manager.js"></script>
+    
+    <!-- WebCodecs 增强导出 -->
+    <script src="popup/webcodecs-enhanced-exporter.js"></script>
+    <script src="popup/webcodecs-integration-adapter.js"></script>
+    
+    <script src="popup/formatExportManager.js"></script>
+    <script src="popup/formatSelector.js"></script>
+    
+    <!-- 核心功能 -->
     <script src="popup/videoRecorder.js"></script>
+    <script src="popup/performance-monitor.js"></script>
     <script src="popup/fileManager.js"></script>
     <script src="popup/backgroundProcessor.js"></script>
     <script src="popup/popup.js"></script>
     <script src="popup/videoPreviewExtensions.js"></script>
     <script src="popup/recorderInit.js"></script>
+    
+    <!-- 紧急修复：禁用有问题的 WebCodecs 优化 -->
+    <script src="popup/emergency-fix.js"></script>
+
+    <!-- Mediabunny 集成测试 -->
+    <!-- <script src="test-mediabunny-integration.js"></script> -->
+
+    <!-- Mediabunny 修复验证 -->
+    <!-- <script src="verify-mediabunny-fix.js"></script> -->
 </body>
 </html>

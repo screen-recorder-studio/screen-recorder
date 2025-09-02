@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MP4 播放问题诊断</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        video {
+            max-width: 100%;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+        }
+        .file-info {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .hex-dump {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 11px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 MP4 播放问题诊断</h1>
+    <p>诊断生成的 MP4 文件为什么无法播放</p>
+    
+    <div class="test-section">
+        <h2>1. 录制测试视频</h2>
+        <button id="recordBtn" onclick="startRecording()">开始录制</button>
+        <button id="stopBtn" onclick="stopRecording()" disabled>停止录制</button>
+        <div id="recordingResults"></div>
+        <video id="originalVideo" controls style="display: none;"></video>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. 生成 MP4 文件</h2>
+        <button id="generateBtn" onclick="generateMP4()" disabled>生成 MP4</button>
+        <div id="generateResults"></div>
+        <video id="mp4Video" controls style="display: none;"></video>
+        <div id="mp4Info" class="file-info" style="display: none;"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. 文件格式分析</h2>
+        <button id="analyzeBtn" onclick="analyzeFile()" disabled>分析文件格式</button>
+        <div id="analysisResults"></div>
+        <div id="hexDump" class="hex-dump" style="display: none;"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. 播放测试</h2>
+        <button id="testPlayBtn" onclick="testPlayback()" disabled>测试播放</button>
+        <div id="playbackResults"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>5. 修复建议</h2>
+        <div id="fixSuggestions"></div>
+    </div>
+
+    <!-- 加载必要的脚本 -->
+    <script src="popup/canvas-mp4-transcoder.js"></script>
+
+    <script>
+        let currentWebMBlob = null;
+        let currentMP4Blob = null;
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let transcoder = null;
+
+        // 初始化
+        window.onload = function() {
+            transcoder = new CanvasMP4Transcoder();
+            console.log('🔍 MP4 播放问题诊断页面已加载');
+        };
+
+        // 开始录制
+        async function startRecording() {
+            const resultsDiv = document.getElementById('recordingResults');
+            const recordBtn = document.getElementById('recordBtn');
+            const stopBtn = document.getElementById('stopBtn');
+
+            try {
+                resultsDiv.innerHTML = '<div class="result info">请求屏幕录制权限...</div>';
+
+                const stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { width: 1280, height: 720 },
+                    audio: false
+                });
+
+                const mimeType = getSupportedWebMMimeType();
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: mimeType,
+                    videoBitsPerSecond: 5000000
+                });
+
+                recordedChunks = [];
+
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) {
+                        recordedChunks.push(e.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    currentWebMBlob = new Blob(recordedChunks, { type: mimeType });
+                    
+                    const originalVideo = document.getElementById('originalVideo');
+                    originalVideo.src = URL.createObjectURL(currentWebMBlob);
+                    originalVideo.style.display = 'block';
+
+                    resultsDiv.innerHTML += `
+                        <div class="result success">
+                            ✅ 录制完成！<br>
+                            文件大小: ${formatFileSize(currentWebMBlob.size)}<br>
+                            MIME 类型: ${currentWebMBlob.type}
+                        </div>
+                    `;
+
+                    // 启用生成按钮
+                    document.getElementById('generateBtn').disabled = false;
+
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                
+                recordBtn.disabled = true;
+                stopBtn.disabled = false;
+
+                resultsDiv.innerHTML += `
+                    <div class="result success">
+                        📹 开始录制 WebM 格式
+                    </div>
+                `;
+
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="result error">
+                        录制失败: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // 停止录制
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+
+            document.getElementById('recordBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+        }
+
+        // 生成 MP4
+        async function generateMP4() {
+            if (!currentWebMBlob) {
+                alert('请先录制视频');
+                return;
+            }
+
+            const resultsDiv = document.getElementById('generateResults');
+            const generateBtn = document.getElementById('generateBtn');
+
+            generateBtn.disabled = true;
+            resultsDiv.innerHTML = '<div class="result info">正在生成 MP4...</div>';
+
+            try {
+                currentMP4Blob = await transcoder.transcodeToMP4(currentWebMBlob, {
+                    backgroundConfig: {
+                        color: '#ffffff',
+                        padding: 60,
+                        outputRatio: '16:9'
+                    },
+                    quality: 'high',
+                    progressCallback: (percent, message) => {
+                        console.log(`生成进度: ${percent}% - ${message}`);
+                    }
+                });
+
+                // 显示 MP4 视频
+                const mp4Video = document.getElementById('mp4Video');
+                mp4Video.src = URL.createObjectURL(currentMP4Blob);
+                mp4Video.style.display = 'block';
+
+                // 显示文件信息
+                const mp4Info = document.getElementById('mp4Info');
+                mp4Info.innerHTML = `
+                    文件大小: ${formatFileSize(currentMP4Blob.size)}
+                    MIME 类型: ${currentMP4Blob.type}
+                    创建时间: ${new Date().toLocaleString()}
+                `;
+                mp4Info.style.display = 'block';
+
+                resultsDiv.innerHTML += `
+                    <div class="result success">
+                        ✅ MP4 生成完成！<br>
+                        文件大小: ${formatFileSize(currentMP4Blob.size)}<br>
+                        MIME 类型: ${currentMP4Blob.type}
+                    </div>
+                `;
+
+                // 启用分析按钮
+                document.getElementById('analyzeBtn').disabled = false;
+                document.getElementById('testPlayBtn').disabled = false;
+
+            } catch (error) {
+                resultsDiv.innerHTML += `
+                    <div class="result error">
+                        MP4 生成失败: ${error.message}
+                    </div>
+                `;
+            } finally {
+                generateBtn.disabled = false;
+            }
+        }
+
+        // 分析文件格式
+        async function analyzeFile() {
+            if (!currentMP4Blob) {
+                alert('请先生成 MP4 文件');
+                return;
+            }
+
+            const resultsDiv = document.getElementById('analysisResults');
+            const hexDump = document.getElementById('hexDump');
+
+            resultsDiv.innerHTML = '<div class="result info">正在分析文件格式...</div>';
+
+            try {
+                // 读取文件头部
+                const arrayBuffer = await currentMP4Blob.arrayBuffer();
+                const uint8Array = new Uint8Array(arrayBuffer);
+                
+                // 分析文件签名
+                const fileSignature = analyzeFileSignature(uint8Array);
+                
+                // 生成十六进制转储
+                const hexDumpText = generateHexDump(uint8Array, 256); // 前256字节
+                
+                hexDump.innerHTML = hexDumpText;
+                hexDump.style.display = 'block';
+
+                resultsDiv.innerHTML = `
+                    <div class="result ${fileSignature.isValid ? 'success' : 'error'}">
+                        <strong>文件格式分析:</strong><br>
+                        文件签名: ${fileSignature.signature}<br>
+                        检测格式: ${fileSignature.detectedFormat}<br>
+                        是否有效: ${fileSignature.isValid ? '✅ 是' : '❌ 否'}<br>
+                        文件大小: ${formatFileSize(arrayBuffer.byteLength)}<br>
+                        ${fileSignature.details}
+                    </div>
+                `;
+
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="result error">
+                        文件分析失败: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // 测试播放
+        async function testPlayback() {
+            if (!currentMP4Blob) {
+                alert('请先生成 MP4 文件');
+                return;
+            }
+
+            const resultsDiv = document.getElementById('playbackResults');
+            resultsDiv.innerHTML = '<div class="result info">正在测试播放...</div>';
+
+            try {
+                // 创建多个测试视频元素
+                const tests = [
+                    { name: '浏览器原生播放', test: testNativePlayback },
+                    { name: 'Video 元素加载', test: testVideoElementLoad },
+                    { name: 'MediaSource 兼容性', test: testMediaSourceCompatibility }
+                ];
+
+                let results = [];
+
+                for (const { name, test } of tests) {
+                    try {
+                        const result = await test(currentMP4Blob);
+                        results.push(`✅ ${name}: ${result}`);
+                    } catch (error) {
+                        results.push(`❌ ${name}: ${error.message}`);
+                    }
+                }
+
+                resultsDiv.innerHTML = `
+                    <div class="result info">
+                        <strong>播放测试结果:</strong><br>
+                        ${results.join('<br>')}
+                    </div>
+                `;
+
+                // 生成修复建议
+                generateFixSuggestions(results);
+
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="result error">
+                        播放测试失败: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // 分析文件签名
+        function analyzeFileSignature(uint8Array) {
+            const first4Bytes = Array.from(uint8Array.slice(0, 4))
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join(' ');
+            
+            const first8Bytes = Array.from(uint8Array.slice(0, 8))
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join(' ');
+
+            // 检查常见的视频文件签名
+            if (uint8Array[0] === 0x1A && uint8Array[1] === 0x45 && 
+                uint8Array[2] === 0xDF && uint8Array[3] === 0xA3) {
+                return {
+                    signature: first4Bytes,
+                    detectedFormat: 'WebM/Matroska',
+                    isValid: true,
+                    details: '这是一个有效的 WebM 文件，但被标记为 MP4'
+                };
+            }
+
+            // MP4 文件通常以 ftyp box 开始
+            if (uint8Array[4] === 0x66 && uint8Array[5] === 0x74 && 
+                uint8Array[6] === 0x79 && uint8Array[7] === 0x70) {
+                return {
+                    signature: first8Bytes,
+                    detectedFormat: 'MP4',
+                    isValid: true,
+                    details: '这是一个有效的 MP4 文件'
+                };
+            }
+
+            return {
+                signature: first8Bytes,
+                detectedFormat: '未知',
+                isValid: false,
+                details: '文件签名不匹配任何已知的视频格式'
+            };
+        }
+
+        // 生成十六进制转储
+        function generateHexDump(uint8Array, maxBytes = 256) {
+            const bytes = uint8Array.slice(0, maxBytes);
+            let dump = '';
+            
+            for (let i = 0; i < bytes.length; i += 16) {
+                const offset = i.toString(16).padStart(8, '0');
+                const hexBytes = [];
+                const asciiBytes = [];
+                
+                for (let j = 0; j < 16; j++) {
+                    if (i + j < bytes.length) {
+                        const byte = bytes[i + j];
+                        hexBytes.push(byte.toString(16).padStart(2, '0'));
+                        asciiBytes.push(byte >= 32 && byte <= 126 ? String.fromCharCode(byte) : '.');
+                    } else {
+                        hexBytes.push('  ');
+                        asciiBytes.push(' ');
+                    }
+                }
+                
+                dump += `${offset}: ${hexBytes.join(' ')} |${asciiBytes.join('')}|\n`;
+            }
+            
+            return dump;
+        }
+
+        // 测试原生播放
+        function testNativePlayback(blob) {
+            return new Promise((resolve, reject) => {
+                const video = document.createElement('video');
+                video.src = URL.createObjectURL(blob);
+                
+                const timeout = setTimeout(() => {
+                    reject(new Error('加载超时'));
+                }, 5000);
+
+                video.onloadedmetadata = () => {
+                    clearTimeout(timeout);
+                    URL.revokeObjectURL(video.src);
+                    resolve(`成功加载，尺寸: ${video.videoWidth}×${video.videoHeight}`);
+                };
+
+                video.onerror = () => {
+                    clearTimeout(timeout);
+                    URL.revokeObjectURL(video.src);
+                    reject(new Error('视频加载失败'));
+                };
+            });
+        }
+
+        // 测试 Video 元素加载
+        function testVideoElementLoad(blob) {
+            return new Promise((resolve, reject) => {
+                const video = document.createElement('video');
+                video.preload = 'metadata';
+                
+                video.oncanplay = () => {
+                    resolve('可以播放');
+                };
+
+                video.onerror = (e) => {
+                    reject(new Error(`加载错误: ${e.target.error?.message || '未知错误'}`));
+                };
+
+                video.src = URL.createObjectURL(blob);
+                
+                setTimeout(() => {
+                    URL.revokeObjectURL(video.src);
+                    reject(new Error('测试超时'));
+                }, 3000);
+            });
+        }
+
+        // 测试 MediaSource 兼容性
+        function testMediaSourceCompatibility(blob) {
+            return new Promise((resolve) => {
+                if (!window.MediaSource) {
+                    resolve('MediaSource API 不可用');
+                    return;
+                }
+
+                const isSupported = MediaSource.isTypeSupported(blob.type);
+                resolve(isSupported ? '支持 MediaSource' : 'MediaSource 不支持此格式');
+            });
+        }
+
+        // 生成修复建议
+        function generateFixSuggestions(testResults) {
+            const suggestionsDiv = document.getElementById('fixSuggestions');
+            
+            const hasPlaybackIssues = testResults.some(result => result.includes('❌'));
+            const isWebMFormat = testResults.some(result => result.includes('WebM'));
+
+            let suggestions = [];
+
+            if (hasPlaybackIssues) {
+                suggestions.push('🔧 检测到播放问题，建议修复：');
+                
+                if (isWebMFormat) {
+                    suggestions.push('• 文件实际上是 WebM 格式，但被标记为 MP4');
+                    suggestions.push('• 修复 MIME 类型设置');
+                    suggestions.push('• 使用正确的文件扩展名');
+                }
+                
+                suggestions.push('• 检查 MediaRecorder 配置');
+                suggestions.push('• 验证编码参数');
+                suggestions.push('• 考虑使用专业的转码库');
+            } else {
+                suggestions.push('✅ 文件格式正常，播放测试通过');
+            }
+
+            suggestionsDiv.innerHTML = `
+                <div class="result ${hasPlaybackIssues ? 'warning' : 'success'}">
+                    ${suggestions.join('<br>')}
+                </div>
+            `;
+        }
+
+        // 获取支持的 WebM MIME 类型
+        function getSupportedWebMMimeType() {
+            const types = [
+                'video/webm;codecs=vp9',
+                'video/webm;codecs=vp8',
+                'video/webm'
+            ];
+
+            for (const type of types) {
+                if (MediaRecorder.isTypeSupported(type)) {
+                    return type;
+                }
+            }
+            return 'video/webm';
+        }
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+    </script>
+</body>
+</html>

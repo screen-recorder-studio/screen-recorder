@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>基础加载测试</title>
+</head>
+<body>
+    <h1>🧪 基础加载测试</h1>
+    <div id="test-results"></div>
+
+    <!-- 第三方库 -->
+    <script type="module">
+        // 动态导入 Mediabunny 并设置为全局变量
+        import * as Mediabunny from './libs/mediabunny.js';
+        window.Mediabunny = Mediabunny;
+        console.log('✅ Mediabunny 库已加载为全局变量');
+        
+        // 测试基本功能
+        setTimeout(() => {
+            testBasicLoading();
+        }, 1000);
+    </script>
+
+    <!-- Mediabunny MP4 导出器 -->
+    <script src="popup/mediabunny-mp4-exporter.js"></script>
+
+    <script>
+        function testBasicLoading() {
+            const results = document.getElementById('test-results');
+            let html = '<h2>测试结果:</h2>';
+            
+            // 测试 Mediabunny 库
+            if (typeof window.Mediabunny !== 'undefined') {
+                html += '<p>✅ Mediabunny 库加载成功</p>';
+                
+                // 测试关键类
+                const requiredClasses = ['Input', 'Output', 'Conversion', 'BlobSource', 'Mp4OutputFormat', 'BufferTarget'];
+                let allClassesAvailable = true;
+                
+                for (const className of requiredClasses) {
+                    if (window.Mediabunny[className]) {
+                        html += `<p>✅ Mediabunny.${className} 可用</p>`;
+                    } else {
+                        html += `<p>❌ Mediabunny.${className} 不可用</p>`;
+                        allClassesAvailable = false;
+                    }
+                }
+                
+                if (allClassesAvailable) {
+                    html += '<p><strong>🎉 Mediabunny 所有必需类都可用！</strong></p>';
+                }
+            } else {
+                html += '<p>❌ Mediabunny 库未加载</p>';
+            }
+            
+            // 测试 MediabunnyMp4Exporter
+            if (typeof window.MediabunnyMp4Exporter !== 'undefined') {
+                html += '<p>✅ MediabunnyMp4Exporter 类加载成功</p>';
+                
+                try {
+                    const exporter = new MediabunnyMp4Exporter();
+                    html += '<p>✅ MediabunnyMp4Exporter 实例化成功</p>';
+                    html += `<p>📊 支持状态: ${exporter.isSupported ? '支持' : '不支持'}</p>`;
+                } catch (error) {
+                    html += `<p>❌ MediabunnyMp4Exporter 实例化失败: ${error.message}</p>`;
+                }
+            } else {
+                html += '<p>❌ MediabunnyMp4Exporter 类未加载</p>';
+            }
+            
+            results.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

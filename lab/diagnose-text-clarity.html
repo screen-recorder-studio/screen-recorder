@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文字清晰度诊断工具</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            margin: 5px;
+        }
+        
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .status.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        video {
+            max-width: 100%;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .analysis-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .analysis-item h4 {
+            margin: 0 0 10px 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: #495057;
+        }
+        
+        .comparison {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .comparison-item {
+            flex: 1;
+            text-align: center;
+        }
+        
+        .comparison-item canvas {
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            max-width: 100%;
+        }
+        
+        .recommendations {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .recommendations h4 {
+            color: #0066cc;
+            margin: 0 0 15px 0;
+        }
+        
+        .recommendations ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        .recommendations li {
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 文字清晰度诊断工具</h1>
+        <p class="subtitle">分析视频导出中文字不清晰的原因并提供优化建议</p>
+        
+        <div class="test-section">
+            <h3>📹 1. 录制包含文字的测试视频</h3>
+            <p>请录制一个包含清晰文字的屏幕内容（如网页、文档等）</p>
+            <button id="startRecording">开始录制</button>
+            <button id="stopRecording" disabled>停止录制</button>
+            <div id="recordingStatus"></div>
+            <video id="recordedVideo" controls style="display: none;"></video>
+        </div>
+        
+        <div class="test-section">
+            <h3>🔍 2. 视频分析</h3>
+            <button id="analyzeVideo" disabled>分析视频参数</button>
+            <div id="analysisStatus"></div>
+            <div id="analysisResults" class="analysis-grid" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📐 3. 缩放比例测试</h3>
+            <p>测试不同输出比例对文字清晰度的影响</p>
+            <button id="testScaling" disabled>测试缩放比例</button>
+            <div id="scalingStatus"></div>
+            <div id="scalingResults" class="comparison" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🎨 4. 渲染质量测试</h3>
+            <p>测试不同渲染设置对文字的影响</p>
+            <button id="testRendering" disabled>测试渲染质量</button>
+            <div id="renderingStatus"></div>
+            <div id="renderingResults" class="comparison" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>💡 5. 优化建议</h3>
+            <div id="recommendations" class="recommendations" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        class TextClarityDiagnostic {
+            constructor() {
+                this.mediaRecorder = null;
+                this.recordedBlob = null;
+                this.recordedChunks = [];
+                this.videoElement = null;
+                this.analysisData = {};
+                
+                this.initializeElements();
+                this.bindEvents();
+            }
+            
+            initializeElements() {
+                this.elements = {
+                    startRecording: document.getElementById('startRecording'),
+                    stopRecording: document.getElementById('stopRecording'),
+                    recordingStatus: document.getElementById('recordingStatus'),
+                    recordedVideo: document.getElementById('recordedVideo'),
+                    
+                    analyzeVideo: document.getElementById('analyzeVideo'),
+                    analysisStatus: document.getElementById('analysisStatus'),
+                    analysisResults: document.getElementById('analysisResults'),
+                    
+                    testScaling: document.getElementById('testScaling'),
+                    scalingStatus: document.getElementById('scalingStatus'),
+                    scalingResults: document.getElementById('scalingResults'),
+                    
+                    testRendering: document.getElementById('testRendering'),
+                    renderingStatus: document.getElementById('renderingStatus'),
+                    renderingResults: document.getElementById('renderingResults'),
+                    
+                    recommendations: document.getElementById('recommendations')
+                };
+            }
+            
+            bindEvents() {
+                this.elements.startRecording.addEventListener('click', () => this.startRecording());
+                this.elements.stopRecording.addEventListener('click', () => this.stopRecording());
+                this.elements.analyzeVideo.addEventListener('click', () => this.analyzeVideo());
+                this.elements.testScaling.addEventListener('click', () => this.testScaling());
+                this.elements.testRendering.addEventListener('click', () => this.testRendering());
+            }
+            
+            showStatus(element, message, type = 'info') {
+                element.innerHTML = `<div class="status ${type}">${message}</div>`;
+            }
+            
+            async startRecording() {
+                try {
+                    const stream = await navigator.mediaDevices.getDisplayMedia({
+                        video: { 
+                            mediaSource: 'screen',
+                            width: { ideal: 1920 },
+                            height: { ideal: 1080 }
+                        }
+                    });
+                    
+                    this.recordedChunks = [];
+                    this.mediaRecorder = new MediaRecorder(stream, {
+                        mimeType: 'video/webm;codecs=vp9',
+                        videoBitsPerSecond: 8000000 // 高比特率保证质量
+                    });
+                    
+                    this.mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            this.recordedChunks.push(event.data);
+                        }
+                    };
+                    
+                    this.mediaRecorder.onstop = () => {
+                        this.recordedBlob = new Blob(this.recordedChunks, { type: 'video/webm' });
+                        this.elements.recordedVideo.src = URL.createObjectURL(this.recordedBlob);
+                        this.elements.recordedVideo.style.display = 'block';
+                        this.elements.analyzeVideo.disabled = false;
+                        this.showStatus(this.elements.recordingStatus, '✅ 录制完成！请分析视频参数', 'success');
+                    };
+                    
+                    this.mediaRecorder.start();
+                    this.elements.startRecording.disabled = true;
+                    this.elements.stopRecording.disabled = false;
+                    this.showStatus(this.elements.recordingStatus, '🔴 正在录制...请录制包含文字的内容', 'info');
+                    
+                } catch (error) {
+                    this.showStatus(this.elements.recordingStatus, `❌ 录制失败: ${error.message}`, 'error');
+                }
+            }
+            
+            stopRecording() {
+                if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+                    this.mediaRecorder.stop();
+                    this.elements.startRecording.disabled = false;
+                    this.elements.stopRecording.disabled = true;
+                }
+            }
+            
+            async analyzeVideo() {
+                if (!this.recordedBlob) {
+                    this.showStatus(this.elements.analysisStatus, '❌ 请先录制视频', 'error');
+                    return;
+                }
+                
+                try {
+                    this.showStatus(this.elements.analysisStatus, '🔍 正在分析视频参数...', 'info');
+                    
+                    // 创建视频元素进行分析
+                    this.videoElement = await this.createVideoElement(this.recordedBlob);
+                    
+                    // 收集视频信息
+                    this.analysisData = {
+                        originalWidth: this.videoElement.videoWidth,
+                        originalHeight: this.videoElement.videoHeight,
+                        duration: this.videoElement.duration,
+                        aspectRatio: this.videoElement.videoWidth / this.videoElement.videoHeight,
+                        fileSize: this.recordedBlob.size,
+                        pixelCount: this.videoElement.videoWidth * this.videoElement.videoHeight
+                    };
+                    
+                    // 计算不同输出比例的Canvas尺寸
+                    this.calculateOutputSizes();
+                    
+                    // 显示分析结果
+                    this.displayAnalysisResults();
+                    
+                    this.elements.testScaling.disabled = false;
+                    this.elements.testRendering.disabled = false;
+                    this.showStatus(this.elements.analysisStatus, '✅ 视频分析完成！', 'success');
+                    
+                } catch (error) {
+                    this.showStatus(this.elements.analysisStatus, `❌ 分析失败: ${error.message}`, 'error');
+                }
+            }
+            
+            async createVideoElement(videoBlob) {
+                return new Promise((resolve, reject) => {
+                    const video = document.createElement('video');
+                    video.muted = true;
+                    video.playsInline = true;
+                    video.preload = 'metadata';
+                    
+                    video.onloadedmetadata = () => resolve(video);
+                    video.onerror = reject;
+                    video.src = URL.createObjectURL(videoBlob);
+                });
+            }
+            
+            calculateOutputSizes() {
+                const { originalWidth, originalHeight } = this.analysisData;
+                
+                // 模拟当前的Canvas尺寸计算逻辑
+                const maxWidth = 2560;
+                const maxHeight = 1440;
+                const baseWidth = Math.min(Math.max(originalWidth, 1920), maxWidth);
+                const baseHeight = Math.min(Math.max(originalHeight, 1080), maxHeight);
+                
+                this.analysisData.outputSizes = {
+                    '16:9': {
+                        w: baseWidth,
+                        h: Math.round(baseWidth * 9 / 16)
+                    },
+                    '1:1': {
+                        w: Math.min(baseWidth, baseHeight, 1920),
+                        h: Math.min(baseWidth, baseHeight, 1920)
+                    },
+                    '9:16': {
+                        w: Math.round(baseHeight * 9 / 16),
+                        h: baseHeight
+                    },
+                    '4:5': {
+                        w: Math.round(baseHeight * 4 / 5),
+                        h: baseHeight
+                    }
+                };
+                
+                // 计算缩放比例
+                this.analysisData.scalingFactors = {};
+                Object.keys(this.analysisData.outputSizes).forEach(ratio => {
+                    const output = this.analysisData.outputSizes[ratio];
+                    const padding = 60; // 默认边距
+                    const availableWidth = output.w - padding * 2;
+                    const availableHeight = output.h - padding * 2;
+                    
+                    const videoAspectRatio = originalWidth / originalHeight;
+                    const targetAspectRatio = availableWidth / availableHeight;
+                    
+                    let finalWidth, finalHeight;
+                    if (videoAspectRatio > targetAspectRatio) {
+                        finalWidth = availableWidth;
+                        finalHeight = availableWidth / videoAspectRatio;
+                    } else {
+                        finalHeight = availableHeight;
+                        finalWidth = availableHeight * videoAspectRatio;
+                    }
+                    
+                    this.analysisData.scalingFactors[ratio] = {
+                        scaleX: finalWidth / originalWidth,
+                        scaleY: finalHeight / originalHeight,
+                        finalWidth,
+                        finalHeight
+                    };
+                });
+            }
+            
+            displayAnalysisResults() {
+                const { analysisData } = this;
+                
+                const html = `
+                    <div class="analysis-item">
+                        <h4>原始视频信息</h4>
+                        尺寸: ${analysisData.originalWidth}x${analysisData.originalHeight}<br>
+                        宽高比: ${analysisData.aspectRatio.toFixed(2)}<br>
+                        时长: ${analysisData.duration.toFixed(1)}秒<br>
+                        文件大小: ${(analysisData.fileSize / 1024 / 1024).toFixed(2)} MB<br>
+                        像素数: ${(analysisData.pixelCount / 1000000).toFixed(2)} MP
+                    </div>
+                    
+                    <div class="analysis-item">
+                        <h4>缩放比例分析</h4>
+                        ${Object.keys(analysisData.scalingFactors).map(ratio => {
+                            const factor = analysisData.scalingFactors[ratio];
+                            const scale = Math.min(factor.scaleX, factor.scaleY);
+                            const quality = scale >= 1 ? '优秀' : scale >= 0.8 ? '良好' : scale >= 0.6 ? '一般' : '较差';
+                            const color = scale >= 1 ? '#28a745' : scale >= 0.8 ? '#ffc107' : scale >= 0.6 ? '#fd7e14' : '#dc3545';
+                            
+                            return `
+                                ${ratio}: <span style="color: ${color}">${(scale * 100).toFixed(0)}% (${quality})</span><br>
+                                最终尺寸: ${Math.round(factor.finalWidth)}x${Math.round(factor.finalHeight)}<br>
+                            `;
+                        }).join('<br>')}
+                    </div>
+                `;
+                
+                this.elements.analysisResults.innerHTML = html;
+                this.elements.analysisResults.style.display = 'grid';
+            }
+            
+            async testScaling() {
+                this.showStatus(this.elements.scalingStatus, '📐 正在测试缩放比例...', 'info');
+                
+                try {
+                    const results = [];
+                    
+                    // 测试不同输出比例
+                    for (const [ratio, size] of Object.entries(this.analysisData.outputSizes)) {
+                        const canvas = this.createTestCanvas(size.w, size.h, ratio);
+                        results.push({
+                            ratio,
+                            canvas,
+                            scale: this.analysisData.scalingFactors[ratio]
+                        });
+                    }
+                    
+                    this.displayScalingResults(results);
+                    this.showStatus(this.elements.scalingStatus, '✅ 缩放测试完成！', 'success');
+                    
+                } catch (error) {
+                    this.showStatus(this.elements.scalingStatus, `❌ 测试失败: ${error.message}`, 'error');
+                }
+            }
+            
+            createTestCanvas(width, height, ratio) {
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.min(width, 400); // 限制显示尺寸
+                canvas.height = Math.min(height, 300);
+                
+                const ctx = canvas.getContext('2d');
+                
+                // 绘制背景
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // 模拟视频内容（文字）
+                ctx.fillStyle = '#000000';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${ratio} 输出比例`, canvas.width / 2, canvas.height / 2 - 20);
+                ctx.fillText(`${width}x${height}`, canvas.width / 2, canvas.height / 2);
+                ctx.fillText('测试文字清晰度', canvas.width / 2, canvas.height / 2 + 20);
+                
+                return canvas;
+            }
+            
+            displayScalingResults(results) {
+                const html = results.map(result => {
+                    const scale = Math.min(result.scale.scaleX, result.scale.scaleY);
+                    const quality = scale >= 1 ? '优秀' : scale >= 0.8 ? '良好' : scale >= 0.6 ? '一般' : '较差';
+                    
+                    return `
+                        <div class="comparison-item">
+                            <h4>${result.ratio}</h4>
+                            ${result.canvas.outerHTML}
+                            <p>缩放: ${(scale * 100).toFixed(0)}%</p>
+                            <p>质量: ${quality}</p>
+                        </div>
+                    `;
+                }).join('');
+                
+                this.elements.scalingResults.innerHTML = html;
+                this.elements.scalingResults.style.display = 'flex';
+            }
+            
+            async testRendering() {
+                this.showStatus(this.elements.renderingStatus, '🎨 正在测试渲染质量...', 'info');
+                
+                try {
+                    const renderingTests = [
+                        { name: '当前设置', smoothing: true, quality: 'high' },
+                        { name: '禁用平滑', smoothing: false, quality: 'high' },
+                        { name: '像素完美', smoothing: false, quality: 'pixelated' }
+                    ];
+                    
+                    const results = renderingTests.map(test => {
+                        const canvas = this.createRenderingTestCanvas(test);
+                        return { ...test, canvas };
+                    });
+                    
+                    this.displayRenderingResults(results);
+                    this.generateRecommendations();
+                    
+                    this.showStatus(this.elements.renderingStatus, '✅ 渲染测试完成！', 'success');
+                    
+                } catch (error) {
+                    this.showStatus(this.elements.renderingStatus, `❌ 测试失败: ${error.message}`, 'error');
+                }
+            }
+            
+            createRenderingTestCanvas(test) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 300;
+                canvas.height = 200;
+                
+                const ctx = canvas.getContext('2d');
+                
+                // 应用渲染设置
+                ctx.imageSmoothingEnabled = test.smoothing;
+                if (test.smoothing) {
+                    ctx.imageSmoothingQuality = test.quality;
+                }
+                
+                // 绘制测试内容
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = '#000000';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(test.name, canvas.width / 2, 30);
+                ctx.fillText('小字体文本测试', canvas.width / 2, 60);
+                
+                ctx.font = '12px monospace';
+                ctx.fillText('代码字体: function test() {}', canvas.width / 2, 90);
+                
+                ctx.font = '10px Arial';
+                ctx.fillText('极小文字清晰度测试', canvas.width / 2, 120);
+                
+                // 绘制细线测试
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(50, 140);
+                ctx.lineTo(250, 140);
+                ctx.stroke();
+                
+                return canvas;
+            }
+            
+            displayRenderingResults(results) {
+                const html = results.map(result => `
+                    <div class="comparison-item">
+                        <h4>${result.name}</h4>
+                        ${result.canvas.outerHTML}
+                        <p>平滑: ${result.smoothing ? '启用' : '禁用'}</p>
+                        <p>质量: ${result.quality}</p>
+                    </div>
+                `).join('');
+                
+                this.elements.renderingResults.innerHTML = html;
+                this.elements.renderingResults.style.display = 'flex';
+            }
+            
+            generateRecommendations() {
+                const { analysisData } = this;
+                const recommendations = [];
+                
+                // 分析缩放问题
+                const worstScale = Math.min(...Object.values(analysisData.scalingFactors).map(f => Math.min(f.scaleX, f.scaleY)));
+                
+                if (worstScale < 0.6) {
+                    recommendations.push('视频被过度缩小，建议使用更接近原始尺寸的输出比例');
+                }
+                
+                if (worstScale < 0.8) {
+                    recommendations.push('考虑减少边距设置以增加视频显示区域');
+                }
+                
+                // 分析分辨率问题
+                if (analysisData.originalWidth < 1920) {
+                    recommendations.push('原始录制分辨率较低，建议使用更高分辨率录制');
+                }
+                
+                // 渲染建议
+                recommendations.push('对于文字内容，建议禁用图像平滑以保持锐利边缘');
+                recommendations.push('使用更高的比特率设置以减少压缩损失');
+                recommendations.push('考虑使用无损或接近无损的编码设置');
+                
+                const html = `
+                    <h4>💡 优化建议</h4>
+                    <ul>
+                        ${recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                    </ul>
+                `;
+                
+                this.elements.recommendations.innerHTML = html;
+                this.elements.recommendations.style.display = 'block';
+            }
+        }
+        
+        // 页面加载完成后初始化诊断工具
+        document.addEventListener('DOMContentLoaded', () => {
+            window.diagnostic = new TextClarityDiagnostic();
+        });
+    </script>
+</body>
+</html>

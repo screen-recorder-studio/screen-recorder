@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试加载器</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+        .success { border-color: #28a745; background-color: #d4edda; }
+        .error { border-color: #dc3545; background-color: #f8d7da; }
+        .warning { border-color: #ffc107; background-color: #fff3cd; }
+        .info { border-color: #17a2b8; background-color: #d1ecf1; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Mediabunny 加载器测试</h1>
+        
+        <div>
+            <button id="test-load" onclick="testLoad()">测试加载</button>
+            <button id="test-support" onclick="testSupport()" disabled>测试支持</button>
+            <button id="test-classes" onclick="testClasses()" disabled>测试类</button>
+            <button id="force-enable" onclick="forceEnableButtons()">强制启用按钮</button>
+            <button id="clear-logs" onclick="clearLogs()">清除日志</button>
+        </div>
+        
+        <div id="logs"></div>
+    </div>
+
+    <!-- Mediabunny 加载器 -->
+    <script src="mediabunny-loader.js"></script>
+
+    <script>
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const div = document.createElement('div');
+            div.className = `log ${type}`;
+            div.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
+            logsDiv.appendChild(div);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+
+        async function testLoad() {
+            log('🔄 开始测试 Mediabunny 加载...', 'info');
+            
+            try {
+                if (!window.mediabunnyLoader) {
+                    throw new Error('Mediabunny 加载器不存在');
+                }
+                
+                log('✅ Mediabunny 加载器存在', 'success');
+                
+                const mediabunny = await window.mediabunnyLoader.load();
+                log('✅ Mediabunny 加载成功', 'success');
+                log(`📦 加载的对象包含 ${Object.keys(mediabunny).length} 个属性`, 'info');
+                
+                // 启用其他测试按钮
+                document.getElementById('test-support').disabled = false;
+                document.getElementById('test-classes').disabled = false;
+                
+            } catch (error) {
+                log(`❌ 加载失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function testSupport() {
+            log('🔍 测试支持检查...', 'info');
+            
+            try {
+                if (!window.mediabunnyLoader) {
+                    throw new Error('Mediabunny 加载器不存在');
+                }
+                
+                const isSupported = window.mediabunnyLoader.isSupported();
+                log(`📊 支持状态: ${isSupported ? '支持' : '不支持'}`, isSupported ? 'success' : 'warning');
+                
+                if (typeof window.Mediabunny !== 'undefined') {
+                    log('✅ 全局 Mediabunny 对象可用', 'success');
+                    
+                    const requiredClasses = ['Input', 'Output', 'Conversion', 'BlobSource', 'Mp4OutputFormat', 'BufferTarget'];
+                    for (const className of requiredClasses) {
+                        if (window.Mediabunny[className]) {
+                            log(`✅ ${className} 类可用`, 'success');
+                        } else {
+                            log(`❌ ${className} 类不可用`, 'error');
+                        }
+                    }
+                } else {
+                    log('❌ 全局 Mediabunny 对象不可用', 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ 支持检查失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function testClasses() {
+            log('🧪 测试类实例化...', 'info');
+            
+            try {
+                if (typeof window.Mediabunny === 'undefined') {
+                    throw new Error('Mediabunny 对象不可用');
+                }
+                
+                // 测试 BlobSource
+                try {
+                    const testBlob = new Blob(['test'], { type: 'text/plain' });
+                    const blobSource = new window.Mediabunny.BlobSource(testBlob);
+                    log('✅ BlobSource 实例化成功', 'success');
+                } catch (error) {
+                    log(`❌ BlobSource 实例化失败: ${error.message}`, 'error');
+                }
+                
+                // 测试 Mp4OutputFormat
+                try {
+                    const mp4Format = new window.Mediabunny.Mp4OutputFormat();
+                    log('✅ Mp4OutputFormat 实例化成功', 'success');
+                } catch (error) {
+                    log(`❌ Mp4OutputFormat 实例化失败: ${error.message}`, 'error');
+                }
+                
+                // 测试 BufferTarget
+                try {
+                    const bufferTarget = new window.Mediabunny.BufferTarget();
+                    log('✅ BufferTarget 实例化成功', 'success');
+                } catch (error) {
+                    log(`❌ BufferTarget 实例化失败: ${error.message}`, 'error');
+                }
+                
+                log('🎉 类测试完成', 'success');
+                
+            } catch (error) {
+                log(`❌ 类测试失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 监听加载事件
+        window.addEventListener('mediabunnyLoaded', (event) => {
+            log('📢 收到 mediabunnyLoaded 事件', 'success');
+            log(`📦 事件包含 ${Object.keys(event.detail.Mediabunny).length} 个属性`, 'info');
+
+            // 启用测试按钮
+            enableTestButtons();
+        });
+
+        function enableTestButtons() {
+            document.getElementById('test-support').disabled = false;
+            document.getElementById('test-classes').disabled = false;
+            log('✅ 测试按钮已启用', 'success');
+        }
+
+        function forceEnableButtons() {
+            log('🔧 强制启用测试按钮...', 'info');
+            enableTestButtons();
+
+            // 检查当前状态
+            if (typeof window.Mediabunny !== 'undefined') {
+                log('✅ Mediabunny 全局对象可用', 'success');
+            } else {
+                log('⚠️ Mediabunny 全局对象不可用，但按钮已启用', 'warning');
+            }
+
+            if (window.mediabunnyLoader) {
+                log(`📊 加载器状态: 已加载=${window.mediabunnyLoader.isLoaded}, 正在加载=${window.mediabunnyLoader.isLoading}`, 'info');
+            }
+        }
+
+        window.addEventListener('mediabunnyLoadError', (event) => {
+            log(`📢 收到 mediabunnyLoadError 事件: ${event.detail.error.message}`, 'error');
+        });
+
+        // 页面加载完成后的初始状态
+        window.addEventListener('load', () => {
+            log('📄 页面加载完成', 'info');
+
+            if (window.mediabunnyLoader) {
+                log('✅ Mediabunny 加载器已初始化', 'success');
+
+                // 检查是否已经加载
+                if (window.mediabunnyLoader.isLoaded) {
+                    log('✅ Mediabunny 已经加载', 'success');
+                    enableTestButtons();
+                } else if (window.mediabunnyLoader.isLoading) {
+                    log('⏳ Mediabunny 正在加载中...', 'info');
+                    // 等待加载完成
+                    window.mediabunnyLoader.waitForLoad().then(() => {
+                        log('✅ Mediabunny 加载完成（延迟检查）', 'success');
+                        enableTestButtons();
+                    }).catch((error) => {
+                        log(`❌ Mediabunny 加载失败（延迟检查）: ${error.message}`, 'error');
+                    });
+                } else {
+                    log('⏳ Mediabunny 尚未开始加载', 'info');
+                }
+            } else {
+                log('❌ Mediabunny 加载器未初始化', 'error');
+            }
+
+            // 额外检查：如果 Mediabunny 已经可用，直接启用按钮
+            setTimeout(() => {
+                if (typeof window.Mediabunny !== 'undefined') {
+                    log('✅ 检测到 Mediabunny 全局对象，启用按钮', 'success');
+                    enableTestButtons();
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

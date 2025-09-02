@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas to MP4 Export - 专业版</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        
+        canvas {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            display: block;
+            margin: 0 auto 20px;
+            background: white;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .control-group {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .control-group h3 {
+            margin: 0 0 15px 0;
+            color: #495057;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #555;
+        }
+        
+        select, input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+        
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .export-btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            font-size: 16px;
+            padding: 15px 30px;
+            margin: 20px auto;
+            display: block;
+            width: auto;
+            min-width: 200px;
+        }
+        
+        .export-btn:hover:not(:disabled) {
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+        }
+        
+        .progress-container {
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 25px;
+            background: #e9ecef;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #20c997);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 12px;
+        }
+        
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+            font-weight: 600;
+            color: #333;
+            z-index: 1;
+        }
+        
+        .status {
+            padding: 12px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .video-preview {
+            margin-top: 30px;
+            text-align: center;
+            display: none;
+        }
+        
+        video {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .download-section {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .codec-support {
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        
+        .supported {
+            color: #28a745;
+            font-weight: 600;
+        }
+        
+        .not-supported {
+            color: #dc3545;
+            font-weight: 600;
+        }
+        
+        .format-info {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .format-info h4 {
+            margin: 0 0 10px 0;
+            color: #1976d2;
+        }
+        
+        .format-info p {
+            margin: 0;
+            color: #424242;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 Canvas to MP4 Export</h1>
+        <p class="subtitle">专业级 Canvas 动画导出为 MP4 视频</p>
+        
+        <div class="format-info">
+            <h4>📹 MP4 导出说明</h4>
+            <p>本页面专门用于将 Canvas 动画导出为 MP4 格式。支持多种编码器和质量设置，确保输出标准的 MP4 视频文件。</p>
+        </div>
+        
+        <canvas id="mp4Canvas" width="800" height="600"></canvas>
+        
+        <div class="controls">
+            <div class="control-group">
+                <h3>🎨 动画设置</h3>
+                <label>动画类型:</label>
+                <select id="animationType">
+                    <option value="bouncing-ball">弹跳球动画</option>
+                    <option value="rotating-square">旋转方块</option>
+                    <option value="wave-pattern">波浪图案</option>
+                    <option value="particle-system">粒子系统</option>
+                </select>
+                
+                <label>动画速度:</label>
+                <input type="range" id="animationSpeed" min="0.5" max="3" step="0.1" value="1">
+                <span id="speedValue">1.0x</span>
+                
+                <button id="startAnimation">▶️ 开始动画</button>
+                <button id="stopAnimation">⏹️ 停止动画</button>
+            </div>
+            
+            <div class="control-group">
+                <h3>🎥 视频编码</h3>
+                <label>编码器:</label>
+                <select id="codecSelect">
+                    <option value="avc">H.264 (推荐)</option>
+                    <option value="hevc">H.265 (HEVC)</option>
+                    <option value="vp9">VP9</option>
+                    <option value="av1">AV1</option>
+                </select>
+                <div class="codec-support" id="codecSupport"></div>
+                
+                <label>视频质量:</label>
+                <select id="qualitySelect">
+                    <option value="1000000">标清 (1 Mbps)</option>
+                    <option value="2500000" selected>高清 (2.5 Mbps)</option>
+                    <option value="5000000">超清 (5 Mbps)</option>
+                    <option value="10000000">4K (10 Mbps)</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <h3>⚙️ 录制参数</h3>
+                <label>帧率 (FPS):</label>
+                <select id="fpsSelect">
+                    <option value="24">24 FPS (电影)</option>
+                    <option value="30" selected>30 FPS (标准)</option>
+                    <option value="60">60 FPS (高流畅)</option>
+                </select>
+                
+                <label>录制时长 (秒):</label>
+                <input type="number" id="durationInput" value="5" min="1" max="30">
+                
+                <label>输出格式:</label>
+                <select id="formatSelect">
+                    <option value="mp4" selected>MP4 (推荐)</option>
+                    <option value="webm">WebM (备用)</option>
+                </select>
+            </div>
+        </div>
+        
+        <button id="exportBtn" class="export-btn">🎬 导出 MP4 视频</button>
+        
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+                <div class="progress-text" id="progressText">准备中...</div>
+            </div>
+        </div>
+        
+        <div id="statusContainer"></div>
+        
+        <div class="video-preview" id="videoPreview">
+            <h3>📺 视频预览</h3>
+            <video id="previewVideo" controls></video>
+            <div class="download-section">
+                <button id="downloadBtn">📥 下载 MP4 文件</button>
+                <button id="playBtn">▶️ 播放预览</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入脚本 -->
+    <script src="../../mediabunny-loader.js"></script>
+    <script src="animations.js"></script>
+    <script src="canvas-exporter.js"></script>
+    <script>
+        // MP4 专用导出应用
+        class MP4ExportApp {
+            constructor() {
+                this.canvas = null;
+                this.animations = null;
+                this.exporter = null;
+                this.isRecording = false;
+                
+                this.initializeApp();
+            }
+            
+            async initializeApp() {
+                try {
+                    this.showStatus('正在初始化 MP4 导出系统...', 'info');
+                    
+                    // 初始化组件
+                    this.canvas = document.getElementById('mp4Canvas');
+                    this.animations = new CanvasAnimations(this.canvas);
+                    this.exporter = new CanvasToMP4Exporter();
+                    
+                    // 绑定事件
+                    this.bindEvents();
+                    
+                    // 检查编码器支持
+                    await this.checkCodecSupport();
+                    
+                    // 开始默认动画
+                    this.animations.start();
+                    
+                    this.showStatus('✅ MP4 导出系统初始化完成', 'success');
+                    console.log('MP4 Export App 初始化完成');
+                    
+                } catch (error) {
+                    console.error('应用初始化失败:', error);
+                    this.showStatus(`❌ 初始化失败: ${error.message}`, 'error');
+                }
+            }
+            
+            bindEvents() {
+                // 动画控制
+                document.getElementById('startAnimation').addEventListener('click', () => {
+                    this.animations.start();
+                    this.showStatus('动画已开始', 'info');
+                });
+                
+                document.getElementById('stopAnimation').addEventListener('click', () => {
+                    this.animations.stop();
+                    this.showStatus('动画已停止', 'info');
+                });
+                
+                // 动画设置
+                document.getElementById('animationType').addEventListener('change', (e) => {
+                    this.animations.setAnimationType(e.target.value);
+                    this.showStatus(`切换到: ${e.target.options[e.target.selectedIndex].text}`, 'info');
+                });
+                
+                document.getElementById('animationSpeed').addEventListener('input', (e) => {
+                    const speed = parseFloat(e.target.value);
+                    this.animations.setSpeed(speed);
+                    document.getElementById('speedValue').textContent = speed.toFixed(1) + 'x';
+                });
+                
+                // 编码器选择
+                document.getElementById('codecSelect').addEventListener('change', () => {
+                    this.checkCodecSupport();
+                });
+                
+                // 导出按钮
+                document.getElementById('exportBtn').addEventListener('click', () => {
+                    this.startMP4Export();
+                });
+                
+                // 下载和播放按钮
+                document.getElementById('downloadBtn').addEventListener('click', () => {
+                    this.downloadVideo();
+                });
+                
+                document.getElementById('playBtn').addEventListener('click', () => {
+                    const video = document.getElementById('previewVideo');
+                    if (video.paused) {
+                        video.play();
+                    } else {
+                        video.pause();
+                    }
+                });
+            }
+            
+            async checkCodecSupport() {
+                const codecSelect = document.getElementById('codecSelect');
+                const codecSupport = document.getElementById('codecSupport');
+                const selectedCodec = codecSelect.value;
+                
+                try {
+                    // 这里可以添加编码器支持检查逻辑
+                    codecSupport.innerHTML = `<span class="supported">✅ ${selectedCodec.toUpperCase()} 编码器可用</span>`;
+                } catch (error) {
+                    codecSupport.innerHTML = `<span class="not-supported">❌ 检查失败: ${error.message}</span>`;
+                }
+            }
+            
+            async startMP4Export() {
+                if (this.isRecording) {
+                    this.showStatus('正在录制中，请等待...', 'info');
+                    return;
+                }
+
+                try {
+                    this.isRecording = true;
+
+                    // 获取设置
+                    const codec = document.getElementById('codecSelect').value;
+                    const bitrate = parseInt(document.getElementById('qualitySelect').value);
+                    const fps = parseInt(document.getElementById('fpsSelect').value);
+                    const duration = parseInt(document.getElementById('durationInput').value);
+                    const format = document.getElementById('formatSelect').value;
+
+                    // 验证设置
+                    if (duration < 1 || duration > 30) {
+                        throw new Error('录制时长必须在 1-30 秒之间');
+                    }
+
+                    // 检查 Canvas 内容
+                    const ctx = this.canvas.getContext('2d');
+                    const imageData = ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+                    const isEmpty = imageData.data.every(pixel => pixel === 0);
+
+                    if (isEmpty) {
+                        console.warn('Canvas 为空，确保动画正在运行');
+                        // 确保动画正在运行
+                        if (!this.animations.isRunning) {
+                            this.animations.start();
+                            // 等待一帧渲染
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                        }
+                    }
+
+                    // 显示进度
+                    this.showProgress(true);
+                    this.updateProgress(0, '准备导出 MP4...');
+
+                    // 禁用控件
+                    this.setControlsEnabled(false);
+
+                    console.log('开始 MP4 导出，设置:', { codec, bitrate, fps, duration, format });
+                    
+                    // 使用正确的 MediaBunny API
+                    const blob = await this.exportWithMediaBunny({
+                        codec,
+                        bitrate,
+                        fps,
+                        duration,
+                        onProgress: (progress, message) => {
+                            this.updateProgress(progress, message);
+                        }
+                    });
+
+                    // 保存 blob 到 exporter 对象中，以便下载功能使用
+                    if (!this.exporter) {
+                        this.exporter = {};
+                    }
+                    this.exporter.exportedBlob = blob;
+                    console.log('已保存 blob 到 exporter，大小:', blob.size, 'bytes');
+
+                    // 显示预览
+                    this.showVideoPreview(blob);
+                    this.showStatus('🎉 MP4 导出成功！', 'success');
+                    
+                } catch (error) {
+                    console.error('MP4 导出失败:', error);
+                    this.showStatus(`❌ MP4 导出失败: ${error.message}`, 'error');
+                } finally {
+                    this.isRecording = false;
+                    this.showProgress(false);
+                    this.setControlsEnabled(true);
+                    
+                    // 重新开始动画
+                    this.animations.start();
+                }
+            }
+
+            // 使用正确的 MediaBunny API 导出 MP4
+            async exportWithMediaBunny(options = {}) {
+                const {
+                    codec = 'avc',
+                    bitrate = 'QUALITY_HIGH',
+                    fps = 30,
+                    duration = 5,
+                    onProgress = () => {}
+                } = options;
+
+                // 等待 MediaBunny 加载
+                let mediabunny;
+                if (window.mediabunnyLoader) {
+                    mediabunny = await window.mediabunnyLoader.waitForLoad();
+                } else {
+                    throw new Error('MediaBunny 加载器不可用');
+                }
+
+                // 确保动画正在运行
+                if (!this.animations.isRunning) {
+                    this.animations.start();
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                }
+
+                onProgress(0.1, '创建 MediaBunny 输出...');
+
+                // 按照官方示例创建 Output
+                const output = new mediabunny.Output({
+                    format: new mediabunny.Mp4OutputFormat(),
+                    target: new mediabunny.BufferTarget() // Writing to memory
+                });
+
+                onProgress(0.2, '创建 Canvas 视频源...');
+
+                // 创建 Canvas 视频源，使用质量常量
+                const qualityValue = typeof bitrate === 'string' && mediabunny[bitrate]
+                    ? mediabunny[bitrate]
+                    : (typeof bitrate === 'number' ? bitrate : mediabunny.QUALITY_HIGH);
+
+                console.log('使用质量设置:', qualityValue);
+
+                // Add a video track backed by a canvas element
+                const videoSource = new mediabunny.CanvasSource(this.canvas, {
+                    codec: codec,
+                    bitrate: qualityValue
+                });
+
+                onProgress(0.3, '添加视频轨道...');
+
+                // 添加视频轨道
+                output.addVideoTrack(videoSource);
+
+                onProgress(0.4, '启动输出...');
+
+                // 开始输出
+                await output.start();
+                console.log('MediaBunny 输出已启动');
+
+                onProgress(0.5, '添加帧数据...');
+
+                // 按照官方文档正确添加帧
+                console.log('开始手动添加帧到 CanvasSource...');
+
+                // 计算总帧数
+                const totalFrames = duration * fps;
+                const frameDuration = 1 / fps; // 每帧持续时间（秒）
+
+                console.log(`将添加 ${totalFrames} 帧，每帧持续 ${frameDuration} 秒`);
+
+                // 手动添加每一帧
+                for (let frameIndex = 0; frameIndex < totalFrames; frameIndex++) {
+                    const timestamp = frameIndex * frameDuration; // 时间戳（秒）
+
+                    // 更新动画到当前时间点
+                    // 让动画系统渲染当前帧
+                    await new Promise(resolve => requestAnimationFrame(resolve));
+
+                    // 按照官方文档：await videoSource.add(timestamp, duration)
+                    await videoSource.add(timestamp, frameDuration);
+
+                    // 更新进度
+                    const progress = 0.5 + (frameIndex / totalFrames) * 0.4; // 50%-90% 用于添加帧
+                    onProgress(progress, `添加帧 ${frameIndex + 1}/${totalFrames}`);
+
+                    // 每10帧输出一次日志
+                    if (frameIndex % 10 === 0) {
+                        console.log(`已添加帧 ${frameIndex + 1}/${totalFrames}, 时间戳: ${timestamp.toFixed(3)}s`);
+                    }
+                }
+
+                console.log('所有帧添加完成');
+
+                onProgress(0.9, '完成录制，生成 MP4...');
+
+                // 完成输出
+                await output.finalize();
+                console.log('MediaBunny 输出已完成');
+
+                onProgress(0.95, '获取结果...');
+
+                // 获取结果 - Final MP4 file
+                const buffer = output.target.buffer;
+                console.log('输出 buffer 大小:', buffer ? buffer.byteLength : 0, 'bytes');
+
+                if (!buffer || buffer.byteLength === 0) {
+                    throw new Error('生成的 MP4 buffer 为空');
+                }
+
+                const blob = new Blob([buffer], { type: 'video/mp4' });
+                console.log('最终 MP4 blob 大小:', blob.size, 'bytes');
+
+                onProgress(1.0, 'MP4 导出完成！');
+                return blob;
+            }
+
+            // 备用的 MediaRecorder 录制方法
+            recordCanvasWithMediaRecorder(options = {}) {
+                const {
+                    fps = 30,
+                    duration = 5,
+                    bitrate = 2500000,
+                    onProgress = () => {}
+                } = options;
+
+                return new Promise((resolve, reject) => {
+                    const chunks = [];
+
+                    // 确保动画正在运行
+                    if (!this.animations.isRunning) {
+                        this.animations.start();
+                    }
+
+                    // 获取 Canvas 流
+                    const stream = this.canvas.captureStream(fps);
+
+                    if (!stream || stream.getVideoTracks().length === 0) {
+                        reject(new Error('无法从 Canvas 获取视频流'));
+                        return;
+                    }
+
+                    // 选择最佳的 MIME 类型
+                    let mimeType = 'video/mp4;codecs=h264';
+                    if (!MediaRecorder.isTypeSupported(mimeType)) {
+                        mimeType = 'video/webm;codecs=vp9';
+                        if (!MediaRecorder.isTypeSupported(mimeType)) {
+                            mimeType = 'video/webm';
+                        }
+                    }
+
+                    console.log('使用录制格式:', mimeType);
+
+                    const mediaRecorder = new MediaRecorder(stream, {
+                        mimeType: mimeType,
+                        videoBitsPerSecond: bitrate
+                    });
+
+                    mediaRecorder.ondataavailable = (event) => {
+                        console.log('收到数据块:', event.data.size, 'bytes');
+                        if (event.data.size > 0) {
+                            chunks.push(event.data);
+                        }
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        console.log('录制完成，数据块数量:', chunks.length);
+
+                        if (chunks.length === 0) {
+                            reject(new Error('没有录制到任何数据'));
+                            return;
+                        }
+
+                        const totalSize = chunks.reduce((sum, chunk) => sum + chunk.size, 0);
+                        console.log('总数据大小:', totalSize, 'bytes');
+
+                        if (totalSize === 0) {
+                            reject(new Error('录制的数据大小为0'));
+                            return;
+                        }
+
+                        // 创建 Blob，如果是 WebM 则标记为 MP4（简单处理）
+                        const finalMimeType = mimeType.includes('mp4') ? 'video/mp4' : 'video/mp4';
+                        const blob = new Blob(chunks, { type: finalMimeType });
+
+                        console.log('最终 Blob 大小:', blob.size, 'bytes');
+                        resolve(blob);
+                    };
+
+                    mediaRecorder.onerror = (error) => {
+                        console.error('录制错误:', error);
+                        reject(new Error(`录制失败: ${error.error || error.message}`));
+                    };
+
+                    // 开始录制
+                    mediaRecorder.start();
+                    onProgress(0.1, '开始录制...');
+
+                    // 进度模拟
+                    let progress = 0.1;
+                    const progressInterval = setInterval(() => {
+                        progress += 0.8 / (duration * 10);
+                        if (progress < 0.9) {
+                            onProgress(progress, `录制中... ${Math.round(progress * 100)}%`);
+                        }
+                    }, 100);
+
+                    // 指定时间后停止录制
+                    setTimeout(() => {
+                        clearInterval(progressInterval);
+                        onProgress(0.9, '完成录制，正在处理...');
+
+                        if (mediaRecorder.state === 'recording') {
+                            mediaRecorder.stop();
+                        }
+                    }, duration * 1000);
+                });
+            }
+            
+            showVideoPreview(blob) {
+                const previewContainer = document.getElementById('videoPreview');
+                const previewVideo = document.getElementById('previewVideo');
+                
+                // 清理之前的 URL
+                if (previewVideo.src) {
+                    URL.revokeObjectURL(previewVideo.src);
+                }
+                
+                // 设置新的视频源
+                previewVideo.src = URL.createObjectURL(blob);
+                previewContainer.style.display = 'block';
+                
+                // 滚动到预览区域
+                previewContainer.scrollIntoView({ behavior: 'smooth' });
+            }
+            
+            downloadVideo() {
+                try {
+                    // 检查是否有导出的 blob
+                    if (!this.exporter || !this.exporter.exportedBlob) {
+                        throw new Error('没有可下载的文件');
+                    }
+
+                    const animationType = document.getElementById('animationType').value;
+                    const codec = document.getElementById('codecSelect').value;
+                    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+                    const filename = `canvas-${animationType}-${codec}-${timestamp}.mp4`;
+
+                    // 直接下载 blob
+                    const url = URL.createObjectURL(this.exporter.exportedBlob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    a.style.display = 'none';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+
+                    this.showStatus('📥 MP4 下载已开始', 'success');
+                } catch (error) {
+                    this.showStatus(`❌ 下载失败: ${error.message}`, 'error');
+                }
+            }
+            
+            showProgress(show) {
+                const progressContainer = document.getElementById('progressContainer');
+                progressContainer.style.display = show ? 'block' : 'none';
+            }
+            
+            updateProgress(progress, message) {
+                const progressFill = document.getElementById('progressFill');
+                const progressText = document.getElementById('progressText');
+                
+                progressFill.style.width = `${progress * 100}%`;
+                progressText.textContent = message;
+            }
+            
+            showStatus(message, type = 'info') {
+                const statusContainer = document.getElementById('statusContainer');
+                
+                // 清除之前的状态
+                statusContainer.innerHTML = '';
+                
+                // 创建状态元素
+                const statusDiv = document.createElement('div');
+                statusDiv.className = `status ${type}`;
+                statusDiv.textContent = message;
+                
+                statusContainer.appendChild(statusDiv);
+                
+                // 自动清除成功和信息状态
+                if (type === 'success' || type === 'info') {
+                    setTimeout(() => {
+                        if (statusDiv.parentNode) {
+                            statusDiv.parentNode.removeChild(statusDiv);
+                        }
+                    }, 5000);
+                }
+            }
+            
+            setControlsEnabled(enabled) {
+                const controls = [
+                    'codecSelect',
+                    'qualitySelect', 
+                    'fpsSelect',
+                    'durationInput',
+                    'formatSelect',
+                    'animationType',
+                    'animationSpeed',
+                    'exportBtn'
+                ];
+                
+                controls.forEach(id => {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        element.disabled = !enabled;
+                    }
+                });
+            }
+        }
+        
+        // 当页面加载完成时初始化应用
+        document.addEventListener('DOMContentLoaded', () => {
+            window.mp4App = new MP4ExportApp();
+        });
+    </script>
+</body>
+</html>

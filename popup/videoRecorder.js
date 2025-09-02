@@ -7,6 +7,11 @@ class VideoRecorder {
     this.recordedChunks = [];
     this.stream = null;
     this.isInitialized = false;
+    
+    // WebCodecs 支持
+    this.webCodecsAdapter = null;
+    this.useWebCodecs = false;
+    this.recordingMode = null; // 'webcodecs' or 'mediarecorder'
   }
   
   // 初始化录制器
@@ -21,8 +26,15 @@ class VideoRecorder {
         throw new Error('浏览器不支持屏幕录制功能');
       }
       
-      if (!window.MediaRecorder) {
+      // 检测 WebCodecs 支持
+      if (window.WebCodecsAdapter && WebCodecsAdapter.isSupported()) {
+        this.useWebCodecs = true;
+        console.log('✅ WebCodecs is supported! Using high-performance encoding.');
+      } else if (!window.MediaRecorder) {
         throw new Error('浏览器不支持MediaRecorder API');
+      } else {
+        this.useWebCodecs = false;
+        console.log('📹 Using MediaRecorder (WebCodecs not available)');
       }
       
       this.isInitialized = true;
@@ -83,17 +95,50 @@ class VideoRecorder {
         audioBitsPerSecond: 192000
       };
       
-      // 创建MediaRecorder实例
-      this.mediaRecorder = new MediaRecorder(this.stream, options);
-      this.recordedChunks = [];
+      // 根据支持情况选择录制方式
+      if (this.useWebCodecs) {
+        try {
+          // 尝试使用 WebCodecs 进行高性能录制
+          this.recordingMode = 'webcodecs';
+          this.webCodecsAdapter = new WebCodecsAdapter();
+          await this.webCodecsAdapter.start(this.stream);
+          console.log('🚀 WebCodecs recording started with optimized performance');
+          
+          // 立即通知UI更新
+          if (window.popupController) {
+            window.popupController.onRecordingStarted();
+          }
+        } catch (webCodecsError) {
+          console.warn('WebCodecs 初始化失败，自动降级到 MediaRecorder:', webCodecsError);
+          this.useWebCodecs = false;
+          
+          // 降级到 MediaRecorder
+          this.recordingMode = 'mediarecorder';
+          this.mediaRecorder = new MediaRecorder(this.stream, options);
+          this.recordedChunks = [];
+          
+          // 设置事件监听器
+          this.setupMediaRecorderEvents();
+          
+          // 开始录制并等待录制真正开始
+          await this.startMediaRecorder();
+          
+          console.log('📹 已降级到 MediaRecorder 模式');
+        }
+      } else {
+        // 使用传统的 MediaRecorder
+        this.recordingMode = 'mediarecorder';
+        this.mediaRecorder = new MediaRecorder(this.stream, options);
+        this.recordedChunks = [];
+        
+        // 设置事件监听器
+        this.setupMediaRecorderEvents();
+        
+        // 开始录制并等待录制真正开始
+        await this.startMediaRecorder();
+      }
       
-      // 设置事件监听器
-      this.setupMediaRecorderEvents();
-      
-      // 开始录制并等待录制真正开始
-      await this.startMediaRecorder();
-      
-      console.log('Screen recording started successfully');
+      console.log(`Screen recording started successfully (mode: ${this.recordingMode})`);
       
     } catch (error) {
       console.error('Failed to start recording:', error);
@@ -315,6 +360,23 @@ class VideoRecorder {
   // 停止录制并返回视频数据
   async stopRecording() {
     try {
+      // 处理 WebCodecs 模式
+      if (this.recordingMode === 'webcodecs' && this.webCodecsAdapter) {
+        console.log('Stopping WebCodecs recording...');
+        const blob = await this.webCodecsAdapter.stop();
+        
+        // 获取并打印性能报告
+        if (window.performanceMonitor) {
+          const metrics = this.webCodecsAdapter.getPerformanceMetrics();
+          console.log('📊 Final Performance Metrics:', metrics);
+        }
+        
+        // 清理资源
+        this.cleanup();
+        return blob;
+      }
+      
+      // 处理 MediaRecorder 模式
       if (!this.mediaRecorder) {
         throw new Error('录制器未初始化');
       }
@@ -517,6 +579,11 @@ class VideoRecorder {
         this.mediaRecorder.stop();
       }
       
+      // 清理 WebCodecs 适配器
+      if (this.webCodecsAdapter) {
+        this.webCodecsAdapter = null;
+      }
+      
       // 停止媒体流
       if (this.stream) {
         this.stream.getTracks().forEach(track => {
@@ -529,6 +596,7 @@ class VideoRecorder {
       this.mediaRecorder = null;
       this.recordedChunks = [];
       this.isInitialized = false;
+      this.recordingMode = null;
       
       console.log('VideoRecorder cleanup completed');
       
