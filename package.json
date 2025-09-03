@@ -11,9 +11,7 @@
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-		"build:extension": "pnpm run build && pnpm run copy:manifest && pnpm run copy:background",
-		"copy:manifest": "cp static/manifest.json build/",
-		"copy:background": "cp static/background.js build/",
+		"build:extension": "pnpm run build && cp static/manifest.json build/",
 		"package:extension": "pnpm run build:extension && cd build && zip -r ../screen-recorder-extension.zip ."
 	},
 	"devDependencies": {
@@ -24,6 +22,7 @@
 		"@types/node": "^22.18.0",
 		"svelte": "^5.0.0",
 		"svelte-check": "^4.0.0",
+		"sveltekit-adapter-chrome-extension": "^2.0.1",
 		"typescript": "^5.0.0",
 		"vite": "^7.0.4"
 	},

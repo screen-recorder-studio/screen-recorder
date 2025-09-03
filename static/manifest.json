@@ -10,6 +10,7 @@
     "sidePanel",
     "activeTab"
   ],
+
   "side_panel": {
     "default_path": "sidepanel.html"
   },
@@ -20,5 +21,13 @@
   "action": {
     "default_title": "打开录制面板"
   },
+  "icons": {
+    "16": "assets/icon16.svg",
+    "48": "assets/icon48.svg",
+    "128": "assets/icon128.svg"
+  },
+
+
+
   "minimum_chrome_version": "116"
 }
