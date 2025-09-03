@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "屏幕录制扩展",
+  "version": "1.0.0",
+  "description": "通过 sidepanel 进行屏幕录制的 Chrome 扩展",
+  "permissions": [
+    "desktopCapture",
+    "downloads",
+    "storage",
+    "sidePanel",
+    "activeTab"
+  ],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "打开录制面板"
+  },
+  "minimum_chrome_version": "116"
+}

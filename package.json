@@ -1,0 +1,35 @@
+{
+	"name": "screen-recorder-extension",
+	"private": true,
+	"version": "1.0.0",
+	"type": "module",
+	"description": "Chrome 屏幕录制扩展",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "vite preview",
+		"prepare": "svelte-kit sync || echo ''",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"build:extension": "pnpm run build && pnpm run copy:manifest && pnpm run copy:background",
+		"copy:manifest": "cp static/manifest.json build/",
+		"copy:background": "cp static/background.js build/",
+		"package:extension": "pnpm run build:extension && cd build && zip -r ../screen-recorder-extension.zip ."
+	},
+	"devDependencies": {
+		"@sveltejs/adapter-static": "^3.0.9",
+		"@sveltejs/kit": "^2.22.0",
+		"@sveltejs/vite-plugin-svelte": "^6.0.0",
+		"@types/chrome": "^0.0.270",
+		"@types/node": "^22.18.0",
+		"svelte": "^5.0.0",
+		"svelte-check": "^4.0.0",
+		"typescript": "^5.0.0",
+		"vite": "^7.0.4"
+	},
+	"pnpm": {
+		"onlyBuiltDependencies": [
+			"esbuild"
+		]
+	}
+}
