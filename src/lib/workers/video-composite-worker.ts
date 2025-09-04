@@ -10,6 +10,7 @@ interface BackgroundConfig {
   customWidth?: number;
   customHeight?: number;
   videoPosition: 'center' | 'top' | 'bottom';
+  borderRadius?: number; // 视频圆角半径，默认 20px
 }
 
 interface CompositeMessage {
@@ -147,6 +148,45 @@ function calculateVideoLayout(
   };
 }
 
+// 渲染背景
+function renderBackground(config: BackgroundConfig) {
+  if (!ctx || !offscreenCanvas) return;
+
+  if (config.type === 'gradient') {
+    // 创建渐变背景
+    const gradient = ctx.createLinearGradient(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+
+    // 蓝色到紫色的渐变
+    gradient.addColorStop(0, '#3b82f6');    // 蓝色
+    gradient.addColorStop(0.5, '#8b5cf6');  // 紫色
+    gradient.addColorStop(1, '#ec4899');    // 粉色
+
+    ctx.fillStyle = gradient;
+  } else {
+    // 纯色背景
+    ctx.fillStyle = config.color;
+  }
+
+  ctx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+}
+
+// 创建圆角路径
+function createRoundedRectPath(x: number, y: number, width: number, height: number, radius: number) {
+  if (!ctx) return;
+
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height - radius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  ctx.lineTo(x + radius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+}
+
 // 渲染合成帧
 function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: BackgroundConfig) {
   if (!ctx || !offscreenCanvas) {
@@ -158,18 +198,31 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
     // 1. 清除画布
     ctx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
 
-    // 2. 绘制背景
-    ctx.fillStyle = config.color;
-    ctx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+    // 2. 绘制背景（支持渐变）
+    renderBackground(config);
 
-    // 3. 绘制视频帧
+    // 3. 保存当前状态
+    ctx.save();
+
+    // 4. 创建圆角遮罩（如果配置了圆角）
+    const borderRadius = config.borderRadius || 0; // 默认无圆角
+
+    if (borderRadius > 0) {
+      createRoundedRectPath(layout.x, layout.y, layout.width, layout.height, borderRadius);
+      ctx.clip();
+    }
+
+    // 5. 绘制视频帧（如果有圆角会被遮罩裁剪）
     ctx.drawImage(frame, layout.x, layout.y, layout.width, layout.height);
 
-    // 4. 转换为 ImageBitmap（高效传输）
+    // 6. 恢复状态
+    ctx.restore();
+
+    // 7. 转换为 ImageBitmap（高效传输）
     const bitmap = offscreenCanvas.transferToImageBitmap();
-    
-    console.log(`🎨 [COMPOSITE-WORKER] Frame rendered: ${layout.width}x${layout.height} at (${layout.x}, ${layout.y})`);
-    
+
+    console.log(`🎨 [COMPOSITE-WORKER] Frame rendered: ${layout.width}x${layout.height} at (${layout.x}, ${layout.y}), background: ${config.type}, border radius: ${borderRadius}px`);
+
     return bitmap;
   } catch (error) {
     console.error('❌ [COMPOSITE-WORKER] Render error:', error);

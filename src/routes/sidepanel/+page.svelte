@@ -1424,11 +1424,12 @@
         encodedChunks={workerEncodedChunks}
         isRecordingComplete={workerStatus === 'completed' || workerStatus === 'idle'}
         backgroundConfig={{
-          type: 'solid-color',
+          type: 'gradient',
           color: '#3b82f6',
           padding: 60,
           outputRatio: '16:9',
-          videoPosition: 'center'
+          videoPosition: 'center',
+          borderRadius: 25
         }}
         displayWidth={640}
         displayHeight={360}

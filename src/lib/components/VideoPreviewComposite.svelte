@@ -14,6 +14,7 @@
       customWidth?: number
       customHeight?: number
       videoPosition: 'center' | 'top' | 'bottom'
+      borderRadius?: number
     }
     displayWidth?: number
     displayHeight?: number
