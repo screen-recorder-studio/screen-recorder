@@ -65,15 +65,18 @@
 
     // 使用 ImageBitmapRenderingContext 进行高效显示
     bitmapCtx = canvas.getContext('bitmaprenderer')
-    
+
     if (!bitmapCtx) {
       console.error('❌ [VideoPreview] Failed to get ImageBitmapRenderingContext')
       return
     }
 
-    // 设置 Canvas 显示尺寸
-    canvas.style.width = `${displayWidth}px`
-    canvas.style.height = `${displayHeight}px`
+    // 不设置固定尺寸，让 CSS 控制显示尺寸
+    // Canvas 会自动适应容器大小
+    console.log('🎨 [VideoPreview] Canvas container size:', {
+      containerWidth: canvas.parentElement?.clientWidth,
+      containerHeight: canvas.parentElement?.clientHeight
+    })
 
     isInitialized = true
     console.log('🎨 [VideoPreview] Canvas initialized for bitmap rendering')
@@ -400,8 +403,9 @@
   .video-canvas {
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: fill;  /* 拉伸填满容器 */
     transition: opacity 0.3s ease;
+    display: block;
   }
 
   .video-canvas.processing {
