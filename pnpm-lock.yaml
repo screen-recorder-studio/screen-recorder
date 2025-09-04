@@ -8,12 +8,12 @@ importers:
 
   .:
     dependencies:
+      '@lucide/svelte':
+        specifier: ^0.542.0
+        version: 0.542.0(svelte@5.38.6)
       '@tailwindcss/vite':
         specifier: ^4.1.12
         version: 4.1.12(vite@7.1.4(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1))
-      lucide-svelte:
-        specifier: ^0.542.0
-        version: 0.542.0(svelte@5.38.6)
       tailwindcss:
         specifier: ^4.1.12
         version: 4.1.12
@@ -226,6 +226,11 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.30':
     resolution: {integrity: sha512-GQ7Nw5G2lTu/BtHTKfXhKHok2WGetd4XYcVKGx00SjAk8GMwgJM3zr6zORiPGuOE+/vkc90KtTosSSvaCjKb2Q==}
+
+  '@lucide/svelte@0.542.0':
+    resolution: {integrity: sha512-NuWttxTVfMSURpOxcKiKvoCtma3JtEpcJWzF/0cO69saZfXlv6G8NYAvEEGLmk75YPl+I+ROe+F97WhddM8r2A==}
+    peerDependencies:
+      svelte: ^5
 
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
@@ -700,11 +705,6 @@ packages:
   locate-character@3.0.0:
     resolution: {integrity: sha512-SW13ws7BjaeJ6p7Q6CO2nchbYEc3X3J6WrmTTDto7yMPqVSZTUyY5Tjbid+Ab8gLnATtygYtiDIJGQRRn2ZOiA==}
 
-  lucide-svelte@0.542.0:
-    resolution: {integrity: sha512-KxqJycY4EWaGy1zk/7sqEcf48j4YaP9zEujYczzrsw5j9b9b5pjAJ1qGFKZvD7T6xz9reSYAfUAd6Bz62TdqGw==}
-    peerDependencies:
-      svelte: ^3 || ^4 || ^5.0.0-next.42
-
   magic-string@0.30.18:
     resolution: {integrity: sha512-yi8swmWbO17qHhwIBNeeZxTceJMeBvWJaId6dyvTSOwTipqeHhMhOrz6513r1sOKnpvQ7zkhlG8tPrpilwTxHQ==}
 
@@ -779,8 +779,8 @@ packages:
   set-cookie-parser@2.7.1:
     resolution: {integrity: sha512-IOc8uWeOZgnb3ptbCURJWNjWUPcO3ZnTTdzsurqERrP6nPyv+paC55vJM0LpOlT2ne+Ix+9+CRG1MNLlyZ4GjQ==}
 
-  sirv@3.0.1:
-    resolution: {integrity: sha512-FoqMu0NCGBLCcAkS1qA+XJIQTR6/JHfQXl+uGteNCQ76T91DMUjPa9xfmeqMY3z80nLSg9yQmNjK0Px6RWsH/A==}
+  sirv@3.0.2:
+    resolution: {integrity: sha512-2wcC/oGxHis/BoHkkPwldgiPSYcpZK3JU28WoMVv55yHJgcZ8rlXvuG9iZggz+sU1d4bRgIGASwyWqjxu3FM0g==}
     engines: {node: '>=18'}
 
   source-map-js@1.2.1:
@@ -1004,6 +1004,10 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
+  '@lucide/svelte@0.542.0(svelte@5.38.6)':
+    dependencies:
+      svelte: 5.38.6
+
   '@polka/url@1.0.0-next.29': {}
 
   '@rollup/rollup-android-arm-eabi@4.50.0':
@@ -1094,7 +1098,7 @@ snapshots:
       mrmime: 2.0.1
       sade: 1.8.1
       set-cookie-parser: 2.7.1
-      sirv: 3.0.1
+      sirv: 3.0.2
       svelte: 5.38.6
       vite: 7.1.4(@types/node@22.18.0)(jiti@2.5.1)(lightningcss@1.30.1)
 
@@ -1418,10 +1422,6 @@ snapshots:
 
   locate-character@3.0.0: {}
 
-  lucide-svelte@0.542.0(svelte@5.38.6):
-    dependencies:
-      svelte: 5.38.6
-
   magic-string@0.30.18:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
@@ -1506,7 +1506,7 @@ snapshots:
 
   set-cookie-parser@2.7.1: {}
 
-  sirv@3.0.1:
+  sirv@3.0.2:
     dependencies:
       '@polka/url': 1.0.0-next.29
       mrmime: 2.0.1

@@ -137,50 +137,24 @@ export class ChromeAPIWrapper {
     try {
       console.log('Getting media stream for streamId:', streamId)
 
-      // Chrome扩展的正确约束格式
+      // Chrome扩展的正确约束格式（与工作版本保持一致）
       const constraints = {
         audio: false,
         video: {
           mandatory: {
             chromeMediaSource: 'desktop',
             chromeMediaSourceId: streamId
-          },
-          optional: [
-            { minWidth: 640 },
-            { minHeight: 480 },
-            { maxWidth: 1920 },
-            { maxHeight: 1080 },
-            { minFrameRate: 15 },
-            { maxFrameRate: 30 }
-          ]
+          }
         }
       }
 
       console.log('Using constraints:', constraints)
+      console.log('Calling navigator.mediaDevices.getUserMedia...')
 
-      // 使用 getUserMedia 获取媒体流
-      // 首先尝试完整约束，如果失败则使用简化约束
-      let stream: MediaStream
+      // 使用 getUserMedia 获取媒体流（与工作版本保持一致）
+      const stream = await navigator.mediaDevices.getUserMedia(constraints as any)
 
-      try {
-        stream = await navigator.mediaDevices.getUserMedia(constraints as any)
-      } catch (error) {
-        console.warn('Full constraints failed, trying simplified constraints:', error)
-
-        // 简化约束 - 只包含必需的参数
-        const simpleConstraints = {
-          audio: false,
-          video: {
-            mandatory: {
-              chromeMediaSource: 'desktop',
-              chromeMediaSourceId: streamId
-            }
-          }
-        }
-
-        console.log('Using simplified constraints:', simpleConstraints)
-        stream = await navigator.mediaDevices.getUserMedia(simpleConstraints as any)
-      }
+      console.log('getUserMedia returned:', stream)
 
       if (!stream) {
         throw new Error('Failed to get media stream')

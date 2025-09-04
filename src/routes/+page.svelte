@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Monitor, MousePointer } from 'lucide-svelte';
+  import { Monitor, MousePointer } from '@lucide/svelte';
   // 根页面 - 重定向到 sidepanel
 </script>
 

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { ChromeAPIWrapper } from '$lib/utils/chrome-api'
-  import { Monitor, AlertCircle, Loader2 } from 'lucide-svelte'
+  import { Monitor, AlertCircle, Loader2 } from '@lucide/svelte'
   
   let isLoading = false
   let error = ''
