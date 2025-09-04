@@ -9,6 +9,7 @@
   import type { RecordingOptions } from '$lib/types/recording'
   import VideoPreview from '$lib/components/VideoPreview.svelte'
   import VideoPreviewComposite from '$lib/components/VideoPreviewComposite.svelte'
+  import VideoExportPanel from '$lib/components/VideoExportPanel.svelte'
 
   // 录制状态
   let isRecording = $state(false)
@@ -1467,6 +1468,30 @@
           已收集 {workerEncodedChunks.length} 个编码块
         </div>
       {/if}
+    </div>
+
+    <!-- 视频导出面板 -->
+    <div class="border-t border-purple-300 pt-2 mt-2">
+      <VideoExportPanel
+        encodedChunks={workerEncodedChunks}
+        backgroundConfig={{
+          type: 'gradient',
+          color: '#3b82f6',
+          padding: 60,
+          outputRatio: '16:9',
+          videoPosition: 'center',
+          borderRadius: 25,
+          inset: 80,
+          shadow: {
+            offsetX: 20,
+            offsetY: 30,
+            blur: 60,
+            color: 'rgba(0, 0, 0, 0.6)'
+          }
+        }}
+        isRecordingComplete={workerStatus === 'completed' || workerStatus === 'idle'}
+        className="export-panel"
+      />
     </div>
 
     {#if showWorkerDetails && workerIsRecording}

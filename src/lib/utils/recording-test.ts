@@ -1,6 +1,6 @@
 // 录制功能测试工具
 import { recordingService } from '../services/recording-service'
-import { recordingStore } from '../stores/recording'
+import { recordingStore } from '../stores/recording.svelte'
 import type { RecordingOptions } from '../types/recording'
 
 export class RecordingTest {

@@ -390,7 +390,7 @@
         min="0"
         max={totalFrames - 1}
         value={currentFrameIndex}
-        oninput={(e) => seekToFrame(parseInt(e.target.value))}
+        oninput={(e) => seekToFrame(parseInt((e.target as HTMLInputElement).value))}
         disabled={isProcessing}
       />
     </div>

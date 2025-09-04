@@ -1,5 +1,6 @@
 // Video Composite Worker - 负责视频背景合成和处理
 // 使用 OffscreenCanvas 进行高性能视频合成
+// 支持预览显示和 MP4 导出
 
 // 类型定义
 interface BackgroundConfig {
