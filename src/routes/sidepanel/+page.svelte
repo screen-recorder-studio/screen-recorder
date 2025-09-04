@@ -8,6 +8,7 @@
   import { recordingStore } from '$lib/stores/recording.svelte'
   import type { RecordingOptions } from '$lib/types/recording'
   import VideoPreview from '$lib/components/VideoPreview.svelte'
+  import VideoPreviewComposite from '$lib/components/VideoPreviewComposite.svelte'
 
   // 录制状态
   let isRecording = $state(false)
@@ -614,9 +615,9 @@
         recordingStore.updateStatus('error', 'No encoded chunks to save')
       }
 
-      // 清理
-      workerEncodedChunks = []
+      // 清理 Worker 引用（但保留编码数据供预览使用）
       workerCurrentWorker = null
+      // 注意：不清空 workerEncodedChunks，让预览组件继续使用
 
     } catch (error) {
       console.error('❌ Worker stop failed:', error)
@@ -1418,6 +1419,26 @@
     <div class="border-t border-purple-300 pt-2 mt-2">
       <div class="text-xs text-purple-700 mb-2">录制预览:</div>
 
+      <!-- 使用新的 VideoPreviewComposite 组件 -->
+      <VideoPreviewComposite
+        encodedChunks={workerEncodedChunks}
+        isRecordingComplete={workerStatus === 'completed' || workerStatus === 'idle'}
+        backgroundConfig={{
+          type: 'solid-color',
+          color: '#3b82f6',
+          padding: 60,
+          outputRatio: '16:9',
+          videoPosition: 'center'
+        }}
+        displayWidth={640}
+        displayHeight={360}
+        showControls={true}
+        showTimeline={true}
+        className="worker-video-preview"
+      />
+
+      <!-- 保留原有的 VideoPreview 作为对比 -->
+      <!--
       <VideoPreview
         bind:this={videoPreviewRef}
         displayWidth={640}
@@ -1431,6 +1452,7 @@
         isDecoding={isDecodingVideo}
         className="border border-purple-300 rounded"
       />
+      -->
 
       {#if workerEncodedChunks.length > 0}
         <div class="text-xs text-purple-600 mt-2">
