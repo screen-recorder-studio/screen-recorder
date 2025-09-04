@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte'
   import { ChromeAPIWrapper } from '$lib/utils/chrome-api'
+  import { Play, Square, RotateCcw, AlertCircle, CheckCircle, Clock } from 'lucide-svelte'
 
   // 录制状态
   let isRecording = false
@@ -453,65 +454,85 @@
   <title>屏幕录制</title>
 </svelte:head>
 
-<div class="sidepanel-container">
-  <h1>屏幕录制</h1>
+<div class="flex flex-col h-screen p-4 gap-4 font-sans overflow-y-auto">
+  <h1 class="text-lg font-semibold text-gray-900 text-center">屏幕录制</h1>
 
-  <div class="status-section">
-    <div class="status-indicator" class:recording={isRecording} class:error={status === 'error'}>
+  <div class="flex items-center justify-center">
+    <div class="flex items-center gap-2 px-4 py-3 rounded-lg border-2 border-transparent transition-all duration-200 min-w-[200px] text-center text-sm font-medium
+      {status === 'recording' ? 'bg-red-50 text-red-600 border-red-200 animate-pulse' :
+       status === 'error' ? 'bg-red-50 text-red-600 border-red-300' :
+       'bg-gray-50 text-gray-600'}">
       {#if status === 'requesting'}
-        🔄 请求权限中...
+        <RotateCcw class="w-4 h-4 animate-spin" />
+        请求权限中...
       {:else if status === 'recording'}
-        🔴 录制中 - {formatDuration(duration)}
+        <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+        录制中 - {formatDuration(duration)}
       {:else if status === 'stopping'}
-        ⏹️ 停止中...
+        <Square class="w-4 h-4" />
+        停止中...
       {:else if status === 'error'}
-        ❌ {errorMessage}
+        <AlertCircle class="w-4 h-4" />
+        {errorMessage}
       {:else}
-        ✅ 就绪
+        <CheckCircle class="w-4 h-4" />
+        就绪
       {/if}
     </div>
   </div>
 
   {#if status === 'recording'}
-    <div class="recording-info">
-      <div class="info-item">
-        <span class="label">录制时长:</span>
-        <span class="value">{formatDuration(duration)}</span>
+    <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 flex flex-col gap-2">
+      <div class="flex justify-between items-center">
+        <span class="text-sm text-gray-600 font-medium">录制时长:</span>
+        <span class="text-sm text-gray-900 font-semibold flex items-center gap-1">
+          <Clock class="w-4 h-4" />
+          {formatDuration(duration)}
+        </span>
       </div>
-      <div class="info-item">
-        <span class="label">状态:</span>
-        <span class="value recording-status">● 录制中</span>
+      <div class="flex justify-between items-center">
+        <span class="text-sm text-gray-600 font-medium">状态:</span>
+        <span class="text-sm text-red-600 font-semibold flex items-center gap-1 animate-pulse">
+          <div class="w-2 h-2 bg-red-500 rounded-full"></div>
+          录制中
+        </span>
       </div>
     </div>
   {/if}
 
-  <div class="controls">
+  <div class="flex flex-col gap-3">
     <button
-      class="record-button"
-      class:recording={isRecording}
-      class:requesting={status === 'requesting'}
-      class:stopping={status === 'stopping'}
+      class="flex items-center justify-center gap-2 px-6 py-4 rounded-lg font-semibold text-base transition-all duration-200 relative overflow-hidden
+        {status === 'requesting' ? 'bg-amber-500 text-white cursor-not-allowed opacity-60' :
+         status === 'stopping' ? 'bg-gray-500 text-white cursor-not-allowed opacity-60' :
+         isRecording ? 'bg-red-600 text-white hover:bg-red-700 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-red-600/30' :
+         'bg-blue-600 text-white hover:bg-blue-700 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-600/30'}"
       disabled={status === 'requesting' || status === 'stopping'}
       on:click={handleRecordButtonClick}
     >
       {#if status === 'requesting'}
-        🔄 请求权限...
+        <RotateCcw class="w-5 h-5 animate-spin" />
+        请求权限...
       {:else if status === 'stopping'}
-        ⏹️ 停止中...
+        <Square class="w-5 h-5" />
+        停止中...
       {:else if isRecording}
-        ⏹️ 停止录制
+        <Square class="w-5 h-5" />
+        停止录制
       {:else}
-        🎥 开始录制
+        <Play class="w-5 h-5" />
+        开始录制
       {/if}
     </button>
   </div>
 
   {#if errorMessage}
-    <div class="error-section">
-      <div class="error-message">
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 my-3">
+      <div class="flex items-center gap-2 text-red-600 text-sm font-semibold mb-3">
+        <AlertCircle class="w-4 h-4" />
         <strong>错误:</strong> {errorMessage}
       </div>
-      <div class="error-help">
+      <div class="text-red-900 text-sm leading-relaxed">
         {#if errorMessage.includes('DESKTOP_CAPTURE_CANCELLED')}
           <p><strong>用户取消了屏幕共享权限</strong></p>
           <p>📋 <strong>如何授予屏幕录制权限：</strong></p>
@@ -576,16 +597,16 @@
             <li>重启系统后重试</li>
           </ul>
         {:else}
-          <p>请检查权限设置或重试</p>
-          <p>错误详情: {errorMessage}</p>
+          <p class="my-2">请检查权限设置或重试</p>
+          <p class="my-2">错误详情: {errorMessage}</p>
         {/if}
       </div>
     </div>
   {/if}
 
-  <div class="info-section">
-    <h3>使用说明</h3>
-    <ul>
+  <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-auto">
+    <h3 class="text-sm font-semibold text-blue-900 mb-2">使用说明</h3>
+    <ul class="text-xs text-blue-800 space-y-1 pl-4 list-disc">
       <li>点击"开始录制"按钮启动屏幕录制</li>
       <li>选择要录制的屏幕、窗口或标签页</li>
       <li>录制完成后文件将自动保存到下载文件夹</li>
@@ -594,238 +615,3 @@
   </div>
 </div>
 
-<style>
-  .sidepanel-container {
-    padding: 16px;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    overflow-y: auto;
-  }
-
-  h1 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 600;
-    color: #1f2937;
-    text-align: center;
-  }
-
-  h3 {
-    margin: 0 0 8px 0;
-    font-size: 14px;
-    font-weight: 600;
-    color: #374151;
-  }
-
-  .status-section {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-
-  .status-indicator {
-    padding: 12px 16px;
-    border-radius: 8px;
-    background: #f3f4f6;
-    color: #6b7280;
-    font-size: 14px;
-    font-weight: 500;
-    text-align: center;
-    min-width: 200px;
-    border: 2px solid transparent;
-    transition: all 0.2s ease;
-  }
-
-  .status-indicator.recording {
-    background: #fef2f2;
-    color: #dc2626;
-    border-color: #fecaca;
-    animation: pulse 2s infinite;
-  }
-
-  .status-indicator.error {
-    background: #fef2f2;
-    color: #dc2626;
-    border-color: #fca5a5;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
-  }
-
-  .recording-info {
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .info-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .label {
-    font-size: 13px;
-    color: #6b7280;
-    font-weight: 500;
-  }
-
-  .value {
-    font-size: 13px;
-    color: #1f2937;
-    font-weight: 600;
-  }
-
-  .recording-status {
-    color: #dc2626;
-    animation: blink 1.5s infinite;
-  }
-
-  @keyframes blink {
-    0%, 50% { opacity: 1; }
-    51%, 100% { opacity: 0.3; }
-  }
-
-  .controls {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .record-button {
-    padding: 16px 24px;
-    border: none;
-    border-radius: 8px;
-    background: #3b82f6;
-    color: white;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .record-button:hover:not(:disabled) {
-    background: #2563eb;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-  }
-
-  .record-button.recording {
-    background: #dc2626;
-  }
-
-  .record-button.recording:hover:not(:disabled) {
-    background: #b91c1c;
-    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
-  }
-
-  .record-button.requesting {
-    background: #f59e0b;
-  }
-
-  .record-button.stopping {
-    background: #6b7280;
-  }
-
-  .record-button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-  }
-
-  .error-section {
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    border-radius: 8px;
-    padding: 16px;
-    margin: 12px 0;
-  }
-
-  .error-message {
-    color: #dc2626;
-    font-size: 14px;
-    font-weight: 600;
-    margin-bottom: 12px;
-  }
-
-  .error-help {
-    color: #991b1b;
-    font-size: 13px;
-    line-height: 1.5;
-  }
-
-  .error-help p {
-    margin: 8px 0;
-  }
-
-  .error-help ol, .error-help ul {
-    margin: 8px 0;
-    padding-left: 20px;
-  }
-
-  .error-help li {
-    margin: 4px 0;
-    line-height: 1.4;
-  }
-
-  .error-help ul ul {
-    margin: 4px 0;
-    padding-left: 16px;
-  }
-
-  .error-help strong {
-    color: #7f1d1d;
-  }
-
-  .info-section {
-    background: #f0f9ff;
-    border: 1px solid #bae6fd;
-    border-radius: 8px;
-    padding: 12px;
-    margin-top: auto;
-  }
-
-  .info-section ul {
-    margin: 8px 0 0 0;
-    padding-left: 16px;
-  }
-
-  .info-section li {
-    font-size: 12px;
-    color: #0369a1;
-    margin-bottom: 4px;
-    line-height: 1.4;
-  }
-
-  /* 响应式设计 */
-  @media (max-width: 320px) {
-    .sidepanel-container {
-      padding: 12px;
-      gap: 12px;
-    }
-
-    .status-indicator {
-      min-width: 160px;
-      padding: 10px 12px;
-      font-size: 13px;
-    }
-
-    .record-button {
-      padding: 14px 20px;
-      font-size: 14px;
-    }
-  }
-</style>

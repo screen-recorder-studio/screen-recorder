@@ -30,5 +30,10 @@
 		"onlyBuiltDependencies": [
 			"esbuild"
 		]
+	},
+	"dependencies": {
+		"@tailwindcss/vite": "^4.1.12",
+		"lucide-svelte": "^0.542.0",
+		"tailwindcss": "^4.1.12"
 	}
 }
