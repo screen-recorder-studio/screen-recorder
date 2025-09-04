@@ -1,5 +1,12 @@
-// WebM 导出 Worker - 处理编辑后视频的 WebM 格式导出
-import type { EncodedChunk, ExportOptions, BackgroundConfig } from '../types/background'
+// WebM 导出 Worker - 协调视频合成和 WebM 导出
+// 使用 video-composite-worker 进行合成，然后用 Mediabunny 导出 WebM
+import type { EncodedChunk, ExportOptions } from '../types/background'
+import {
+  Output,
+  WebMOutputFormat,
+  BufferTarget,
+  CanvasSource
+} from 'mediabunny'
 
 interface ExportData {
   chunks: EncodedChunk[]
@@ -18,6 +25,14 @@ interface ProgressData {
 // Worker 状态
 let isExporting = false
 let shouldCancel = false
+let compositeWorker: Worker | null = null
+let offscreenCanvas: OffscreenCanvas | null = null
+let canvasCtx: OffscreenCanvasRenderingContext2D | null = null
+
+// 合成状态
+let totalFrames = 0
+let processedFrames = 0
+let videoInfo: { width: number, height: number, frameRate: number } | null = null
 
 // 消息处理
 self.onmessage = async (event) => {
@@ -34,10 +49,10 @@ self.onmessage = async (event) => {
         break
 
       default:
-        console.warn('⚠️ [WebM-Worker] Unknown message type:', type)
+        console.warn('⚠️ [WebM-Export-Worker] Unknown message type:', type)
     }
   } catch (error) {
-    console.error('❌ [WebM-Worker] Error processing message:', error)
+    console.error('❌ [WebM-Export-Worker] Error processing message:', error)
     self.postMessage({
       type: 'error',
       data: { error: (error as Error).message }
@@ -57,332 +72,426 @@ async function handleExport(exportData: ExportData) {
   shouldCancel = false
 
   try {
-    console.log('🎬 [WebM-Worker] Starting WebM export')
-    console.log('📊 [WebM-Worker] Input chunks:', exportData.chunks.length)
-    console.log('⚙️ [WebM-Worker] Export options:', exportData.options)
+    console.log('🎬 [WebM-Export-Worker] Starting WebM export')
+    console.log('📊 [WebM-Export-Worker] Input chunks:', exportData.chunks.length)
+    console.log('⚙️ [WebM-Export-Worker] Export options:', exportData.options)
 
     const { chunks, options } = exportData
 
     // 更新进度：准备阶段
     updateProgress({
       stage: 'preparing',
-      progress: 0,
+      progress: 5,
       currentFrame: 0,
       totalFrames: chunks.length
     })
 
-    let finalChunks = chunks
+    if (shouldCancel) return
 
-    // 如果需要背景合成，先进行合成处理
-    if (options.includeBackground && options.backgroundConfig) {
-      console.log('🎨 [WebM-Worker] Starting background composition')
-      finalChunks = await composeWithBackground(chunks, options.backgroundConfig)
-      
-      if (shouldCancel) return
-    }
+    // 1. 创建并初始化 video-composite-worker
+    console.log('🔄 [WebM-Export-Worker] Creating composite worker')
+    await createCompositeWorker()
 
-    // 创建 WebM 容器
-    console.log('📦 [WebM-Worker] Creating WebM container')
-    const webmBlob = await createWebMContainer(finalChunks, options)
+    if (shouldCancel) return
+
+    // 2. 处理视频合成
+    console.log('🎨 [WebM-Export-Worker] Starting video composition')
+    await processVideoComposition(chunks, options)
+
+    if (shouldCancel) return
+
+    // 3. 导出 WebM
+    console.log('📦 [WebM-Export-Worker] Starting WebM export')
+    const webmBlob = await exportToWebM(options)
 
     if (shouldCancel) return
 
     // 完成导出
-    console.log('✅ [WebM-Worker] WebM export completed')
+    console.log('✅ [WebM-Export-Worker] WebM export completed')
     self.postMessage({
       type: 'complete',
       data: { blob: webmBlob }
     })
 
   } catch (error) {
-    console.error('❌ [WebM-Worker] Export failed:', error)
+    console.error('❌ [WebM-Export-Worker] Export failed:', error)
     self.postMessage({
       type: 'error',
       data: { error: (error as Error).message }
     })
   } finally {
+    cleanup()
     isExporting = false
   }
 }
 
 /**
- * 背景合成处理
+ * 创建 video-composite-worker
  */
-async function composeWithBackground(
-  chunks: EncodedChunk[],
-  backgroundConfig: BackgroundConfig
-): Promise<EncodedChunk[]> {
-  
-  console.log('🎨 [WebM-Worker] Compositing with background:', backgroundConfig.type)
-  
-  // 更新进度：合成阶段
-  updateProgress({
-    stage: 'compositing',
-    progress: 10,
-    currentFrame: 0,
-    totalFrames: chunks.length
-  })
-
-  // 创建合成 Worker（嵌套 Worker）
-  const compositeWorker = new Worker(
-    new URL('./video-composite-worker.ts', import.meta.url),
-    { type: 'module' }
-  )
-
+async function createCompositeWorker(): Promise<void> {
   return new Promise((resolve, reject) => {
-    const compositedChunks: EncodedChunk[] = []
-    let processedFrames = 0
+    try {
+      // 创建 composite worker
+      compositeWorker = new Worker(
+        new URL('./video-composite-worker.ts', import.meta.url),
+        { type: 'module' }
+      )
 
-    compositeWorker.onmessage = (event) => {
-      const { type, data } = event.data
+      // 设置消息处理
+      compositeWorker.onmessage = (event) => {
+        const { type, data } = event.data
 
-      switch (type) {
-        case 'initialized':
-          // 开始合成处理
-          compositeWorker.postMessage({
-            type: 'process',
-            data: {
-              chunks: chunks.map(chunk => ({
-                data: chunk.data.buffer.slice(chunk.data.byteOffset, chunk.data.byteOffset + chunk.data.byteLength),
-                timestamp: chunk.timestamp,
-                type: chunk.type,
-                size: chunk.size,
-                codedWidth: chunk.codedWidth,
-                codedHeight: chunk.codedHeight,
-                codec: chunk.codec
-              })),
-              backgroundConfig
+        switch (type) {
+          case 'initialized':
+            console.log('✅ [WebM-Export-Worker] Composite worker initialized')
+            resolve()
+            break
+
+          case 'ready':
+            console.log('✅ [WebM-Export-Worker] Video composition ready:', data)
+            totalFrames = data.totalFrames
+            videoInfo = {
+              width: data.outputSize.width,
+              height: data.outputSize.height,
+              frameRate: 30 // 默认帧率
             }
-          }, { transfer: chunks.map(chunk => chunk.data.buffer) })
-          break
 
-        case 'frame':
-          // 收到合成后的帧，需要重新编码
-          processedFrames++
-          
-          // 更新合成进度
-          const compositeProgress = 10 + (processedFrames / chunks.length) * 40
-          updateProgress({
-            stage: 'compositing',
-            progress: compositeProgress,
-            currentFrame: processedFrames,
-            totalFrames: chunks.length
-          })
-          
-          // TODO: 将合成后的 ImageBitmap 重新编码为 EncodedChunk
-          // 这里需要使用 VideoEncoder 重新编码
-          break
+            // 创建 OffscreenCanvas 用于接收合成帧
+            createOffscreenCanvas(data.outputSize.width, data.outputSize.height)
+            break
 
-        case 'ready':
-          // 合成准备完成，开始处理
-          console.log('🎨 [WebM-Worker] Composite worker ready')
-          break
+          case 'frame':
+            // 接收合成后的帧
+            handleCompositeFrame(data.bitmap, data.frameIndex)
+            break
 
-        case 'complete':
-          console.log('✅ [WebM-Worker] Background composition completed')
-          compositeWorker.terminate()
-          
-          // 暂时返回原始块（实际应该返回重新编码的块）
-          // TODO: 实现完整的重新编码流程
-          resolve(chunks)
-          break
+          case 'complete':
+            console.log('🎉 [WebM-Export-Worker] Video composition completed')
+            break
 
-        case 'error':
-          console.error('❌ [WebM-Worker] Composite error:', data)
-          compositeWorker.terminate()
-          reject(new Error(data))
-          break
+          case 'error':
+            console.error('❌ [WebM-Export-Worker] Composite worker error:', data)
+            reject(new Error(data.error || 'Composite worker error'))
+            break
+        }
       }
-    }
 
-    compositeWorker.onerror = (error) => {
-      console.error('❌ [WebM-Worker] Composite worker error:', error)
-      compositeWorker.terminate()
-      reject(new Error('Composite worker failed'))
-    }
+      compositeWorker.onerror = (error) => {
+        console.error('❌ [WebM-Export-Worker] Composite worker error:', error)
+        reject(error)
+      }
 
-    // 初始化合成 Worker
-    compositeWorker.postMessage({ type: 'init' })
+      // 初始化 composite worker
+      compositeWorker.postMessage({ type: 'init' })
+
+    } catch (error) {
+      reject(error)
+    }
   })
 }
 
 /**
- * 创建 WebM 容器
+ * 创建 OffscreenCanvas
  */
-async function createWebMContainer(
-  chunks: EncodedChunk[],
-  options: ExportOptions
-): Promise<Blob> {
-  
-  console.log('📦 [WebM-Worker] Creating WebM container with', chunks.length, 'chunks')
-  
-  // 更新进度：封装阶段
-  updateProgress({
-    stage: 'muxing',
-    progress: 60,
-    currentFrame: 0,
-    totalFrames: chunks.length
-  })
+function createOffscreenCanvas(width: number, height: number) {
+  offscreenCanvas = new OffscreenCanvas(width, height)
+  canvasCtx = offscreenCanvas.getContext('2d')
 
-  try {
-    // 创建 WebM 头部
-    const header = createWebMHeader(options)
-    
-    // 处理所有数据块
-    const dataSegments: Uint8Array[] = []
-    let totalSize = header.byteLength
+  if (!canvasCtx) {
+    throw new Error('Failed to get 2D context from OffscreenCanvas')
+  }
 
-    for (let i = 0; i < chunks.length; i++) {
-      if (shouldCancel) throw new Error('Export cancelled')
+  console.log('🎨 [WebM-Export-Worker] OffscreenCanvas created:', { width, height })
+}
 
-      const chunk = chunks[i]
-      
-      // 创建 WebM 帧数据
-      const frameData = createWebMFrame(chunk, i)
-      dataSegments.push(frameData)
-      totalSize += frameData.byteLength
-
-      // 更新封装进度
-      const muxProgress = 60 + ((i + 1) / chunks.length) * 30
-      updateProgress({
-        stage: 'muxing',
-        progress: muxProgress,
-        currentFrame: i + 1,
-        totalFrames: chunks.length,
-        fileSize: totalSize
-      })
+/**
+ * 处理视频合成
+ */
+async function processVideoComposition(chunks: EncodedChunk[], options: ExportOptions): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (!compositeWorker) {
+      reject(new Error('Composite worker not available'))
+      return
     }
 
-    // 更新进度：完成阶段
+    // 更新进度
+    updateProgress({
+      stage: 'compositing',
+      progress: 10,
+      currentFrame: 0,
+      totalFrames: chunks.length
+    })
+
+    // 准备可传输的数据块
+    const transferableChunks = chunks.map(chunk => ({
+      data: chunk.data.buffer.slice(chunk.data.byteOffset, chunk.data.byteOffset + chunk.data.byteLength),
+      timestamp: chunk.timestamp,
+      type: chunk.type,
+      size: chunk.size,
+      codedWidth: chunk.codedWidth,
+      codedHeight: chunk.codedHeight,
+      codec: chunk.codec
+    }))
+
+    // 收集所有 ArrayBuffer 用于转移
+    const transferList = transferableChunks.map(chunk => chunk.data)
+
+    // 发送处理请求到 composite worker
+    compositeWorker.postMessage({
+      type: 'process',
+      data: {
+        chunks: transferableChunks,
+        backgroundConfig: options.backgroundConfig || {
+          type: 'solid-color',
+          color: '#000000',
+          padding: 0,
+          outputRatio: '16:9',
+          videoPosition: 'center'
+        }
+      }
+    }, { transfer: transferList })
+
+    // 等待处理完成
+    const originalOnMessage = compositeWorker.onmessage
+    compositeWorker.onmessage = (event) => {
+      const { type, data } = event.data
+
+      if (type === 'ready') {
+        // 恢复原始消息处理
+        compositeWorker!.onmessage = originalOnMessage
+        if (originalOnMessage && compositeWorker) {
+          originalOnMessage.call(compositeWorker, event)
+        }
+        resolve()
+      } else if (type === 'error') {
+        reject(new Error(data.error || 'Composition failed'))
+      } else {
+        // 转发其他消息
+        if (originalOnMessage && compositeWorker) {
+          originalOnMessage.call(compositeWorker, event)
+        }
+      }
+    }
+  })
+}
+
+/**
+ * 处理合成帧
+ */
+function handleCompositeFrame(bitmap: ImageBitmap, frameIndex: number) {
+  if (!canvasCtx || !offscreenCanvas) {
+    console.error('❌ [WebM-Export-Worker] Canvas not available')
+    return
+  }
+
+  try {
+    // 将 ImageBitmap 绘制到 Canvas
+    canvasCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height)
+    canvasCtx.drawImage(bitmap, 0, 0)
+
+    processedFrames++
+
+    // 更新进度
+    const progress = 20 + (processedFrames / totalFrames) * 50 // 20%-70%
+    updateProgress({
+      stage: 'compositing',
+      progress,
+      currentFrame: processedFrames,
+      totalFrames
+    })
+
+    console.log(`🎨 [WebM-Export-Worker] Frame ${frameIndex} composited (${processedFrames}/${totalFrames})`)
+
+  } catch (error) {
+    console.error('❌ [WebM-Export-Worker] Error handling composite frame:', error)
+  }
+}
+
+/**
+ * 导出 WebM
+ */
+async function exportToWebM(options: ExportOptions): Promise<Blob> {
+  if (!offscreenCanvas || !videoInfo) {
+    throw new Error('Canvas or video info not available')
+  }
+
+  console.log('🎬 [WebM-Export-Worker] Starting Mediabunny export')
+
+  try {
+    // 更新进度：编码阶段
+    updateProgress({
+      stage: 'encoding',
+      progress: 75,
+      currentFrame: 0,
+      totalFrames: 100
+    })
+
+    // 创建 Mediabunny 输出
+    const output = new Output({
+      format: new WebMOutputFormat(),
+      target: new BufferTarget()
+    })
+
+    // 创建 CanvasSource
+    const videoSource = new CanvasSource(offscreenCanvas, {
+      codec: 'vp9', // 使用 VP9 编码
+      bitrate: options.bitrate || 8000000
+    })
+
+    // 添加视频轨道
+    output.addVideoTrack(videoSource)
+
+    // 启动输出
+    await output.start()
+    console.log('✅ [WebM-Export-Worker] Mediabunny output started')
+
+    // 更新进度：封装阶段
+    updateProgress({
+      stage: 'muxing',
+      progress: 80,
+      currentFrame: 0,
+      totalFrames: totalFrames
+    })
+
+    // 计算帧参数
+    const { frameRate } = videoInfo
+    const duration = totalFrames / frameRate
+    const frameDuration = 1 / frameRate
+
+    console.log(`📊 [WebM-Export-Worker] Export parameters: duration=${duration}s, totalFrames=${totalFrames}, frameRate=${frameRate}`)
+
+    // 请求 composite worker 逐帧渲染并添加到 CanvasSource
+    await renderFramesForExport(videoSource, frameDuration)
+
+    // 完成输出
     updateProgress({
       stage: 'finalizing',
       progress: 95,
-      currentFrame: chunks.length,
-      totalFrames: chunks.length,
-      fileSize: totalSize
+      currentFrame: totalFrames,
+      totalFrames
     })
 
-    // 合并所有数据
-    const webmData = new Uint8Array(totalSize)
-    let offset = 0
+    await output.finalize()
+    console.log('✅ [WebM-Export-Worker] Mediabunny output finalized')
 
-    // 复制头部
-    webmData.set(header, offset)
-    offset += header.byteLength
-
-    // 复制所有帧数据
-    for (const segment of dataSegments) {
-      webmData.set(segment, offset)
-      offset += segment.byteLength
+    // 获取结果
+    const buffer = output.target.buffer
+    if (!buffer) {
+      throw new Error('No buffer data available from Mediabunny output')
     }
 
-    console.log('📦 [WebM-Worker] WebM container created, size:', webmData.byteLength, 'bytes')
+    const webmBlob = new Blob([buffer], { type: 'video/webm' })
+
+    console.log('✅ [WebM-Export-Worker] WebM export completed, size:', buffer.byteLength)
 
     // 最终进度
     updateProgress({
       stage: 'finalizing',
       progress: 100,
-      currentFrame: chunks.length,
-      totalFrames: chunks.length,
-      fileSize: webmData.byteLength
+      currentFrame: totalFrames,
+      totalFrames,
+      fileSize: buffer.byteLength
     })
 
-    return new Blob([webmData], { type: 'video/webm' })
+    return webmBlob
 
   } catch (error) {
-    console.error('❌ [WebM-Worker] Container creation failed:', error)
-    throw error
+    console.error('❌ [WebM-Export-Worker] WebM export failed:', error)
+    throw new Error(`WebM export failed: ${(error as Error).message}`)
   }
 }
 
 /**
- * 创建 WebM 头部
+ * 请求逐帧渲染用于导出
  */
-function createWebMHeader(options: ExportOptions): Uint8Array {
-  const resolution = options.resolution || { width: 1920, height: 1080 }
-  
-  // 简化的 WebM 头部（EBML + Segment + Info + Tracks）
-  return new Uint8Array([
-    // EBML Header
-    0x1A, 0x45, 0xDF, 0xA3, // EBML
-    0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1F, // Size
-    0x42, 0x86, 0x81, 0x01, // EBMLVersion = 1
-    0x42, 0xF7, 0x81, 0x01, // EBMLReadVersion = 1
-    0x42, 0xF2, 0x81, 0x04, // EBMLMaxIDLength = 4
-    0x42, 0xF3, 0x81, 0x08, // EBMLMaxSizeLength = 8
-    0x42, 0x82, 0x84, 0x77, 0x65, 0x62, 0x6D, // DocType = "webm"
-    0x42, 0x87, 0x81, 0x04, // DocTypeVersion = 4
-    0x42, 0x85, 0x81, 0x02, // DocTypeReadVersion = 2
-
-    // Segment
-    0x18, 0x53, 0x80, 0x67, // Segment
-    0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // Size (unknown)
-
-    // Info
-    0x15, 0x49, 0xA9, 0x66, // Info
-    0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x15, // Size
-    0x2A, 0xD7, 0xB1, 0x83, 0x0F, 0x42, 0x40, // TimecodeScale = 1000000
-    0x4D, 0x80, 0x84, 0x57, 0x65, 0x62, 0x4D, // MuxingApp = "WebM"
-
-    // Tracks
-    0x16, 0x54, 0xAE, 0x6B, // Tracks
-    0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x2F, // Size
-
-    // TrackEntry
-    0xAE, // TrackEntry
-    0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x2C, // Size
-    0xD7, 0x81, 0x01, // TrackNumber = 1
-    0x73, 0xC5, 0x81, 0x01, // TrackUID = 1
-    0x83, 0x81, 0x01, // TrackType = 1 (video)
-    0x86, 0x84, 0x56, 0x50, 0x38, 0x30, // CodecID = "VP80"
-
-    // Video
-    0xE0, // Video
-    0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, // Size
-    0xB0, 0x82, (resolution.width >> 8) & 0xFF, resolution.width & 0xFF, // PixelWidth
-    0xBA, 0x82, (resolution.height >> 8) & 0xFF, resolution.height & 0xFF, // PixelHeight
-  ])
-}
-
-/**
- * 创建 WebM 帧数据
- */
-function createWebMFrame(chunk: EncodedChunk, frameIndex: number): Uint8Array {
-  // 简化的帧封装（实际应该包含完整的 WebM 块结构）
-  const frameHeader = new Uint8Array([
-    // SimpleBlock 或 Block 头部
-    0xA3, // SimpleBlock
-    // Size (动态计算)
-    ...encodeSize(chunk.data.byteLength + 4),
-    // Track number
-    0x81,
-    // Timestamp (相对于 Cluster)
-    (chunk.timestamp >> 8) & 0xFF, chunk.timestamp & 0xFF,
-    // Flags
-    chunk.type === 'key' ? 0x80 : 0x00
-  ])
-
-  // 合并头部和数据
-  const frameData = new Uint8Array(frameHeader.byteLength + chunk.data.byteLength)
-  frameData.set(frameHeader, 0)
-  frameData.set(chunk.data, frameHeader.byteLength)
-
-  return frameData
-}
-
-/**
- * 编码 EBML 大小
- */
-function encodeSize(size: number): number[] {
-  if (size < 0x7F) {
-    return [0x80 | size]
-  } else if (size < 0x3FFF) {
-    return [0x40 | (size >> 8), size & 0xFF]
-  } else if (size < 0x1FFFFF) {
-    return [0x20 | (size >> 16), (size >> 8) & 0xFF, size & 0xFF]
-  } else {
-    return [0x10 | (size >> 24), (size >> 16) & 0xFF, (size >> 8) & 0xFF, size & 0xFF]
+async function renderFramesForExport(videoSource: any, frameDuration: number): Promise<void> {
+  if (!compositeWorker || !totalFrames) {
+    throw new Error('Composite worker or frame count not available')
   }
+
+  console.log(`🎬 [WebM-Export-Worker] Starting frame rendering for ${totalFrames} frames`)
+
+  // 逐帧请求合成并添加到 CanvasSource
+  for (let frameIndex = 0; frameIndex < totalFrames; frameIndex++) {
+    if (shouldCancel) break
+
+    const timestamp = frameIndex * frameDuration
+
+    try {
+      // 请求 composite worker 渲染指定帧
+      await requestCompositeFrame(frameIndex)
+
+      // 等待一帧时间确保渲染完成
+      await new Promise(resolve => setTimeout(resolve, 16))
+
+      // 添加当前 Canvas 状态到 CanvasSource
+      await videoSource.add(timestamp, frameDuration)
+
+      // 更新进度
+      const progress = 80 + (frameIndex / totalFrames) * 15 // 80%-95%
+      updateProgress({
+        stage: 'muxing',
+        progress,
+        currentFrame: frameIndex + 1,
+        totalFrames
+      })
+
+      // 每10帧输出一次日志
+      if (frameIndex % 10 === 0) {
+        console.log(`📊 [WebM-Export-Worker] Added frame ${frameIndex + 1}/${totalFrames}, timestamp: ${timestamp.toFixed(3)}s`)
+      }
+
+    } catch (error) {
+      console.error(`❌ [WebM-Export-Worker] Failed to add frame ${frameIndex}:`, error)
+      // 继续处理下一帧，不中断整个过程
+    }
+  }
+
+  console.log('✅ [WebM-Export-Worker] All frames added to CanvasSource')
+}
+
+/**
+ * 请求 composite worker 渲染指定帧
+ */
+async function requestCompositeFrame(frameIndex: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (!compositeWorker) {
+      reject(new Error('Composite worker not available'))
+      return
+    }
+
+    // 设置临时消息处理器等待帧渲染完成
+    const originalOnMessage = compositeWorker.onmessage
+    const timeout = setTimeout(() => {
+      compositeWorker!.onmessage = originalOnMessage
+      reject(new Error(`Frame ${frameIndex} rendering timeout`))
+    }, 5000) // 5秒超时
+
+    compositeWorker.onmessage = (event) => {
+      const { type, data } = event.data
+
+      if (type === 'frame' && data.frameIndex === frameIndex) {
+        // 恢复原始消息处理器
+        compositeWorker!.onmessage = originalOnMessage
+        clearTimeout(timeout)
+
+        // 处理接收到的帧
+        handleCompositeFrame(data.bitmap, data.frameIndex)
+        resolve()
+      } else {
+        // 转发其他消息
+        if (originalOnMessage && compositeWorker) {
+          originalOnMessage.call(compositeWorker, event)
+        }
+      }
+    }
+
+    // 请求渲染指定帧
+    compositeWorker.postMessage({
+      type: 'seek',
+      data: { frameIndex }
+    })
+  })
 }
 
 /**
@@ -399,9 +508,26 @@ function updateProgress(progress: ProgressData) {
  * 处理取消请求
  */
 function handleCancel() {
-  console.log('🛑 [WebM-Worker] Export cancelled')
+  console.log('🛑 [WebM-Export-Worker] Export cancelled')
   shouldCancel = true
+  cleanup()
+}
+
+/**
+ * 清理资源
+ */
+function cleanup() {
+  if (compositeWorker) {
+    compositeWorker.terminate()
+    compositeWorker = null
+  }
+
+  offscreenCanvas = null
+  canvasCtx = null
+  totalFrames = 0
+  processedFrames = 0
+  videoInfo = null
   isExporting = false
 }
 
-console.log('🎬 [WebM-Worker] WebM Export Worker loaded')
+console.log('🎥 [WebM-Export-Worker] WebM Export Worker loaded')
