@@ -1429,7 +1429,14 @@
           padding: 60,
           outputRatio: '16:9',
           videoPosition: 'center',
-          borderRadius: 25
+          borderRadius: 25,
+          inset: 80,
+          shadow: {
+            offsetX: 20,
+            offsetY: 30,
+            blur: 60,
+            color: 'rgba(0, 0, 0, 0.6)'
+          }
         }}
         displayWidth={640}
         displayHeight={360}

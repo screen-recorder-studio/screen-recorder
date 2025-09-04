@@ -15,6 +15,13 @@
       customHeight?: number
       videoPosition: 'center' | 'top' | 'bottom'
       borderRadius?: number
+      inset?: number
+      shadow?: {
+        offsetX: number
+        offsetY: number
+        blur: number
+        color: string
+      }
     }
     displayWidth?: number
     displayHeight?: number
@@ -191,6 +198,14 @@
 
     // 收集所有 ArrayBuffer 用于转移
     const transferList = transferableChunks.map(chunk => chunk.data)
+
+    console.log('📤 [VideoPreview] Sending config to worker:', {
+      type: backgroundConfig.type,
+      padding: backgroundConfig.padding,
+      inset: backgroundConfig.inset,
+      borderRadius: backgroundConfig.borderRadius,
+      shadow: backgroundConfig.shadow
+    });
 
     compositeWorker.postMessage({
       type: 'process',

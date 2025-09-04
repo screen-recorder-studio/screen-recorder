@@ -10,7 +10,14 @@ interface BackgroundConfig {
   customWidth?: number;
   customHeight?: number;
   videoPosition: 'center' | 'top' | 'bottom';
-  borderRadius?: number; // 视频圆角半径，默认 20px
+  borderRadius?: number; // 视频圆角半径，默认 0px
+  inset?: number; // 视频内缩距离，默认 0px
+  shadow?: {
+    offsetX: number;
+    offsetY: number;
+    blur: number;
+    color: string;
+  }; // 阴影效果，可选
 }
 
 interface CompositeMessage {
@@ -117,8 +124,19 @@ function calculateVideoLayout(
   videoHeight: number
 ): VideoLayout {
   const padding = config.padding || 60;
-  const availableWidth = outputWidth - padding * 2;
-  const availableHeight = outputHeight - padding * 2;
+  const inset = config.inset || 0; // 视频内缩距离
+  const totalPadding = padding + inset;
+  const availableWidth = outputWidth - totalPadding * 2;
+  const availableHeight = outputHeight - totalPadding * 2;
+
+  console.log('🔍 [COMPOSITE-WORKER] Layout calculation:', {
+    padding,
+    inset,
+    totalPadding,
+    outputSize: { width: outputWidth, height: outputHeight },
+    availableSize: { width: availableWidth, height: availableHeight },
+    videoSize: { width: videoWidth, height: videoHeight }
+  });
 
   // 保持视频纵横比的缩放计算
   const videoAspectRatio = videoWidth / videoHeight;
@@ -130,14 +148,14 @@ function calculateVideoLayout(
     // 视频更宽，以可用宽度为准
     layoutWidth = availableWidth;
     layoutHeight = availableWidth / videoAspectRatio;
-    layoutX = padding;
-    layoutY = padding + (availableHeight - layoutHeight) / 2; // 垂直居中
+    layoutX = totalPadding;
+    layoutY = totalPadding + (availableHeight - layoutHeight) / 2; // 垂直居中
   } else {
     // 视频更高，以可用高度为准
     layoutHeight = availableHeight;
     layoutWidth = availableHeight * videoAspectRatio;
-    layoutX = padding + (availableWidth - layoutWidth) / 2; // 水平居中
-    layoutY = padding;
+    layoutX = totalPadding + (availableWidth - layoutWidth) / 2; // 水平居中
+    layoutY = totalPadding;
   }
 
   return {
@@ -201,27 +219,50 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
     // 2. 绘制背景（支持渐变）
     renderBackground(config);
 
-    // 3. 保存当前状态
+    // 3. 绘制阴影（如果配置了阴影）
+    const borderRadius = config.borderRadius || 0;
+
+    if (config.shadow) {
+      ctx.save();
+
+      // 设置阴影效果
+      ctx.shadowOffsetX = config.shadow.offsetX;
+      ctx.shadowOffsetY = config.shadow.offsetY;
+      ctx.shadowBlur = config.shadow.blur;
+      ctx.shadowColor = config.shadow.color;
+
+      // 绘制阴影形状
+      if (borderRadius > 0) {
+        createRoundedRectPath(layout.x, layout.y, layout.width, layout.height, borderRadius);
+        ctx.fill();
+      } else {
+        ctx.fillRect(layout.x, layout.y, layout.width, layout.height);
+      }
+
+      ctx.restore();
+    }
+
+    // 4. 保存状态并绘制视频
     ctx.save();
 
-    // 4. 创建圆角遮罩（如果配置了圆角）
-    const borderRadius = config.borderRadius || 0; // 默认无圆角
-
+    // 5. 创建圆角遮罩（如果配置了圆角）
     if (borderRadius > 0) {
       createRoundedRectPath(layout.x, layout.y, layout.width, layout.height, borderRadius);
       ctx.clip();
     }
 
-    // 5. 绘制视频帧（如果有圆角会被遮罩裁剪）
+    // 6. 绘制视频帧
     ctx.drawImage(frame, layout.x, layout.y, layout.width, layout.height);
 
-    // 6. 恢复状态
+    // 7. 恢复状态
     ctx.restore();
 
-    // 7. 转换为 ImageBitmap（高效传输）
+    // 8. 转换为 ImageBitmap（高效传输）
     const bitmap = offscreenCanvas.transferToImageBitmap();
 
-    console.log(`🎨 [COMPOSITE-WORKER] Frame rendered: ${layout.width}x${layout.height} at (${layout.x}, ${layout.y}), background: ${config.type}, border radius: ${borderRadius}px`);
+    const inset = config.inset || 0;
+    const shadowInfo = config.shadow ? `shadow: ${config.shadow.offsetX},${config.shadow.offsetY},${config.shadow.blur}` : 'no shadow';
+    console.log(`🎨 [COMPOSITE-WORKER] Frame rendered: ${layout.width}x${layout.height} at (${layout.x}, ${layout.y}), background: ${config.type}, border radius: ${borderRadius}px, inset: ${inset}px, ${shadowInfo}`);
 
     return bitmap;
   } catch (error) {
@@ -400,7 +441,15 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         }
 
         currentConfig = data.backgroundConfig;
-        
+
+        console.log('🔧 [COMPOSITE-WORKER] Received config:', {
+          type: currentConfig.type,
+          padding: currentConfig.padding,
+          inset: currentConfig.inset,
+          borderRadius: currentConfig.borderRadius,
+          shadow: currentConfig.shadow
+        });
+
         // 计算输出尺寸
         const firstChunk = data.chunks[0];
         const sourceWidth = firstChunk.codedWidth || 1920;
