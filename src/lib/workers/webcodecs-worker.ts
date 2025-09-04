@@ -3,6 +3,7 @@
 
 let encoder: VideoEncoder | null = null
 let chunks: Uint8Array[] = []
+let currentEncoderConfig: VideoEncoderConfig | null = null
 
 // 处理主线程消息
 self.onmessage = async (event) => {
@@ -127,6 +128,9 @@ async function configureEncoder(config: any) {
     console.log('🔧 [WORKER] Applying configuration to encoder...')
     encoder.configure(encoderConfig)
 
+    // 保存配置信息供后续使用
+    currentEncoderConfig = encoderConfig
+
     console.log('🎉 [WORKER] ✅ WebCodecs encoder configured successfully!')
 
     // 通知主线程配置成功
@@ -175,7 +179,7 @@ function handleEncodedChunk(chunk: EncodedVideoChunk, metadata?: any) {
     
     chunks.push(data)
     
-    // 通知主线程收到数据块（包含实际数据）
+    // 通知主线程收到数据块（包含实际数据和分辨率信息）
     self.postMessage({
       type: 'chunk',
       data: {
@@ -183,11 +187,15 @@ function handleEncodedChunk(chunk: EncodedVideoChunk, metadata?: any) {
         size: chunk.byteLength,
         timestamp: chunk.timestamp,
         type: chunk.type,
-        totalChunks: chunks.length
+        totalChunks: chunks.length,
+        // 添加分辨率信息
+        codedWidth: currentEncoderConfig?.width || 1920,
+        codedHeight: currentEncoderConfig?.height || 1080,
+        codec: currentEncoderConfig?.codec || 'vp8'
       }
     })
 
-    console.log(`📦 Encoded chunk: ${chunk.byteLength} bytes, type: ${chunk.type}`)
+    console.log(`📦 Encoded chunk: ${chunk.byteLength} bytes, type: ${chunk.type}, resolution: ${currentEncoderConfig?.width || 1920}x${currentEncoderConfig?.height || 1080}`)
 
   } catch (error) {
     console.error('❌ [WORKER] Chunk handling failed:', error)

@@ -7,12 +7,13 @@
   import { recordingService } from '$lib/services/recording-service'
   import { recordingStore } from '$lib/stores/recording.svelte'
   import type { RecordingOptions } from '$lib/types/recording'
+  import VideoPreview from '$lib/components/VideoPreview.svelte'
 
   // 录制状态
-  let isRecording = false
-  let duration = 0
-  let status: 'idle' | 'requesting' | 'recording' | 'stopping' | 'error' = 'idle'
-  let errorMessage = ''
+  let isRecording = $state(false)
+  let duration = $state(0)
+  let status = $state<'idle' | 'requesting' | 'recording' | 'stopping' | 'error'>('idle')
+  let errorMessage = $state('')
 
   // 录制相关变量
   let mediaRecorder: MediaRecorder | null = null
@@ -43,117 +44,26 @@
   let workerRecordingActive = false
   let workerCurrentWorker: Worker | null = null
 
-  // Canvas 渲染相关
-  let previewCanvas: HTMLCanvasElement
-  let previewContext: CanvasRenderingContext2D | null = null
-  let videoDecoder: VideoDecoder | null = null
+  // 视频预览相关
+  let videoPreviewRef: any = null
   let isDecodingVideo = $state(false)
 
-  // 初始化 Canvas 预览
-  function initializeCanvasPreview() {
-    if (!previewCanvas) return
-
-    previewCanvas.width = 1920
-    previewCanvas.height = 1080
-    previewContext = previewCanvas.getContext('2d')
-
-    if (previewContext) {
-      // 设置初始背景
-      previewContext.fillStyle = '#000000'
-      previewContext.fillRect(0, 0, previewCanvas.width, previewCanvas.height)
-      previewContext.fillStyle = '#ffffff'
-      previewContext.font = '24px Arial'
-      previewContext.fillText('等待录制数据...', 50, 50)
-    }
-
-    console.log('🎨 [CANVAS] Canvas preview initialized')
+  // 视频预览控制
+  function getVideoPreviewControls() {
+    return videoPreviewRef?.getControls?.() || null
   }
 
-  // 当 Canvas 元素绑定后自动初始化
-  $effect(() => {
-    if (previewCanvas) {
-      initializeCanvasPreview()
-    }
-  })
-
-  // 使用 VideoDecoder 解码并渲染到 Canvas
-  async function renderEncodedChunksToCanvas(chunks: any[]): Promise<void> {
+  // 处理录制完成后的视频预览
+  async function handleVideoPreview(chunks: any[]): Promise<void> {
     try {
-      console.log('🎨 [CANVAS] Starting to render', chunks.length, 'chunks to canvas')
-
-      if (!previewContext) {
-        console.error('❌ [CANVAS] Canvas context not available')
-        return
-      }
-
+      console.log('🎨 [VideoPreview] Preparing video preview with', chunks.length, 'chunks')
       isDecodingVideo = true
 
-      // 创建 VideoDecoder
-      videoDecoder = new VideoDecoder({
-        output: (frame: VideoFrame) => {
-          try {
-            // 将解码的帧渲染到 Canvas
-            if (previewContext) {
-              previewContext.drawImage(frame, 0, 0, previewCanvas.width, previewCanvas.height)
-              console.log(`🎨 [CANVAS] Rendered frame at timestamp: ${frame.timestamp}`)
-            }
-            frame.close() // 释放帧资源
-          } catch (error) {
-            console.error('❌ [CANVAS] Error rendering frame:', error)
-          }
-        },
-        error: (error) => {
-          console.error('❌ [CANVAS] VideoDecoder error:', error)
-          isDecodingVideo = false
-        }
-      })
-
-      // 配置解码器（使用与编码器相同的配置）
-      const decoderConfig = {
-        codec: 'vp8', // 使用 VP8 解码器
-        codedWidth: 1920,
-        codedHeight: 1080
-      }
-
-      console.log('🎨 [CANVAS] Configuring VideoDecoder with:', decoderConfig)
-      videoDecoder.configure(decoderConfig)
-
-      // 逐个解码编码块
-      for (let i = 0; i < chunks.length; i++) {
-        const chunk = chunks[i]
-
-        try {
-          // 创建 EncodedVideoChunk
-          const encodedChunk = new EncodedVideoChunk({
-            type: chunk.type === 'key' ? 'key' : 'delta',
-            timestamp: chunk.timestamp,
-            data: chunk.data
-          })
-
-          // 解码
-          videoDecoder.decode(encodedChunk)
-
-          if (i % 30 === 0) { // 每30帧日志一次
-            console.log(`🎨 [CANVAS] Decoded chunk ${i + 1}/${chunks.length}`)
-          }
-
-          // 添加小延迟以避免阻塞UI
-          if (i % 10 === 0) {
-            await new Promise(resolve => setTimeout(resolve, 1))
-          }
-        } catch (error) {
-          console.error(`❌ [CANVAS] Error decoding chunk ${i}:`, error)
-        }
-      }
-
-      // 等待所有帧解码完成
-      await videoDecoder.flush()
-      console.log('🎨 [CANVAS] All chunks decoded and rendered to canvas')
-
-      isDecodingVideo = false
+      // VideoPreview 组件会自动处理解码和渲染
+      // 这里只需要设置状态，组件会响应 encodedChunks 的变化
 
     } catch (error) {
-      console.error('❌ [CANVAS] Error rendering chunks to canvas:', error)
+      console.error('❌ [VideoPreview] Error preparing video preview:', error)
       isDecodingVideo = false
     }
   }
@@ -541,7 +451,10 @@
                   data: data.data,
                   timestamp: data.timestamp,
                   type: data.type,
-                  size: data.size
+                  size: data.size,
+                  // 添加分辨率信息（如果可用）
+                  codedWidth: data.codedWidth || 1920,
+                  codedHeight: data.codedHeight || 1080
                 })
                 console.log(`💾 [WORKER-MAIN] Collected chunk ${workerEncodedChunks.length}, total size: ${workerEncodedChunks.reduce((sum, chunk) => sum + chunk.size, 0)} bytes`)
               }
@@ -642,15 +555,17 @@
         console.log('🎨 [WORKER-MAIN] Rendering encoded chunks to Canvas...')
 
         try {
-          // 方案1：渲染到 Canvas（推荐）
-          console.log('🎨 [WORKER-MAIN] Starting Canvas rendering...')
-          await renderEncodedChunksToCanvas(workerEncodedChunks)
+          // 方案1：使用 VideoPreview 组件渲染（推荐）
+          console.log('🎨 [WORKER-MAIN] Preparing video preview...')
+          await handleVideoPreview(workerEncodedChunks)
 
-          console.log('✅ Worker recording rendered to Canvas successfully')
+          console.log('✅ Worker recording prepared for video preview')
           recordingStore.updateStatus('completed')
+          isDecodingVideo = false
 
         } catch (error) {
-          console.error('❌ Failed to render to Canvas:', error)
+          console.error('❌ Failed to prepare video preview:', error)
+          isDecodingVideo = false
 
           try {
             // 方案2：降级到文件下载
@@ -1499,22 +1414,26 @@
       </button>
     </div>
 
-    <!-- Canvas 预览区域 -->
+    <!-- 视频预览区域 -->
     <div class="border-t border-purple-300 pt-2 mt-2">
       <div class="text-xs text-purple-700 mb-2">录制预览:</div>
-      <canvas
-        bind:this={previewCanvas}
-        class="w-full max-w-sm border border-purple-300 rounded bg-black"
-        style="aspect-ratio: 16/9;"
-        onload={initializeCanvasPreview}
-      ></canvas>
 
-      {#if isDecodingVideo}
-        <div class="text-xs text-purple-600 mt-1">🎨 正在渲染视频帧...</div>
-      {/if}
+      <VideoPreview
+        bind:this={videoPreviewRef}
+        displayWidth={640}
+        displayHeight={360}
+        canvasWidth={1920}
+        canvasHeight={1080}
+        aspectRatio="16/9"
+        showControls={true}
+        showTimeline={true}
+        encodedChunks={workerEncodedChunks}
+        isDecoding={isDecodingVideo}
+        className="border border-purple-300 rounded"
+      />
 
       {#if workerEncodedChunks.length > 0}
-        <div class="text-xs text-purple-600 mt-1">
+        <div class="text-xs text-purple-600 mt-2">
           已收集 {workerEncodedChunks.length} 个编码块
         </div>
       {/if}
