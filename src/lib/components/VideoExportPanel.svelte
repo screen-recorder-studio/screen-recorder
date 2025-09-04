@@ -1,22 +1,23 @@
 <!-- 视频导出面板组件 -->
 <script lang="ts">
   import { ExportManager } from '$lib/services/export-manager'
-  import type { BackgroundConfig } from '$lib/types/background'
-  
+  import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
+
   // Props
   interface Props {
     encodedChunks?: any[]
-    backgroundConfig?: BackgroundConfig
     isRecordingComplete?: boolean
     className?: string
   }
 
   let {
     encodedChunks = [],
-    backgroundConfig,
     isRecordingComplete = false,
     className = ''
   }: Props = $props()
+
+  // 使用全局背景配置
+  const backgroundConfig = $derived(backgroundConfigStore.config)
 
   // 导出状态
   let isExportingWebM = $state(false)
@@ -58,12 +59,30 @@
 
       console.log('🎬 [Export] Starting WebM export with', encodedChunks.length, 'chunks')
 
+      // 将 Svelte 5 的 Proxy 对象转换为普通对象
+      const plainBackgroundConfig = backgroundConfig ? {
+        type: backgroundConfig.type,
+        color: backgroundConfig.color,
+        padding: backgroundConfig.padding,
+        outputRatio: backgroundConfig.outputRatio,
+        videoPosition: backgroundConfig.videoPosition,
+        borderRadius: backgroundConfig.borderRadius,
+        inset: backgroundConfig.inset,
+        // 深度转换 shadow 对象
+        shadow: backgroundConfig.shadow ? {
+          offsetX: backgroundConfig.shadow.offsetX,
+          offsetY: backgroundConfig.shadow.offsetY,
+          blur: backgroundConfig.shadow.blur,
+          color: backgroundConfig.shadow.color
+        } : undefined
+      } : undefined
+
       const videoBlob = await exportManager.exportEditedVideo(
         encodedChunks,
         {
           format: 'webm',
-          includeBackground: !!backgroundConfig,
-          backgroundConfig,
+          includeBackground: !!plainBackgroundConfig,
+          backgroundConfig: plainBackgroundConfig,
           quality: 'medium'
         },
         (progress) => {
@@ -105,12 +124,30 @@
 
       console.log('🎬 [Export] Starting MP4 export with', encodedChunks.length, 'chunks')
 
+      // 将 Svelte 5 的 Proxy 对象转换为普通对象
+      const plainBackgroundConfig = backgroundConfig ? {
+        type: backgroundConfig.type,
+        color: backgroundConfig.color,
+        padding: backgroundConfig.padding,
+        outputRatio: backgroundConfig.outputRatio,
+        videoPosition: backgroundConfig.videoPosition,
+        borderRadius: backgroundConfig.borderRadius,
+        inset: backgroundConfig.inset,
+        // 深度转换 shadow 对象
+        shadow: backgroundConfig.shadow ? {
+          offsetX: backgroundConfig.shadow.offsetX,
+          offsetY: backgroundConfig.shadow.offsetY,
+          blur: backgroundConfig.shadow.blur,
+          color: backgroundConfig.shadow.color
+        } : undefined
+      } : undefined
+
       const videoBlob = await exportManager.exportEditedVideo(
         encodedChunks,
         {
           format: 'mp4',
-          includeBackground: !!backgroundConfig,
-          backgroundConfig,
+          includeBackground: !!plainBackgroundConfig,
+          backgroundConfig: plainBackgroundConfig,
           quality: 'medium'
         },
         (progress) => {

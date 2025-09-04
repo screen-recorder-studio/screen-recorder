@@ -518,7 +518,39 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
       case 'config':
         console.log('⚙️ [COMPOSITE-WORKER] Updating config...');
         if (data.backgroundConfig) {
+          const oldConfig = currentConfig;
           currentConfig = data.backgroundConfig;
+
+          // 检查是否需要重新计算输出尺寸
+          const needsCanvasResize = !oldConfig ||
+            oldConfig.outputRatio !== currentConfig.outputRatio ||
+            oldConfig.customWidth !== currentConfig.customWidth ||
+            oldConfig.customHeight !== currentConfig.customHeight;
+
+          if (needsCanvasResize && videoInfo) {
+            console.log('🔄 [COMPOSITE-WORKER] Output ratio changed, recalculating canvas size...');
+
+            // 重新计算输出尺寸
+            const { outputWidth, outputHeight } = calculateOutputSize(
+              currentConfig,
+              videoInfo.width,
+              videoInfo.height
+            );
+
+            console.log('📐 [COMPOSITE-WORKER] New output size:', { outputWidth, outputHeight });
+
+            // 重新初始化 Canvas
+            initializeCanvas(outputWidth, outputHeight);
+
+            // 通知主线程输出尺寸已变化
+            self.postMessage({
+              type: 'sizeChanged',
+              data: {
+                outputSize: { width: outputWidth, height: outputHeight },
+                outputRatio: currentConfig.outputRatio
+              }
+            });
+          }
 
           // 重新计算固定布局
           calculateAndCacheLayout();

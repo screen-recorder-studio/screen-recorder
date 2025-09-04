@@ -10,6 +10,11 @@
   import VideoPreview from '$lib/components/VideoPreview.svelte'
   import VideoPreviewComposite from '$lib/components/VideoPreviewComposite.svelte'
   import VideoExportPanel from '$lib/components/VideoExportPanel.svelte'
+  import BackgroundColorPicker from '$lib/components/BackgroundColorPicker.svelte'
+  import BorderRadiusControl from '$lib/components/BorderRadiusControl.svelte'
+  import PaddingControl from '$lib/components/PaddingControl.svelte'
+  import AspectRatioControl from '$lib/components/AspectRatioControl.svelte'
+  import ShadowControl from '$lib/components/ShadowControl.svelte'
 
   // 录制状态
   let isRecording = $state(false)
@@ -1416,6 +1421,36 @@
       </button>
     </div>
 
+    <!-- 背景配置区域 -->
+    <div class="border-t border-purple-300 pt-2 mt-2">
+      <div class="text-xs text-purple-700 mb-2">背景配置:</div>
+
+      <!-- 背景颜色选择 -->
+      <div class="mb-3">
+        <BackgroundColorPicker />
+      </div>
+
+      <!-- 圆角配置 -->
+      <div class="mb-3">
+        <BorderRadiusControl />
+      </div>
+
+      <!-- 边距配置 -->
+      <div class="mb-3">
+        <PaddingControl />
+      </div>
+
+      <!-- 视频比例配置 -->
+      <div class="mb-3">
+        <AspectRatioControl />
+      </div>
+
+      <!-- 阴影配置 -->
+      <div class="mb-3">
+        <ShadowControl />
+      </div>
+    </div>
+
     <!-- 视频预览区域 -->
     <div class="border-t border-purple-300 pt-2 mt-2">
       <div class="text-xs text-purple-700 mb-2">录制预览:</div>
@@ -1424,21 +1459,6 @@
       <VideoPreviewComposite
         encodedChunks={workerEncodedChunks}
         isRecordingComplete={workerStatus === 'completed' || workerStatus === 'idle'}
-        backgroundConfig={{
-          type: 'gradient',
-          color: '#3b82f6',
-          padding: 60,
-          outputRatio: '16:9',
-          videoPosition: 'center',
-          borderRadius: 25,
-          inset: 80,
-          shadow: {
-            offsetX: 20,
-            offsetY: 30,
-            blur: 60,
-            color: 'rgba(0, 0, 0, 0.6)'
-          }
-        }}
         displayWidth={640}
         displayHeight={360}
         showControls={true}
@@ -1474,21 +1494,6 @@
     <div class="border-t border-purple-300 pt-2 mt-2">
       <VideoExportPanel
         encodedChunks={workerEncodedChunks}
-        backgroundConfig={{
-          type: 'gradient',
-          color: '#3b82f6',
-          padding: 60,
-          outputRatio: '16:9',
-          videoPosition: 'center',
-          borderRadius: 25,
-          inset: 80,
-          shadow: {
-            offsetX: 20,
-            offsetY: 30,
-            blur: 60,
-            color: 'rgba(0, 0, 0, 0.6)'
-          }
-        }}
         isRecordingComplete={workerStatus === 'completed' || workerStatus === 'idle'}
         className="export-panel"
       />

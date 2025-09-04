@@ -1,28 +1,12 @@
 <!-- 视频预览组件 - 使用 VideoComposite Worker 进行背景合成 -->
 <script lang="ts">
   import { onMount } from 'svelte'
+  import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
 
   // Props
   interface Props {
     encodedChunks?: any[]
     isRecordingComplete?: boolean
-    backgroundConfig?: {
-      type: 'solid-color' | 'gradient'
-      color: string
-      padding: number
-      outputRatio: '16:9' | '1:1' | '9:16' | '4:5' | 'custom'
-      customWidth?: number
-      customHeight?: number
-      videoPosition: 'center' | 'top' | 'bottom'
-      borderRadius?: number
-      inset?: number
-      shadow?: {
-        offsetX: number
-        offsetY: number
-        blur: number
-        color: string
-      }
-    }
     displayWidth?: number
     displayHeight?: number
     showControls?: boolean
@@ -33,19 +17,15 @@
   let {
     encodedChunks = [],
     isRecordingComplete = false,
-    backgroundConfig = {
-      type: 'solid-color' as const,
-      color: '#ffffff',
-      padding: 60,
-      outputRatio: '16:9' as const,
-      videoPosition: 'center' as const
-    },
     displayWidth = 640,
     displayHeight = 360,
     showControls = true,
     showTimeline = true,
     className = ''
   }: Props = $props()
+
+  // 使用全局背景配置
+  const backgroundConfig = $derived(backgroundConfigStore.config)
 
   // 状态变量 - 仅显示相关
   let canvas: HTMLCanvasElement
@@ -66,6 +46,49 @@
   // 输出尺寸信息
   let outputWidth = $state(1920)
   let outputHeight = $state(1080)
+
+  // 预览尺寸 - 根据输出比例动态调整
+  let previewWidth = $state(displayWidth)
+  let previewHeight = $state(displayHeight)
+
+  // 更新预览尺寸 - 根据输出比例调整预览显示
+  function updatePreviewSize() {
+    const aspectRatio = outputWidth / outputHeight
+    const maxWidth = displayWidth
+    const maxHeight = displayHeight
+
+    // 计算适合的预览尺寸，保持纵横比，并确保充分利用空间
+    if (aspectRatio > maxWidth / maxHeight) {
+      // 宽度受限
+      previewWidth = maxWidth
+      previewHeight = Math.round(maxWidth / aspectRatio)
+    } else {
+      // 高度受限
+      previewHeight = maxHeight
+      previewWidth = Math.round(maxHeight * aspectRatio)
+    }
+
+    // 确保最小尺寸，避免过小的预览
+    const minSize = 200
+    if (previewWidth < minSize || previewHeight < minSize) {
+      if (aspectRatio > 1) {
+        // 横屏视频
+        previewWidth = Math.max(minSize, previewWidth)
+        previewHeight = Math.round(previewWidth / aspectRatio)
+      } else {
+        // 竖屏视频
+        previewHeight = Math.max(minSize, previewHeight)
+        previewWidth = Math.round(previewHeight * aspectRatio)
+      }
+    }
+
+    console.log('📐 [VideoPreview] Preview size updated:', {
+      outputSize: { width: outputWidth, height: outputHeight },
+      previewSize: { width: previewWidth, height: previewHeight },
+      aspectRatio,
+      displayConstraints: { maxWidth, maxHeight }
+    })
+  }
 
   // 初始化 Canvas（仅用于显示）
   function initializeCanvas() {
@@ -127,6 +150,20 @@
         case 'frame':
           // 显示合成后的帧
           displayFrame(data.bitmap, data.frameIndex, data.timestamp)
+          break
+
+        case 'sizeChanged':
+          // 处理输出尺寸变化
+          console.log('📐 [VideoPreview] Output size changed:', data)
+          outputWidth = data.outputSize.width
+          outputHeight = data.outputSize.height
+
+          // 更新预览尺寸
+          updatePreviewSize()
+
+          // 更新 Canvas 内部分辨率
+          canvas.width = outputWidth
+          canvas.height = outputHeight
           break
 
         case 'complete':
@@ -199,19 +236,31 @@
     // 收集所有 ArrayBuffer 用于转移
     const transferList = transferableChunks.map(chunk => chunk.data)
 
-    console.log('📤 [VideoPreview] Sending config to worker:', {
+    // 将 Svelte 5 的 Proxy 对象转换为普通对象
+    const plainBackgroundConfig = {
       type: backgroundConfig.type,
+      color: backgroundConfig.color,
       padding: backgroundConfig.padding,
-      inset: backgroundConfig.inset,
+      outputRatio: backgroundConfig.outputRatio,
+      videoPosition: backgroundConfig.videoPosition,
       borderRadius: backgroundConfig.borderRadius,
-      shadow: backgroundConfig.shadow
-    });
+      inset: backgroundConfig.inset,
+      // 深度转换 shadow 对象
+      shadow: backgroundConfig.shadow ? {
+        offsetX: backgroundConfig.shadow.offsetX,
+        offsetY: backgroundConfig.shadow.offsetY,
+        blur: backgroundConfig.shadow.blur,
+        color: backgroundConfig.shadow.color
+      } : undefined
+    }
+
+    console.log('📤 [VideoPreview] Sending config to worker:', plainBackgroundConfig);
 
     compositeWorker.postMessage({
       type: 'process',
       data: {
         chunks: transferableChunks,
-        backgroundConfig: backgroundConfig
+        backgroundConfig: plainBackgroundConfig
       }
     }, { transfer: transferList })
   }
@@ -259,12 +308,30 @@
   // 更新背景配置
   function updateBackgroundConfig(newConfig: typeof backgroundConfig) {
     if (!compositeWorker) return
-    
-    console.log('⚙️ [VideoPreview] Updating background config:', newConfig)
-    
+
+    // 将 Svelte 5 的 Proxy 对象转换为普通对象
+    const plainConfig = {
+      type: newConfig.type,
+      color: newConfig.color,
+      padding: newConfig.padding,
+      outputRatio: newConfig.outputRatio,
+      videoPosition: newConfig.videoPosition,
+      borderRadius: newConfig.borderRadius,
+      inset: newConfig.inset,
+      // 深度转换 shadow 对象
+      shadow: newConfig.shadow ? {
+        offsetX: newConfig.shadow.offsetX,
+        offsetY: newConfig.shadow.offsetY,
+        blur: newConfig.shadow.blur,
+        color: newConfig.shadow.color
+      } : undefined
+    }
+
+    console.log('⚙️ [VideoPreview] Updating background config:', plainConfig)
+
     compositeWorker.postMessage({
       type: 'config',
-      data: { backgroundConfig: newConfig }
+      data: { backgroundConfig: plainConfig }
     })
   }
 
@@ -296,6 +363,13 @@
   $effect(() => {
     if (backgroundConfig && compositeWorker && totalFrames > 0) {
       updateBackgroundConfig(backgroundConfig)
+    }
+  })
+
+  // 响应输出尺寸变化，更新预览尺寸
+  $effect(() => {
+    if (outputWidth > 0 && outputHeight > 0) {
+      updatePreviewSize()
     }
   })
 
@@ -333,14 +407,21 @@
 
 <!-- 视频预览容器 -->
 <div class="video-preview {className}">
+  <!-- 预览信息栏 -->
+  <div class="preview-info-bar">
+    <span class="preview-title">视频预览</span>
+    <span class="preview-ratio">{backgroundConfig.outputRatio === 'custom' ? `${outputWidth}×${outputHeight}` : backgroundConfig.outputRatio}</span>
+  </div>
+
   <!-- Canvas 显示区域 -->
-  <div class="canvas-container" style="aspect-ratio: 16/9;">
+  <div class="canvas-container" style="width: {previewWidth}px; height: {previewHeight}px;">
     <canvas
       bind:this={canvas}
       class="video-canvas"
       class:processing={isProcessing}
+      style="width: {previewWidth}px; height: {previewHeight}px;"
     ></canvas>
-    
+
     {#if isProcessing}
       <div class="processing-overlay">
         <div class="spinner"></div>
@@ -401,27 +482,52 @@
   .video-preview {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.75rem;
     background-color: #1a1a1a;
     border-radius: 8px;
+    padding: 1rem;
     overflow: hidden;
+  }
+
+  .preview-info-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #374151;
+  }
+
+  .preview-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #f3f4f6;
+  }
+
+  .preview-ratio {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #8b5cf6;
+    background-color: rgba(139, 92, 246, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid rgba(139, 92, 246, 0.2);
   }
 
   .canvas-container {
     position: relative;
-    width: 100%;
     background-color: #000;
     display: flex;
     align-items: center;
     justify-content: center;
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 0 auto; /* 居中显示 */
   }
 
   .video-canvas {
-    width: 100%;
-    height: 100%;
-    object-fit: fill;  /* 拉伸填满容器 */
-    transition: opacity 0.3s ease;
     display: block;
+    transition: opacity 0.3s ease;
+    border-radius: 4px;
   }
 
   .video-canvas.processing {
