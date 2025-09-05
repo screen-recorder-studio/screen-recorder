@@ -1,13 +1,11 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte'
   import { ChromeAPIWrapper } from '$lib/utils/chrome-api'
-  import { Play, Square, RotateCcw, TriangleAlert, CircleCheck, Clock, Activity, Cpu, HardDrive } from '@lucide/svelte'
+  import { TriangleAlert, Activity } from '@lucide/svelte'
 
   // 引入 Worker 系统
   import { recordingService } from '$lib/services/recording-service'
   import { recordingStore } from '$lib/stores/recording.svelte'
-  import type { RecordingOptions } from '$lib/types/recording'
-  import VideoPreview from '$lib/components/VideoPreview.svelte'
   import VideoPreviewComposite from '$lib/components/VideoPreviewComposite.svelte'
   import VideoExportPanel from '$lib/components/VideoExportPanel.svelte'
   import BackgroundColorPicker from '$lib/components/BackgroundColorPicker.svelte'
@@ -15,10 +13,10 @@
   import PaddingControl from '$lib/components/PaddingControl.svelte'
   import AspectRatioControl from '$lib/components/AspectRatioControl.svelte'
   import ShadowControl from '$lib/components/ShadowControl.svelte'
+  import RecordButton from '$lib/components/RecordButton.svelte'
 
   // 录制状态
   let isRecording = $state(false)
-  let duration = $state(0)
   let status = $state<'idle' | 'requesting' | 'recording' | 'stopping' | 'error'>('idle')
   let errorMessage = $state('')
 
@@ -26,248 +24,46 @@
   let mediaRecorder: MediaRecorder | null = null
   let recordedChunks: Blob[] = []
   let stream: MediaStream | null = null
-  let durationTimer: number | null = null
-  let startTime: number | null = null
 
-  // Svelte 5 $state 测试
-  let testCounter = $state(0)
-  let testMessage = $state('Svelte 5 状态测试')
-  let testArray = $state([1, 2, 3])
-  let testObject = $state({ name: 'Test', value: 42 })
-
-  // $derived 测试
-  const doubledCounter = $derived(testCounter * 2)
-  const arrayLength = $derived(testArray.length)
-  const formattedMessage = $derived(`${testMessage} - 计数器: ${testCounter}`)
 
   // Worker 系统状态
   let workerSystemReady = $state(false)
   let workerEnvironmentIssues = $state<string[]>([])
-  let showWorkerDetails = $state(false)
-  let showAdvancedOptions = $state(false)
+
 
   // Worker 录制数据收集
   let workerEncodedChunks = $state<any[]>([])
-  let workerRecordingActive = false
   let workerCurrentWorker: Worker | null = null
 
-  // 视频预览相关
-  let videoPreviewRef: any = null
-  let isDecodingVideo = $state(false)
 
-  // 视频预览控制
-  function getVideoPreviewControls() {
-    return videoPreviewRef?.getControls?.() || null
-  }
 
   // 处理录制完成后的视频预览
   async function handleVideoPreview(chunks: any[]): Promise<void> {
     try {
       console.log('🎨 [VideoPreview] Preparing video preview with', chunks.length, 'chunks')
-      isDecodingVideo = true
 
       // VideoPreview 组件会自动处理解码和渲染
       // 这里只需要设置状态，组件会响应 encodedChunks 的变化
 
     } catch (error) {
       console.error('❌ [VideoPreview] Error preparing video preview:', error)
-      isDecodingVideo = false
     }
   }
 
-  // 直接使用 WebCodecs 编码数据创建 WebM（备用方案）
-  async function createWebMFromEncodedChunks(chunks: any[]): Promise<Blob | null> {
-    try {
-      console.log('� [WEBM-CREATOR] Creating WebM from encoded chunks...')
-
-      // 创建一个更完整的 WebM 文件结构
-      const webmData = await createCompleteWebM(chunks)
-
-      if (webmData) {
-        console.log('🔧 [WEBM-CREATOR] WebM file created successfully, size:', webmData.size, 'bytes')
-        return webmData
-      } else {
-        throw new Error('Failed to create WebM from chunks')
-      }
-    } catch (error) {
-      console.error('🔧 [WEBM-CREATOR] Failed to create WebM:', error)
-      return null
-    }
-  }
-
-  // 创建完整的 WebM 文件（包含正确的头部和数据）
-  async function createCompleteWebM(chunks: any[]): Promise<Blob | null> {
-    try {
-      console.log('🔧 [WEBM-COMPLETE] Creating complete WebM structure...')
-
-      // 收集所有编码数据
-      const allData = chunks.map(chunk => new Uint8Array(chunk.data))
-      const totalSize = allData.reduce((sum, data) => sum + data.byteLength, 0)
-
-      console.log('🔧 [WEBM-COMPLETE] Total encoded data:', totalSize, 'bytes')
-
-      // 创建 WebM 头部（更完整的版本）
-      const webmHeader = createWebMHeader()
-
-      // 创建完整文件
-      const completeFile = new Uint8Array(webmHeader.byteLength + totalSize)
-      let offset = 0
-
-      // 复制头部
-      completeFile.set(webmHeader, offset)
-      offset += webmHeader.byteLength
-
-      // 复制所有编码数据
-      for (const data of allData) {
-        completeFile.set(data, offset)
-        offset += data.byteLength
-      }
-
-      console.log('🔧 [WEBM-COMPLETE] Complete WebM file size:', completeFile.byteLength, 'bytes')
-
-      return new Blob([completeFile], { type: 'video/webm' })
-    } catch (error) {
-      console.error('� [WEBM-COMPLETE] Error creating complete WebM:', error)
-      return null
-    }
-  }
-
-  // 创建 WebM 头部
-  function createWebMHeader(): Uint8Array {
-    // 更完整的 WebM 头部，包含必要的元数据
-    return new Uint8Array([
-      // EBML Header
-      0x1A, 0x45, 0xDF, 0xA3, // EBML
-      0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1F, // Size
-      0x42, 0x86, 0x81, 0x01, // EBMLVersion = 1
-      0x42, 0xF7, 0x81, 0x01, // EBMLReadVersion = 1
-      0x42, 0xF2, 0x81, 0x04, // EBMLMaxIDLength = 4
-      0x42, 0xF3, 0x81, 0x08, // EBMLMaxSizeLength = 8
-      0x42, 0x82, 0x84, 0x77, 0x65, 0x62, 0x6D, // DocType = "webm"
-      0x42, 0x87, 0x81, 0x04, // DocTypeVersion = 4
-      0x42, 0x85, 0x81, 0x02, // DocTypeReadVersion = 2
-
-      // Segment
-      0x18, 0x53, 0x80, 0x67, // Segment
-      0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // Size (unknown)
-
-      // Info
-      0x15, 0x49, 0xA9, 0x66, // Info
-      0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x15, // Size
-      0x2A, 0xD7, 0xB1, 0x83, 0x0F, 0x42, 0x40, // TimecodeScale = 1000000
-      0x4D, 0x80, 0x84, 0x57, 0x65, 0x62, 0x4D, // MuxingApp = "WebM"
-
-      // Tracks
-      0x16, 0x54, 0xAE, 0x6B, // Tracks
-      0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x2F, // Size
-
-      // TrackEntry
-      0xAE, // TrackEntry
-      0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x2C, // Size
-      0xD7, 0x81, 0x01, // TrackNumber = 1
-      0x73, 0xC5, 0x81, 0x01, // TrackUID = 1
-      0x83, 0x81, 0x01, // TrackType = 1 (video)
-      0x86, 0x84, 0x56, 0x50, 0x38, 0x30, // CodecID = "VP80"
-
-      // Video
-      0xE0, // Video
-      0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, // Size
-      0xB0, 0x82, 0x07, 0x80, // PixelWidth = 1920
-      0xBA, 0x82, 0x04, 0x38, // PixelHeight = 1080
-    ])
-  }
-
-  // 创建简单的 WebM 文件（基本容器格式）
-  async function createWebMWriter(chunks: any[]) {
-    console.log('🔧 [WEBM-WRITER] Creating WebM container for', chunks.length, 'chunks')
-
-    // 简化的 WebM 头部（EBML + Segment + Info + Tracks）
-    const webmHeader = new Uint8Array([
-      // EBML Header
-      0x1A, 0x45, 0xDF, 0xA3, // EBML
-      0x9F, // Size (unknown)
-      0x42, 0x86, 0x81, 0x01, // EBMLVersion = 1
-      0x42, 0xF7, 0x81, 0x01, // EBMLReadVersion = 1
-      0x42, 0xF2, 0x81, 0x04, // EBMLMaxIDLength = 4
-      0x42, 0xF3, 0x81, 0x08, // EBMLMaxSizeLength = 8
-      0x42, 0x82, 0x84, 0x77, 0x65, 0x62, 0x6D, // DocType = "webm"
-      0x42, 0x87, 0x81, 0x02, // DocTypeVersion = 2
-      0x42, 0x85, 0x81, 0x02, // DocTypeReadVersion = 2
-
-      // Segment
-      0x18, 0x53, 0x80, 0x67, // Segment
-      0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // Size (unknown)
-    ])
-
-    // 将所有编码数据合并
-    const allChunkData = chunks.map(chunk => chunk.data)
-    const totalDataSize = allChunkData.reduce((sum, data) => sum + data.byteLength, 0)
-
-    console.log('🔧 [WEBM-WRITER] Total data size:', totalDataSize, 'bytes')
-
-    // 创建完整的 WebM 文件
-    const webmFile = new Uint8Array(webmHeader.byteLength + totalDataSize)
-    let offset = 0
-
-    // 复制头部
-    webmFile.set(webmHeader, offset)
-    offset += webmHeader.byteLength
-
-    // 复制所有编码数据
-    for (const data of allChunkData) {
-      webmFile.set(new Uint8Array(data), offset)
-      offset += data.byteLength
-    }
-
-    console.log('🔧 [WEBM-WRITER] WebM file created, total size:', webmFile.byteLength, 'bytes')
-
-    return {
-      complete() {
-        return new Blob([webmFile], { type: 'video/webm' })
-      }
-    }
-  }
-
-  // 录制选项
-  let recordingOptions = $state<RecordingOptions>({
-    includeAudio: false,
-    videoQuality: 'medium',
-    maxDuration: 3600,
-    preferredEngine: 'mediarecorder',
-    codec: 'vp9',
-    framerate: 30,
-    useWorkers: true
-  })
 
   // Worker 系统的计算属性
   const workerIsRecording = $derived(recordingStore.isRecording)
   const workerStatus = $derived(recordingStore.state.status)
-  const workerDuration = $derived(recordingStore.state.duration)
   const workerErrorMessage = $derived(recordingStore.state.error)
-  const workerProgress = $derived(recordingStore.state.progress)
-  const workerFormattedDuration = $derived(recordingStore.formattedDuration)
-  const workerFormattedFileSize = $derived(recordingStore.formattedFileSize)
-  const workerFormattedBitrate = $derived(recordingStore.formattedBitrate)
 
-  // 测试函数
-  function incrementCounter() {
-    testCounter++
-  }
+  // 界面模式判断
+  const isMinimalMode = $derived(
+    workerStatus !== 'completed' || workerEncodedChunks.length === 0
+  )
+  const isEditingMode = $derived(
+    workerStatus === 'completed' && workerEncodedChunks.length > 0
+  )
 
-  function addToArray() {
-    testArray.push(testArray.length + 1)
-  }
-
-  function updateObject() {
-    testObject.value = Math.floor(Math.random() * 100)
-  }
-
-  function resetTests() {
-    testCounter = 0
-    testMessage = 'Svelte 5 状态测试'
-    testArray = [1, 2, 3]
-    testObject = { name: 'Test', value: 42 }
-  }
 
   // Worker 系统函数 - 正确的 WebCodecs 架构
   async function startWorkerRecording() {
@@ -490,7 +286,6 @@
       console.log('🚀 [WORKER-MAIN] Step 9: Starting frame processing...')
 
       // 初始化录制状态
-      workerRecordingActive = true
       workerEncodedChunks = [] // 清空之前的数据
       workerCurrentWorker = worker
 
@@ -548,8 +343,6 @@
         workerCurrentWorker.postMessage({ type: 'stop' })
       }
 
-      workerRecordingActive = false
-
       // 更新录制状态
       recordingStore.updateStatus('stopping')
 
@@ -568,53 +361,9 @@
 
           console.log('✅ Worker recording prepared for video preview')
           recordingStore.updateStatus('completed')
-          isDecodingVideo = false
 
         } catch (error) {
           console.error('❌ Failed to prepare video preview:', error)
-          isDecodingVideo = false
-
-          try {
-            // 方案2：降级到文件下载
-            console.log('🔄 [WORKER-MAIN] Falling back to file download...')
-            const reEncodedBlob = await createWebMFromEncodedChunks(workerEncodedChunks)
-
-            if (reEncodedBlob) {
-              // 下载文件
-              const url = URL.createObjectURL(reEncodedBlob)
-              const a = document.createElement('a')
-              a.href = url
-              a.download = `webcodecs-fallback-${Date.now()}.webm`
-              document.body.appendChild(a)
-              a.click()
-              document.body.removeChild(a)
-              URL.revokeObjectURL(url)
-
-              console.log('✅ Fallback: WebM file downloaded')
-              recordingStore.updateStatus('completed')
-            } else {
-              throw new Error('Fallback file creation failed')
-            }
-          } catch (error2) {
-            console.error('❌ All rendering methods failed:', error2)
-
-            // 方案3：最后降级方案 - 保存原始数据
-            console.log('🔄 [WORKER-MAIN] Final fallback: raw data export...')
-            const allData = workerEncodedChunks.map(chunk => chunk.data)
-            const videoBlob = new Blob(allData, { type: 'application/octet-stream' })
-
-            const url = URL.createObjectURL(videoBlob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `webcodecs-raw-${Date.now()}.bin`
-            document.body.appendChild(a)
-            a.click()
-            document.body.removeChild(a)
-            URL.revokeObjectURL(url)
-
-            console.log('✅ Raw encoded data saved (requires manual processing)')
-            recordingStore.updateStatus('completed')
-          }
         }
       } else {
         console.warn('⚠️ No encoded chunks to save')
@@ -645,18 +394,7 @@
     }
   }
 
-  function toggleWorkerDetails() {
-    showWorkerDetails = !showWorkerDetails
-  }
 
-  function toggleAdvancedOptions() {
-    showAdvancedOptions = !showAdvancedOptions
-  }
-
-  function updateRecordingOptions(updates: Partial<RecordingOptions>) {
-    recordingOptions = { ...recordingOptions, ...updates }
-    recordingStore.updateOptions(updates)
-  }
 
   async function handleWorkerRecordButtonClick() {
     if (workerIsRecording) {
@@ -666,171 +404,9 @@
     }
   }
 
-  // 开始录制
-  async function startRecording() {
-    try {
-      status = 'requesting'
-      errorMessage = ''
 
-      console.log('🎬 Starting screen recording...')
 
-      // 1. 直接使用chrome.desktopCapture API
-      const streamId = await requestDesktopCapture()
-
-      if (!streamId) {
-        throw new Error('DESKTOP_CAPTURE_CANCELLED')
-      }
-
-      console.log('✅ Desktop capture permission granted:', streamId)
-
-      // 2. 获取媒体流
-      console.log('🎬 Getting media stream from streamId:', streamId)
-      stream = await getUserMediaFromStreamId(streamId)
-
-      if (!stream) {
-        throw new Error('无法获取媒体流')
-      }
-
-      console.log('✅ Media stream obtained:', {
-        id: stream.id,
-        videoTracks: stream.getVideoTracks().length,
-        audioTracks: stream.getAudioTracks().length,
-        active: stream.active
-      })
-
-      // 3. 设置MediaRecorder
-      const mimeType = getSupportedMimeType()
-      mediaRecorder = new MediaRecorder(stream, {
-        mimeType,
-        videoBitsPerSecond: 5000000 // 5Mbps
-      })
-
-      recordedChunks = []
-
-      // 4. 设置事件监听器
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) {
-          recordedChunks.push(event.data)
-          console.log('📦 Recorded chunk:', event.data.size, 'bytes')
-        }
-      }
-
-      mediaRecorder.onstop = async () => {
-        console.log('🛑 Recording stopped, processing...')
-        await handleRecordingComplete()
-      }
-
-      mediaRecorder.onerror = (event) => {
-        console.error('❌ MediaRecorder error:', event)
-        handleRecordingError('录制过程中发生错误')
-      }
-
-      // 5. 开始录制
-      mediaRecorder.start(1000) // 每秒收集一次数据
-
-      // 6. 更新状态
-      isRecording = true
-      status = 'recording'
-      startTime = Date.now()
-      startDurationTimer()
-
-      console.log('🎥 Recording started successfully')
-
-    } catch (error) {
-      console.error('❌ Failed to start recording:', error)
-
-      // 根据错误类型提供不同的用户提示
-      let errorMsg = '启动录制失败'
-      if (error instanceof Error) {
-        console.log('Error details:', {
-          message: error.message,
-          name: error.name,
-          stack: error.stack
-        })
-
-        if (error.message.includes('DESKTOP_CAPTURE_CANCELLED')) {
-          errorMsg = 'DESKTOP_CAPTURE_CANCELLED'
-        } else if (error.message.includes('DESKTOP_CAPTURE_FAILED')) {
-          errorMsg = 'DESKTOP_CAPTURE_FAILED'
-        } else if (error.message.includes('Chrome runtime not available')) {
-          errorMsg = 'CHROME_RUNTIME_NOT_AVAILABLE'
-        } else if (error.message.includes('Invalid state')) {
-          errorMsg = 'INVALID_STATE_ERROR'
-        } else if (error.message.includes('AbortError')) {
-          errorMsg = 'MEDIA_ABORT_ERROR'
-        } else if (error.message.includes('NotAllowedError')) {
-          errorMsg = 'PERMISSION_DENIED'
-        } else if (error.message.includes('NotFoundError')) {
-          errorMsg = 'MEDIA_DEVICE_NOT_FOUND'
-        } else {
-          errorMsg = error.message
-        }
-      }
-
-      handleRecordingError(errorMsg)
-    }
-  }
-
-  // 停止录制
-  async function stopRecording() {
-    try {
-      status = 'stopping'
-      console.log('🛑 Stopping recording...')
-
-      if (mediaRecorder && mediaRecorder.state === 'recording') {
-        mediaRecorder.stop()
-      }
-
-      // 停止所有媒体轨道
-      if (stream) {
-        stream.getTracks().forEach(track => {
-          track.stop()
-          console.log('🔇 Track stopped:', track.kind)
-        })
-      }
-
-      stopDurationTimer()
-
-    } catch (error) {
-      console.error('❌ Failed to stop recording:', error)
-      handleRecordingError('停止录制失败')
-    }
-  }
-
-  // 处理录制完成
-  async function handleRecordingComplete() {
-    try {
-      if (recordedChunks.length === 0) {
-        throw new Error('没有录制到任何内容')
-      }
-
-      // 创建视频文件
-      const mimeType = getSupportedMimeType()
-      const videoBlob = new Blob(recordedChunks, { type: mimeType })
-
-      console.log('📹 Video created:', {
-        size: videoBlob.size,
-        type: videoBlob.type,
-        duration: duration
-      })
-
-      // 生成文件名
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-      const filename = `screen-recording-${timestamp}.webm`
-
-      // 保存文件
-      await ChromeAPIWrapper.saveVideo(videoBlob, filename)
-
-      console.log('💾 Video saved successfully:', filename)
-
-      // 重置状态
-      resetRecordingState()
-
-    } catch (error) {
-      console.error('❌ Failed to process recording:', error)
-      handleRecordingError('保存录制失败')
-    }
-  }
+  
 
   // 处理录制错误
   function handleRecordingError(message: string) {
@@ -850,16 +426,6 @@
     }, 3000)
   }
 
-  // 重置录制状态
-  function resetRecordingState() {
-    isRecording = false
-    status = 'idle'
-    duration = 0
-    startTime = null
-    errorMessage = ''
-    cleanup()
-  }
-
   // 清理资源
   function cleanup() {
     if (mediaRecorder) {
@@ -871,28 +437,10 @@
       stream = null
     }
 
-    stopDurationTimer()
     recordedChunks = []
   }
 
-  // 开始计时器
-  function startDurationTimer() {
-    stopDurationTimer()
 
-    durationTimer = window.setInterval(() => {
-      if (startTime) {
-        duration = Math.floor((Date.now() - startTime) / 1000)
-      }
-    }, 1000)
-  }
-
-  // 停止计时器
-  function stopDurationTimer() {
-    if (durationTimer) {
-      clearInterval(durationTimer)
-      durationTimer = null
-    }
-  }
 
   // 直接请求桌面捕获
   async function requestDesktopCapture(): Promise<string> {
@@ -1019,24 +567,6 @@
     return 'video/webm'
   }
 
-  // 格式化时间显示
-  function formatDuration(seconds: number): string {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-  }
-
-
-
-  // 处理按钮点击
-  async function handleRecordButtonClick() {
-    if (isRecording) {
-      await stopRecording()
-    } else {
-      await startRecording()
-    }
-  }
-
   // 检查扩展环境和权限
   async function checkExtensionEnvironment() {
     try {
@@ -1107,472 +637,188 @@
   <title>屏幕录制</title>
 </svelte:head>
 
-<div class="flex flex-col h-screen p-4 gap-4 font-sans overflow-y-auto">
-  <h1 class="text-lg font-semibold text-gray-900 text-center">屏幕录制</h1>
+<!-- 极简录制模式 -->
+{#if isMinimalMode}
+  <div class="flex flex-col items-center justify-center min-h-screen p-4 bg-gradient-to-br from-gray-50 to-gray-100 transition-all duration-300 ease-in-out">
+    <!-- 简化的页面标题 -->
+    <div class="text-center mb-8 animate-fade-in">
+      <h1 class="text-2xl font-bold text-gray-800 mb-1 transition-colors duration-200">屏幕录制工具</h1>
+      <p class="text-sm text-gray-600 transition-colors duration-200">高性能 WebCodecs 录制引擎</p>
+    </div>
 
-  <div class="flex items-center justify-center">
-    <div class="flex items-center gap-2 px-4 py-3 rounded-lg border-2 border-transparent transition-all duration-200 min-w-[200px] text-center text-sm font-medium
-      {status === 'recording' ? 'bg-red-50 text-red-600 border-red-200 animate-pulse' :
-       status === 'error' ? 'bg-red-50 text-red-600 border-red-300' :
-       'bg-gray-50 text-gray-600'}">
-      {#if status === 'requesting'}
-        <RotateCcw class="w-4 h-4 animate-spin" />
-        请求权限中...
-      {:else if status === 'recording'}
-        <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-        录制中 - {formatDuration(duration)}
-      {:else if status === 'stopping'}
-        <Square class="w-4 h-4" />
-        停止中...
-      {:else if status === 'error'}
-        <TriangleAlert class="w-4 h-4" />
-        {errorMessage}
-      {:else}
-        <CircleCheck class="w-4 h-4" />
-        就绪
+    <!-- 录制控制面板（简化版） -->
+    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-lg max-w-md w-full transform transition-all duration-300 ease-in-out hover:shadow-xl hover:scale-105">
+      <!-- 错误信息显示 -->
+      {#if workerErrorMessage || workerEnvironmentIssues.length > 0}
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+          {#if workerErrorMessage}
+            <div class="flex items-start gap-2 mb-2">
+              <TriangleAlert class="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+              <div>
+                <div class="text-sm font-medium text-red-800">录制错误</div>
+                <div class="text-xs text-red-600 mt-1">{workerErrorMessage}</div>
+              </div>
+            </div>
+          {/if}
+
+          {#if workerEnvironmentIssues.length > 0}
+            <div class="flex items-start gap-2">
+              <TriangleAlert class="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+              <div>
+                <div class="text-sm font-medium text-red-800">环境问题</div>
+                <ul class="text-xs text-red-600 mt-1 space-y-1">
+                  {#each workerEnvironmentIssues as issue}
+                    <li class="flex items-center gap-1">
+                      <div class="w-1 h-1 bg-red-400 rounded-full"></div>
+                      {issue}
+                    </li>
+                  {/each}
+                </ul>
+              </div>
+            </div>
+          {/if}
+        </div>
       {/if}
+
+      <!-- 录制控制区域 -->
+      <RecordButton
+        isRecording={workerIsRecording}
+        status={workerStatus}
+        onclick={handleWorkerRecordButtonClick}
+      />
     </div>
   </div>
+{/if}
 
-  {#if status === 'recording'}
-    <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 flex flex-col gap-2">
-      <div class="flex justify-between items-center">
-        <span class="text-sm text-gray-600 font-medium">录制时长:</span>
-        <span class="text-sm text-gray-900 font-semibold flex items-center gap-1">
-          <Clock class="w-4 h-4" />
-          {formatDuration(duration)}
-        </span>
-      </div>
-      <div class="flex justify-between items-center">
-        <span class="text-sm text-gray-600 font-medium">状态:</span>
-        <span class="text-sm text-red-600 font-semibold flex items-center gap-1 animate-pulse">
-          <div class="w-2 h-2 bg-red-500 rounded-full"></div>
-          录制中
-        </span>
-      </div>
-    </div>
-  {/if}
+<!-- 完整编辑模式 -->
+{#if isEditingMode}
+  <div class="flex flex-col lg:flex-row min-h-screen p-4 gap-6 font-sans bg-gradient-to-br from-gray-50 to-gray-100 transition-all duration-500 ease-in-out">
 
-  <div class="flex flex-col gap-3">
-    <button
-      class="flex items-center justify-center gap-2 px-6 py-4 rounded-lg font-semibold text-base transition-all duration-200 relative overflow-hidden
-        {status === 'requesting' ? 'bg-amber-500 text-white cursor-not-allowed opacity-60' :
-         status === 'stopping' ? 'bg-gray-500 text-white cursor-not-allowed opacity-60' :
-         isRecording ? 'bg-red-600 text-white hover:bg-red-700 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-red-600/30' :
-         'bg-blue-600 text-white hover:bg-blue-700 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-600/30'}"
-      disabled={status === 'requesting' || status === 'stopping'}
-      onclick={handleRecordButtonClick}
-    >
-      {#if status === 'requesting'}
-        <RotateCcw class="w-5 h-5 animate-spin" />
-        请求权限...
-      {:else if status === 'stopping'}
-        <Square class="w-5 h-5" />
-        停止中...
-      {:else if isRecording}
-        <Square class="w-5 h-5" />
-        停止录制
-      {:else}
-        <Play class="w-5 h-5" />
-        开始录制
-      {/if}
-    </button>
-  </div>
-
-  {#if errorMessage}
-    <div class="bg-red-50 border border-red-200 rounded-lg p-4 my-3">
-      <div class="flex items-center gap-2 text-red-600 text-sm font-semibold mb-3">
-        <TriangleAlert class="w-4 h-4" />
-        <strong>错误:</strong> {errorMessage}
+    <!-- 视频预览区域：小屏全宽在上，大屏左侧（更宽） -->
+    <div class="w-full lg:w-3/4 space-y-4 lg:space-y-6 transition-all duration-300 ease-in-out">
+      <!-- 页面标题（编辑模式） -->
+      <div class="text-center lg:text-left animate-fade-in">
+        <h1 class="text-2xl font-bold text-gray-800 mb-1 transition-colors duration-200">视频编辑</h1>
+        <p class="text-sm text-gray-600 transition-colors duration-200">录制完成，开始编辑</p>
       </div>
-      <div class="text-red-900 text-sm leading-relaxed">
-        {#if errorMessage.includes('DESKTOP_CAPTURE_CANCELLED')}
-          <p><strong>用户取消了屏幕共享权限</strong></p>
-          <p>📋 <strong>如何授予屏幕录制权限：</strong></p>
-          <ol>
-            <li>点击"开始录制"按钮</li>
-            <li>在弹出的对话框中选择要录制的内容：
-              <ul>
-                <li><strong>整个屏幕</strong> - 录制完整桌面</li>
-                <li><strong>应用窗口</strong> - 录制特定应用</li>
-                <li><strong>Chrome标签页</strong> - 录制浏览器标签</li>
-              </ul>
-            </li>
-            <li>点击"<strong>共享</strong>"按钮确认</li>
-          </ol>
-          <p>💡 <strong>提示：</strong>选择"整个屏幕"可以录制桌面上的所有内容</p>
-        {:else if errorMessage.includes('DESKTOP_CAPTURE_FAILED')}
-          <p><strong>屏幕捕获功能不可用</strong></p>
-          <p>🔧 请检查以下设置：</p>
-          <ul>
-            <li>确保使用Chrome浏览器</li>
-            <li>检查扩展权限是否正确授予</li>
-            <li>重新加载扩展或重启浏览器</li>
-          </ul>
-        {:else if errorMessage.includes('CHROME_RUNTIME_NOT_AVAILABLE')}
-          <p><strong>Chrome扩展环境不可用</strong></p>
-          <p>🔧 请检查以下设置：</p>
-          <ul>
-            <li>确保在Chrome扩展环境中运行</li>
-            <li>重新加载扩展</li>
-            <li>检查manifest.json权限配置</li>
-          </ul>
-        {:else if errorMessage.includes('INVALID_STATE_ERROR')}
-          <p><strong>媒体设备状态错误</strong></p>
-          <p>🔧 解决方案：</p>
-          <ul>
-            <li>请在普通网页标签页中使用录制功能</li>
-            <li>避免在Chrome扩展页面（chrome://）中录制</li>
-            <li>重新打开一个新标签页后再试</li>
-          </ul>
-        {:else if errorMessage.includes('MEDIA_ABORT_ERROR')}
-          <p><strong>媒体流获取被中断</strong></p>
-          <p>🔧 解决方案：</p>
-          <ul>
-            <li>检查是否有其他应用正在使用屏幕录制</li>
-            <li>重启浏览器后重试</li>
-            <li>确保系统允许屏幕录制权限</li>
-          </ul>
-        {:else if errorMessage.includes('PERMISSION_DENIED')}
-          <p><strong>权限被拒绝</strong></p>
-          <p>🔧 解决方案：</p>
-          <ul>
-            <li>检查Chrome的隐私设置</li>
-            <li>确保扩展有屏幕录制权限</li>
-            <li>重新安装扩展</li>
-          </ul>
-        {:else if errorMessage.includes('MEDIA_DEVICE_NOT_FOUND')}
-          <p><strong>未找到录制设备</strong></p>
-          <p>🔧 解决方案：</p>
-          <ul>
-            <li>检查系统是否支持屏幕录制</li>
-            <li>更新Chrome浏览器到最新版本</li>
-            <li>重启系统后重试</li>
-          </ul>
-        {:else}
-          <p class="my-2">请检查权限设置或重试</p>
-          <p class="my-2">错误详情: {errorMessage}</p>
+
+      <!-- 视频预览面板 -->
+      <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-lg transition-all duration-300 ease-in-out hover:shadow-xl">
+        <div class="flex items-center gap-2 mb-6">
+          <div class="w-2 h-2 bg-blue-500 rounded-full transition-colors duration-200"></div>
+          <h2 class="text-lg font-semibold text-gray-800 transition-colors duration-200">录制预览</h2>
+        </div>
+
+        <!-- 使用新的 VideoPreviewComposite 组件 -->
+        <div class="w-full">
+          <VideoPreviewComposite
+            encodedChunks={workerEncodedChunks}
+            isRecordingComplete={workerStatus === 'completed' || workerStatus === 'idle'}
+            displayWidth={640}
+            displayHeight={360}
+            showControls={true}
+            showTimeline={true}
+            className="worker-video-preview w-full"
+          />
+        </div>
+
+        {#if workerEncodedChunks.length > 0}
+          <div class="flex items-center gap-2 mt-4 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+            <Activity class="w-4 h-4" />
+            <span>已收集 {workerEncodedChunks.length} 个编码块</span>
+          </div>
         {/if}
       </div>
     </div>
-  {/if}
 
-  <!-- Svelte 5 $state 测试区域 -->
-  <div class="bg-green-50 border border-green-200 rounded-lg p-3">
-    <h3 class="text-sm font-semibold text-green-900 mb-2">Svelte 5 状态测试</h3>
+    <!-- 配置和导出区域：小屏下方，大屏右侧（更窄） -->
+    <div class="w-full lg:w-1/4 lg:max-w-sm space-y-4 lg:space-y-6 transition-all duration-300 ease-in-out">
+      <!-- 视频配置面板 -->
+      <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-lg transition-all duration-300 ease-in-out hover:shadow-xl">
+        <div class="flex items-center gap-2 mb-6">
+          <div class="w-2 h-2 bg-purple-500 rounded-full transition-colors duration-200"></div>
+          <h2 class="text-lg font-semibold text-gray-800 transition-colors duration-200">视频配置</h2>
+        </div>
 
-    <div class="space-y-2 text-xs">
-      <div class="flex justify-between items-center">
-        <span class="text-green-700">计数器:</span>
-        <span class="font-mono text-green-900">{testCounter}</span>
+        <!-- 配置选项网格：小屏2列，大屏1列 -->
+        <div class="grid grid-cols-2 lg:grid-cols-1 gap-4">
+          <!-- 背景颜色选择 -->
+          <div class="col-span-2 lg:col-span-1">
+            <BackgroundColorPicker />
+          </div>
+
+          <!-- 圆角配置 -->
+          <div>
+            <BorderRadiusControl />
+          </div>
+
+          <!-- 边距配置 -->
+          <div>
+            <PaddingControl />
+          </div>
+
+          <!-- 视频比例配置 -->
+          <div class="col-span-2 lg:col-span-1">
+            <AspectRatioControl />
+          </div>
+
+          <!-- 阴影配置 -->
+          <div class="col-span-2 lg:col-span-1">
+            <ShadowControl />
+          </div>
+        </div>
       </div>
 
-      <div class="flex justify-between items-center">
-        <span class="text-green-700">双倍计数器 ($derived):</span>
-        <span class="font-mono text-green-900">{doubledCounter}</span>
-      </div>
+      <!-- 视频导出面板 -->
+      <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-lg transition-all duration-300 ease-in-out hover:shadow-xl">
+        <div class="flex items-center gap-2 mb-6">
+          <div class="w-2 h-2 bg-green-500 rounded-full transition-colors duration-200"></div>
+          <h2 class="text-lg font-semibold text-gray-800 transition-colors duration-200">视频导出</h2>
+        </div>
 
-      <div class="flex justify-between items-center">
-        <span class="text-green-700">消息:</span>
-        <span class="font-mono text-green-900 text-xs">{formattedMessage}</span>
+        <VideoExportPanel
+          encodedChunks={workerEncodedChunks}
+          isRecordingComplete={workerStatus === 'completed' || workerStatus === 'idle'}
+          className="export-panel"
+        />
       </div>
-
-      <div class="flex justify-between items-center">
-        <span class="text-green-700">数组长度:</span>
-        <span class="font-mono text-green-900">{arrayLength}</span>
-      </div>
-
-      <div class="flex justify-between items-center">
-        <span class="text-green-700">数组内容:</span>
-        <span class="font-mono text-green-900">[{testArray.join(', ')}]</span>
-      </div>
-
-      <div class="flex justify-between items-center">
-        <span class="text-green-700">对象值:</span>
-        <span class="font-mono text-green-900">{testObject.name}: {testObject.value}</span>
-      </div>
-    </div>
-
-    <div class="flex flex-wrap gap-1 mt-3">
-      <button
-        class="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
-        onclick={incrementCounter}
-      >
-        +1
-      </button>
-      <button
-        class="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
-        onclick={addToArray}
-      >
-        添加
-      </button>
-      <button
-        class="px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700"
-        onclick={updateObject}
-      >
-        随机值
-      </button>
-      <button
-        class="px-2 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700"
-        onclick={resetTests}
-      >
-        重置
-      </button>
     </div>
   </div>
+{/if}
 
-  <!-- Worker 系统测试区域 -->
-  <div class="bg-purple-50 border border-purple-200 rounded-lg p-3">
-    <h3 class="text-sm font-semibold text-purple-900 mb-2">Worker 录制系统</h3>
+<style>
+  /* 自定义动画类 */
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 
-    <div class="space-y-2 text-xs">
-      <div class="flex justify-between items-center">
-        <span class="text-purple-700">系统状态:</span>
-        <span class="font-mono text-purple-900">
-          {workerSystemReady ? '✅ 就绪' : '❌ 未就绪'}
-        </span>
-      </div>
+  .animate-fade-in {
+    animation: fade-in 0.5s ease-out;
+  }
 
-      <div class="flex justify-between items-center">
-        <span class="text-purple-700">录制状态:</span>
-        <span class="font-mono text-purple-900">{workerStatus}</span>
-      </div>
+  /* 优化滚动条样式 */
+  :global(.overflow-y-auto::-webkit-scrollbar) {
+    width: 6px;
+  }
 
-      {#if workerIsRecording}
-        <div class="flex justify-between items-center">
-          <span class="text-purple-700">录制时长:</span>
-          <span class="font-mono text-purple-900">{workerFormattedDuration}</span>
-        </div>
+  :global(.overflow-y-auto::-webkit-scrollbar-track) {
+    background: transparent;
+  }
 
-        <div class="flex justify-between items-center">
-          <span class="text-purple-700">文件大小:</span>
-          <span class="font-mono text-purple-900">{workerFormattedFileSize}</span>
-        </div>
+  :global(.overflow-y-auto::-webkit-scrollbar-thumb) {
+    background: rgba(156, 163, 175, 0.5);
+    border-radius: 3px;
+  }
 
-        <div class="flex justify-between items-center">
-          <span class="text-purple-700">比特率:</span>
-          <span class="font-mono text-purple-900">{workerFormattedBitrate}</span>
-        </div>
-
-        <div class="flex justify-between items-center">
-          <span class="text-purple-700">FPS:</span>
-          <span class="font-mono text-purple-900 flex items-center gap-1">
-            <Activity class="w-3 h-3" />
-            {workerProgress.fps}
-          </span>
-        </div>
-
-        <div class="flex justify-between items-center">
-          <span class="text-purple-700">CPU:</span>
-          <span class="font-mono text-purple-900 flex items-center gap-1"
-                class:text-green-600={workerProgress.cpuUsage < 50}
-                class:text-yellow-600={workerProgress.cpuUsage >= 50 && workerProgress.cpuUsage < 80}
-                class:text-red-600={workerProgress.cpuUsage >= 80}>
-            <Cpu class="w-3 h-3" />
-            {workerProgress.cpuUsage}%
-          </span>
-        </div>
-      {/if}
-
-      {#if workerErrorMessage}
-        <div class="flex justify-between items-center">
-          <span class="text-purple-700">错误:</span>
-          <span class="font-mono text-red-600 text-xs">{workerErrorMessage}</span>
-        </div>
-      {/if}
-
-      {#if workerEnvironmentIssues.length > 0}
-        <div class="border-t border-purple-300 pt-2 mt-2">
-          <span class="text-purple-700 text-xs">环境问题:</span>
-          <ul class="text-xs text-red-600 mt-1">
-            {#each workerEnvironmentIssues as issue}
-              <li>• {issue}</li>
-            {/each}
-          </ul>
-        </div>
-      {/if}
-    </div>
-
-    <div class="flex flex-wrap gap-1 mt-3">
-      <button
-        class="px-2 py-1 text-xs rounded text-white"
-        class:bg-red-600={workerIsRecording}
-        class:hover:bg-red-700={workerIsRecording}
-        class:bg-purple-600={!workerIsRecording}
-        class:hover:bg-purple-700={!workerIsRecording}
-        onclick={handleWorkerRecordButtonClick}
-        disabled={workerStatus === 'requesting' || workerStatus === 'stopping'}
-      >
-        {workerIsRecording ? '停止录制' : '开始录制'}
-      </button>
-
-      <button
-        class="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
-        onclick={toggleWorkerDetails}
-      >
-        {showWorkerDetails ? '隐藏详情' : '显示详情'}
-      </button>
-
-      <button
-        class="px-2 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700"
-        onclick={toggleAdvancedOptions}
-      >
-        高级选项
-      </button>
-    </div>
-
-    <!-- 背景配置区域 -->
-    <div class="border-t border-purple-300 pt-2 mt-2">
-      <div class="text-xs text-purple-700 mb-2">背景配置:</div>
-
-      <!-- 背景颜色选择 -->
-      <div class="mb-3">
-        <BackgroundColorPicker />
-      </div>
-
-      <!-- 圆角配置 -->
-      <div class="mb-3">
-        <BorderRadiusControl />
-      </div>
-
-      <!-- 边距配置 -->
-      <div class="mb-3">
-        <PaddingControl />
-      </div>
-
-      <!-- 视频比例配置 -->
-      <div class="mb-3">
-        <AspectRatioControl />
-      </div>
-
-      <!-- 阴影配置 -->
-      <div class="mb-3">
-        <ShadowControl />
-      </div>
-    </div>
-
-    <!-- 视频预览区域 -->
-    <div class="border-t border-purple-300 pt-2 mt-2">
-      <div class="text-xs text-purple-700 mb-2">录制预览:</div>
-
-      <!-- 使用新的 VideoPreviewComposite 组件 -->
-      <VideoPreviewComposite
-        encodedChunks={workerEncodedChunks}
-        isRecordingComplete={workerStatus === 'completed' || workerStatus === 'idle'}
-        displayWidth={640}
-        displayHeight={360}
-        showControls={true}
-        showTimeline={true}
-        className="worker-video-preview"
-      />
-
-      <!-- 保留原有的 VideoPreview 作为对比 -->
-      <!--
-      <VideoPreview
-        bind:this={videoPreviewRef}
-        displayWidth={640}
-        displayHeight={360}
-        canvasWidth={1920}
-        canvasHeight={1080}
-        aspectRatio="16/9"
-        showControls={true}
-        showTimeline={true}
-        encodedChunks={workerEncodedChunks}
-        isDecoding={isDecodingVideo}
-        className="border border-purple-300 rounded"
-      />
-      -->
-
-      {#if workerEncodedChunks.length > 0}
-        <div class="text-xs text-purple-600 mt-2">
-          已收集 {workerEncodedChunks.length} 个编码块
-        </div>
-      {/if}
-    </div>
-
-    <!-- 视频导出面板 -->
-    <div class="border-t border-purple-300 pt-2 mt-2">
-      <VideoExportPanel
-        encodedChunks={workerEncodedChunks}
-        isRecordingComplete={workerStatus === 'completed' || workerStatus === 'idle'}
-        className="export-panel"
-      />
-    </div>
-
-    {#if showWorkerDetails && workerIsRecording}
-      <div class="border-t border-purple-300 pt-2 mt-2">
-        <div class="text-xs space-y-1">
-          <div class="flex justify-between">
-            <span class="text-purple-600">编码帧数:</span>
-            <span class="text-purple-800">{workerProgress.encodedFrames}</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-purple-600">处理帧数:</span>
-            <span class="text-purple-800">{workerProgress.processedFrames}</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-purple-600">录制引擎:</span>
-            <span class="text-purple-800">{recordingStore.state.engine}</span>
-          </div>
-        </div>
-      </div>
-    {/if}
-
-    {#if showAdvancedOptions}
-      <div class="border-t border-purple-300 pt-2 mt-2">
-        <div class="space-y-2 text-xs">
-          <div class="flex justify-between items-center">
-            <label for="worker-video-quality" class="text-purple-700">视频质量:</label>
-            <select
-              id="worker-video-quality"
-              class="text-xs border border-purple-300 rounded px-1 py-0.5"
-              bind:value={recordingOptions.videoQuality}
-              onchange={() => updateRecordingOptions({ videoQuality: recordingOptions.videoQuality })}
-            >
-              <option value="low">低 (4Mbps)</option>
-              <option value="medium">中 (8Mbps)</option>
-              <option value="high">高 (15Mbps)</option>
-            </select>
-          </div>
-
-          <div class="flex justify-between items-center">
-            <label for="worker-engine" class="text-purple-700">录制引擎:</label>
-            <select
-              id="worker-engine"
-              class="text-xs border border-purple-300 rounded px-1 py-0.5"
-              bind:value={recordingOptions.preferredEngine}
-              onchange={() => updateRecordingOptions({ preferredEngine: recordingOptions.preferredEngine })}
-            >
-              <option value="mediarecorder">MediaRecorder</option>
-              <option value="webcodecs">WebCodecs</option>
-            </select>
-          </div>
-
-          <div class="flex justify-between items-center">
-            <label for="worker-audio" class="text-purple-700">包含音频:</label>
-            <input
-              id="worker-audio"
-              type="checkbox"
-              class="rounded"
-              bind:checked={recordingOptions.includeAudio}
-              onchange={() => updateRecordingOptions({ includeAudio: recordingOptions.includeAudio })}
-            />
-          </div>
-        </div>
-      </div>
-    {/if}
-  </div>
-
-  <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-auto">
-    <h3 class="text-sm font-semibold text-blue-900 mb-2">功能说明</h3>
-    <ul class="text-xs text-blue-800 space-y-1 pl-4 list-disc">
-      <li><strong>原始录制</strong>：使用传统 MediaRecorder API</li>
-      <li><strong>Worker 录制</strong>：使用 Web Workers 的高性能录制系统</li>
-      <li><strong>Svelte 5 测试</strong>：绿色区域测试 $state 响应式状态</li>
-      <li><strong>智能降级</strong>：WebCodecs → MediaRecorder 自动切换</li>
-      <li><strong>实时监控</strong>：FPS、CPU、内存使用情况</li>
-      <li><strong>非阻塞架构</strong>：UI 始终保持响应</li>
-    </ul>
-  </div>
-</div>
+  :global(.overflow-y-auto::-webkit-scrollbar-thumb:hover) {
+    background: rgba(156, 163, 175, 0.8);
+  }
+</style>
 
