@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Capture Side Panel</title>
+  <link rel="stylesheet" href="sidepanel.css" />
+</head>
+<body>
+  <header class="sp-header">
+    <h1>录制控制</h1>
+  </header>
+  <main class="sp-main">
+    <section class="sp-section">
+      <label class="mode-label">模式：</label>
+      <div class="mode-switch">
+        <label><input type="radio" name="mode" value="element" checked> 元素选择</label>
+        <label><input type="radio" name="mode" value="region"> 选区选择</label>
+      </div>
+    </section>
+
+    <section class="sp-section">
+      <div class="btn-row">
+        <button id="enterSel">进入选择</button>
+        <button id="exitSel">退出选择</button>
+      </div>
+      <div class="btn-row">
+        <button id="startCap">开始录制</button>
+        <button id="stopCap">停止录制</button>
+      </div>
+      <div class="btn-row">
+        <button id="clearSel">清除选区</button>
+      </div>
+    </section>
+
+    <section class="sp-section">
+      <div id="apiStatus" class="api-status">检测 API...</div>
+      <div id="selInfo" class="sel-info">未选择</div>
+      <div id="recStatus" class="rec-status">未录制</div>
+    </section>
+  </main>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>

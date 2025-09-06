@@ -1,0 +1,23 @@
+/* overlay.css - injected into pages to render selection and preview UI */
+
+/* High z-index layer to avoid page interference */
+.mcp-ext-root { position: fixed; inset: 0; pointer-events: none; z-index: 2147483000; }
+
+/* Element highlight */
+.mcp-highlight { outline: 3px solid #0d6efd !important; outline-offset: 2px !important; background-color: rgba(13,110,253,.08) !important; cursor: crosshair !important; }
+.mcp-selected { outline: 3px solid #198754 !important; outline-offset: 2px !important; background-color: rgba(25,135,84,.08) !important; }
+
+/* Region selection box */
+.mcp-selection-box { position: fixed; border: 2px dashed #0d6efd; background: rgba(13,110,253,0.08); border-radius: 4px; box-shadow: 0 0 0 1px rgba(13,110,253,.15) inset; pointer-events: none; }
+
+/* Drag overlay to capture mouse */
+.mcp-drag-overlay { position: fixed; inset: 0; cursor: crosshair; pointer-events: auto; }
+
+/* Floating preview window */
+.mcp-preview { position: fixed; top: 12px; right: 12px; width: 320px; height: 180px; background: #000; border: 1px solid rgba(0,0,0,.2); border-radius: 10px; box-shadow: 0 10px 24px rgba(0,0,0,.25); overflow: hidden; pointer-events: auto; z-index: 2147483647; }
+.mcp-preview.min { height: 36px; }
+.mcp-preview .bar { height: 32px; background: linear-gradient(135deg,#6ea8fe,#a370f7); color:#fff; display:flex; align-items:center; justify-content:space-between; padding: 0 10px; cursor: move; user-select:none; }
+.mcp-preview .title { font-size: 12px; font-weight: 700; }
+.mcp-preview .btns { display:flex; gap:6px; }
+.mcp-preview .btn { width: 18px; height: 18px; border-radius: 4px; display:flex; align-items:center; justify-content:center; background: rgba(255,255,255,.2); color:#fff; font-size:12px; cursor:pointer; }
+.mcp-preview video { width: 100%; height: calc(100% - 32px); display:block; background:#000; }
