@@ -14,6 +14,7 @@
   import AspectRatioControl from '$lib/components/AspectRatioControl.svelte'
   import ShadowControl from '$lib/components/ShadowControl.svelte'
   import RecordButton from '$lib/components/RecordButton.svelte'
+  import ElementRegionSelector from '$lib/components/ElementRegionSelector.svelte'
 
   // 录制状态
   let isRecording = $state(false)
@@ -644,6 +645,11 @@
     <div class="text-center mb-8 animate-fade-in">
       <h1 class="text-2xl font-bold text-gray-800 mb-1 transition-colors duration-200">屏幕录制工具</h1>
       <p class="text-sm text-gray-600 transition-colors duration-200">高性能 WebCodecs 录制引擎</p>
+    </div>
+
+    <!-- 元素/区域选择面板 -->
+    <div class="max-w-md w-full mb-6">
+      <ElementRegionSelector />
     </div>
 
     <!-- 录制控制面板（简化版） -->
