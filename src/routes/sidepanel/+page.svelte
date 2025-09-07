@@ -15,6 +15,7 @@
   import ShadowControl from '$lib/components/ShadowControl.svelte'
   import RecordButton from '$lib/components/RecordButton.svelte'
   import ElementRegionSelector from '$lib/components/ElementRegionSelector.svelte'
+  import { elementRecordingIntegration, type ElementRecordingData } from '$lib/utils/element-recording-integration'
 
   // 录制状态
   let isRecording = $state(false)
@@ -395,6 +396,82 @@
     }
   }
 
+  // 处理元素录制数据
+  function handleElementRecordingData(message: any) {
+    try {
+      console.log('🎬 [Sidepanel] Received element recording data:', {
+        chunks: message.encodedChunks?.length || 0,
+        metadata: message.metadata
+      })
+
+      if (!message.encodedChunks || message.encodedChunks.length === 0) {
+        console.warn('⚠️ [Sidepanel] No encoded chunks in element recording data')
+        return
+      }
+
+      // 验证数据格式
+      const firstChunk = message.encodedChunks[0];
+      if (!Array.isArray(firstChunk.data)) {
+        console.warn('⚠️ [Sidepanel] Unexpected data format, expected array');
+      }
+
+      // 使用集成工具处理数据
+      const recordingData: ElementRecordingData = {
+        encodedChunks: message.encodedChunks || [],
+        metadata: message.metadata || {}
+      }
+
+      // 通过集成工具处理
+      elementRecordingIntegration.handleRecordingData(recordingData)
+
+      // 转换为主系统格式
+      const compatibleChunks = elementRecordingIntegration.convertToMainSystemFormat(recordingData)
+
+      console.log('🔄 [Sidepanel] Converted', compatibleChunks.length, 'chunks for editing');
+
+      // 将元素录制数据设置到主系统
+      workerEncodedChunks = compatibleChunks
+
+      // 更新录制状态为完成
+      recordingStore.updateStatus('completed')
+      recordingStore.setEngine('webcodecs')
+
+      console.log('✅ [Sidepanel] Element recording data integrated successfully')
+
+      // 显示成功通知
+      const summary = elementRecordingIntegration.getRecordingSummary(recordingData)
+      showIntegrationNotification(message.metadata, summary)
+
+    } catch (error) {
+      console.error('❌ [Sidepanel] Error handling element recording data:', error)
+    }
+  }
+
+  // 处理元素录制就绪通知
+  function handleElementRecordingReady(data: any) {
+    try {
+      console.log('🎬 [Sidepanel] Element recording ready notification:', data)
+
+      if (data?.encodedChunks) {
+        handleElementRecordingData(data)
+      }
+    } catch (error) {
+      console.error('❌ [Sidepanel] Error handling element recording ready:', error)
+    }
+  }
+
+  // 显示集成成功通知
+  function showIntegrationNotification(metadata: any, summary?: any) {
+    // 这里可以添加 UI 通知逻辑
+    console.log('🎉 [Sidepanel] Element recording integrated:', {
+      mode: metadata?.mode,
+      element: metadata?.selectedElement,
+      region: metadata?.selectedRegion,
+      chunks: workerEncodedChunks.length,
+      summary
+    })
+  }
+
 
 
   async function handleWorkerRecordButtonClick() {
@@ -609,10 +686,35 @@
     // 检查 Worker 环境
     checkWorkerEnvironment()
 
+    // 设置元素录制集成监听器
+    const elementRecordingListener = (data: ElementRecordingData) => {
+      console.log('🎬 [Sidepanel] Element recording integration callback:', data)
+
+      // 转换并设置数据
+      const compatibleChunks = elementRecordingIntegration.convertToMainSystemFormat(data)
+      workerEncodedChunks = compatibleChunks
+
+      // 更新状态
+      recordingStore.updateStatus('completed')
+      recordingStore.setEngine('webcodecs')
+
+      // 获取摘要
+      const summary = elementRecordingIntegration.getRecordingSummary(data)
+      console.log('📊 [Sidepanel] Recording summary:', summary)
+    }
+
+    elementRecordingIntegration.onDataReceived(elementRecordingListener)
+
     // 监听来自background的消息
     const messageListener = (message: any) => {
       if (message.action === 'downloadComplete') {
         console.log('✅ Download completed:', message.downloadId)
+      } else if (message.type === 'ELEMENT_RECORDING_DATA') {
+        // 处理元素录制数据
+        handleElementRecordingData(message)
+      } else if (message.type === 'ELEMENT_RECORDING_READY') {
+        // 处理元素录制就绪通知
+        handleElementRecordingReady(message.data)
       }
     }
 
@@ -624,6 +726,8 @@
       if (typeof chrome !== 'undefined' && chrome.runtime) {
         chrome.runtime.onMessage.removeListener(messageListener)
       }
+      // 清理元素录制监听器
+      elementRecordingIntegration.removeListener(elementRecordingListener)
     }
   })
 

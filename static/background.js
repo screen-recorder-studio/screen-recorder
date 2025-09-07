@@ -107,6 +107,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         broadcastToTab(tabId, { type: 'STATE_UPDATE', state: { ...state, ...message.partial } });
         return true;
 
+      case 'ELEMENT_RECORDING_COMPLETE':
+        // 处理元素录制完成，传递数据给主系统
+        handleElementRecordingComplete(message, sendResponse);
+        return true;
+
       default:
         break;
     }
@@ -156,10 +161,117 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ error: 'Unknown action' })
   }
 })
+// 接收内容脚本的 WebCodecs 编码数据流
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== 'encoded-stream') return;
+  const sess = { started: false, chunks: 0, bytes: 0, codec: '', width: 0, height: 0, framerate: 0, logTimer: null };
+  console.log('[encoded-stream] port connected');
+  const logProgress = () => {
+    console.log('[encoded-stream] stats', { chunks: sess.chunks, mb: +(sess.bytes / 1024 / 1024).toFixed(2) });
+  };
+  port.onMessage.addListener((msg) => {
+    switch (msg.type) {
+      case 'start':
+        sess.started = true;
+        sess.codec = msg.codec;
+        sess.width = msg.width;
+        sess.height = msg.height;
+        sess.framerate = msg.framerate;
+        if (!sess.logTimer) sess.logTimer = setInterval(logProgress, 1000);
+        console.log('[encoded-stream] start', { codec: sess.codec, width: sess.width, height: sess.height, framerate: sess.framerate });
+        break;
+      case 'chunk':
+        sess.chunks += 1;
+        const inc = (typeof msg.size === 'number' && msg.size >= 0)
+          ? msg.size
+          : (msg.data?.byteLength || msg.data?.buffer?.byteLength || 0);
+        sess.bytes += inc;
+        if (sess.chunks <= 3) {
+          console.log('[encoded-stream] chunk#' + sess.chunks, {
+            ts: msg.ts,
+            kind: msg.kind,
+            size: inc,
+            head: Array.isArray(msg.head) ? msg.head : undefined,
+            dataType: msg.data ? Object.prototype.toString.call(msg.data) : 'none'
+          });
+        }
+        break;
+      case 'end':
+      case 'end-request':
+        if (sess.logTimer) { clearInterval(sess.logTimer); sess.logTimer = null; }
+        console.log('[encoded-stream] end', { chunks: sess.chunks, bytes: sess.bytes });
+        break;
+      case 'error':
+        console.warn('[encoded-stream] error', msg.message);
+        break;
+      default:
+        break;
+    }
+  });
+  port.onDisconnect.addListener(() => {
+    if (sess.logTimer) { clearInterval(sess.logTimer); sess.logTimer = null; }
+    console.log('[encoded-stream] port disconnected', { chunks: sess.chunks, bytes: sess.bytes });
+  });
+});
+
 
 // lab 功能：广播消息到标签页
 function broadcastToTab(tabId, payload) {
   chrome.runtime.sendMessage({ ...payload, tabId });
+}
+
+// 处理元素录制完成，传递数据给主系统
+function handleElementRecordingComplete(message, sendResponse) {
+  try {
+    console.log('🎬 [Background] Element recording completed, transferring to main system...', {
+      chunks: message.data?.encodedChunks?.length || 0,
+      metadata: message.data?.metadata
+    });
+
+    // 验证数据完整性
+    if (!message.data?.encodedChunks || message.data.encodedChunks.length === 0) {
+      console.error('❌ [Background] No encoded chunks received');
+      sendResponse({ success: false, error: 'No encoded chunks' });
+      return;
+    }
+
+    // 准备传递给主系统的数据
+    const transferData = {
+      type: 'ELEMENT_RECORDING_DATA',
+      encodedChunks: message.data.encodedChunks,
+      metadata: {
+        ...message.data.metadata,
+        transferTime: Date.now(),
+        source: 'element-recording'
+      }
+    };
+
+    // 广播给所有监听的组件（包括 sidepanel）
+    chrome.runtime.sendMessage(transferData).catch((error) => {
+      console.warn('❌ [Background] Failed to broadcast to sidepanel:', error);
+    });
+
+    // 尝试直接通知 sidepanel
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]?.id) {
+        // 通知 sidepanel 有新的录制数据
+        broadcastToTab(tabs[0].id, {
+          type: 'ELEMENT_RECORDING_READY',
+          data: transferData
+        });
+      }
+    });
+
+    console.log('✅ [Background] Element recording data transferred successfully');
+    sendResponse({ success: true, message: 'Data transferred to main system' });
+
+  } catch (error) {
+    console.error('❌ [Background] Error handling element recording complete:', error);
+    sendResponse({
+      success: false,
+      error: error.message || 'Unknown error'
+    });
+  }
 }
 
 // lab 功能：确保 Content Script 已注入
@@ -236,22 +348,22 @@ async function handleScreenCaptureRequest(message, sendResponse) {
     )
 
     console.log('chooseDesktopMedia returned requestId:', requestId)
-    
+
     // 处理请求失败情况
     if (!requestId) {
       console.error('Failed to initiate desktop capture request')
-      sendResponse({ 
+      sendResponse({
         success: false,
-        error: 'DESKTOP_CAPTURE_FAILED' 
+        error: 'DESKTOP_CAPTURE_FAILED'
       })
     }
-    
+
   } catch (error) {
     console.error('Error in handleScreenCaptureRequest:', error)
-    sendResponse({ 
+    sendResponse({
       success: false,
       error: 'DESKTOP_CAPTURE_ERROR',
-      details: error.message 
+      details: error.message
     })
   }
 }
@@ -260,7 +372,7 @@ async function handleScreenCaptureRequest(message, sendResponse) {
 function handleSaveRecording(message, sendResponse) {
   try {
     const { filename, url } = message
-    
+
     // 直接使用传入的 blob URL 进行下载
     chrome.downloads.download({
       url: url,
@@ -269,26 +381,26 @@ function handleSaveRecording(message, sendResponse) {
     }, (downloadId) => {
       if (chrome.runtime.lastError) {
         console.error('Download failed:', chrome.runtime.lastError)
-        sendResponse({ 
+        sendResponse({
           success: false,
           error: 'DOWNLOAD_FAILED',
-          details: chrome.runtime.lastError.message 
+          details: chrome.runtime.lastError.message
         })
       } else {
         console.log('Download started:', downloadId)
-        sendResponse({ 
+        sendResponse({
           success: true,
-          downloadId 
+          downloadId
         })
       }
     })
-    
+
   } catch (error) {
     console.error('Error in handleSaveRecording:', error)
-    sendResponse({ 
+    sendResponse({
       success: false,
       error: 'SAVE_ERROR',
-      details: error.message 
+      details: error.message
     })
   }
 }
@@ -298,14 +410,14 @@ function handleGetSettings(sendResponse) {
   chrome.storage.local.get(['settings'], (result) => {
     if (chrome.runtime.lastError) {
       console.error('Failed to get settings:', chrome.runtime.lastError)
-      sendResponse({ 
+      sendResponse({
         success: false,
-        error: 'STORAGE_ERROR' 
+        error: 'STORAGE_ERROR'
       })
     } else {
-      sendResponse({ 
+      sendResponse({
         success: true,
-        settings: result.settings || {} 
+        settings: result.settings || {}
       })
     }
   })
@@ -314,18 +426,18 @@ function handleGetSettings(sendResponse) {
 // 更新用户设置
 function handleUpdateSettings(message, sendResponse) {
   const { settings } = message
-  
+
   chrome.storage.local.set({ settings }, () => {
     if (chrome.runtime.lastError) {
       console.error('Failed to update settings:', chrome.runtime.lastError)
-      sendResponse({ 
+      sendResponse({
         success: false,
-        error: 'STORAGE_ERROR' 
+        error: 'STORAGE_ERROR'
       })
     } else {
       console.log('Settings updated:', settings)
-      sendResponse({ 
-        success: true 
+      sendResponse({
+        success: true
       })
     }
   })
@@ -339,17 +451,17 @@ function handleOpenSidePanel(message, sendResponse) {
         await chrome.sidePanel.open({ tabId: tabs[0].id })
         sendResponse({ success: true })
       } else {
-        sendResponse({ 
+        sendResponse({
           success: false,
-          error: 'NO_ACTIVE_TAB' 
+          error: 'NO_ACTIVE_TAB'
         })
       }
     } catch (error) {
       console.error('Failed to open sidepanel:', error)
-      sendResponse({ 
+      sendResponse({
         success: false,
         error: 'SIDEPANEL_ERROR',
-        details: error.message 
+        details: error.message
       })
     }
   })
@@ -359,7 +471,7 @@ function handleOpenSidePanel(message, sendResponse) {
 chrome.downloads.onChanged.addListener((downloadDelta) => {
   if (downloadDelta.state && downloadDelta.state.current === 'complete') {
     console.log('Download completed:', downloadDelta.id)
-    
+
     // 可以在这里通知 sidepanel 下载完成
     chrome.runtime.sendMessage({
       action: 'downloadComplete',

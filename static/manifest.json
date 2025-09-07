@@ -32,6 +32,15 @@
     "128": "assets/icon128.svg"
   },
 
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "encoder-worker.js"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
+
 
 
   "minimum_chrome_version": "116"

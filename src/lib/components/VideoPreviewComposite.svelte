@@ -2,6 +2,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
+  import { DataFormatValidator } from '$lib/utils/data-format-validator'
 
   // Props
   interface Props {
@@ -41,7 +42,6 @@
   let duration = $state(0)
   let frameRate = 30
   let isPlaying = $state(false)
-  let playbackSpeed = $state(1.0)
 
   // 输出尺寸信息
   let outputWidth = $state(1920)
@@ -218,20 +218,58 @@
       return
     }
 
-    console.log('🎬 [VideoPreview] Processing video with background config:', backgroundConfig)
+    console.log('🎬 [VideoPreview] Processing video with', encodedChunks.length, 'chunks')
+
+    // 验证并修复数据格式
+    const validation = DataFormatValidator.validateChunks(encodedChunks)
+    if (!validation.isValid) {
+      console.warn('⚠️ [VideoPreview] Invalid chunk data detected, attempting to fix...')
+      const fixedChunks = DataFormatValidator.fixChunksFormat(encodedChunks)
+
+      if (fixedChunks.length > 0) {
+        encodedChunks = fixedChunks
+        console.log('✅ [VideoPreview] Fixed chunk format')
+      } else {
+        console.error('❌ [VideoPreview] Cannot fix chunk format, aborting')
+        isProcessing = false
+        return
+      }
+    }
 
     isProcessing = true
 
     // 准备可传输的数据块
-    const transferableChunks = encodedChunks.map(chunk => ({
-      data: chunk.data.buffer.slice(chunk.data.byteOffset, chunk.data.byteOffset + chunk.data.byteLength),
-      timestamp: chunk.timestamp,
-      type: chunk.type,
-      size: chunk.size,
-      codedWidth: chunk.codedWidth,
-      codedHeight: chunk.codedHeight,
-      codec: chunk.codec
-    }))
+    const transferableChunks = encodedChunks.map(chunk => {
+      let dataBuffer;
+
+      try {
+        // 统一处理：确保数据是 Uint8Array，然后获取其 ArrayBuffer
+        const uint8Data = DataFormatValidator.convertToUint8Array(chunk.data);
+        if (!uint8Data) {
+          console.error('❌ [VideoPreview] Cannot convert chunk data to Uint8Array:', chunk.data);
+          return null;
+        }
+
+        // 创建 ArrayBuffer 副本用于传输
+        dataBuffer = uint8Data.buffer.slice(uint8Data.byteOffset, uint8Data.byteOffset + uint8Data.byteLength);
+
+      } catch (error) {
+        console.error('❌ [VideoPreview] Error processing chunk data:', error);
+        return null;
+      }
+
+      return {
+        data: dataBuffer,
+        timestamp: chunk.timestamp,
+        type: chunk.type,
+        size: chunk.size,
+        codedWidth: chunk.codedWidth,
+        codedHeight: chunk.codedHeight,
+        codec: chunk.codec
+      };
+    }).filter(chunk => chunk !== null); // 过滤掉无效的数据块
+
+    console.log('📤 [VideoPreview] Prepared', transferableChunks.length, 'transferable chunks');
 
     // 收集所有 ArrayBuffer 用于转移
     const transferList = transferableChunks.map(chunk => chunk.data)

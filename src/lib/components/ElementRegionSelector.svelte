@@ -108,6 +108,16 @@
     await sendToBackground('DOWNLOAD_VIDEO')
   }
 
+  async function handleSwitchToEdit() {
+    // 停止当前录制并切换到编辑模式
+    if (recording) {
+      await sendToBackground('STOP_CAPTURE')
+    }
+
+    // 通知用户切换到编辑模式
+    console.log('🎬 [ElementSelector] Switching to edit mode...')
+  }
+
   // 监听来自 background 的消息
   let messageListener: ((msg: any) => void) | null = null
 
@@ -192,14 +202,14 @@
     </div>
     
     <div class="flex gap-2">
-      <button 
+      <button
         onclick={handleStartCapture}
         class="flex-1 px-3 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
         disabled={recording}
       >
         开始录制
       </button>
-      <button 
+      <button
         onclick={handleStopCapture}
         class="flex-1 px-3 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
         disabled={!recording}
@@ -207,6 +217,19 @@
         停止录制
       </button>
     </div>
+
+    <!-- 切换到编辑按钮 -->
+    {#if recording}
+      <button
+        onclick={handleSwitchToEdit}
+        class="w-full px-3 py-2 text-sm bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors flex items-center justify-center gap-2"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+        </svg>
+        暂停并切换到编辑
+      </button>
+    {/if}
     
     <button
       onclick={handleClearSelection}
