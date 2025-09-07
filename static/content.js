@@ -16,6 +16,11 @@
     track: null,
     root: null,
     preview: null,
+    // 容器样式分离相关字段
+    elementContainer: null,
+    elementRecordingTarget: null,
+    regionContainer: null,
+    regionRecordingTarget: null,
     // MediaRecorder fallback fields
     mediaRecorder: null,
     recordedChunks: [],
@@ -53,6 +58,117 @@
 
   function report(partial) {
     chrome.runtime.sendMessage({ type: 'CONTENT_REPORT', partial });
+  }
+
+  // 创建元素容器和录制目标
+  function createElementContainer(targetElement) {
+    // 1. 创建样式容器
+    const container = document.createElement('div');
+    container.className = 'mcp-element-container';
+
+    // 2. 创建录制目标（透明，无样式）
+    const recordingTarget = document.createElement('div');
+    recordingTarget.className = 'mcp-recording-target';
+
+    // 3. 容器定位到目标元素
+    const rect = targetElement.getBoundingClientRect();
+
+    container.style.cssText = `
+      position: fixed;
+      left: ${rect.left}px;
+      top: ${rect.top}px;
+      width: ${rect.width}px;
+      height: ${rect.height}px;
+      pointer-events: none;
+      z-index: 2147483001;
+    `;
+
+    // 4. 录制目标填满容器内部（避开边框）
+    recordingTarget.style.cssText = `
+      position: absolute;
+      left: 5px;
+      top: 5px;
+      right: 5px;
+      bottom: 5px;
+      background: transparent;
+      border: none;
+      outline: none;
+      pointer-events: none;
+    `;
+
+    container.appendChild(recordingTarget);
+    return { container, recordingTarget };
+  }
+
+  // 创建区域容器和录制目标
+  function createRegionContainer(x, y, width, height) {
+    // 1. 外层：样式容器
+    const container = document.createElement('div');
+    container.className = 'mcp-region-container';
+    container.style.cssText = `
+      position: fixed;
+      left: ${x}px;
+      top: ${y}px;
+      width: ${width}px;
+      height: ${height}px;
+      pointer-events: none;
+      z-index: 2147483001;
+    `;
+
+    // 2. 内层：录制目标
+    const recordingTarget = document.createElement('div');
+    recordingTarget.className = 'mcp-recording-target';
+    recordingTarget.style.cssText = `
+      position: absolute;
+      left: 2px;
+      top: 2px;
+      right: 2px;
+      bottom: 2px;
+      background: transparent;
+      border: none;
+      outline: none;
+      pointer-events: none;
+    `;
+
+    container.appendChild(recordingTarget);
+    return { container, recordingTarget };
+  }
+
+  // 同步元素容器位置
+  function syncElementContainer() {
+    if (!state.selectedElement || !state.elementContainer) return;
+
+    const rect = state.selectedElement.getBoundingClientRect();
+    state.elementContainer.style.left = rect.left + 'px';
+    state.elementContainer.style.top = rect.top + 'px';
+    state.elementContainer.style.width = rect.width + 'px';
+    state.elementContainer.style.height = rect.height + 'px';
+  }
+
+  // 清理元素选择
+  function clearElementSelection() {
+    if (state.elementContainer) {
+      state.elementContainer.remove();
+      state.elementContainer = null;
+      state.elementRecordingTarget = null;
+    }
+    if (state.selectedElement) {
+      state.selectedElement.classList.remove('mcp-selected');
+      state.selectedElement = null;
+    }
+  }
+
+  // 清理区域选择
+  function clearRegionSelection() {
+    if (state.regionContainer) {
+      state.regionContainer.remove();
+      state.regionContainer = null;
+      state.regionRecordingTarget = null;
+    }
+    if (state.selectionBox) {
+      state.selectionBox.style.display = 'none';
+      state.selectionBox = null;
+    }
   }
 
   function ensureSelectionBox() {
@@ -105,8 +221,24 @@
       const h = parseFloat(sb.style.height||'0');
       if (w < 10 || h < 10) {
         sb.style.display = 'none';
+        clearRegionSelection();
         report({ selectedDesc: undefined });
       } else {
+        // 创建区域容器和录制目标
+        const x = parseFloat(sb.style.left||'0');
+        const y = parseFloat(sb.style.top||'0');
+        const { container, recordingTarget } = createRegionContainer(x, y, w, h);
+
+        // 保存状态
+        state.regionContainer = container;
+        state.regionRecordingTarget = recordingTarget;
+
+        // 添加到页面
+        root.appendChild(container);
+
+        // 隐藏原来的选择框
+        sb.style.display = 'none';
+
         report({ selectedDesc: `区域 ${Math.round(w)}×${Math.round(h)}` });
         // 区域选择完成后，自动退出选择态，并移除拖拽遮罩，防止继续选中内部
         state.selecting = false;
@@ -198,9 +330,20 @@
   }
 
   function selectElement(el) {
-    if (state.selectedElement) state.selectedElement.classList.remove('mcp-selected');
+    // 清理之前的选择
+    clearElementSelection();
+
+    // 创建容器和录制目标
+    const { container, recordingTarget } = createElementContainer(el);
+
+    // 保存状态
     state.selectedElement = el;
-    el.classList.add('mcp-selected');
+    state.elementContainer = container;
+    state.elementRecordingTarget = recordingTarget;
+
+    // 添加到页面
+    root.appendChild(container);
+
     clearHighlight();
     report({ selectedDesc: `元素 ${getElDesc(el)}` });
   }
@@ -213,7 +356,7 @@
       state.stream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions);
       state.track = state.stream.getVideoTracks()[0];
 
-      // Try Element Capture first if element mode
+      // Try Element Capture first if element mode (使用原始元素)
       if (state.mode === 'element' && state.selectedElement && typeof window.RestrictionTarget !== 'undefined') {
         try {
           const rt = await window.RestrictionTarget.fromElement(state.selectedElement);
@@ -221,14 +364,18 @@
         } catch (e) { console.warn('restrictTo failed, fallback to crop', e); }
       }
 
-      // Then try CropTarget (element or region box)
+      // Then try CropTarget (使用录制目标而不是样式容器)
       if (typeof window.CropTarget !== 'undefined') {
         try {
-          let targetEl = null;
-          if (state.mode === 'element') targetEl = state.selectedElement;
-          else if (state.mode === 'region') targetEl = state.selectionBox;
-          if (targetEl) {
-            const ct = await window.CropTarget.fromElement(targetEl);
+          let recordingTarget = null;
+          if (state.mode === 'element') {
+            recordingTarget = state.elementRecordingTarget;
+          } else if (state.mode === 'region') {
+            recordingTarget = state.regionRecordingTarget;
+          }
+
+          if (recordingTarget) {
+            const ct = await window.CropTarget.fromElement(recordingTarget);
             await state.track.cropTo(ct);
           }
         } catch (e) { console.warn('cropTo failed', e); }
@@ -420,13 +567,19 @@
   }
 
   function clearSelection() {
-    if (state.selectedElement) state.selectedElement.classList.remove('mcp-selected');
-    state.selectedElement = null;
+    // 清理元素选择
+    clearElementSelection();
+
+    // 清理区域选择
+    clearRegionSelection();
+
+    // 清理原有的选择框
     if (state.selectionBox) {
       state.selectionBox.style.display = 'none';
       state.selectionBox.style.width = '0px';
       state.selectionBox.style.height = '0px';
     }
+
     report({ selectedDesc: undefined });
   }
 
@@ -637,6 +790,10 @@
       }
     }, 5000);
   }
+
+  // 添加位置同步监听器
+  window.addEventListener('scroll', syncElementContainer, { passive: true });
+  window.addEventListener('resize', syncElementContainer, { passive: true });
 
   chrome.runtime.onMessage.addListener((msg) => {
     switch (msg.type) {
