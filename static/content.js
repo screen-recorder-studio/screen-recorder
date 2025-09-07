@@ -16,6 +16,9 @@
     track: null,
     root: null,
     preview: null,
+    mediaRecorder: null,
+    recordedChunks: [],
+    videoBlob: null
   };
 
   // Root overlay
@@ -217,6 +220,35 @@
         } catch (e) { console.warn('cropTo failed', e); }
       }
 
+      // 初始化 MediaRecorder 进行录制
+      state.recordedChunks = [];
+      state.mediaRecorder = new MediaRecorder(state.stream, {
+        mimeType: 'video/webm;codecs=vp9'
+      });
+
+      state.mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          state.recordedChunks.push(event.data);
+        }
+      };
+
+      state.mediaRecorder.onstop = () => {
+        // 创建视频 blob
+        state.videoBlob = new Blob(state.recordedChunks, { type: 'video/webm' });
+        // 创建视频 URL 用于预览
+        const videoUrl = URL.createObjectURL(state.videoBlob);
+        // 通知 sidepanel 有新的录制完成
+        report({
+          recording: false,
+          hasVideo: true,
+          videoSize: state.videoBlob.size,
+          videoUrl: videoUrl
+        });
+      };
+
+      // 开始录制
+      state.mediaRecorder.start(1000); // 每秒收集一次数据
+
       showPreview();
       state.track.onended = stopCapture;
       report({ recording: true });
@@ -229,11 +261,19 @@
 
   function stopCapture() {
     try {
+      // 停止 MediaRecorder
+      if (state.mediaRecorder && state.mediaRecorder.state !== 'inactive') {
+        state.mediaRecorder.stop();
+      }
+      // 停止媒体流
       if (state.stream) state.stream.getTracks().forEach(t => t.stop());
     } finally {
-      state.stream = null; state.track = null; state.recording = false;
+      state.stream = null;
+      state.track = null;
+      state.mediaRecorder = null;
+      state.recording = false;
       hidePreview();
-      report({ recording: false });
+      // 注意：不在这里报告 recording: false，因为 MediaRecorder.onstop 会处理
     }
   }
 
@@ -246,6 +286,28 @@
       state.selectionBox.style.height = '0px';
     }
     report({ selectedDesc: undefined });
+  }
+
+  function downloadVideo() {
+    if (!state.videoBlob) {
+      console.warn('No video blob available for download');
+      return;
+    }
+
+    // 创建下载链接
+    const url = URL.createObjectURL(state.videoBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `element-recording-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.webm`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    // 清理 blob 数据
+    state.videoBlob = null;
+    state.recordedChunks = [];
+    report({ hasVideo: false, videoUrl: null });
   }
 
   function showPreview() {
@@ -301,6 +363,8 @@
         stopCapture(); break;
       case 'CLEAR_SELECTION':
         clearSelection(); break;
+      case 'DOWNLOAD_VIDEO':
+        downloadVideo(); break;
       case 'STATE_UPDATE':
         // no-op for now
         break;

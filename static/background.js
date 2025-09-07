@@ -98,6 +98,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         broadcastToTab(tabId, { type: 'STATE_UPDATE', state });
         return true;
 
+      case 'DOWNLOAD_VIDEO':
+        chrome.tabs.sendMessage(tabId, { type: 'DOWNLOAD_VIDEO' });
+        return true;
+
       case 'CONTENT_REPORT':
         // pass-through updates to side panel
         broadcastToTab(tabId, { type: 'STATE_UPDATE', state: { ...state, ...message.partial } });

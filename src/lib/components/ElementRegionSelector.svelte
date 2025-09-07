@@ -8,6 +8,9 @@
   let selectedDesc = $state<string | undefined>(undefined)
   let capabilities = $state<any>(null)
   let apiStatus = $state('检测 API...')
+  let hasVideo = $state(false)
+  let videoSize = $state<number>(0)
+  let videoUrl = $state<string | null>(null)
 
   // Chrome 扩展环境检测
   const hasExt = typeof chrome !== 'undefined' && chrome?.runtime && chrome?.tabs
@@ -52,6 +55,9 @@
     if (state.recording !== undefined) recording = state.recording
     if (state.selecting !== undefined) selecting = state.selecting
     if (state.mode !== undefined) mode = state.mode
+    if (state.hasVideo !== undefined) hasVideo = state.hasVideo
+    if (state.videoSize !== undefined) videoSize = state.videoSize
+    if (state.videoUrl !== undefined) videoUrl = state.videoUrl
     if (state.capabilities !== undefined) {
       capabilities = state.capabilities
       updateApiStatus()
@@ -98,6 +104,10 @@
     await sendToBackground('CLEAR_SELECTION')
   }
 
+  async function handleDownloadVideo() {
+    await sendToBackground('DOWNLOAD_VIDEO')
+  }
+
   // 监听来自 background 的消息
   let messageListener: ((msg: any) => void) | null = null
 
@@ -118,6 +128,10 @@
   onDestroy(() => {
     if (hasExt && messageListener) {
       chrome.runtime.onMessage.removeListener(messageListener)
+    }
+    // 清理视频 URL
+    if (videoUrl) {
+      URL.revokeObjectURL(videoUrl)
     }
   })
 </script>
@@ -194,12 +208,48 @@
       </button>
     </div>
     
-    <button 
+    <button
       onclick={handleClearSelection}
       class="w-full px-3 py-2 text-sm bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
     >
       清除选区
     </button>
+
+    <!-- 视频预览区域 -->
+    {#if hasVideo && videoUrl}
+      <div class="w-full bg-gray-50 rounded-lg p-3 border border-gray-200">
+        <div class="flex items-center gap-2 mb-2">
+          <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+          </svg>
+          <span class="text-sm font-medium text-gray-700">录制预览</span>
+          <span class="text-xs text-gray-500">({(videoSize / 1024 / 1024).toFixed(1)}MB)</span>
+        </div>
+        <video
+          src={videoUrl}
+          controls
+          class="w-full rounded border border-gray-300 bg-black"
+          style="max-height: 200px;"
+          preload="metadata"
+        >
+          <track kind="captions" />
+          您的浏览器不支持视频播放
+        </video>
+      </div>
+    {/if}
+
+    <!-- 下载按钮 -->
+    {#if hasVideo}
+      <button
+        onclick={handleDownloadVideo}
+        class="w-full px-3 py-2 text-sm bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors flex items-center justify-center gap-2"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+        下载录制视频
+      </button>
+    {/if}
   </div>
 
   <!-- 状态显示 -->
@@ -213,6 +263,11 @@
     <div class="text-gray-700">
       <strong>录制状态:</strong> {recording ? '录制中' : '未录制'}
     </div>
+    {#if hasVideo}
+      <div class="text-purple-600">
+        <strong>视频状态:</strong> 已录制完成，可下载
+      </div>
+    {/if}
   </div>
 </div>
 
