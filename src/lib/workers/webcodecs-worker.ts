@@ -155,9 +155,23 @@ async function encodeFrame(frame: VideoFrame) {
       throw new Error('Encoder not configured')
     }
 
+    // 调试：检查源帧与编码器配置的宽高/比例是否匹配
+    try {
+      const fw = (frame as any).displayWidth || (frame as any).codedWidth
+      const fh = (frame as any).displayHeight || (frame as any).codedHeight
+      if (fw && fh && currentEncoderConfig?.width && currentEncoderConfig?.height) {
+        const srcAR = fw / fh
+        const encAR = currentEncoderConfig.width / currentEncoderConfig.height
+        const diff = Math.abs(srcAR - encAR)
+        if (diff > 0.02) {
+          console.warn(`⚠️ [WORKER] Aspect ratio mismatch: src ${fw}x${fh} (${srcAR.toFixed(3)}) vs enc ${currentEncoderConfig.width}x${currentEncoderConfig.height} (${encAR.toFixed(3)})`)
+        }
+      }
+    } catch {}
+
     // 编码帧
     encoder.encode(frame, { keyFrame: false })
-    
+
     // 关闭帧以释放内存
     frame.close()
 

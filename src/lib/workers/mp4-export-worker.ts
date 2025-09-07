@@ -1,9 +1,9 @@
 // MP4 导出 Worker - 协调视频合成和 MP4 导出
 // 使用 video-composite-worker 进行合成，然后用 Mediabunny 导出 MP4
 import type { EncodedChunk, ExportOptions } from '../types/background'
-import { 
-  Output, 
-  Mp4OutputFormat, 
+import {
+  Output,
+  Mp4OutputFormat,
   BufferTarget,
   CanvasSource
 } from 'mediabunny'
@@ -155,7 +155,7 @@ async function createCompositeWorker(): Promise<void> {
               height: data.outputSize.height,
               frameRate: 30 // 默认帧率
             }
-            
+
             // 创建 OffscreenCanvas 用于接收合成帧
             createOffscreenCanvas(data.outputSize.width, data.outputSize.height)
             break
@@ -196,7 +196,7 @@ async function createCompositeWorker(): Promise<void> {
 function createOffscreenCanvas(width: number, height: number) {
   offscreenCanvas = new OffscreenCanvas(width, height)
   canvasCtx = offscreenCanvas.getContext('2d')
-  
+
   if (!canvasCtx) {
     throw new Error('Failed to get 2D context from OffscreenCanvas')
   }
@@ -288,9 +288,9 @@ function handleCompositeFrame(bitmap: ImageBitmap, frameIndex: number) {
     // 将 ImageBitmap 绘制到 Canvas
     canvasCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height)
     canvasCtx.drawImage(bitmap, 0, 0)
-    
+
     processedFrames++
-    
+
     // 更新进度
     const progress = 20 + (processedFrames / totalFrames) * 50 // 20%-70%
     updateProgress({
@@ -301,11 +301,12 @@ function handleCompositeFrame(bitmap: ImageBitmap, frameIndex: number) {
     })
 
     console.log(`🎨 [MP4-Export-Worker] Frame ${frameIndex} composited (${processedFrames}/${totalFrames})`)
-    
+
   } catch (error) {
     console.error('❌ [MP4-Export-Worker] Error handling composite frame:', error)
   }
 }
+
 
 /**
  * 导出 MP4
@@ -316,7 +317,7 @@ async function exportToMP4(options: ExportOptions): Promise<Blob> {
   }
 
   console.log('🎬 [MP4-Export-Worker] Starting Mediabunny export')
-  
+
   try {
     // 更新进度：编码阶段
     updateProgress({
@@ -332,9 +333,9 @@ async function exportToMP4(options: ExportOptions): Promise<Blob> {
       target: new BufferTarget()
     })
 
-    // 创建 CanvasSource
+    // 创建 CanvasSource（为 MP4 显式指定 H.264 与分辨率/帧率）
     const videoSource = new CanvasSource(offscreenCanvas, {
-      codec: 'avc', // H.264
+      codec: 'avc',
       bitrate: options.bitrate || 8000000
     })
 
@@ -361,7 +362,10 @@ async function exportToMP4(options: ExportOptions): Promise<Blob> {
     console.log(`📊 [MP4-Export-Worker] Export parameters: duration=${duration}s, totalFrames=${totalFrames}, frameRate=${frameRate}`)
 
     // 请求 composite worker 逐帧渲染并添加到 CanvasSource
-    await renderFramesForExport(videoSource, frameDuration)
+    const addedFrames = await renderFramesForExport(videoSource, frameDuration)
+    if (!addedFrames) {
+      throw new Error('未成功向 H.264 编码器添加任何帧（可能浏览器不支持 H.264 编码或被策略禁用）。')
+    }
 
     // 完成输出
     updateProgress({
@@ -379,7 +383,7 @@ async function exportToMP4(options: ExportOptions): Promise<Blob> {
     if (!buffer) {
       throw new Error('No buffer data available from Mediabunny output')
     }
-    
+
     const mp4Blob = new Blob([buffer], { type: 'video/mp4' })
 
     console.log('✅ [MP4-Export-Worker] MP4 export completed, size:', buffer.byteLength)
@@ -404,12 +408,14 @@ async function exportToMP4(options: ExportOptions): Promise<Blob> {
 /**
  * 请求逐帧渲染用于导出
  */
-async function renderFramesForExport(videoSource: any, frameDuration: number): Promise<void> {
+async function renderFramesForExport(videoSource: any, frameDuration: number): Promise<number> {
   if (!compositeWorker || !totalFrames) {
     throw new Error('Composite worker or frame count not available')
   }
 
   console.log(`🎬 [MP4-Export-Worker] Starting frame rendering for ${totalFrames} frames`)
+
+  let addedCount = 0
 
   // 逐帧请求合成并添加到 CanvasSource
   for (let frameIndex = 0; frameIndex < totalFrames; frameIndex++) {
@@ -426,6 +432,7 @@ async function renderFramesForExport(videoSource: any, frameDuration: number): P
 
       // 添加当前 Canvas 状态到 CanvasSource
       await videoSource.add(timestamp, frameDuration)
+      addedCount++
 
       // 更新进度
       const progress = 80 + (frameIndex / totalFrames) * 15 // 80%-95%
@@ -448,6 +455,7 @@ async function renderFramesForExport(videoSource: any, frameDuration: number): P
   }
 
   console.log('✅ [MP4-Export-Worker] All frames added to CanvasSource')
+  return addedCount
 }
 
 /**
@@ -521,7 +529,7 @@ function cleanup() {
     compositeWorker.terminate()
     compositeWorker = null
   }
-  
+
   offscreenCanvas = null
   canvasCtx = null
   totalFrames = 0

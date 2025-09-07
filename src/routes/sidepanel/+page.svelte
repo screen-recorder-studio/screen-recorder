@@ -173,12 +173,18 @@
       })
 
       // 6. 配置 Worker
+      // 依据采集轨道的自然尺寸配置编码器，避免拉伸变形
+      const trackSettings = (videoTrack as any).getSettings ? (videoTrack as any).getSettings() : {}
+      const encoderWidth = trackSettings?.width || 1920
+      const encoderHeight = trackSettings?.height || 1080
+      const encoderFps = Math.round(trackSettings?.frameRate || 30)
+
       const workerConfig = {
         codec: 'vp9',
-        width: 1920,
-        height: 1080,
+        width: encoderWidth,
+        height: encoderHeight,
         bitrate: 8000000,
-        framerate: 30
+        framerate: encoderFps
       }
       console.log('⚙️ [WORKER-MAIN] Step 6: Configuring Worker with:', workerConfig)
       worker.postMessage({

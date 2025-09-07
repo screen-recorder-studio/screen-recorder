@@ -206,7 +206,7 @@ function createRoundedRectPath(x: number, y: number, width: number, height: numb
   ctx.closePath();
 }
 
-// 渲染合成帧
+// 渲染合成帧（严格保持原始显示比例，支持可见区域裁剪）
 function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: BackgroundConfig) {
   if (!ctx || !offscreenCanvas) {
     console.error('❌ [COMPOSITE-WORKER] Canvas not initialized');
@@ -225,21 +225,18 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
 
     if (config.shadow) {
       ctx.save();
-
-      // 设置阴影效果
       ctx.shadowOffsetX = config.shadow.offsetX;
       ctx.shadowOffsetY = config.shadow.offsetY;
       ctx.shadowBlur = config.shadow.blur;
       ctx.shadowColor = config.shadow.color;
 
-      // 绘制阴影形状
+      // 阴影形状基于目标布局矩形
       if (borderRadius > 0) {
         createRoundedRectPath(layout.x, layout.y, layout.width, layout.height, borderRadius);
         ctx.fill();
       } else {
         ctx.fillRect(layout.x, layout.y, layout.width, layout.height);
       }
-
       ctx.restore();
     }
 
@@ -252,8 +249,19 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
       ctx.clip();
     }
 
-    // 6. 绘制视频帧
-    ctx.drawImage(frame, layout.x, layout.y, layout.width, layout.height);
+    // 6. 绘制视频帧（优先使用可见区域，避免非方像素/裁剪导致的形变）
+    const vr = frame.visibleRect;
+    if (vr) {
+      // 使用 9 参数重载：源裁剪区域 + 目标区域
+      ctx.drawImage(
+        frame,
+        vr.x, vr.y, vr.width, vr.height,
+        layout.x, layout.y, layout.width, layout.height
+      );
+    } else {
+      // 无可见区域信息时，直接按目标矩形绘制（布局已按显示尺寸等比计算）
+      ctx.drawImage(frame, layout.x, layout.y, layout.width, layout.height);
+    }
 
     // 7. 恢复状态
     ctx.restore();
@@ -272,7 +280,7 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
   }
 }
 
-// 初始化视频解码器
+// 初始化视频解码器（以解码后帧的 displayWidth/displayHeight 为准，避免拉伸变形）
 async function initializeDecoder(chunks: any[]) {
   if (!chunks || chunks.length === 0) {
     throw new Error('No video chunks provided');
@@ -283,18 +291,13 @@ async function initializeDecoder(chunks: any[]) {
 
   console.log('🎬 [COMPOSITE-WORKER] Initializing VideoDecoder with codec:', codec);
 
-  // 保存视频信息（固定尺寸，避免每帧变化）
-  videoInfo = {
-    width: firstChunk.codedWidth || 1920,
-    height: firstChunk.codedHeight || 1080
-  };
-
-  console.log('📐 [COMPOSITE-WORKER] Video info saved:', videoInfo);
-
   videoDecoder = new VideoDecoder({
     output: (frame: VideoFrame) => {
       decodedFrames.push(frame);
-      console.log(`📽️ [COMPOSITE-WORKER] Frame decoded: ${decodedFrames.length}/${chunks.length}`);
+      // 仅调试：不要打印过多日志
+      if (decodedFrames.length % 60 === 0) {
+        console.log(`📽️ [COMPOSITE-WORKER] Frames decoded: ${decodedFrames.length}/${chunks.length}`);
+      }
     },
     error: (error: Error) => {
       console.error('❌ [COMPOSITE-WORKER] Decoder error:', error);
@@ -305,32 +308,36 @@ async function initializeDecoder(chunks: any[]) {
     }
   });
 
-  // 配置解码器
-  const decoderConfig = {
-    codec: codec,
-    codedWidth: videoInfo.width,
-    codedHeight: videoInfo.height
-  };
-
+  // 仅使用 codec 配置，让解码器自行确定帧尺寸/显示比例
+  const decoderConfig: VideoDecoderConfig = { codec } as VideoDecoderConfig;
   videoDecoder.configure(decoderConfig);
   console.log('✅ [COMPOSITE-WORKER] VideoDecoder configured:', decoderConfig);
 
   // 解码所有块
   for (const chunk of chunks) {
-    // 将 ArrayBuffer 转换为 Uint8Array
     const data = chunk.data instanceof ArrayBuffer ? new Uint8Array(chunk.data) : chunk.data;
-
     const encodedChunk = new EncodedVideoChunk({
       type: chunk.type === 'key' ? 'key' : 'delta',
       timestamp: chunk.timestamp,
-      data: data
+      data
     });
-
     videoDecoder.decode(encodedChunk);
   }
 
   await videoDecoder.flush();
   console.log(`✅ [COMPOSITE-WORKER] All frames decoded: ${decodedFrames.length} frames`);
+
+  if (decodedFrames.length === 0) {
+    throw new Error('No frames decoded');
+  }
+
+  // 使用首帧的显示尺寸作为视频自然尺寸（考虑非方像素/可见区域）
+  const firstFrame = decodedFrames[0];
+  const displayWidth = (firstFrame as any).displayWidth || (firstFrame as any).codedWidth || firstChunk.codedWidth || 1920;
+  const displayHeight = (firstFrame as any).displayHeight || (firstFrame as any).codedHeight || firstChunk.codedHeight || 1080;
+
+  videoInfo = { width: displayWidth, height: displayHeight };
+  console.log('📐 [COMPOSITE-WORKER] Video info (from decoded frame):', videoInfo);
 }
 
 // 计算并缓存固定的视频布局
