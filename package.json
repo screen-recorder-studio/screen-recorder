@@ -34,7 +34,7 @@
 	"dependencies": {
 		"@lucide/svelte": "^0.542.0",
 		"@tailwindcss/vite": "^4.1.12",
-		"mediabunny": "^1.13.3",
+		"mediabunny": "^1.14.2",
 		"tailwindcss": "^4.1.12"
 	}
 }

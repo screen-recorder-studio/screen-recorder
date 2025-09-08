@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>H.264 尺寸分析</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-case {
+            margin: 15px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #fafafa;
+        }
+        .success {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+        .warning {
+            border-color: #ffc107;
+            background: #fff3cd;
+        }
+        .error {
+            border-color: #dc3545;
+            background: #f8d7da;
+        }
+        .dimensions {
+            font-weight: bold;
+            color: #333;
+        }
+        .h264-info {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background: #f8f9fa;
+        }
+        .ratio-match {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .ratio-mismatch {
+            color: #dc3545;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 H.264 尺寸兼容性分析</h1>
+        <p>分析为什么调整比例后 MP4 导出成功</p>
+
+        <h2>📊 源视频信息</h2>
+        <div class="test-case">
+            <div class="dimensions">源视频: 719×996</div>
+            <div class="h264-info">纵横比: 0.722 (竖向视频)</div>
+        </div>
+
+        <h2>🎯 不同输出比例的尺寸计算</h2>
+        <div id="calculations"></div>
+
+        <h2>📋 H.264 兼容性检查</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>输出比例</th>
+                    <th>计算尺寸</th>
+                    <th>H.264修正后</th>
+                    <th>宽度偶数</th>
+                    <th>高度偶数</th>
+                    <th>16倍数对齐</th>
+                    <th>兼容性</th>
+                </tr>
+            </thead>
+            <tbody id="compatibility-table"></tbody>
+        </table>
+
+        <h2>🎯 结论</h2>
+        <div id="conclusion"></div>
+    </div>
+
+    <script>
+        // 模拟 calculateOutputSize 函数
+        function calculateOutputSize(sourceWidth, sourceHeight, outputRatio, padding = 60) {
+            const targetRatios = {
+                '16:9': 16 / 9,
+                '1:1': 1,
+                '9:16': 9 / 16,
+                '4:5': 4 / 5
+            };
+            
+            const targetCanvasRatio = targetRatios[outputRatio];
+            const minContentWidth = sourceWidth + padding * 2;
+            const minContentHeight = sourceHeight + padding * 2;
+            
+            let outputWidth, outputHeight;
+            
+            if (targetCanvasRatio >= 1) {
+                // 横向或方形画布
+                const widthBasedHeight = minContentWidth / targetCanvasRatio;
+                
+                if (widthBasedHeight >= minContentHeight) {
+                    outputWidth = Math.max(minContentWidth, 1280);
+                    outputHeight = Math.round(outputWidth / targetCanvasRatio);
+                } else {
+                    outputHeight = minContentHeight;
+                    outputWidth = Math.round(outputHeight * targetCanvasRatio);
+                }
+            } else {
+                // 竖向画布
+                const heightBasedWidth = minContentHeight * targetCanvasRatio;
+                
+                if (heightBasedWidth >= minContentWidth) {
+                    outputHeight = Math.max(minContentHeight, 1280);
+                    outputWidth = Math.round(outputHeight * targetCanvasRatio);
+                } else {
+                    outputWidth = minContentWidth;
+                    outputHeight = Math.round(outputWidth / targetCanvasRatio);
+                }
+            }
+            
+            return { outputWidth, outputHeight };
+        }
+
+        // H.264 尺寸验证和修复
+        function validateAndFixH264Dimensions(width, height) {
+            const originalWidth = width;
+            const originalHeight = height;
+            
+            // 确保尺寸是偶数
+            let fixedWidth = width % 2 === 0 ? width : width + 1;
+            let fixedHeight = height % 2 === 0 ? height : height + 1;
+            
+            // 确保最小尺寸
+            fixedWidth = Math.max(fixedWidth, 16);
+            fixedHeight = Math.max(fixedHeight, 16);
+            
+            // 调整为 16 的倍数
+            const alignedWidth = Math.ceil(fixedWidth / 16) * 16;
+            const alignedHeight = Math.ceil(fixedHeight / 16) * 16;
+            
+            return {
+                width: alignedWidth,
+                height: alignedHeight,
+                modified: (alignedWidth !== originalWidth) || (alignedHeight !== originalHeight),
+                isEven: { width: originalWidth % 2 === 0, height: originalHeight % 2 === 0 },
+                is16Aligned: { width: originalWidth % 16 === 0, height: originalHeight % 16 === 0 }
+            };
+        }
+
+        // 分析所有比例
+        function analyzeAllRatios() {
+            const sourceWidth = 719;
+            const sourceHeight = 996;
+            const ratios = ['16:9', '1:1', '9:16', '4:5'];
+            
+            const calculationsDiv = document.getElementById('calculations');
+            const tableBody = document.getElementById('compatibility-table');
+            
+            let bestRatio = null;
+            let minModifications = Infinity;
+            
+            ratios.forEach(ratio => {
+                const { outputWidth, outputHeight } = calculateOutputSize(sourceWidth, sourceHeight, ratio);
+                const h264Result = validateAndFixH264Dimensions(outputWidth, outputHeight);
+                
+                // 计算修改程度
+                const modifications = (h264Result.width - outputWidth) + (h264Result.height - outputHeight);
+                
+                if (modifications < minModifications) {
+                    minModifications = modifications;
+                    bestRatio = ratio;
+                }
+                
+                // 创建计算结果显示
+                const calcDiv = document.createElement('div');
+                calcDiv.className = `test-case ${modifications === 0 ? 'success' : modifications < 50 ? 'warning' : 'error'}`;
+                calcDiv.innerHTML = `
+                    <div class="dimensions">${ratio} → ${outputWidth}×${outputHeight}</div>
+                    <div class="h264-info">
+                        H.264修正: ${h264Result.width}×${h264Result.height} 
+                        ${h264Result.modified ? `(调整了 ${modifications} 像素)` : '(无需调整)'}
+                    </div>
+                `;
+                calculationsDiv.appendChild(calcDiv);
+                
+                // 添加到表格
+                const row = tableBody.insertRow();
+                row.innerHTML = `
+                    <td>${ratio}</td>
+                    <td>${outputWidth}×${outputHeight}</td>
+                    <td>${h264Result.width}×${h264Result.height}</td>
+                    <td>${h264Result.isEven.width ? '✅' : '❌'}</td>
+                    <td>${h264Result.isEven.height ? '✅' : '❌'}</td>
+                    <td>${h264Result.is16Aligned.width && h264Result.is16Aligned.height ? '✅' : '❌'}</td>
+                    <td class="${modifications === 0 ? 'ratio-match' : 'ratio-mismatch'}">
+                        ${modifications === 0 ? '完美兼容' : `需调整${modifications}px`}
+                    </td>
+                `;
+            });
+            
+            // 显示结论
+            const conclusionDiv = document.getElementById('conclusion');
+            conclusionDiv.innerHTML = `
+                <div class="test-case success">
+                    <h3>🎯 分析结论</h3>
+                    <p><strong>最佳比例:</strong> ${bestRatio} (需要最少的H.264调整)</p>
+                    <p><strong>成功原因:</strong></p>
+                    <ul>
+                        <li>4:5 比例与竖向源视频(0.722)更匹配</li>
+                        <li>计算出的尺寸更接近H.264要求</li>
+                        <li>减少了尺寸调整带来的质量损失</li>
+                        <li>避免了奇数尺寸导致的编码失败</li>
+                    </ul>
+                    <p><strong>16:9 失败原因:</strong> 横向比例与竖向源视频差异太大，导致计算出不兼容的尺寸</p>
+                </div>
+            `;
+        }
+
+        // 页面加载时运行分析
+        window.onload = analyzeAllRatios;
+    </script>
+</body>
+</html>

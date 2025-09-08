@@ -2,7 +2,7 @@
 // 使用 OffscreenCanvas 进行高性能视频合成
 // 支持预览显示和 MP4 导出
 
-import { VideoDimensionDebugger } from '../utils/video-dimension-debugger'
+
 
 // 类型定义
 interface BackgroundConfig {
@@ -97,88 +97,28 @@ function calculateOutputSize(config: BackgroundConfig, sourceWidth: number, sour
     outputHeight = config.customHeight || 1080;
     console.log('✅ [COMPOSITE-WORKER] Using custom output size:', { outputWidth, outputHeight });
   } else {
-    // 正确的逻辑：创建指定比例的画布，内容保持原始比例
-    const sourceAspectRatio = sourceWidth / sourceHeight;
-
-    // 定义目标画布比例
-    const targetRatios = {
-      '16:9': 16 / 9,   // 1.778
-      '1:1': 1,         // 1.000
-      '9:16': 9 / 16,   // 0.563
-      '4:5': 4 / 5      // 0.800
+    // 平台标准输出分辨率（与 UI 显示一致），优先保证编码兼容性
+    const standardSizes: Record<BackgroundConfig['outputRatio'], { width: number; height: number }> = {
+      '16:9': { width: 1920, height: 1080 },
+      '1:1': { width: 1080, height: 1080 },
+      '9:16': { width: 1080, height: 1920 },
+      '4:5': { width: 1080, height: 1350 },
+      'custom': { width: 1920, height: 1080 }
     };
 
-    const targetCanvasRatio = targetRatios[config.outputRatio] || targetRatios['16:9'];
+    const target = standardSizes[config.outputRatio] || standardSizes['16:9'];
+    outputWidth = target.width;
+    outputHeight = target.height;
 
-    // 计算 padding
-    const padding = (config.padding || 60) + (config.inset || 0);
-
-    // 计算内容区域的最小尺寸（源视频 + padding）
-    const minContentWidth = sourceWidth + padding * 2;
-    const minContentHeight = sourceHeight + padding * 2;
-
-    console.log('📐 [COMPOSITE-WORKER] Content requirements:', {
-      sourceAspectRatio: sourceAspectRatio.toFixed(3),
-      targetCanvasRatio: targetCanvasRatio.toFixed(3),
-      padding,
-      minContentWidth,
-      minContentHeight
-    });
-
-    // 策略：基于内容需求和目标比例计算画布尺寸
-    // 确保画布足够大以容纳内容，同时保持目标比例
-
-    if (targetCanvasRatio >= 1) {
-      // 横向或方形画布（如 16:9, 1:1）
-      // 优先保证宽度，然后按比例计算高度
-
-      // 方案1：基于内容宽度需求
-      const widthBasedHeight = minContentWidth / targetCanvasRatio;
-
-      // 方案2：基于内容高度需求
-      const heightBasedWidth = minContentHeight * targetCanvasRatio;
-
-      // 选择能容纳所有内容的方案
-      if (widthBasedHeight >= minContentHeight) {
-        // 基于宽度的方案足够
-        outputWidth = Math.max(minContentWidth, 1280); // 保证最小质量
-        outputHeight = Math.round(outputWidth / targetCanvasRatio);
-      } else {
-        // 需要基于高度的方案
-        outputHeight = minContentHeight;
-        outputWidth = Math.round(outputHeight * targetCanvasRatio);
-      }
-
-    } else {
-      // 竖向画布（如 9:16, 4:5）
-      // 优先保证高度，然后按比例计算宽度
-
-      // 方案1：基于内容高度需求
-      const heightBasedWidth = minContentHeight * targetCanvasRatio;
-
-      // 方案2：基于内容宽度需求
-      const widthBasedHeight = minContentWidth / targetCanvasRatio;
-
-      // 选择能容纳所有内容的方案
-      if (heightBasedWidth >= minContentWidth) {
-        // 基于高度的方案足够
-        outputHeight = Math.max(minContentHeight, 1280); // 保证最小质量
-        outputWidth = Math.round(outputHeight * targetCanvasRatio);
-      } else {
-        // 需要基于宽度的方案
-        outputWidth = minContentWidth;
-        outputHeight = Math.round(outputWidth / targetCanvasRatio);
-      }
-    }
-
-    console.log('✅ [COMPOSITE-WORKER] Calculated output size:', {
+    // 记录选择结果
+    console.log('✅ [COMPOSITE-WORKER] Using standard canvas size for ratio:', {
+      ratio: config.outputRatio,
       outputWidth,
-      outputHeight,
-      outputAspectRatio: (outputWidth / outputHeight).toFixed(3),
-      targetCanvasRatio: targetCanvasRatio.toFixed(3),
-      canvasType: targetCanvasRatio >= 1 ? 'landscape/square' : 'portrait',
-      contentFitsWell: (outputWidth >= minContentWidth && outputHeight >= minContentHeight)
+      outputHeight
     });
+
+    // 说明：padding/inset 仅影响视频布局（calculateVideoLayout），不再放大画布，
+    // 以避免 16:9 因 padding 导致分辨率超过常见 H.264 Level 限制而报错。
   }
 
   return { outputWidth, outputHeight };
@@ -538,14 +478,18 @@ async function initializeDecoder(chunks: any[]) {
   correctedVideoSize = { width: displayWidth, height: displayHeight };
   console.log('✅ [COMPOSITE-WORKER] Corrected video size synchronized:', correctedVideoSize);
 
-  // 使用调试工具分析首帧
+  // 可选：内联首帧维度日志（避免外部依赖导致构建失败）
   if (decodedFrames.length > 0) {
-    const frameAnalysis = VideoDimensionDebugger.analyzeVideoFrame(decodedFrames[0], firstChunk);
-    console.log('🔍 [COMPOSITE-WORKER] Frame analysis:', frameAnalysis);
-
-    if (!frameAnalysis.recommendedDimensions.isValid) {
-      console.error('❌ [COMPOSITE-WORKER] No valid dimensions found in frame analysis!');
-    }
+    try {
+      const f = decodedFrames[0];
+      console.log('🔍 [COMPOSITE-WORKER] Inline frame dimension log:', {
+        displayWidth: f.displayWidth,
+        displayHeight: f.displayHeight,
+        codedWidth: f.codedWidth,
+        codedHeight: f.codedHeight,
+        visibleRect: f.visibleRect
+      });
+    } catch {}
   }
 }
 
