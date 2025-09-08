@@ -1,7 +1,77 @@
 // 背景配置类型定义
+
+// 渐变颜色停止点
+export interface GradientStop {
+  color: string      // 颜色值 (hex, rgb, rgba)
+  position: number   // 位置 (0-1)
+}
+
+// 线性渐变配置
+export interface LinearGradientConfig {
+  type: 'linear'
+  angle: number           // 角度 (0-360度)
+  stops: GradientStop[]   // 颜色停止点
+}
+
+// 径向渐变配置
+export interface RadialGradientConfig {
+  type: 'radial'
+  centerX: number         // 中心点X (0-1)
+  centerY: number         // 中心点Y (0-1)
+  radius: number          // 半径 (0-1)
+  stops: GradientStop[]   // 颜色停止点
+}
+
+// 圆锥渐变配置
+export interface ConicGradientConfig {
+  type: 'conic'
+  centerX: number         // 中心点X (0-1)
+  centerY: number         // 中心点Y (0-1)
+  angle: number           // 起始角度 (0-360度)
+  stops: GradientStop[]   // 颜色停止点
+}
+
+// 渐变配置联合类型
+export type GradientConfig = LinearGradientConfig | RadialGradientConfig | ConicGradientConfig
+
+// 图片背景配置
+export interface ImageBackgroundConfig {
+  type: 'image'
+  imageId: string                  // 唯一标识符
+  imageBitmap: ImageBitmap        // 核心渲染数据
+  fit: 'cover' | 'contain' | 'fill' | 'stretch'
+  position: 'center' | 'top' | 'bottom' | 'left' | 'right' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+  opacity?: number                // 透明度 (0-1)
+  blur?: number                  // 模糊效果 (像素)
+  scale?: number                 // 缩放比例 (0.1-3.0)
+  offsetX?: number              // 水平偏移 (-1 到 1)
+  offsetY?: number              // 垂直偏移 (-1 到 1)
+}
+
+// UI预览用的辅助接口
+export interface ImagePreviewData {
+  imageId: string
+  previewUrl: string             // Blob URL用于UI预览
+  originalFile?: File           // 原始文件用于持久化
+}
+
+// 背景配置主接口
 export interface BackgroundConfig {
-  type: 'solid-color' | 'gradient'
-  color: string
+  type: 'solid-color' | 'gradient' | 'image' | 'wallpaper'
+
+  // 纯色配置
+  color: string                    // 纯色时使用
+
+  // 渐变配置
+  gradient?: GradientConfig        // 渐变时使用
+
+  // 图片配置
+  image?: ImageBackgroundConfig    // 用户上传图片时使用
+
+  // 壁纸配置
+  wallpaper?: ImageBackgroundConfig // 内置壁纸时使用
+
+  // 通用配置
   padding: number
   outputRatio: '16:9' | '1:1' | '9:16' | '4:5' | 'custom'
   customWidth?: number
@@ -16,6 +86,63 @@ export interface BackgroundConfig {
     color: string
   }
 }
+
+// 预设渐变配置类型
+export interface GradientPreset {
+  id: string
+  name: string
+  description?: string
+  config: GradientConfig
+  preview?: string  // CSS渐变字符串用于预览
+}
+
+// 预设纯色配置类型
+export interface SolidColorPreset {
+  id: string
+  name: string
+  color: string
+  category?: 'basic' | 'business' | 'creative' | 'dark' | 'light'
+}
+
+// 预设图片配置类型
+export interface ImagePreset {
+  id: string
+  name: string
+  description?: string
+  imageUrl: string              // 预设图片的URL
+  config: Omit<ImageBackgroundConfig, 'type' | 'imageId' | 'imageUrl' | 'imageData' | 'imageBitmap'>
+  category?: 'abstract' | 'nature' | 'business' | 'tech' | 'minimal'
+  tags?: string[]              // 搜索标签
+}
+
+// 预设图片配置类型
+export interface ImagePreset {
+  id: string
+  name: string
+  description?: string
+  imageUrl: string              // 预设图片的URL
+  config: Omit<ImageBackgroundConfig, 'type' | 'imageId' | 'imageUrl' | 'imageData' | 'imageBitmap'>
+  category?: 'abstract' | 'nature' | 'business' | 'tech' | 'minimal'
+  tags?: string[]              // 搜索标签
+}
+
+// 背景配置验证结果
+export interface BackgroundConfigValidation {
+  isValid: boolean
+  errors: string[]
+  warnings: string[]
+}
+
+// 渐变方向预设
+export type GradientDirection =
+  | 'to-top'           // 0deg
+  | 'to-top-right'     // 45deg
+  | 'to-right'         // 90deg
+  | 'to-bottom-right'  // 135deg
+  | 'to-bottom'        // 180deg
+  | 'to-bottom-left'   // 225deg
+  | 'to-left'          // 270deg
+  | 'to-top-left'      // 315deg
 
 export interface ExportOptions {
   format: 'webm' | 'mp4'

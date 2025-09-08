@@ -2,26 +2,8 @@
 // 使用 OffscreenCanvas 进行高性能视频合成
 // 支持预览显示和 MP4 导出
 
-
-
-// 类型定义
-interface BackgroundConfig {
-  type: 'solid-color' | 'gradient';
-  color: string;
-  padding: number;
-  outputRatio: '16:9' | '1:1' | '9:16' | '4:5' | 'custom';
-  customWidth?: number;
-  customHeight?: number;
-  videoPosition: 'center' | 'top' | 'bottom';
-  borderRadius?: number; // 视频圆角半径，默认 0px
-  inset?: number; // 视频内缩距离，默认 0px
-  shadow?: {
-    offsetX: number;
-    offsetY: number;
-    blur: number;
-    color: string;
-  }; // 阴影效果，可选
-}
+// 导入类型定义
+import type { BackgroundConfig, GradientConfig, GradientStop, ImageBackgroundConfig } from '../types/background'
 
 interface CompositeMessage {
   type: 'init' | 'process' | 'play' | 'pause' | 'seek' | 'config';
@@ -201,22 +183,253 @@ function calculateVideoLayout(
 function renderBackground(config: BackgroundConfig) {
   if (!ctx || !offscreenCanvas) return;
 
-  if (config.type === 'gradient') {
-    // 创建渐变背景
-    const gradient = ctx.createLinearGradient(0, 0, offscreenCanvas.width, offscreenCanvas.height);
-
-    // 蓝色到紫色的渐变
-    gradient.addColorStop(0, '#3b82f6');    // 蓝色
-    gradient.addColorStop(0.5, '#8b5cf6');  // 紫色
-    gradient.addColorStop(1, '#ec4899');    // 粉色
-
-    ctx.fillStyle = gradient;
+  if (config.type === 'gradient' && config.gradient) {
+    // 使用新的渐变配置系统
+    const gradientStyle = createGradient(config.gradient);
+    if (gradientStyle) {
+      ctx.fillStyle = gradientStyle;
+    } else {
+      // 回退到纯色
+      ctx.fillStyle = config.color;
+    }
+    ctx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+  } else if (config.type === 'image' && config.image) {
+    // 用户上传的图片背景
+    renderImageBackground(config.image);
+  } else if (config.type === 'wallpaper' && config.wallpaper) {
+    // 壁纸背景
+    renderImageBackground(config.wallpaper);
   } else {
     // 纯色背景
     ctx.fillStyle = config.color;
+    ctx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+  }
+}
+
+// 创建渐变对象
+function createGradient(gradientConfig: GradientConfig): CanvasGradient | null {
+  if (!ctx || !offscreenCanvas) return null;
+
+  const { width, height } = offscreenCanvas;
+
+  try {
+    let gradient: CanvasGradient;
+
+    switch (gradientConfig.type) {
+      case 'linear':
+        gradient = createLinearGradient(gradientConfig, width, height);
+        break;
+      case 'radial':
+        gradient = createRadialGradient(gradientConfig, width, height);
+        break;
+      case 'conic':
+        gradient = createConicGradient(gradientConfig, width, height);
+        break;
+      default:
+        console.warn('🎨 [COMPOSITE-WORKER] Unsupported gradient type:', (gradientConfig as any).type);
+        return null;
+    }
+
+    // 添加颜色停止点
+    gradientConfig.stops.forEach((stop: GradientStop) => {
+      gradient.addColorStop(stop.position, stop.color);
+    });
+
+    return gradient;
+  } catch (error) {
+    console.error('🎨 [COMPOSITE-WORKER] Error creating gradient:', error);
+    return null;
+  }
+}
+
+// 创建线性渐变
+function createLinearGradient(config: any, width: number, height: number): CanvasGradient {
+  const angle = config.angle || 0;
+  const radians = (angle * Math.PI) / 180;
+
+  // 计算渐变的起点和终点
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const diagonal = Math.sqrt(width * width + height * height) / 2;
+
+  const x1 = centerX - Math.cos(radians) * diagonal;
+  const y1 = centerY - Math.sin(radians) * diagonal;
+  const x2 = centerX + Math.cos(radians) * diagonal;
+  const y2 = centerY + Math.sin(radians) * diagonal;
+
+  return ctx!.createLinearGradient(x1, y1, x2, y2);
+}
+
+// 创建径向渐变
+function createRadialGradient(config: any, width: number, height: number): CanvasGradient {
+  const centerX = (config.centerX || 0.5) * width;
+  const centerY = (config.centerY || 0.5) * height;
+  const radius = (config.radius || 0.5) * Math.min(width, height);
+
+  return ctx!.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+}
+
+// 创建圆锥渐变
+function createConicGradient(config: any, width: number, height: number): CanvasGradient {
+  const centerX = (config.centerX || 0.5) * width;
+  const centerY = (config.centerY || 0.5) * height;
+  const angle = (config.angle || 0) * Math.PI / 180;
+
+  return ctx!.createConicGradient(angle, centerX, centerY);
+}
+
+// 渲染图片背景
+function renderImageBackground(config: ImageBackgroundConfig) {
+  if (!ctx || !offscreenCanvas || !config.imageBitmap) return;
+
+  const { imageBitmap, fit, position, opacity, blur, scale, offsetX, offsetY } = config;
+  const canvasWidth = offscreenCanvas.width;
+  const canvasHeight = offscreenCanvas.height;
+
+  // 保存状态
+  ctx.save();
+
+  // 应用透明度
+  if (opacity !== undefined && opacity < 1) {
+    ctx.globalAlpha = opacity;
   }
 
-  ctx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+  // 应用模糊
+  if (blur && blur > 0) {
+    ctx.filter = `blur(${blur}px)`;
+  }
+
+  // 计算绘制参数
+  const drawParams = calculateImageDrawParams(
+    imageBitmap.width,
+    imageBitmap.height,
+    canvasWidth,
+    canvasHeight,
+    fit,
+    position,
+    scale,
+    offsetX,
+    offsetY
+  );
+
+  // 绘制图片
+  ctx.drawImage(
+    imageBitmap,
+    drawParams.x,
+    drawParams.y,
+    drawParams.width,
+    drawParams.height
+  );
+
+  // 恢复状态
+  ctx.restore();
+}
+
+// 计算图片绘制参数
+function calculateImageDrawParams(
+  imageWidth: number,
+  imageHeight: number,
+  canvasWidth: number,
+  canvasHeight: number,
+  fit: string,
+  position: string,
+  scale: number = 1,
+  offsetX: number = 0,
+  offsetY: number = 0
+): { x: number; y: number; width: number; height: number } {
+  const imageAspect = imageWidth / imageHeight;
+  const canvasAspect = canvasWidth / canvasHeight;
+
+  let drawWidth: number, drawHeight: number;
+
+  // 根据适应模式计算尺寸
+  switch (fit) {
+    case 'cover':
+      if (imageAspect > canvasAspect) {
+        drawHeight = canvasHeight;
+        drawWidth = drawHeight * imageAspect;
+      } else {
+        drawWidth = canvasWidth;
+        drawHeight = drawWidth / imageAspect;
+      }
+      break;
+    case 'contain':
+      if (imageAspect > canvasAspect) {
+        drawWidth = canvasWidth;
+        drawHeight = drawWidth / imageAspect;
+      } else {
+        drawHeight = canvasHeight;
+        drawWidth = drawHeight * imageAspect;
+      }
+      break;
+    case 'fill':
+      drawWidth = canvasWidth;
+      drawHeight = canvasHeight;
+      break;
+    case 'stretch':
+    default:
+      drawWidth = canvasWidth;
+      drawHeight = canvasHeight;
+      break;
+  }
+
+  // 应用缩放
+  drawWidth *= scale;
+  drawHeight *= scale;
+
+  // 计算位置
+  let x: number, y: number;
+
+  // 基础居中位置
+  x = (canvasWidth - drawWidth) / 2;
+  y = (canvasHeight - drawHeight) / 2;
+
+  // 根据位置调整
+  switch (position) {
+    case 'top':
+      y = 0;
+      break;
+    case 'bottom':
+      y = canvasHeight - drawHeight;
+      break;
+    case 'left':
+      x = 0;
+      break;
+    case 'right':
+      x = canvasWidth - drawWidth;
+      break;
+    case 'top-left':
+      x = 0;
+      y = 0;
+      break;
+    case 'top-right':
+      x = canvasWidth - drawWidth;
+      y = 0;
+      break;
+    case 'bottom-left':
+      x = 0;
+      y = canvasHeight - drawHeight;
+      break;
+    case 'bottom-right':
+      x = canvasWidth - drawWidth;
+      y = canvasHeight - drawHeight;
+      break;
+    case 'center':
+    default:
+      // 已经是居中位置
+      break;
+  }
+
+  // 应用偏移
+  x += offsetX * canvasWidth;
+  y += offsetY * canvasHeight;
+
+  return {
+    x: Math.round(x),
+    y: Math.round(y),
+    width: Math.round(drawWidth),
+    height: Math.round(drawHeight)
+  };
 }
 
 // 创建圆角路径

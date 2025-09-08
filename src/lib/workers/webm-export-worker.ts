@@ -1,6 +1,6 @@
 // WebM 导出 Worker - 协调视频合成和 WebM 导出
 // 使用 video-composite-worker 进行合成，然后用 Mediabunny 导出 WebM
-import type { EncodedChunk, ExportOptions } from '../types/background'
+import type { EncodedChunk, ExportOptions, BackgroundConfig, GradientConfig } from '../types/background'
 import {
   Output,
   WebMOutputFormat,

@@ -3,6 +3,7 @@
   import { onMount } from 'svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import { DataFormatValidator } from '$lib/utils/data-format-validator'
+  import { imageBackgroundManager } from '$lib/services/image-background-manager'
 
   // Props
   interface Props {
@@ -212,7 +213,7 @@
   }
 
   // 处理视频数据
-  function processVideo() {
+  async function processVideo() {
     if (!compositeWorker || !encodedChunks.length) {
       console.warn('⚠️ [VideoPreview] Cannot process: missing worker or chunks')
       return
@@ -297,13 +298,99 @@
       videoPosition: backgroundConfig.videoPosition,
       borderRadius: backgroundConfig.borderRadius,
       inset: backgroundConfig.inset,
+      // 深度转换 gradient 对象
+      gradient: backgroundConfig.gradient ? {
+        type: backgroundConfig.gradient.type,
+        ...(backgroundConfig.gradient.type === 'linear' && 'angle' in backgroundConfig.gradient ? { angle: backgroundConfig.gradient.angle } : {}),
+        ...(backgroundConfig.gradient.type === 'radial' && 'centerX' in backgroundConfig.gradient ? {
+          centerX: backgroundConfig.gradient.centerX,
+          centerY: backgroundConfig.gradient.centerY,
+          radius: backgroundConfig.gradient.radius
+        } : {}),
+        ...(backgroundConfig.gradient.type === 'conic' && 'centerX' in backgroundConfig.gradient ? {
+          centerX: backgroundConfig.gradient.centerX,
+          centerY: backgroundConfig.gradient.centerY,
+          angle: 'angle' in backgroundConfig.gradient ? backgroundConfig.gradient.angle : 0
+        } : {}),
+        stops: backgroundConfig.gradient.stops.map(stop => ({
+          color: stop.color,
+          position: stop.position
+        }))
+      } : undefined,
       // 深度转换 shadow 对象
       shadow: backgroundConfig.shadow ? {
         offsetX: backgroundConfig.shadow.offsetX,
         offsetY: backgroundConfig.shadow.offsetY,
         blur: backgroundConfig.shadow.blur,
         color: backgroundConfig.shadow.color
+      } : undefined,
+      // 深度转换 image 对象 - 获取新的ImageBitmap避免detached问题
+      image: backgroundConfig.image ? {
+        imageId: backgroundConfig.image.imageId,
+        imageBitmap: null as any, // 先设为null，稍后获取新的ImageBitmap
+        fit: backgroundConfig.image.fit,
+        position: backgroundConfig.image.position,
+        opacity: backgroundConfig.image.opacity,
+        blur: backgroundConfig.image.blur,
+        scale: backgroundConfig.image.scale,
+        offsetX: backgroundConfig.image.offsetX,
+        offsetY: backgroundConfig.image.offsetY
+      } : undefined,
+      // 深度转换 wallpaper 对象 - 获取新的ImageBitmap避免detached问题
+      wallpaper: backgroundConfig.wallpaper ? {
+        imageId: backgroundConfig.wallpaper.imageId,
+        imageBitmap: null as any, // 先设为null，稍后获取新的ImageBitmap
+        fit: backgroundConfig.wallpaper.fit,
+        position: backgroundConfig.wallpaper.position,
+        opacity: backgroundConfig.wallpaper.opacity,
+        blur: backgroundConfig.wallpaper.blur,
+        scale: backgroundConfig.wallpaper.scale,
+        offsetX: backgroundConfig.wallpaper.offsetX,
+        offsetY: backgroundConfig.wallpaper.offsetY
       } : undefined
+    }
+
+    // 如果是图片背景，获取新的ImageBitmap
+    const transferObjects: Transferable[] = [...transferList]
+    if (plainBackgroundConfig.image && backgroundConfig.image) {
+      try {
+        // 从ImageBackgroundManager获取新的ImageBitmap
+        const freshImageBitmap = imageBackgroundManager.getImageBitmap(backgroundConfig.image.imageId)
+
+        if (freshImageBitmap) {
+          // 创建ImageBitmap的副本用于传输
+          const imageBitmapCopy = await createImageBitmap(freshImageBitmap)
+          plainBackgroundConfig.image.imageBitmap = imageBitmapCopy
+          transferObjects.push(imageBitmapCopy as any)
+        } else {
+          console.warn('⚠️ [VideoPreview] ImageBitmap not found for imageId:', backgroundConfig.image.imageId)
+          plainBackgroundConfig.image = undefined // 如果找不到ImageBitmap，移除image配置
+        }
+      } catch (error) {
+        console.error('❌ [VideoPreview] Failed to get ImageBitmap:', error)
+        plainBackgroundConfig.image = undefined
+      }
+    }
+
+    // 如果是壁纸背景，获取新的ImageBitmap
+    if (plainBackgroundConfig.wallpaper && backgroundConfig.wallpaper) {
+      try {
+        // 从ImageBackgroundManager获取新的ImageBitmap
+        const freshImageBitmap = imageBackgroundManager.getImageBitmap(backgroundConfig.wallpaper.imageId)
+
+        if (freshImageBitmap) {
+          // 创建ImageBitmap的副本用于传输
+          const imageBitmapCopy = await createImageBitmap(freshImageBitmap)
+          plainBackgroundConfig.wallpaper.imageBitmap = imageBitmapCopy
+          transferObjects.push(imageBitmapCopy as any)
+        } else {
+          console.warn('⚠️ [VideoPreview] ImageBitmap not found for wallpaper imageId:', backgroundConfig.wallpaper.imageId)
+          plainBackgroundConfig.wallpaper = undefined // 如果找不到ImageBitmap，移除wallpaper配置
+        }
+      } catch (error) {
+        console.error('❌ [VideoPreview] Failed to get wallpaper ImageBitmap:', error)
+        plainBackgroundConfig.wallpaper = undefined
+      }
     }
 
     console.log('📤 [VideoPreview] Sending config to worker:', plainBackgroundConfig);
@@ -314,7 +401,7 @@
         chunks: transferableChunks,
         backgroundConfig: plainBackgroundConfig
       }
-    }, { transfer: transferList })
+    }, { transfer: transferObjects })
   }
 
   // 播放控制
@@ -358,7 +445,7 @@
   }
 
   // 更新背景配置
-  function updateBackgroundConfig(newConfig: typeof backgroundConfig) {
+  async function updateBackgroundConfig(newConfig: typeof backgroundConfig) {
     if (!compositeWorker) return
 
     // 将 Svelte 5 的 Proxy 对象转换为普通对象
@@ -370,21 +457,107 @@
       videoPosition: newConfig.videoPosition,
       borderRadius: newConfig.borderRadius,
       inset: newConfig.inset,
+      // 深度转换 gradient 对象
+      gradient: newConfig.gradient ? {
+        type: newConfig.gradient.type,
+        ...(newConfig.gradient.type === 'linear' && 'angle' in newConfig.gradient ? { angle: newConfig.gradient.angle } : {}),
+        ...(newConfig.gradient.type === 'radial' && 'centerX' in newConfig.gradient ? {
+          centerX: newConfig.gradient.centerX,
+          centerY: newConfig.gradient.centerY,
+          radius: newConfig.gradient.radius
+        } : {}),
+        ...(newConfig.gradient.type === 'conic' && 'centerX' in newConfig.gradient ? {
+          centerX: newConfig.gradient.centerX,
+          centerY: newConfig.gradient.centerY,
+          angle: 'angle' in newConfig.gradient ? newConfig.gradient.angle : 0
+        } : {}),
+        stops: newConfig.gradient.stops.map(stop => ({
+          color: stop.color,
+          position: stop.position
+        }))
+      } : undefined,
       // 深度转换 shadow 对象
       shadow: newConfig.shadow ? {
         offsetX: newConfig.shadow.offsetX,
         offsetY: newConfig.shadow.offsetY,
         blur: newConfig.shadow.blur,
         color: newConfig.shadow.color
+      } : undefined,
+      // 深度转换 image 对象 - 获取新的ImageBitmap避免detached问题
+      image: newConfig.image ? {
+        imageId: newConfig.image.imageId,
+        imageBitmap: null as any, // 先设为null，稍后获取新的ImageBitmap
+        fit: newConfig.image.fit,
+        position: newConfig.image.position,
+        opacity: newConfig.image.opacity,
+        blur: newConfig.image.blur,
+        scale: newConfig.image.scale,
+        offsetX: newConfig.image.offsetX,
+        offsetY: newConfig.image.offsetY
+      } : undefined,
+      // 深度转换 wallpaper 对象 - 获取新的ImageBitmap避免detached问题
+      wallpaper: newConfig.wallpaper ? {
+        imageId: newConfig.wallpaper.imageId,
+        imageBitmap: null as any, // 先设为null，稍后获取新的ImageBitmap
+        fit: newConfig.wallpaper.fit,
+        position: newConfig.wallpaper.position,
+        opacity: newConfig.wallpaper.opacity,
+        blur: newConfig.wallpaper.blur,
+        scale: newConfig.wallpaper.scale,
+        offsetX: newConfig.wallpaper.offsetX,
+        offsetY: newConfig.wallpaper.offsetY
       } : undefined
     }
 
     console.log('⚙️ [VideoPreview] Updating background config:', plainConfig)
 
+    // 如果是图片背景，获取新的ImageBitmap
+    const transferObjects: Transferable[] = []
+    if (plainConfig.image && newConfig.image) {
+      try {
+        // 从ImageBackgroundManager获取新的ImageBitmap
+        const freshImageBitmap = imageBackgroundManager.getImageBitmap(newConfig.image.imageId)
+
+        if (freshImageBitmap) {
+          // 创建ImageBitmap的副本用于传输
+          const imageBitmapCopy = await createImageBitmap(freshImageBitmap)
+          plainConfig.image.imageBitmap = imageBitmapCopy
+          transferObjects.push(imageBitmapCopy as any)
+        } else {
+          console.warn('⚠️ [VideoPreview] ImageBitmap not found for imageId:', newConfig.image.imageId)
+          plainConfig.image = undefined // 如果找不到ImageBitmap，移除image配置
+        }
+      } catch (error) {
+        console.error('❌ [VideoPreview] Failed to get ImageBitmap:', error)
+        plainConfig.image = undefined
+      }
+    }
+
+    // 如果是壁纸背景，获取新的ImageBitmap
+    if (plainConfig.wallpaper && newConfig.wallpaper) {
+      try {
+        // 从ImageBackgroundManager获取新的ImageBitmap
+        const freshImageBitmap = imageBackgroundManager.getImageBitmap(newConfig.wallpaper.imageId)
+
+        if (freshImageBitmap) {
+          // 创建ImageBitmap的副本用于传输
+          const imageBitmapCopy = await createImageBitmap(freshImageBitmap)
+          plainConfig.wallpaper.imageBitmap = imageBitmapCopy
+          transferObjects.push(imageBitmapCopy as any)
+        } else {
+          console.warn('⚠️ [VideoPreview] ImageBitmap not found for wallpaper imageId:', newConfig.wallpaper.imageId)
+          plainConfig.wallpaper = undefined // 如果找不到ImageBitmap，移除wallpaper配置
+        }
+      } catch (error) {
+        console.error('❌ [VideoPreview] Failed to get wallpaper ImageBitmap:', error)
+        plainConfig.wallpaper = undefined
+      }
+    }
+
     compositeWorker.postMessage({
       type: 'config',
       data: { backgroundConfig: plainConfig }
-    })
+    }, transferObjects.length > 0 ? { transfer: transferObjects } : undefined)
   }
 
   // 响应式处理 - 只在录制完成后处理一次
@@ -408,7 +581,9 @@
 
       console.log('🎬 [VideoPreview] Processing completed recording with', encodedChunks.length, 'chunks')
       hasProcessed = true
-      processVideo()
+      processVideo().catch(error => {
+        console.error('❌ [VideoPreview] Failed to process video:', error)
+      })
     }
   })
 

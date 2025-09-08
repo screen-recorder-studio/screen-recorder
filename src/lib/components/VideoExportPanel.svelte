@@ -68,12 +68,55 @@
         videoPosition: backgroundConfig.videoPosition,
         borderRadius: backgroundConfig.borderRadius,
         inset: backgroundConfig.inset,
+        // 深度转换 gradient 对象
+        gradient: backgroundConfig.gradient ? {
+          type: backgroundConfig.gradient.type,
+          ...(backgroundConfig.gradient.type === 'linear' && 'angle' in backgroundConfig.gradient ? { angle: backgroundConfig.gradient.angle } : {}),
+          ...(backgroundConfig.gradient.type === 'radial' && 'centerX' in backgroundConfig.gradient ? {
+            centerX: backgroundConfig.gradient.centerX,
+            centerY: backgroundConfig.gradient.centerY,
+            radius: backgroundConfig.gradient.radius
+          } : {}),
+          ...(backgroundConfig.gradient.type === 'conic' && 'centerX' in backgroundConfig.gradient ? {
+            centerX: backgroundConfig.gradient.centerX,
+            centerY: backgroundConfig.gradient.centerY,
+            angle: 'angle' in backgroundConfig.gradient ? backgroundConfig.gradient.angle : 0
+          } : {}),
+          stops: backgroundConfig.gradient.stops.map(stop => ({
+            color: stop.color,
+            position: stop.position
+          }))
+        } : undefined,
         // 深度转换 shadow 对象
         shadow: backgroundConfig.shadow ? {
           offsetX: backgroundConfig.shadow.offsetX,
           offsetY: backgroundConfig.shadow.offsetY,
           blur: backgroundConfig.shadow.blur,
           color: backgroundConfig.shadow.color
+        } : undefined,
+        // 深度转换 image 对象
+        image: backgroundConfig.image ? {
+          imageId: backgroundConfig.image.imageId,
+          imageBitmap: backgroundConfig.image.imageBitmap,
+          fit: backgroundConfig.image.fit,
+          position: backgroundConfig.image.position,
+          opacity: backgroundConfig.image.opacity,
+          blur: backgroundConfig.image.blur,
+          scale: backgroundConfig.image.scale,
+          offsetX: backgroundConfig.image.offsetX,
+          offsetY: backgroundConfig.image.offsetY
+        } : undefined,
+        // 深度转换 wallpaper 对象
+        wallpaper: backgroundConfig.wallpaper ? {
+          imageId: backgroundConfig.wallpaper.imageId,
+          imageBitmap: backgroundConfig.wallpaper.imageBitmap,
+          fit: backgroundConfig.wallpaper.fit,
+          position: backgroundConfig.wallpaper.position,
+          opacity: backgroundConfig.wallpaper.opacity,
+          blur: backgroundConfig.wallpaper.blur,
+          scale: backgroundConfig.wallpaper.scale,
+          offsetX: backgroundConfig.wallpaper.offsetX,
+          offsetY: backgroundConfig.wallpaper.offsetY
         } : undefined
       } : undefined
 
@@ -82,7 +125,7 @@
         {
           format: 'webm',
           includeBackground: !!plainBackgroundConfig,
-          backgroundConfig: plainBackgroundConfig,
+          backgroundConfig: plainBackgroundConfig as any,
           quality: 'medium'
         },
         (progress) => {
@@ -133,12 +176,55 @@
         videoPosition: backgroundConfig.videoPosition,
         borderRadius: backgroundConfig.borderRadius,
         inset: backgroundConfig.inset,
+        // 深度转换 gradient 对象
+        gradient: backgroundConfig.gradient ? {
+          type: backgroundConfig.gradient.type,
+          ...(backgroundConfig.gradient.type === 'linear' && 'angle' in backgroundConfig.gradient ? { angle: backgroundConfig.gradient.angle } : {}),
+          ...(backgroundConfig.gradient.type === 'radial' && 'centerX' in backgroundConfig.gradient ? {
+            centerX: backgroundConfig.gradient.centerX,
+            centerY: backgroundConfig.gradient.centerY,
+            radius: backgroundConfig.gradient.radius
+          } : {}),
+          ...(backgroundConfig.gradient.type === 'conic' && 'centerX' in backgroundConfig.gradient ? {
+            centerX: backgroundConfig.gradient.centerX,
+            centerY: backgroundConfig.gradient.centerY,
+            angle: 'angle' in backgroundConfig.gradient ? backgroundConfig.gradient.angle : 0
+          } : {}),
+          stops: backgroundConfig.gradient.stops.map(stop => ({
+            color: stop.color,
+            position: stop.position
+          }))
+        } : undefined,
         // 深度转换 shadow 对象
         shadow: backgroundConfig.shadow ? {
           offsetX: backgroundConfig.shadow.offsetX,
           offsetY: backgroundConfig.shadow.offsetY,
           blur: backgroundConfig.shadow.blur,
           color: backgroundConfig.shadow.color
+        } : undefined,
+        // 深度转换 image 对象
+        image: backgroundConfig.image ? {
+          imageId: backgroundConfig.image.imageId,
+          imageBitmap: backgroundConfig.image.imageBitmap,
+          fit: backgroundConfig.image.fit,
+          position: backgroundConfig.image.position,
+          opacity: backgroundConfig.image.opacity,
+          blur: backgroundConfig.image.blur,
+          scale: backgroundConfig.image.scale,
+          offsetX: backgroundConfig.image.offsetX,
+          offsetY: backgroundConfig.image.offsetY
+        } : undefined,
+        // 深度转换 wallpaper 对象
+        wallpaper: backgroundConfig.wallpaper ? {
+          imageId: backgroundConfig.wallpaper.imageId,
+          imageBitmap: backgroundConfig.wallpaper.imageBitmap,
+          fit: backgroundConfig.wallpaper.fit,
+          position: backgroundConfig.wallpaper.position,
+          opacity: backgroundConfig.wallpaper.opacity,
+          blur: backgroundConfig.wallpaper.blur,
+          scale: backgroundConfig.wallpaper.scale,
+          offsetX: backgroundConfig.wallpaper.offsetX,
+          offsetY: backgroundConfig.wallpaper.offsetY
         } : undefined
       } : undefined
 
@@ -147,7 +233,7 @@
         {
           format: 'mp4',
           includeBackground: !!plainBackgroundConfig,
-          backgroundConfig: plainBackgroundConfig,
+          backgroundConfig: plainBackgroundConfig as any,
           quality: 'medium'
         },
         (progress) => {
