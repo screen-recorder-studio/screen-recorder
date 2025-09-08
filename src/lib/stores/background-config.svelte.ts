@@ -373,8 +373,8 @@ function createBackgroundConfigStore() {
         case 'radial':
           const centerX = (gradient.centerX * 100).toFixed(1)
           const centerY = (gradient.centerY * 100).toFixed(1)
-          const radius = (gradient.radius * 100).toFixed(1)
-          return `radial-gradient(circle ${radius}% at ${centerX}% ${centerY}%, ${stops})`
+          // 使用标准的径向渐变语法，不指定具体半径，让浏览器自动计算
+          return `radial-gradient(circle at ${centerX}% ${centerY}%, ${stops})`
         case 'conic':
           const conicCenterX = (gradient.centerX * 100).toFixed(1)
           const conicCenterY = (gradient.centerY * 100).toFixed(1)

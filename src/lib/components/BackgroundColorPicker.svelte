@@ -1,5 +1,6 @@
 <!-- 背景色选择器 - 支持纯色和渐变色切换 -->
 <script lang="ts">
+  import { Palette, Layers, Image, Mountain, Upload, Check, CircleAlert } from '@lucide/svelte'
   import {
     backgroundConfigStore,
     PRESET_COLORS,
@@ -10,10 +11,9 @@
     BackgroundConfig,
     SolidColorPreset,
     GradientPreset,
-    GradientConfig,
     ImagePreset
   } from '$lib/types/background'
-  import { WALLPAPER_PRESETS, WALLPAPER_CATEGORIES } from '$lib/data/wallpaper-presets'
+  import { WALLPAPER_CATEGORIES } from '$lib/data/wallpaper-presets'
 
   // 背景类型选项
   type BackgroundType = BackgroundConfig['type']
@@ -53,10 +53,10 @@
 
   // Tab选项配置
   const tabOptions = [
-    { value: 'solid-color' as const, label: '纯色', icon: '🎨' },
-    { value: 'gradient' as const, label: '渐变色', icon: '🌈' },
-    { value: 'image' as const, label: '图片', icon: '🖼️' },
-    { value: 'wallpaper' as const, label: '壁纸', icon: '🌄' }
+    { value: 'solid-color' as const, label: '纯色', icon: Palette },
+    { value: 'gradient' as const, label: '渐变色', icon: Layers },
+    { value: 'image' as const, label: '图片', icon: Image },
+    { value: 'wallpaper' as const, label: '壁纸', icon: Mountain }
   ] as const
 
   // 切换Tab
@@ -330,34 +330,18 @@
     }
   }
 
-  // 获取颜色的可读性信息
-  function getColorAccessibility(color: string): { contrast: 'high' | 'medium' | 'low', readable: boolean } {
-    // 简单的颜色亮度计算
-    const hex = color.replace('#', '')
-    const r = parseInt(hex.substring(0, 2), 16)
-    const g = parseInt(hex.substring(2, 4), 16)
-    const b = parseInt(hex.substring(4, 6), 16)
 
-    // 计算相对亮度
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-
-    return {
-      contrast: luminance > 0.7 ? 'high' : luminance > 0.4 ? 'medium' : 'low',
-      readable: luminance > 0.5 || luminance < 0.3
-    }
-  }
 </script>
 
 <!-- 背景色选择器 - 两行布局 -->
-<div class="background-color-picker">
+<div class="p-4 border border-gray-200 rounded-lg bg-white flex flex-col gap-4">
   <!-- 第一行：Tab切换器 -->
-  <div class="tab-header">
-    <h3 class="picker-title">背景设置</h3>
-    <div class="tab-switcher" role="tablist" aria-label="背景类型选择">
+  <div class="flex flex-col gap-3">
+    <h3 class="text-sm font-semibold text-gray-700 m-0">背景设置</h3>
+    <div class="flex bg-gray-100 rounded-md p-0.5 gap-0.5" role="tablist" aria-label="背景类型选择">
       {#each tabOptions as tab}
         <button
-          class="tab-button"
-          class:active={activeTab === tab.value}
+          class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 border-none rounded text-gray-600 text-xs font-medium cursor-pointer transition-all duration-200 {activeTab === tab.value ? 'bg-white text-blue-600 shadow-sm' : 'bg-transparent hover:bg-gray-200 hover:text-gray-700'}"
           onclick={() => switchTab(tab.value)}
           onkeydown={handleTabKeydown}
           type="button"
@@ -366,8 +350,8 @@
           aria-controls="content-area"
           tabindex={activeTab === tab.value ? 0 : -1}
         >
-          <span class="tab-icon" aria-hidden="true">{tab.icon}</span>
-          <span class="tab-label">{tab.label}</span>
+          <tab.icon class="w-3.5 h-3.5" aria-hidden="true" />
+          <span class="font-medium">{tab.label}</span>
         </button>
       {/each}
     </div>
@@ -375,24 +359,23 @@
 
   <!-- 第二行：内容区域 -->
   <div
-    class="content-area"
+    class="min-h-0"
     id="content-area"
     role="tabpanel"
     aria-labelledby="tab-{activeTab}"
   >
     {#if activeTab === 'solid-color'}
       <!-- 纯色选择器 -->
-      <div class="solid-color-section">
+      <div class="space-y-4">
         <!-- 预设颜色分类 -->
         {#each colorCategories as category}
           {#if category.colors.length > 0}
-            <div class="color-category">
-              <h4 class="category-title">{category.name}</h4>
-              <div class="color-grid">
+            <div class="space-y-2">
+              <h4 class="text-sm font-medium text-gray-700 m-0">{category.name}</h4>
+              <div class="grid grid-cols-8 gap-2">
                 {#each category.colors as preset}
                   <button
-                    class="color-option"
-                    class:selected={isPresetSolidColorSelected(preset)}
+                    class="w-8 h-8 rounded-md border-2 cursor-pointer transition-all duration-200 relative {isPresetSolidColorSelected(preset) ? 'border-blue-500 border-3 shadow-md' : 'border-gray-300 hover:border-gray-400'}"
                     style="background-color: {preset.color}"
                     title="{preset.name} - 双击复制颜色值"
                     onclick={() => handlePresetSolidColorSelect(preset)}
@@ -403,7 +386,9 @@
                     tabindex="0"
                   >
                     {#if isPresetSolidColorSelected(preset)}
-                      <div class="selected-indicator" aria-hidden="true">✓</div>
+                      <div class="absolute top-0.5 right-0.5 bg-blue-500 text-white w-4 h-4 rounded-full flex items-center justify-center text-xs" aria-hidden="true">
+                        <Check class="w-2.5 h-2.5" />
+                      </div>
                     {/if}
                   </button>
                 {/each}
@@ -413,28 +398,28 @@
         {/each}
 
         <!-- 自定义颜色选择器 -->
-        <div class="custom-color-section">
-          <h4 class="category-title">自定义颜色</h4>
-          <div class="custom-color-controls">
+        <div class="space-y-3">
+          <h4 class="text-sm font-medium text-gray-700 m-0">自定义颜色</h4>
+          <div class="flex gap-3">
             <!-- HTML5颜色选择器 -->
-            <div class="color-picker-group">
-              <label class="color-picker-label" for="color-picker-input">颜色选择器</label>
+            <div class="flex flex-col gap-1">
+              <label class="text-xs text-gray-600" for="color-picker-input">颜色选择器</label>
               <input
                 id="color-picker-input"
                 type="color"
-                class="color-picker"
+                class="w-12 h-8 border border-gray-300 rounded cursor-pointer"
                 value={customColorValue}
                 onchange={handleColorPickerChange}
               />
             </div>
 
             <!-- 颜色值输入 -->
-            <div class="color-input-group">
-              <label class="color-input-label" for="color-text-input">颜色值</label>
+            <div class="flex flex-col gap-1 flex-1">
+              <label class="text-xs text-gray-600" for="color-text-input">颜色值</label>
               <input
                 id="color-text-input"
                 type="text"
-                class="color-text-input"
+                class="px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 bind:value={customColorValue}
                 placeholder="#ffffff"
                 onchange={handleColorTextInput}
@@ -444,10 +429,10 @@
           </div>
 
           <!-- 颜色预览 -->
-          <div class="color-preview-section">
-            <div class="color-preview-label">预览</div>
+          <div class="flex items-center gap-2">
+            <div class="text-xs text-gray-600">预览</div>
             <div
-              class="color-preview-box"
+              class="w-8 h-6 border border-gray-300 rounded"
               style="background-color: {customColorValue}"
             ></div>
           </div>
@@ -455,21 +440,20 @@
       </div>
     {:else if activeTab === 'image'}
       <!-- 图片背景选择器 -->
-      <div class="image-section">
+      <div class="space-y-4">
         <!-- 隐藏的文件输入 -->
         <input
           type="file"
           accept="image/*"
           bind:this={fileInput}
           onchange={handleImageUpload}
-          style="display: none;"
+          class="hidden"
         />
 
         <!-- 上传区域 -->
-        <div class="image-upload-area">
+        <div class="space-y-3">
           <div
-            class="drop-zone"
-            class:uploading={isUploading}
+            class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer transition-colors duration-200 {isUploading ? 'border-blue-400 bg-blue-50' : 'hover:border-gray-400 hover:bg-gray-50'}"
             onclick={triggerFileSelect}
             ondrop={handleDrop}
             ondragover={handleDragOver}
@@ -478,44 +462,45 @@
             tabindex="0"
           >
             {#if isUploading}
-              <div class="upload-loading">
-                <div class="spinner"></div>
-                <span>正在处理图片...</span>
+              <div class="flex flex-col items-center gap-2">
+                <div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <span class="text-sm text-blue-600">正在处理图片...</span>
               </div>
             {:else}
-              <div class="upload-content">
-                <div class="upload-icon">🖼️</div>
-                <div class="upload-text">
-                  <div class="upload-primary">点击选择图片</div>
-                  <div class="upload-secondary">或拖拽图片到此处</div>
+              <div class="flex flex-col items-center gap-3">
+                <Upload class="w-8 h-8 text-gray-400" />
+                <div class="space-y-1">
+                  <div class="text-sm font-medium text-gray-700">点击选择图片</div>
+                  <div class="text-xs text-gray-500">或拖拽图片到此处</div>
                 </div>
-                <div class="upload-hint">支持 JPEG、PNG、WebP、GIF 格式，最大 5MB</div>
+                <div class="text-xs text-gray-400">支持 JPEG、PNG、WebP、GIF 格式，最大 5MB</div>
               </div>
             {/if}
           </div>
 
           {#if uploadError}
-            <div class="upload-error">
-              ⚠️ {uploadError}
+            <div class="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md">
+              <CircleAlert class="w-4 h-4 text-red-500 flex-shrink-0" />
+              <span class="text-sm text-red-700">{uploadError}</span>
             </div>
           {/if}
         </div>
 
         <!-- 当前用户上传图片预览 -->
         {#if activeTab === 'image' && currentType === 'image' && currentConfig.image}
-          <div class="current-image-section">
-            <h4 class="category-title">当前图片</h4>
-            <div class="current-image-preview">
+          <div class="space-y-3">
+            <h4 class="text-sm font-medium text-gray-700 m-0">当前图片</h4>
+            <div class="flex gap-3">
               <div
-                class="image-preview-large"
-                style="background-image: url({backgroundConfigStore.getCurrentBackgroundStyle().replace('url(', '').replace(')', '')}); background-size: cover; background-position: center;"
+                class="w-16 h-16 border border-gray-300 rounded-lg bg-cover bg-center flex-shrink-0"
+                style="background-image: url({backgroundConfigStore.getCurrentBackgroundStyle().replace('url(', '').replace(')', '')});"
               ></div>
-              <div class="image-info">
-                <div class="image-id">ID: {currentConfig.image.imageId}</div>
-                <div class="image-fit">适应: {currentConfig.image.fit}</div>
-                <div class="image-position">位置: {currentConfig.image.position}</div>
+              <div class="flex flex-col gap-1 text-xs text-gray-600">
+                <div>ID: {currentConfig.image.imageId}</div>
+                <div>适应: {currentConfig.image.fit}</div>
+                <div>位置: {currentConfig.image.position}</div>
                 {#if currentConfig.image.opacity !== undefined && currentConfig.image.opacity < 1}
-                  <div class="image-opacity">透明度: {Math.round(currentConfig.image.opacity * 100)}%</div>
+                  <div>透明度: {Math.round(currentConfig.image.opacity * 100)}%</div>
                 {/if}
               </div>
             </div>
@@ -524,39 +509,44 @@
       </div>
     {:else if activeTab === 'wallpaper'}
       <!-- 壁纸背景选择器 -->
-      <div class="wallpaper-section">
+      <div class="space-y-4">
         <!-- 壁纸分类 -->
-        {#each Object.entries(WALLPAPER_CATEGORIES) as [categoryKey, category]}
+        {#each Object.entries(WALLPAPER_CATEGORIES) as [, category]}
           {#if category.wallpapers.length > 0}
-            <div class="wallpaper-category">
-              <h4 class="category-title">
-                <span class="category-icon">{category.icon}</span>
+            <div class="space-y-2">
+              <h4 class="text-sm font-medium text-gray-700 m-0 flex items-center gap-1.5">
+                <span class="text-base">{category.icon}</span>
                 {category.name}
               </h4>
-              <div class="wallpaper-grid">
+              <div class="grid grid-cols-2 gap-3">
                 {#each category.wallpapers as wallpaper}
                   <button
-                    class="wallpaper-item"
-                    class:selected={selectedWallpaper === wallpaper.id}
+                    class="relative group border-2 rounded-lg overflow-hidden cursor-pointer transition-all duration-200 {selectedWallpaper === wallpaper.id ? 'border-blue-500 shadow-md' : 'border-gray-300 hover:border-gray-400'}"
                     onclick={() => selectWallpaper(wallpaper)}
                     type="button"
                     title={wallpaper.description}
                   >
-                    <div class="wallpaper-preview">
+                    <div class="aspect-video bg-gray-100">
                       <img
                         src={wallpaper.imageUrl}
                         alt={wallpaper.name}
                         loading="lazy"
+                        class="w-full h-full object-cover"
                       />
                     </div>
-                    <div class="wallpaper-info">
-                      <div class="wallpaper-name">{wallpaper.name}</div>
+                    <div class="p-2 bg-white">
+                      <div class="text-xs font-medium text-gray-700 truncate">{wallpaper.name}</div>
                       {#if wallpaper.tags && wallpaper.tags.length > 0}
-                        <div class="wallpaper-tags">
+                        <div class="text-xs text-gray-500 truncate">
                           {wallpaper.tags.slice(0, 2).join(', ')}
                         </div>
                       {/if}
                     </div>
+                    {#if selectedWallpaper === wallpaper.id}
+                      <div class="absolute top-1 right-1 bg-blue-500 text-white w-5 h-5 rounded-full flex items-center justify-center">
+                        <Check class="w-3 h-3" />
+                      </div>
+                    {/if}
                   </button>
                 {/each}
               </div>
@@ -566,17 +556,17 @@
 
         <!-- 当前壁纸预览 -->
         {#if activeTab === 'wallpaper' && currentType === 'wallpaper' && currentConfig.wallpaper}
-          <div class="current-wallpaper-section">
-            <h4 class="category-title">当前壁纸</h4>
-            <div class="current-wallpaper-preview">
+          <div class="mt-4 p-3 bg-gray-50 rounded-lg border">
+            <h4 class="text-sm font-medium text-gray-700 mb-2 m-0">当前壁纸</h4>
+            <div class="flex gap-3">
               <div
-                class="wallpaper-preview-large"
+                class="w-20 h-15 bg-gray-200 rounded-md overflow-hidden flex-shrink-0"
                 style="background-image: url({backgroundConfigStore.getCurrentBackgroundStyle().replace('url(', '').replace(')', '')}); background-size: cover; background-position: center;"
               ></div>
-              <div class="wallpaper-info">
-                <div class="wallpaper-id">ID: {currentConfig.wallpaper.imageId}</div>
-                <div class="wallpaper-fit">适应: {currentConfig.wallpaper.fit}</div>
-                <div class="wallpaper-position">位置: {currentConfig.wallpaper.position}</div>
+              <div class="flex flex-col gap-1 text-xs text-gray-600">
+                <div>ID: {currentConfig.wallpaper.imageId}</div>
+                <div>适应: {currentConfig.wallpaper.fit}</div>
+                <div>位置: {currentConfig.wallpaper.position}</div>
               </div>
             </div>
           </div>
@@ -584,17 +574,16 @@
       </div>
     {:else if activeTab === 'gradient'}
       <!-- 渐变色选择器 -->
-      <div class="gradient-section">
+      <div class="space-y-4">
         <!-- 预设渐变分类 -->
         {#each gradientCategories as category}
           {#if category.gradients.length > 0}
-            <div class="gradient-category">
-              <h4 class="category-title">{category.name}</h4>
-              <div class="gradient-grid">
+            <div class="space-y-2">
+              <h4 class="text-sm font-medium text-gray-700 m-0">{category.name}</h4>
+              <div class="grid grid-cols-4 gap-2">
                 {#each category.gradients as preset}
                   <button
-                    class="gradient-option"
-                    class:selected={isPresetGradientSelected(preset)}
+                    class="relative h-12 rounded-md border-2 cursor-pointer transition-all duration-200 overflow-hidden {isPresetGradientSelected(preset) ? 'border-blue-500 shadow-md' : 'border-gray-300 hover:border-gray-400'}"
                     style="background: {preset.preview || 'linear-gradient(45deg, #f3f4f6, #e5e7eb)'}"
                     title="{preset.name} - {preset.description || ''}"
                     onclick={() => handlePresetGradientSelect(preset)}
@@ -604,9 +593,13 @@
                     tabindex="0"
                   >
                     {#if isPresetGradientSelected(preset)}
-                      <div class="selected-indicator" aria-hidden="true">✓</div>
+                      <div class="absolute top-1 right-1 bg-blue-500 text-white w-4 h-4 rounded-full flex items-center justify-center" aria-hidden="true">
+                        <Check class="w-2.5 h-2.5" />
+                      </div>
                     {/if}
-                    <div class="gradient-name">{preset.name}</div>
+                    <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs px-1 py-0.5 truncate">
+                      {preset.name}
+                    </div>
                   </button>
                 {/each}
               </div>
@@ -615,35 +608,35 @@
         {/each}
 
         <!-- 当前渐变预览 -->
-        <div class="current-gradient-section">
-          <h4 class="category-title">当前渐变</h4>
-          <div class="current-gradient-preview">
+        <div class="mt-4 p-3 bg-gray-50 rounded-lg border">
+          <h4 class="text-sm font-medium text-gray-700 mb-2 m-0">当前渐变</h4>
+          <div class="flex gap-3">
             <div
-              class="gradient-preview-large"
+              class="w-20 h-12 rounded-md border border-gray-300 flex-shrink-0"
               style="background: {getCurrentGradientPreview()}"
             ></div>
-            <div class="gradient-info">
+            <div class="flex flex-col gap-1 text-xs text-gray-600">
               {#if currentType === 'gradient' && currentConfig.gradient}
-                <div class="gradient-type">
+                <div>
                   类型: {currentConfig.gradient.type === 'linear' ? '线性' :
                         currentConfig.gradient.type === 'radial' ? '径向' : '圆锥'}渐变
                 </div>
-                <div class="gradient-stops">
+                <div>
                   颜色数: {currentConfig.gradient.stops.length}
                 </div>
               {:else}
-                <div class="gradient-placeholder-text">请选择一个渐变效果</div>
+                <div class="text-gray-500">请选择一个渐变效果</div>
               {/if}
             </div>
           </div>
         </div>
 
         <!-- 渐变参数调整 (未来扩展) -->
-        <div class="gradient-controls-section">
-          <h4 class="category-title">参数调整</h4>
-          <div class="gradient-controls-placeholder">
-            <p class="controls-placeholder-text">🎛️ 高级参数调整功能</p>
-            <p class="controls-placeholder-desc">即将支持自定义渐变角度、位置和颜色停止点</p>
+        <div class="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <h4 class="text-sm font-medium text-blue-700 mb-2 m-0">参数调整</h4>
+          <div class="text-center py-4">
+            <p class="text-sm text-blue-600 mb-1">🎛️ 高级参数调整功能</p>
+            <p class="text-xs text-blue-500">即将支持自定义渐变角度、位置和颜色停止点</p>
           </div>
         </div>
       </div>
@@ -651,20 +644,20 @@
   </div>
 
   <!-- 当前选择状态显示 -->
-  <div class="current-selection">
-    <span class="current-label">当前设置:</span>
-    <div class="current-preview">
+  <div class="mt-4 p-3 bg-gray-50 rounded-lg border flex items-center gap-3">
+    <span class="text-sm font-medium text-gray-700">当前设置:</span>
+    <div class="flex items-center gap-2">
       {#if currentType === 'solid-color'}
-        <div class="current-color" style="background-color: {currentColor}"></div>
-        <span class="current-name">
+        <div class="w-6 h-6 rounded border border-gray-300" style="background-color: {currentColor}"></div>
+        <span class="text-sm text-gray-600">
           {PRESET_COLORS.find(p => p.color === currentColor)?.name || currentColor}
         </span>
       {:else if currentType === 'gradient'}
         <div
-          class="current-gradient"
+          class="w-6 h-6 rounded border border-gray-300"
           style="background: {getCurrentGradientPreview()}"
         ></div>
-        <span class="current-name">
+        <span class="text-sm text-gray-600">
           {#if currentConfig.gradient}
             {currentConfig.gradient.type === 'linear' ? '线性' :
              currentConfig.gradient.type === 'radial' ? '径向' : '圆锥'}渐变
@@ -676,996 +669,3 @@
     </div>
   </div>
 </div>
-
-<style>
-  /* 主容器 */
-  .background-color-picker {
-    padding: 16px;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    background: white;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  /* 第一行：Tab头部 */
-  .tab-header {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .picker-title {
-    margin: 0;
-    font-size: 14px;
-    font-weight: 600;
-    color: #374151;
-  }
-
-  /* Tab切换器 */
-  .tab-switcher {
-    display: flex;
-    background: #f3f4f6;
-    border-radius: 6px;
-    padding: 2px;
-    gap: 2px;
-  }
-
-  .tab-button {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 8px 12px;
-    border: none;
-    border-radius: 4px;
-    background: transparent;
-    color: #6b7280;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .tab-button:hover {
-    background: #e5e7eb;
-    color: #374151;
-  }
-
-  .tab-button.active {
-    background: white;
-    color: #3b82f6;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  }
-
-  .tab-icon {
-    font-size: 14px;
-  }
-
-  .tab-label {
-    font-weight: 500;
-  }
-
-  /* 第二行：内容区域 */
-  .content-area {
-    min-height: 200px;
-  }
-
-  /* 纯色选择器部分 */
-  .solid-color-section {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  /* 颜色分类 */
-  .color-category {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 16px;
-  }
-
-  .category-title {
-    margin: 0;
-    font-size: 12px;
-    font-weight: 600;
-    color: #6b7280;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .color-grid {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 8px;
-  }
-
-  .color-option {
-    width: 40px;
-    height: 40px;
-    border: 2px solid #e5e7eb;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: none;
-  }
-
-  .color-option:hover {
-    border-color: #3b82f6;
-    transform: scale(1.05);
-  }
-
-  .color-option.selected {
-    border-color: #3b82f6;
-    border-width: 3px;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-  }
-
-  .selected-indicator {
-    color: white;
-    font-weight: bold;
-    font-size: 14px;
-    text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
-  }
-
-  /* 自定义颜色选择器 */
-  .custom-color-section {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid #e5e7eb;
-  }
-
-  .custom-color-controls {
-    display: flex;
-    gap: 16px;
-    align-items: flex-end;
-  }
-
-  .color-picker-group,
-  .color-input-group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    flex: 1;
-  }
-
-  .color-picker-label,
-  .color-input-label {
-    font-size: 11px;
-    font-weight: 500;
-    color: #6b7280;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  .color-picker {
-    width: 40px;
-    height: 40px;
-    border: 2px solid #e5e7eb;
-    border-radius: 6px;
-    cursor: pointer;
-    background: none;
-    padding: 0;
-  }
-
-  .color-picker::-webkit-color-swatch-wrapper {
-    padding: 0;
-    border: none;
-    border-radius: 4px;
-  }
-
-  .color-picker::-webkit-color-swatch {
-    border: none;
-    border-radius: 4px;
-  }
-
-  .color-text-input {
-    flex: 1;
-    padding: 8px 12px;
-    border: 1px solid #e5e7eb;
-    border-radius: 6px;
-    font-size: 13px;
-    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
-    background: white;
-    transition: border-color 0.2s ease;
-  }
-
-  .color-text-input:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
-  }
-
-  /* 颜色预览 */
-  .color-preview-section {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 8px;
-  }
-
-  .color-preview-label {
-    font-size: 11px;
-    font-weight: 500;
-    color: #6b7280;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    min-width: 40px;
-  }
-
-  .color-preview-box {
-    width: 60px;
-    height: 32px;
-    border: 2px solid #e5e7eb;
-    border-radius: 6px;
-    transition: border-color 0.2s ease;
-  }
-
-  .color-preview-box:hover {
-    border-color: #3b82f6;
-  }
-
-  /* 渐变色部分 */
-  .gradient-section {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    min-height: 200px;
-  }
-
-  /* 渐变分类 */
-  .gradient-category {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .gradient-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-  }
-
-  .gradient-option {
-    position: relative;
-    height: 80px;
-    border: 2px solid #e5e7eb;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-end;
-    padding: 8px;
-    background: none;
-    overflow: hidden;
-  }
-
-  .gradient-option:hover {
-    border-color: #3b82f6;
-    transform: scale(1.02);
-  }
-
-  .gradient-option.selected {
-    border-color: #3b82f6;
-    border-width: 3px;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-  }
-
-  .gradient-name {
-    background: rgba(255, 255, 255, 0.9);
-    color: #374151;
-    font-size: 11px;
-    font-weight: 500;
-    padding: 2px 6px;
-    border-radius: 4px;
-    backdrop-filter: blur(4px);
-    text-align: center;
-    min-width: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .gradient-option .selected-indicator {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    background: rgba(59, 130, 246, 0.9);
-    color: white;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: bold;
-  }
-
-  /* 当前渐变预览 */
-  .current-gradient-section {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding-top: 16px;
-    border-top: 1px solid #e5e7eb;
-  }
-
-  .current-gradient-preview {
-    display: flex;
-    gap: 16px;
-    align-items: center;
-  }
-
-  .gradient-preview-large {
-    width: 120px;
-    height: 60px;
-    border: 2px solid #e5e7eb;
-    border-radius: 8px;
-    flex-shrink: 0;
-  }
-
-  .gradient-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .gradient-type,
-  .gradient-stops {
-    font-size: 12px;
-    color: #6b7280;
-  }
-
-  .gradient-placeholder-text {
-    font-size: 13px;
-    color: #9ca3af;
-    font-style: italic;
-  }
-
-  /* 渐变控制面板 */
-  .gradient-controls-section {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding-top: 16px;
-    border-top: 1px solid #e5e7eb;
-  }
-
-  .gradient-controls-placeholder {
-    text-align: center;
-    padding: 20px;
-    background: #f9fafb;
-    border-radius: 8px;
-    border: 1px dashed #d1d5db;
-  }
-
-  .controls-placeholder-text {
-    margin: 0 0 4px 0;
-    font-size: 14px;
-    font-weight: 500;
-    color: #6b7280;
-  }
-
-  .controls-placeholder-desc {
-    margin: 0;
-    font-size: 12px;
-    color: #9ca3af;
-  }
-
-  /* 当前选择状态 */
-  .current-selection {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px;
-    background: #f9fafb;
-    border-radius: 6px;
-    font-size: 12px;
-    border-top: 1px solid #e5e7eb;
-  }
-
-  .current-label {
-    color: #6b7280;
-    font-weight: 500;
-  }
-
-  .current-preview {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .current-color {
-    width: 20px;
-    height: 20px;
-    border: 1px solid #e5e7eb;
-    border-radius: 4px;
-  }
-
-  .current-gradient {
-    width: 20px;
-    height: 20px;
-    border: 1px solid #e5e7eb;
-    border-radius: 4px;
-    flex-shrink: 0;
-  }
-
-  .current-name {
-    color: #374151;
-    font-weight: 500;
-  }
-
-  /* 加载和过渡动画 */
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes scaleIn {
-    from {
-      opacity: 0;
-      transform: scale(0.9);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-
-  @keyframes shimmer {
-    0% {
-      background-position: -200px 0;
-    }
-    100% {
-      background-position: calc(200px + 100%) 0;
-    }
-  }
-
-  .content-area {
-    animation: fadeIn 0.3s ease-out;
-  }
-
-  .color-category,
-  .gradient-category {
-    animation: fadeIn 0.4s ease-out;
-  }
-
-  .color-option,
-  .gradient-option {
-    animation: scaleIn 0.2s ease-out;
-  }
-
-  .current-selection {
-    animation: fadeIn 0.5s ease-out;
-  }
-
-  /* 悬停增强效果 */
-  .tab-button {
-    position: relative;
-    overflow: hidden;
-  }
-
-  .tab-button::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.2),
-      transparent
-    );
-    transition: left 0.5s;
-  }
-
-  .tab-button:hover::before {
-    left: 100%;
-  }
-
-  .color-option,
-  .gradient-option {
-    position: relative;
-    overflow: hidden;
-  }
-
-  .color-option::after,
-  .gradient-option::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    transition: width 0.3s ease, height 0.3s ease;
-  }
-
-  .color-option:hover::after,
-  .gradient-option:hover::after {
-    width: 100%;
-    height: 100%;
-  }
-
-  /* 响应式设计增强 */
-  @media (max-width: 768px) {
-    .background-color-picker {
-      padding: 12px;
-      gap: 12px;
-    }
-
-    .tab-switcher {
-      padding: 1px;
-    }
-
-    .tab-button {
-      padding: 6px 8px;
-      font-size: 12px;
-    }
-
-    .tab-icon {
-      font-size: 12px;
-    }
-
-    .color-grid {
-      grid-template-columns: repeat(5, 1fr);
-      gap: 6px;
-    }
-
-    .gradient-grid {
-      grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
-    }
-
-    .color-option {
-      width: 36px;
-      height: 36px;
-    }
-
-    .gradient-option {
-      height: 60px;
-    }
-
-    .custom-color-controls {
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .current-gradient-preview {
-      flex-direction: column;
-      gap: 8px;
-      align-items: stretch;
-    }
-
-    .gradient-preview-large {
-      width: 100%;
-      height: 40px;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .background-color-picker {
-      padding: 8px;
-      gap: 8px;
-    }
-
-    .color-grid {
-      grid-template-columns: repeat(4, 1fr);
-      gap: 4px;
-    }
-
-    .gradient-grid {
-      grid-template-columns: repeat(1, 1fr);
-    }
-
-    .color-option {
-      width: 32px;
-      height: 32px;
-    }
-
-    .gradient-option {
-      height: 50px;
-    }
-
-    .category-title {
-      font-size: 11px;
-    }
-
-    .current-selection {
-      padding: 8px;
-      font-size: 11px;
-    }
-
-    .current-color,
-    .current-gradient {
-      width: 16px;
-      height: 16px;
-    }
-  }
-
-  /* 无障碍访问增强 */
-  @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-    }
-  }
-
-  /* 高对比度模式支持 */
-  @media (prefers-contrast: high) {
-    .background-color-picker {
-      border-width: 2px;
-      border-color: #000;
-    }
-
-    .tab-button {
-      border: 1px solid #000;
-    }
-
-    .tab-button.active {
-      background: #000;
-      color: #fff;
-    }
-
-    .color-option,
-    .gradient-option {
-      border-width: 3px;
-      border-color: #000;
-    }
-
-    .color-option.selected,
-    .gradient-option.selected {
-      border-width: 4px;
-    }
-  }
-
-  /* 深色模式支持 */
-  @media (prefers-color-scheme: dark) {
-    .background-color-picker {
-      background: #1f2937;
-      border-color: #374151;
-    }
-
-    .picker-title,
-    .category-title {
-      color: #e5e7eb;
-    }
-
-    .tab-switcher {
-      background: #374151;
-    }
-
-    .tab-button {
-      color: #9ca3af;
-    }
-
-    .tab-button:hover {
-      background: #4b5563;
-      color: #e5e7eb;
-    }
-
-    .tab-button.active {
-      background: #1f2937;
-      color: #3b82f6;
-    }
-
-    .current-selection {
-      background: #374151;
-      border-color: #4b5563;
-    }
-
-    .current-label {
-      color: #9ca3af;
-    }
-
-    .current-name {
-      color: #e5e7eb;
-    }
-
-    .custom-color-section {
-      border-color: #4b5563;
-    }
-
-    .color-text-input {
-      background: #374151;
-      border-color: #4b5563;
-      color: #e5e7eb;
-    }
-
-    .color-text-input:focus {
-      border-color: #3b82f6;
-    }
-
-    .gradient-controls-placeholder {
-      background: #374151;
-      border-color: #4b5563;
-    }
-
-    .controls-placeholder-text {
-      color: #9ca3af;
-    }
-
-    .controls-placeholder-desc {
-      color: #6b7280;
-    }
-  }
-
-  /* 图片背景样式 */
-  .image-section {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .image-upload-area {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .drop-zone {
-    border: 2px dashed var(--border-color);
-    border-radius: 12px;
-    padding: 32px 16px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    background: var(--bg-primary);
-    min-height: 120px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .drop-zone:hover {
-    border-color: var(--accent-color);
-    background: var(--bg-hover);
-  }
-
-  .drop-zone:focus {
-    outline: 2px solid var(--accent-color);
-    outline-offset: 2px;
-  }
-
-  .drop-zone.uploading {
-    border-color: var(--accent-color);
-    background: var(--bg-hover);
-    cursor: wait;
-  }
-
-  .upload-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .upload-icon {
-    font-size: 32px;
-    opacity: 0.6;
-  }
-
-  .upload-text {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .upload-primary {
-    font-weight: 500;
-    color: var(--text-primary);
-  }
-
-  .upload-secondary {
-    font-size: 14px;
-    color: var(--text-secondary);
-  }
-
-  .upload-hint {
-    font-size: 12px;
-    color: var(--text-tertiary);
-  }
-
-  .upload-loading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    color: var(--accent-color);
-  }
-
-  .spinner {
-    width: 24px;
-    height: 24px;
-    border: 2px solid var(--border-color);
-    border-top: 2px solid var(--accent-color);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-
-  .upload-error {
-    padding: 8px 12px;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    border-radius: 6px;
-    color: #dc2626;
-    font-size: 14px;
-  }
-
-  .current-image-section {
-    padding: 16px;
-    background: var(--bg-secondary);
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-  }
-
-  .current-image-preview {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-  }
-
-  .image-preview-large {
-    width: 80px;
-    height: 60px;
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
-    flex-shrink: 0;
-  }
-
-  .image-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    font-size: 12px;
-    color: var(--text-secondary);
-  }
-
-  /* 壁纸背景样式 */
-  .wallpaper-section {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    min-height: 200px;
-  }
-
-  .wallpaper-category {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .wallpaper-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 12px;
-  }
-
-  .wallpaper-item {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 8px;
-    border: 2px solid transparent;
-    border-radius: 8px;
-    background: var(--bg-secondary);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-align: left;
-  }
-
-  .wallpaper-item:hover {
-    border-color: var(--accent-color);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  }
-
-  .wallpaper-item.selected {
-    border-color: var(--accent-color);
-    background: var(--accent-color-light);
-  }
-
-  .wallpaper-preview {
-    width: 100%;
-    height: 80px;
-    border-radius: 6px;
-    overflow: hidden;
-    background: var(--bg-tertiary);
-  }
-
-  .wallpaper-preview img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.2s ease;
-  }
-
-  .wallpaper-item:hover .wallpaper-preview img {
-    transform: scale(1.05);
-  }
-
-  .wallpaper-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .wallpaper-name {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-primary);
-    line-height: 1.2;
-  }
-
-  .wallpaper-tags {
-    font-size: 10px;
-    color: var(--text-secondary);
-    line-height: 1.2;
-  }
-
-  .current-wallpaper-section {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 16px;
-    background: var(--bg-secondary);
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-  }
-
-  .current-wallpaper-preview {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-  }
-
-  .wallpaper-preview-large {
-    width: 80px;
-    height: 60px;
-    border-radius: 6px;
-    background-size: cover;
-    background-position: center;
-    border: 1px solid var(--border-color);
-    flex-shrink: 0;
-  }
-
-  .wallpaper-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    font-size: 12px;
-    color: var(--text-secondary);
-  }
-</style>
