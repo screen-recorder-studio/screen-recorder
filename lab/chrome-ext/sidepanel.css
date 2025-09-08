@@ -1,0 +1,16 @@
+/* sidepanel.css */
+body { margin:0; font: 14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; }
+.sp-header { padding:10px 12px; background: linear-gradient(135deg,#6ea8fe,#a370f7); color:#fff; }
+.sp-header h1 { margin:0; font-size:16px; }
+.sp-main { padding:10px; }
+.sp-section { margin-bottom:12px; border-bottom:1px solid #e5e7eb; padding-bottom:8px; }
+.mode-label { font-weight:600; margin-right:8px; }
+.mode-switch label { margin-right:12px; }
+.btn-row { display:flex; gap:8px; margin:6px 0; }
+button { padding:6px 10px; border-radius:8px; border:1px solid #d0d7de; background:#fff; cursor:pointer; font-weight:600; }
+button:disabled { opacity:.6; cursor:not-allowed; }
+#startCap { background:#0d6efd; color:#fff; border-color:#0d6efd; }
+#stopCap { background:#e03131; color:#fff; border-color:#e03131; }
+.api-status { color:#57606a; font-size:12px; }
+.sel-info { margin-top:6px; color:#0d6efd; }
+.rec-status { margin-top:4px; color:#374151; }

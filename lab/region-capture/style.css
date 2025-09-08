@@ -1,0 +1,92 @@
+* { box-sizing: border-box; }
+:root { --bd:#d0d7de; --primary:#0d6efd; }
+body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#f6f8fa; }
+
+.page-header { padding:20px 24px; background:linear-gradient(135deg,#6ea8fe,#a370f7); color:#fff; }
+.page-header h1 { margin:0 0 6px; font-size:22px; }
+.page-header p { margin:0; opacity:.9; }
+
+.controls { display:flex; gap:12px; align-items:center; padding:12px 16px; background:#fff; border-top:1px solid var(--bd); border-bottom:1px solid var(--bd); position:sticky; top:0; z-index:5; }
+.controls button { padding:8px 14px; border:1px solid var(--bd); background:#fff; border-radius:8px; cursor:pointer; font-weight:600; }
+.controls button:disabled { opacity:.6; cursor:not-allowed; }
+.controls #startBtn { background:#0d6efd; color:#fff; border-color:#0d6efd; }
+.controls #startBtn:disabled { background:#7aa7ff; border-color:#7aa7ff; }
+.api-status { color:#57606a; font-size:12px; margin-left:auto; }
+
+.main { display:flex; gap:16px; padding:16px; }
+.left, .right { flex:1; }
+.left { background:#fff; border:1px solid var(--bd); border-radius:10px; padding:12px; display:flex; align-items:center; justify-content:center; min-height:360px; }
+#preview { display:none; max-width:100%; max-height:420px; border-radius:8px; background:#000; }
+.placeholder { width:100%; max-width:420px; text-align:center; color:#6c757d; border:2px dashed var(--bd); padding:40px 12px; border-radius:8px; }
+
+.right { position:relative; }
+.playground { position:relative; height:520px; background:#fff; border:1px solid var(--bd); border-radius:10px; overflow:hidden; }
+.playground .tip { position:absolute; top:10px; left:10px; padding:6px 10px; background:rgba(255,255,255,.8); border:1px solid var(--bd); border-radius:6px; font-size:12px; z-index:2; }
+
+/* Drag overlay captures mouse events without blocking control buttons */
+.drag-overlay { position:absolute; inset:0; z-index:1; cursor:crosshair; }
+
+/* The fixed selection rectangle (dashed) */
+.selection-box { position:absolute; border:2px dashed #0d6efd; background:rgba(13,110,253,0.08); border-radius:4px; box-shadow:0 0 0 1px rgba(13,110,253,0.15) inset; z-index:2; pointer-events:none; }
+
+/* Some demo content to visualize motion */
+.demo-grid { position:absolute; inset:0; padding:20px; display:grid; grid-template-columns:repeat(2,1fr); gap:16px; z-index:0; }
+.card { background:#ffffff; border:1px solid var(--bd); border-radius:8px; padding:12px; box-shadow:0 1px 0 rgba(27,31,36,.04); }
+.card h3 { margin:0 0 6px; font-size:16px; }
+.card p { margin:0; color:#57606a; font-size:14px; }
+.moving { animation: float 3s ease-in-out infinite; }
+@keyframes float { 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-6px);} }
+
+
+/* --- Demo content: forms + animated charts --- */
+.demo-content { position:absolute; inset:0; padding:14px; overflow:auto; display:flex; flex-direction:column; gap:16px; }
+
+.form-section, .charts-section, .actions-section { background:#fff; border:1px solid var(--bd); border-radius:10px; padding:14px; }
+.form-section h3, .charts-section h3 { margin:0 0 10px; font-size:15px; color:#24292f; }
+
+.form-row { display:flex; gap:10px; flex-wrap:wrap; }
+.form-input, .form-select, .form-range, .form-textarea { font:inherit; }
+.form-input, .form-select { padding:8px 10px; border:1px solid var(--bd); border-radius:8px; background:#fff; min-width:160px; }
+.form-input:focus, .form-select:focus, .form-textarea:focus { outline:2px solid rgba(13,110,253,.25); border-color:#0d6efd; }
+.form-textarea { width:100%; min-height:70px; margin-top:8px; padding:10px; border:1px solid var(--bd); border-radius:8px; resize:vertical; }
+.form-range { accent-color:#0d6efd; }
+
+.charts-section .chart-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; }
+.chart-card { border:1px solid var(--bd); border-radius:8px; padding:10px; background:#fafbfc; box-shadow:0 1px 0 rgba(27,31,36,.04); }
+.chart-card h4 { margin:0 0 8px; font-size:14px; color:#374151; }
+.chart-card canvas{ width:100%; height:auto; display:block; }
+
+
+/* Progress bars */
+.progress-item { display:grid; grid-template-columns:72px 1fr; align-items:center; gap:8px; margin:8px 0; font-size:13px; color:#57606a; }
+.progress-bar { position:relative; height:10px; background:#eef2f7; border-radius:999px; overflow:hidden; }
+.progress-fill { position:absolute; left:0; top:0; height:100%; width:0; background:linear-gradient(90deg,#0d6efd,#6ea8fe); transition:width .9s ease; }
+
+/* Bar chart */
+.bar-chart { display:flex; align-items:flex-end; gap:8px; height:120px; padding:6px 4px; background:#fff; border:1px dashed var(--bd); border-radius:8px; }
+.bar-chart .bar { flex:1; min-width:12px; height:0%; border-radius:6px 6px 0 0; background:linear-gradient(180deg,#6ea8fe,#0d6efd); box-shadow:0 2px 4px rgba(13,110,253,.25); }
+
+/* Circular progress */
+.circular-progress { display:flex; align-items:center; gap:10px; }
+.progress-ring { transform:rotate(-90deg); }
+.progress-ring-circle { transition:stroke-dashoffset 1s ease; }
+.progress-text { font-weight:700; color:#0d6efd; }
+
+/* Live metrics */
+.metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.metric { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; background:#fff; border:1px solid var(--bd); border-radius:8px; }
+.metric-label { color:#57606a; font-size:12px; }
+.metric-value { font-weight:700; color:#24292f; }
+
+/* Action buttons */
+.actions-section { display:flex; gap:10px; flex-wrap:wrap; }
+.action-btn { padding:8px 14px; border-radius:8px; border:1px solid var(--bd); background:#fff; cursor:pointer; font-weight:600; transition:transform .06s ease, box-shadow .2s ease; }
+.action-btn:active { transform:translateY(1px); }
+.action-btn.primary { background:#0d6efd; color:#fff; border-color:#0d6efd; }
+.action-btn.secondary { background:#6c757d; color:#fff; border-color:#6c757d; }
+.action-btn.success { background:#198754; color:#fff; border-color:#198754; }
+.action-btn.warning { background:#f59f00; color:#fff; border-color:#f59f00; }
+
+@media (max-width: 900px) {
+  .charts-section .chart-grid { grid-template-columns:1fr; }
+}

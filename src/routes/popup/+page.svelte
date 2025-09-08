@@ -1,5 +1,6 @@
 <script lang="ts">
   import { ChromeAPIWrapper } from '$lib/utils/chrome-api'
+  import { Monitor, AlertCircle, Loader2 } from '@lucide/svelte'
   
   let isLoading = false
   let error = ''
@@ -42,100 +43,37 @@
   <title>屏幕录制扩展</title>
 </svelte:head>
 
-<div class="popup-container">
-  <h2>屏幕录制扩展</h2>
-  <p>点击下方按钮打开录制面板</p>
-  
+<div class="w-[300px] p-5 font-sans">
+  <div class="flex items-center gap-2 mb-3">
+    <Monitor class="w-5 h-5 text-blue-600" />
+    <h2 class="text-base font-semibold text-gray-900">屏幕录制扩展</h2>
+  </div>
+  <p class="text-sm text-gray-600 leading-relaxed mb-4">点击下方按钮打开录制面板</p>
+
   {#if error}
-    <div class="error-message">
+    <div class="flex items-center gap-2 bg-red-50 text-red-600 px-3 py-2 rounded border border-red-200 text-xs mb-3">
+      <AlertCircle class="w-4 h-4 flex-shrink-0" />
       {error}
     </div>
   {/if}
-  
-  <button 
-    on:click={openSidePanel} 
-    class="open-panel-button"
+
+  <button
+    on:click={openSidePanel}
+    class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
     disabled={isLoading}
   >
     {#if isLoading}
+      <Loader2 class="w-4 h-4 animate-spin" />
       正在打开...
     {:else}
+      <Monitor class="w-4 h-4" />
       打开录制面板
     {/if}
   </button>
-  
-  <div class="info">
-    <p class="version">版本 1.0.0</p>
-    <p class="description">支持高质量屏幕录制</p>
+
+  <div class="mt-4 pt-3 border-t border-gray-200">
+    <p class="text-xs text-gray-500 font-medium mb-1">版本 1.0.0</p>
+    <p class="text-xs text-gray-500">支持高质量屏幕录制</p>
   </div>
 </div>
 
-<style>
-  .popup-container {
-    width: 300px;
-    padding: 20px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  }
-  
-  h2 {
-    margin: 0 0 12px 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: #1f2937;
-  }
-  
-  p {
-    margin: 0 0 16px 0;
-    font-size: 14px;
-    color: #6b7280;
-    line-height: 1.5;
-  }
-  
-  .open-panel-button {
-    width: 100%;
-    padding: 10px 16px;
-    border: none;
-    border-radius: 6px;
-    background: #3b82f6;
-    color: white;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background-color 0.2s;
-  }
-  
-  .open-panel-button:hover:not(:disabled) {
-    background: #2563eb;
-  }
-  
-  .open-panel-button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-  
-  .error-message {
-    background: #fef2f2;
-    color: #dc2626;
-    padding: 8px 12px;
-    border-radius: 4px;
-    border: 1px solid #fecaca;
-    font-size: 12px;
-    margin-bottom: 12px;
-  }
-  
-  .info {
-    margin-top: 16px;
-    padding-top: 12px;
-    border-top: 1px solid #e5e7eb;
-  }
-  
-  .info p {
-    margin: 4px 0;
-    font-size: 12px;
-    color: #9ca3af;
-  }
-  
-  .version {
-    font-weight: 500;
-  }
-</style>

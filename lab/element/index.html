@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Element Selection & Recording Test</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Element Selection & Recording Test</h1>
+            <p>Click "Enable Selection Mode" to start selecting elements, then record them.</p>
+        </header>
+
+        <div class="controls">
+            <button id="toggleSelection">Enable Selection Mode</button>
+            <button id="startRecord" disabled>Start Recording</button>
+            <button id="stopRecord" disabled>Stop Recording</button>
+            <button id="clearSelection">Clear Selection</button>
+        </div>
+
+        <div class="status">
+            <div id="statusMessage">Ready to select elements</div>
+            <div id="selectedElement">No element selected</div>
+        </div>
+
+        <div class="main-content">
+            <div class="video-container">
+                <video id="recordedVideo" autoplay muted></video>
+                <div id="videoPlaceholder">Recorded video will appear here</div>
+            </div>
+
+            <div class="demo-area">
+                <div class="demo-section" id="section1">
+                    <h2>Demo Section 1</h2>
+                    <p>This is a sample content area that can be selected and recorded.</p>
+                    <div class="animated-content">
+                        <div class="animation-box"></div>
+                        <span id="counter">Counter: 0</span>
+                    </div>
+                </div>
+
+                <div class="demo-section" id="section2">
+                    <h2>Demo Section 2</h2>
+                    <p>Another content area with different styling.</p>
+                    <ul>
+                        <li>Item 1</li>
+                        <li>Item 2</li>
+                        <li>Item 3</li>
+                    </ul>
+                </div>
+
+                <div class="demo-section" id="section3">
+                    <h2>Interactive Demo</h2>
+                    <p>This section contains interactive elements.</p>
+                    <button class="demo-button">Click me!</button>
+                    <input type="text" placeholder="Type something..." class="demo-input">
+                    <div class="color-box" id="colorBox"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <h3>Instructions:</h3>
+            <ol>
+                <li>Click "Enable Selection Mode" to start selecting elements</li>
+                <li>Hover over elements to see them highlighted</li>
+                <li>Click on an element to select it for recording</li>
+                <li>Click "Start Recording" to begin capturing the selected element</li>
+                <li>Click "Stop Recording" to end the recording</li>
+            </ol>
+            
+            <div class="api-info">
+                <h4>API Support Status:</h4>
+                <div id="apiSupport">Checking...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Selection overlay -->
+    <div id="selectionOverlay" class="selection-overlay"></div>
+    
+    <script src="script.js"></script>
+</body>
+</html>

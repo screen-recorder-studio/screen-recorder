@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>选区录制测试 - Region Capture</title>
+    <link rel="stylesheet" href="./style.css" />
+    <script defer src="./script.js"></script>
+  </head>
+  <body>
+    <header class="page-header">
+      <h1>选区录制测试</h1>
+      <p>在页面上用鼠标拖拽选择一个区域，松开后会固定一个虚线矩形。可选择开始/停止录制该区域。</p>
+    </header>
+
+    <section class="controls">
+      <button id="startBtn" disabled>开始录制</button>
+      <button id="stopBtn" disabled>停止录制</button>
+      <button id="clearBtn" disabled>清除选区</button>
+      <span id="apiStatus" class="api-status">检测 API...</span>
+    </section>
+
+    <main class="main">
+      <div class="left">
+        <video id="preview" autoplay muted playsinline></video>
+        <div id="videoPlaceholder" class="placeholder">录制画面将显示在这里</div>
+      </div>
+      <div class="right">
+        <div class="playground" id="playground">
+          <div class="tip">在此区域按下并拖拽鼠标以创建选区</div>
+          <!-- 选区框：动态创建/定位 -->
+          <div id="selectionBox" class="selection-box" hidden></div>
+          <!-- 捕获遮罩层用于接收拖拽事件，不拦截按钮等控件 -->
+          <div id="dragOverlay" class="drag-overlay"></div>
+          <!-- 丰富的交互内容，便于观察录制效果 -->
+          <div class="demo-content">
+            <!-- 输入表单区 -->
+            <div class="form-section">
+              <h3>表单输入</h3>
+              <div class="form-row">
+                <input type="text" placeholder="姓名" class="form-input">
+                <input type="email" placeholder="邮箱" class="form-input">
+              </div>
+              <div class="form-row">
+                <select class="form-select">
+                  <option>选择城市</option>
+                  <option>北京</option>
+                  <option>上海</option>
+                  <option>深圳</option>
+                </select>
+                <input type="range" min="0" max="100" value="50" class="form-range">
+                <span id="rangeValue">50</span>
+              </div>
+              <textarea placeholder="备注信息..." class="form-textarea"></textarea>
+            </div>
+
+            <!-- 动画图表区 -->
+            <div class="charts-section">
+              <h3>动态图表</h3>
+              <div class="chart-grid">
+                <!-- 进度条图表 -->
+                <div class="chart-card">
+                  <h4>进度统计</h4>
+                  <div class="progress-bars">
+                    <div class="progress-item">
+                      <span>项目 A</span>
+                      <div class="progress-bar">
+                        <div class="progress-fill" data-progress="75"></div>
+                      </div>
+                    </div>
+                    <div class="progress-item">
+                      <span>项目 B</span>
+                      <div class="progress-bar">
+                        <div class="progress-fill" data-progress="45"></div>
+                      </div>
+                    </div>
+                    <div class="progress-item">
+                      <span>项目 C</span>
+                      <div class="progress-bar">
+                        <div class="progress-fill" data-progress="90"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 柱状图 -->
+                <div class="chart-card">
+                  <h4>销售数据</h4>
+                  <div class="bar-chart">
+                    <div class="bar" data-height="60"></div>
+                    <div class="bar" data-height="80"></div>
+                    <div class="bar" data-height="45"></div>
+                    <div class="bar" data-height="95"></div>
+                    <div class="bar" data-height="70"></div>
+                  </div>
+                </div>
+
+                <!-- 圆形进度 -->
+                <div class="chart-card">
+                  <h4>完成度</h4>
+                  <div class="circular-progress">
+                    <svg class="progress-ring" width="80" height="80">
+                      <circle class="progress-ring-circle" stroke="#e0e0e0" stroke-width="4" fill="transparent" r="36" cx="40" cy="40"/>
+                      <circle class="progress-ring-circle progress-ring-fill" stroke="#0d6efd" stroke-width="4" fill="transparent" r="36" cx="40" cy="40"/>
+                    </svg>
+                    <div class="progress-text">68%</div>
+                  </div>
+                </div>
+
+                <!-- 实时数据 -->
+                <div class="chart-card">
+                  <h4>实时监控</h4>
+                  <div class="metrics">
+                    <div class="metric">
+                      <span class="metric-label">CPU</span>
+                      <span class="metric-value" id="cpuValue">45%</span>
+                    </div>
+                    <div class="metric">
+                      <span class="metric-label">内存</span>
+                      <span class="metric-value" id="memValue">62%</span>
+                    </div>
+                    <div class="metric">
+                      <span class="metric-label">网络</span>
+                      <span class="metric-value" id="netValue">28%</span>
+                    </div>
+                  </div>
+                </div>
+                <!-- 实时折线图 -->
+                <div class="chart-card">
+                  <h4>实时折线图</h4>
+                  <canvas id="liveLineCanvas" width="320" height="110"></canvas>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- 交互按钮区 -->
+            <div class="actions-section">
+              <button class="action-btn primary">主要操作</button>
+              <button class="action-btn secondary">次要操作</button>
+              <button class="action-btn success">成功操作</button>
+              <button class="action-btn warning">警告操作</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
+

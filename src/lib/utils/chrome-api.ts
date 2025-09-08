@@ -66,17 +66,80 @@ export class ChromeAPIWrapper {
   }
 
   /**
-   * 从 streamId 获取 MediaStream
+   * 开始录制（使用offscreen document）
+   */
+  static async startRecording(streamId: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!chrome?.runtime) {
+        reject(new Error('Chrome runtime not available'))
+        return
+      }
+
+      chrome.runtime.sendMessage(
+        {
+          action: 'startRecording',
+          streamId
+        },
+        (response: any) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message))
+            return
+          }
+
+          if (response.success) {
+            resolve()
+          } else {
+            reject(new Error(response.error || 'Failed to start recording'))
+          }
+        }
+      )
+    })
+  }
+
+  /**
+   * 停止录制（使用offscreen document）
+   */
+  static async stopRecording(): Promise<{ videoUrl: string; videoSize: number; mimeType: string }> {
+    return new Promise((resolve, reject) => {
+      if (!chrome?.runtime) {
+        reject(new Error('Chrome runtime not available'))
+        return
+      }
+
+      chrome.runtime.sendMessage(
+        {
+          action: 'stopRecording'
+        },
+        (response: any) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message))
+            return
+          }
+
+          if (response.success) {
+            resolve({
+              videoUrl: response.videoUrl,
+              videoSize: response.videoSize,
+              mimeType: response.mimeType
+            })
+          } else {
+            reject(new Error(response.error || 'Failed to stop recording'))
+          }
+        }
+      )
+    })
+  }
+
+  /**
+   * 从 streamId 获取 MediaStream（保留用于兼容性）
    */
   static async getUserMediaFromStreamId(streamId: string): Promise<MediaStream> {
     try {
+      console.log('Getting media stream for streamId:', streamId)
+
+      // Chrome扩展的正确约束格式（与工作版本保持一致）
       const constraints = {
-        audio: {
-          mandatory: {
-            chromeMediaSource: 'desktop',
-            chromeMediaSourceId: streamId
-          }
-        },
+        audio: false,
         video: {
           mandatory: {
             chromeMediaSource: 'desktop',
@@ -85,18 +148,89 @@ export class ChromeAPIWrapper {
         }
       }
 
-      // 使用 getUserMedia 获取媒体流
+      console.log('Using constraints:', constraints)
+      console.log('Calling navigator.mediaDevices.getUserMedia...')
+
+      // 使用 getUserMedia 获取媒体流（与工作版本保持一致）
       const stream = await navigator.mediaDevices.getUserMedia(constraints as any)
-      
+
+      console.log('getUserMedia returned:', stream)
+
       if (!stream) {
         throw new Error('Failed to get media stream')
       }
 
+      // 检查视频轨道
+      const videoTracks = stream.getVideoTracks()
+      if (videoTracks.length === 0) {
+        throw new Error('No video tracks found in media stream')
+      }
+
+      // 检查视频轨道状态
+      const videoTrack = videoTracks[0]
+      if (videoTrack.readyState !== 'live') {
+        throw new Error(`Video track not ready: ${videoTrack.readyState}`)
+      }
+
+      console.log('Media stream obtained successfully:', {
+        id: stream.id,
+        videoTracks: videoTracks.length,
+        audioTracks: stream.getAudioTracks().length,
+        videoTrackState: videoTrack.readyState,
+        videoTrackLabel: videoTrack.label
+      })
+
       return stream
     } catch (error) {
       console.error('Error getting media stream:', error)
+
+      // 提供更详细的错误信息
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          throw new Error(`AbortError: ${error.message}`)
+        } else if (error.name === 'NotAllowedError') {
+          throw new Error(`NotAllowedError: ${error.message}`)
+        } else if (error.name === 'NotFoundError') {
+          throw new Error(`NotFoundError: ${error.message}`)
+        } else if (error.name === 'InvalidStateError') {
+          throw new Error(`Invalid state: ${error.message}`)
+        }
+      }
+
       throw new Error(`Failed to get media stream: ${error}`)
     }
+  }
+
+  /**
+   * 从URL保存视频文件
+   */
+  static async saveVideoFromUrl(url: string, filename: string): Promise<number> {
+    return new Promise((resolve, reject) => {
+      if (!chrome?.runtime) {
+        reject(new Error('Chrome runtime not available'))
+        return
+      }
+
+      chrome.runtime.sendMessage(
+        {
+          action: 'saveRecording',
+          filename,
+          url
+        },
+        (response: SaveRecordingResponse) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message))
+            return
+          }
+
+          if (response.success && response.downloadId) {
+            resolve(response.downloadId)
+          } else {
+            reject(new Error(response.error || 'Save failed'))
+          }
+        }
+      )
+    })
   }
 
   /**

@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Element & Region Capture MVP",
+  "description": "在任意页面选择元素或选区进行录制，并在页面右上角预览。Side Panel 控制模式与操作。",
+  "version": "0.1.0",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "tabs",
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Capture"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  }
+}

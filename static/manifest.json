@@ -8,7 +8,12 @@
     "downloads",
     "storage",
     "sidePanel",
-    "activeTab"
+    "activeTab",
+    "scripting",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
   ],
 
   "side_panel": {
@@ -26,6 +31,15 @@
     "48": "assets/icon48.svg",
     "128": "assets/icon128.svg"
   },
+
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "encoder-worker.js"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
 
 
 

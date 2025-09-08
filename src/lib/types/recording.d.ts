@@ -16,6 +16,7 @@ export interface RecordingState {
 export interface RecordingProgress {
   encodedChunks: number
   processedFrames: number
+  encodedFrames: number // 编码帧数
   fileSize: number // 字节
   fps: number // 实际帧率
   bitrate: number // 实际比特率

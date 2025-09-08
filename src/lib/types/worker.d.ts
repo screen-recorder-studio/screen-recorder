@@ -20,7 +20,7 @@ export interface MediaRecorderWorkerMessage extends WorkerMessage {
   type: 'start' | 'stop' | 'progress' | 'error' | 'complete'
   payload: {
     stream?: MediaStream
-    options?: MediaRecorderOptions
+    options?: import('./recording').RecordingOptions
     progress?: RecordingProgress
     error?: string
     result?: Blob

@@ -1,0 +1,38 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  padding: 0 25px;
+}
+
+#main-app {
+  display: flex;
+  gap: 5%;
+  min-width: 980px;
+}
+
+video,
+#demo {
+  flex: 1;
+}
+
+video,
+#demo > p {
+  border: 1px solid #ccc;
+  margin: 0;
+}
+
+video {
+  max-width: 50%;
+  aspect-ratio: 4/3;
+}
+
+#demo > h2 {
+  margin-top: 0;
+}
+
+#demo > p {
+  padding: 5px;
+  height: 320px;
+}
