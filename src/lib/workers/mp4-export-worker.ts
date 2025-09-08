@@ -28,6 +28,8 @@ let shouldCancel = false
 let compositeWorker: Worker | null = null
 let offscreenCanvas: OffscreenCanvas | null = null
 let canvasCtx: OffscreenCanvasRenderingContext2D | null = null
+// 当前导出的背景色（用于对齐填充区域），默认黑色以兼容播放器
+let exportBgColor: string = '#000000'
 
 // 合成状态
 let totalFrames = 0
@@ -229,6 +231,11 @@ function createOffscreenCanvas(width: number, height: number) {
  * 处理视频合成
  */
 async function processVideoComposition(chunks: EncodedChunk[], options: ExportOptions): Promise<void> {
+  // 记录背景色，供 MP4 画布在对齐填充时使用
+  try {
+    exportBgColor = options.backgroundConfig?.color || exportBgColor
+  } catch {}
+
   return new Promise((resolve, reject) => {
     if (!compositeWorker) {
       reject(new Error('Composite worker not available'))
@@ -306,35 +313,51 @@ function handleCompositeFrame(bitmap: ImageBitmap, frameIndex: number) {
   }
 
   try {
-    // 清除画布
-    canvasCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height)
-
-    // 🔧 智能缩放：如果 Canvas 尺寸与 bitmap 不匹配，进行适当缩放
-    const bitmapWidth = bitmap.width
-    const bitmapHeight = bitmap.height
     const canvasWidth = offscreenCanvas.width
     const canvasHeight = offscreenCanvas.height
 
+    // 先用背景色填充整个画布，避免 H.264 无透明度导致的黑边
+    try {
+      canvasCtx.fillStyle = exportBgColor
+      canvasCtx.fillRect(0, 0, canvasWidth, canvasHeight)
+    } catch {}
+
+    // 🔧 智能适配：尽量避免因 H.264 对齐(例如 1080→1088)带来的缩放
+    const bitmapWidth = bitmap.width
+    const bitmapHeight = bitmap.height
+
     if (bitmapWidth !== canvasWidth || bitmapHeight !== canvasHeight) {
-      // 计算缩放比例，保持纵横比
-      const scaleX = canvasWidth / bitmapWidth
-      const scaleY = canvasHeight / bitmapHeight
-      const scale = Math.min(scaleX, scaleY)
+      const widthDiff = canvasWidth - bitmapWidth
+      const heightDiff = canvasHeight - bitmapHeight
+      const smallDiff = Math.abs(widthDiff) <= 16 && Math.abs(heightDiff) <= 16
+      const singleDimDiff = (widthDiff === 0 && heightDiff !== 0) || (heightDiff === 0 && widthDiff !== 0)
 
-      const scaledWidth = bitmapWidth * scale
-      const scaledHeight = bitmapHeight * scale
-      const offsetX = (canvasWidth - scaledWidth) / 2
-      const offsetY = (canvasHeight - scaledHeight) / 2
+      if (smallDiff && singleDimDiff) {
+        // 仅因对齐产生的一侧差异：不缩放，居中放置，剩余区域以背景色填充
+        const offsetX = Math.max(0, widthDiff / 2)
+        const offsetY = Math.max(0, heightDiff / 2)
+        canvasCtx.drawImage(bitmap, offsetX, offsetY)
+      } else {
+        // 计算缩放比例，保持纵横比
+        const scaleX = canvasWidth / bitmapWidth
+        const scaleY = canvasHeight / bitmapHeight
+        const scale = Math.min(scaleX, scaleY)
 
-      console.log(`🔧 [MP4-Export-Worker] Scaling frame ${frameIndex}:`)
-      console.log(`  Bitmap: ${bitmapWidth}×${bitmapHeight}`)
-      console.log(`  Canvas: ${canvasWidth}×${canvasHeight}`)
-      console.log(`  Scaled: ${scaledWidth.toFixed(0)}×${scaledHeight.toFixed(0)} at (${offsetX.toFixed(0)}, ${offsetY.toFixed(0)})`)
+        const scaledWidth = bitmapWidth * scale
+        const scaledHeight = bitmapHeight * scale
+        const offsetX = (canvasWidth - scaledWidth) / 2
+        const offsetY = (canvasHeight - scaledHeight) / 2
 
-      // 绘制缩放后的图像
-      canvasCtx.drawImage(bitmap, offsetX, offsetY, scaledWidth, scaledHeight)
+        console.log(`🔧 [MP4-Export-Worker] Scaling frame ${frameIndex}:`)
+        console.log(`  Bitmap: ${bitmapWidth}×${bitmapHeight}`)
+        console.log(`  Canvas: ${canvasWidth}×${canvasHeight}`)
+        console.log(`  Scaled: ${scaledWidth.toFixed(0)}×${scaledHeight.toFixed(0)} at (${offsetX.toFixed(0)}, ${offsetY.toFixed(0)})`)
+
+        // 绘制缩放后的图像
+        canvasCtx.drawImage(bitmap, offsetX, offsetY, scaledWidth, scaledHeight)
+      }
     } else {
-      // 直接绘制
+      // 尺寸一致，直接绘制
       canvasCtx.drawImage(bitmap, 0, 0)
     }
 
