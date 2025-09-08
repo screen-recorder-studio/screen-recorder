@@ -1,5 +1,6 @@
 <!-- 视频比例配置控件 -->
 <script lang="ts">
+  import { Monitor, Square, Smartphone, BookOpen, Settings } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import type { BackgroundConfig } from '$lib/types/background'
 
@@ -14,28 +15,28 @@
       name: 'YouTube 横屏',
       ratio: '16:9' as const,
       description: 'YouTube、B站、爱奇艺等',
-      icon: '📺',
+      icon: Monitor,
       dimensions: '1920×1080'
     },
     {
       name: 'Instagram 方形',
       ratio: '1:1' as const,
       description: 'Instagram 帖子、微信朋友圈',
-      icon: '📷',
+      icon: Square,
       dimensions: '1080×1080'
     },
     {
       name: 'TikTok 竖屏',
       ratio: '9:16' as const,
       description: 'TikTok、抖音、快手',
-      icon: '📱',
+      icon: Smartphone,
       dimensions: '1080×1920'
     },
     {
       name: 'Instagram Story',
       ratio: '4:5' as const,
       description: 'Instagram 故事、小红书',
-      icon: '📖',
+      icon: BookOpen,
       dimensions: '1080×1350'
     }
   ] as const
@@ -44,6 +45,13 @@
   let customWidthInput = $state(1920)
   let customHeightInput = $state(1080)
   let showCustomInput = $state(false)
+
+  // 输入验证状态
+  let isValidWidth = $derived(customWidthInput >= 480 && customWidthInput <= 4096)
+  let isValidHeight = $derived(customHeightInput >= 480 && customHeightInput <= 4096)
+
+  // 当前比例信息
+  let currentRatioInfo = $derived(getCurrentRatioInfo())
 
   // 处理比例选择
   function handleRatioSelect(ratio: typeof PLATFORM_RATIOS[number]) {
@@ -80,13 +88,21 @@
         aspectRatio: (customWidth / customHeight).toFixed(2)
       }
     }
-    
+
     const platform = PLATFORM_RATIOS.find(p => p.ratio === currentRatio)
-    return platform ? {
-      name: platform.name,
-      dimensions: platform.dimensions,
-      aspectRatio: currentRatio
-    } : null
+    if (platform) {
+      return {
+        name: platform.name,
+        dimensions: platform.dimensions,
+        aspectRatio: currentRatio
+      }
+    }
+
+    return {
+      name: '未知比例',
+      dimensions: '未知',
+      aspectRatio: '未知'
+    }
   }
 
   // 响应自定义尺寸的变化
@@ -99,50 +115,69 @@
 </script>
 
 <!-- 视频比例配置控件 -->
-<div class="aspect-ratio-control">
-  <h3 class="control-title">输出比例</h3>
-  
+<div class="p-4 border border-gray-200 rounded-lg bg-white">
+  <h3 class="mb-4 text-sm font-semibold text-gray-700">输出比例</h3>
+
   <!-- 平台比例选择 -->
-  <div class="ratio-grid">
+  <div class="grid grid-cols-2 gap-2 mb-4">
     {#each PLATFORM_RATIOS as platform}
+      {@const IconComponent = platform.icon}
       <button
-        class="ratio-card"
-        class:selected={isRatioSelected(platform.ratio)}
+        class="flex items-center gap-2 p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50"
+        class:border-purple-500={isRatioSelected(platform.ratio)}
+        class:bg-purple-500={isRatioSelected(platform.ratio)}
+        class:text-white={isRatioSelected(platform.ratio)}
+        class:border-gray-200={!isRatioSelected(platform.ratio)}
+        class:bg-white={!isRatioSelected(platform.ratio)}
+        class:text-gray-700={!isRatioSelected(platform.ratio)}
+        class:hover:border-purple-400={!isRatioSelected(platform.ratio)}
+        class:hover:bg-purple-50={!isRatioSelected(platform.ratio)}
         onclick={() => handleRatioSelect(platform)}
         title="{platform.description}"
       >
-        <div class="ratio-icon">{platform.icon}</div>
-        <div class="ratio-info">
-          <div class="ratio-name">{platform.name}</div>
-          <div class="ratio-desc">{platform.ratio}</div>
-          <div class="ratio-size">{platform.dimensions}</div>
+        <div class="flex-shrink-0">
+          <IconComponent class="w-5 h-5" />
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="text-xs font-semibold mb-0.5">{platform.name}</div>
+          <div class="text-xs opacity-80 mb-0.5">{platform.ratio}</div>
+          <div class="text-xs opacity-70">{platform.dimensions}</div>
         </div>
       </button>
     {/each}
-    
+
     <!-- 自定义比例 -->
     <button
-      class="ratio-card custom-card"
-      class:selected={isRatioSelected('custom')}
+      class="flex items-center gap-2 p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50"
+      class:border-purple-500={isRatioSelected('custom')}
+      class:bg-purple-500={isRatioSelected('custom')}
+      class:text-white={isRatioSelected('custom')}
+      class:border-gray-200={!isRatioSelected('custom')}
+      class:bg-white={!isRatioSelected('custom')}
+      class:text-gray-700={!isRatioSelected('custom')}
+      class:hover:border-purple-400={!isRatioSelected('custom')}
+      class:hover:bg-purple-50={!isRatioSelected('custom')}
       onclick={handleCustomRatio}
       title="自定义尺寸"
     >
-      <div class="ratio-icon">⚙️</div>
-      <div class="ratio-info">
-        <div class="ratio-name">自定义</div>
-        <div class="ratio-desc">Custom</div>
-        <div class="ratio-size">自定义尺寸</div>
+      <div class="flex-shrink-0">
+        <Settings class="w-5 h-5" />
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="text-xs font-semibold mb-0.5">自定义</div>
+        <div class="text-xs opacity-80 mb-0.5">Custom</div>
+        <div class="text-xs opacity-70">自定义尺寸</div>
       </div>
     </button>
   </div>
-  
+
   <!-- 自定义尺寸输入 -->
   {#if showCustomInput || currentRatio === 'custom'}
-    <div class="custom-input-section">
-      <h4 class="custom-title">自定义尺寸</h4>
-      <div class="custom-inputs">
-        <div class="input-group">
-          <label for="custom-width">宽度</label>
+    <div class="mb-4 p-3 bg-gray-50 rounded-md">
+      <h4 class="mb-3 text-xs font-semibold text-gray-600">自定义尺寸</h4>
+      <div class="flex items-center gap-2">
+        <div class="flex flex-col gap-1 flex-1">
+          <label for="custom-width" class="text-xs text-gray-600 font-medium">宽度</label>
           <input
             id="custom-width"
             type="number"
@@ -151,12 +186,19 @@
             step="1"
             bind:value={customWidthInput}
             oninput={handleCustomSizeChange}
+            class="px-2 py-1.5 border rounded text-xs text-center focus:outline-none focus:ring-2 focus:ring-opacity-20 transition-colors duration-200"
+            class:border-gray-300={isValidWidth}
+            class:border-red-300={!isValidWidth}
+            class:focus:border-purple-500={isValidWidth}
+            class:focus:ring-purple-500={isValidWidth}
+            class:focus:border-red-500={!isValidWidth}
+            class:focus:ring-red-500={!isValidWidth}
           />
-          <span class="input-unit">px</span>
+          <span class="text-xs text-gray-600 text-center">px</span>
         </div>
-        <div class="input-separator">×</div>
-        <div class="input-group">
-          <label for="custom-height">高度</label>
+        <div class="text-sm text-gray-600 mt-4">×</div>
+        <div class="flex flex-col gap-1 flex-1">
+          <label for="custom-height" class="text-xs text-gray-600 font-medium">高度</label>
           <input
             id="custom-height"
             type="number"
@@ -165,190 +207,29 @@
             step="1"
             bind:value={customHeightInput}
             oninput={handleCustomSizeChange}
+            class="px-2 py-1.5 border rounded text-xs text-center focus:outline-none focus:ring-2 focus:ring-opacity-20 transition-colors duration-200"
+            class:border-gray-300={isValidHeight}
+            class:border-red-300={!isValidHeight}
+            class:focus:border-purple-500={isValidHeight}
+            class:focus:ring-purple-500={isValidHeight}
+            class:focus:border-red-500={!isValidHeight}
+            class:focus:ring-red-500={!isValidHeight}
           />
-          <span class="input-unit">px</span>
+          <span class="text-xs text-gray-600 text-center">px</span>
         </div>
       </div>
     </div>
   {/if}
-  
+
   <!-- 当前选择显示 -->
-  <div class="current-selection">
-    {#if getCurrentRatioInfo()}
-      {@const info = getCurrentRatioInfo()}
-      <div class="selection-info">
-        <span class="selection-label">当前比例:</span>
-        <span class="selection-name">{info.name}</span>
-        <span class="selection-size">{info.dimensions}</span>
-        <span class="selection-ratio">({info.aspectRatio})</span>
-      </div>
-    {/if}
+  <div class="p-2 bg-gray-50 rounded-md text-xs">
+    <div class="flex items-center gap-1.5 flex-wrap">
+      <span class="text-gray-600 font-medium">当前比例:</span>
+      <span class="text-purple-600 font-semibold">{currentRatioInfo.name}</span>
+      <span class="text-gray-700 font-medium">{currentRatioInfo.dimensions}</span>
+      <span class="text-gray-500 text-xs">({currentRatioInfo.aspectRatio})</span>
+    </div>
   </div>
 </div>
 
-<style>
-  .aspect-ratio-control {
-    padding: 16px;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    background: white;
-  }
 
-  .control-title {
-    margin: 0 0 16px 0;
-    font-size: 14px;
-    font-weight: 600;
-    color: #374151;
-  }
-
-  .ratio-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-    margin-bottom: 16px;
-  }
-
-  .ratio-card {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px;
-    border: 2px solid #e5e7eb;
-    border-radius: 8px;
-    background: white;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-align: left;
-  }
-
-  .ratio-card:hover {
-    border-color: #8b5cf6;
-    background: #faf5ff;
-  }
-
-  .ratio-card.selected {
-    border-color: #8b5cf6;
-    background: #8b5cf6;
-    color: white;
-  }
-
-  .ratio-icon {
-    font-size: 20px;
-    flex-shrink: 0;
-  }
-
-  .ratio-info {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .ratio-name {
-    font-size: 12px;
-    font-weight: 600;
-    margin-bottom: 2px;
-  }
-
-  .ratio-desc {
-    font-size: 11px;
-    opacity: 0.8;
-    margin-bottom: 2px;
-  }
-
-  .ratio-size {
-    font-size: 10px;
-    opacity: 0.7;
-  }
-
-  .custom-input-section {
-    margin-bottom: 16px;
-    padding: 12px;
-    background: #f9fafb;
-    border-radius: 6px;
-  }
-
-  .custom-title {
-    margin: 0 0 12px 0;
-    font-size: 12px;
-    font-weight: 600;
-    color: #6b7280;
-  }
-
-  .custom-inputs {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .input-group {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    flex: 1;
-  }
-
-  .input-group label {
-    font-size: 11px;
-    color: #6b7280;
-    font-weight: 500;
-  }
-
-  .input-group input {
-    padding: 6px 8px;
-    border: 1px solid #d1d5db;
-    border-radius: 4px;
-    font-size: 12px;
-    text-align: center;
-  }
-
-  .input-group input:focus {
-    outline: none;
-    border-color: #8b5cf6;
-    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
-  }
-
-  .input-unit {
-    font-size: 10px;
-    color: #6b7280;
-    text-align: center;
-  }
-
-  .input-separator {
-    font-size: 14px;
-    color: #6b7280;
-    margin-top: 16px;
-  }
-
-  .current-selection {
-    padding: 8px;
-    background: #f3f4f6;
-    border-radius: 6px;
-    font-size: 12px;
-  }
-
-  .selection-info {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
-
-  .selection-label {
-    color: #6b7280;
-    font-weight: 500;
-  }
-
-  .selection-name {
-    color: #8b5cf6;
-    font-weight: 600;
-  }
-
-  .selection-size {
-    color: #374151;
-    font-weight: 500;
-  }
-
-  .selection-ratio {
-    color: #6b7280;
-    font-size: 11px;
-  }
-</style>
