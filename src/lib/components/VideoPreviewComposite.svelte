@@ -271,6 +271,20 @@
 
     console.log('📤 [VideoPreview] Prepared', transferableChunks.length, 'transferable chunks');
 
+    // 调试：检查第一个数据块的尺寸信息
+    if (transferableChunks.length > 0) {
+      const firstChunk = transferableChunks[0];
+      console.log('🔍 [VideoPreview] First chunk dimensions:', {
+        codedWidth: firstChunk.codedWidth,
+        codedHeight: firstChunk.codedHeight,
+        aspectRatio: firstChunk.codedWidth && firstChunk.codedHeight ?
+          (firstChunk.codedWidth / firstChunk.codedHeight).toFixed(3) : 'unknown',
+        size: firstChunk.size,
+        type: firstChunk.type,
+        codec: firstChunk.codec
+      });
+    }
+
     // 收集所有 ArrayBuffer 用于转移
     const transferList = transferableChunks.map(chunk => chunk.data)
 

@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频尺寸测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-case {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-case h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .canvas-container {
+            display: inline-block;
+            margin: 10px;
+            border: 2px solid #333;
+            position: relative;
+        }
+        .canvas-info {
+            position: absolute;
+            top: -25px;
+            left: 0;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 2px 8px;
+            font-size: 12px;
+            border-radius: 3px;
+        }
+        canvas {
+            display: block;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .result.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .dimensions {
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 视频尺寸处理测试</h1>
+        <p>测试不同尺寸的视频在16:9画布中的布局效果</p>
+
+        <div class="controls">
+            <button onclick="runAllTests()">运行所有测试</button>
+            <button onclick="clearResults()">清除结果</button>
+        </div>
+
+        <div class="test-case">
+            <h3>测试用例 1: 竖向视频 (772×1093) 在 16:9 画布中</h3>
+            <div class="dimensions">
+                源视频: 772×1093 (纵横比: 0.706)<br>
+                目标画布: 16:9 (纵横比: 1.778)<br>
+                期望: 视频保持比例，水平居中，两侧留白
+            </div>
+            <div id="test1-result"></div>
+            <div id="test1-canvas"></div>
+        </div>
+
+        <div class="test-case">
+            <h3>测试用例 2: 横向视频 (1920×1080) 在 16:9 画布中</h3>
+            <div class="dimensions">
+                源视频: 1920×1080 (纵横比: 1.778)<br>
+                目标画布: 16:9 (纵横比: 1.778)<br>
+                期望: 完美匹配，无留白
+            </div>
+            <div id="test2-result"></div>
+            <div id="test2-canvas"></div>
+        </div>
+
+        <div class="test-case">
+            <h3>测试用例 3: 方形视频 (1080×1080) 在 16:9 画布中</h3>
+            <div class="dimensions">
+                源视频: 1080×1080 (纵横比: 1.000)<br>
+                目标画布: 16:9 (纵横比: 1.778)<br>
+                期望: 视频保持比例，水平居中，两侧留白
+            </div>
+            <div id="test3-result"></div>
+            <div id="test3-canvas"></div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟 calculateOutputSize 函数
+        function calculateOutputSize(sourceWidth, sourceHeight, outputRatio = '16:9', padding = 60) {
+            const targetRatios = {
+                '16:9': 16 / 9,
+                '1:1': 1,
+                '9:16': 9 / 16,
+                '4:5': 4 / 5
+            };
+            
+            const targetCanvasRatio = targetRatios[outputRatio] || targetRatios['16:9'];
+            const minContentWidth = sourceWidth + padding * 2;
+            const minContentHeight = sourceHeight + padding * 2;
+            
+            let outputWidth, outputHeight;
+            
+            if (targetCanvasRatio >= 1) {
+                // 横向或方形画布
+                const widthBasedHeight = minContentWidth / targetCanvasRatio;
+                
+                if (widthBasedHeight >= minContentHeight) {
+                    outputWidth = Math.max(minContentWidth, 1280);
+                    outputHeight = Math.round(outputWidth / targetCanvasRatio);
+                } else {
+                    outputHeight = minContentHeight;
+                    outputWidth = Math.round(outputHeight * targetCanvasRatio);
+                }
+            } else {
+                // 竖向画布
+                const heightBasedWidth = minContentHeight * targetCanvasRatio;
+                
+                if (heightBasedWidth >= minContentWidth) {
+                    outputHeight = Math.max(minContentHeight, 1280);
+                    outputWidth = Math.round(outputHeight * targetCanvasRatio);
+                } else {
+                    outputWidth = minContentWidth;
+                    outputHeight = Math.round(outputWidth / targetCanvasRatio);
+                }
+            }
+            
+            return { outputWidth, outputHeight };
+        }
+
+        // 模拟 calculateVideoLayout 函数
+        function calculateVideoLayout(outputWidth, outputHeight, videoWidth, videoHeight, padding = 60) {
+            const totalPadding = padding;
+            const availableWidth = outputWidth - totalPadding * 2;
+            const availableHeight = outputHeight - totalPadding * 2;
+            
+            const videoAspectRatio = videoWidth / videoHeight;
+            const availableAspectRatio = availableWidth / availableHeight;
+            
+            let layoutWidth, layoutHeight, layoutX, layoutY;
+            
+            if (videoAspectRatio > availableAspectRatio) {
+                // 视频更宽，以可用宽度为准
+                layoutWidth = availableWidth;
+                layoutHeight = availableWidth / videoAspectRatio;
+                layoutX = totalPadding;
+                layoutY = totalPadding + (availableHeight - layoutHeight) / 2;
+            } else {
+                // 视频更高，以可用高度为准
+                layoutHeight = availableHeight;
+                layoutWidth = availableHeight * videoAspectRatio;
+                layoutX = totalPadding + (availableWidth - layoutWidth) / 2;
+                layoutY = totalPadding;
+            }
+            
+            return { x: layoutX, y: layoutY, width: layoutWidth, height: layoutHeight };
+        }
+
+        // 绘制测试结果
+        function drawTest(testId, sourceWidth, sourceHeight, outputRatio = '16:9') {
+            const { outputWidth, outputHeight } = calculateOutputSize(sourceWidth, sourceHeight, outputRatio);
+            const layout = calculateVideoLayout(outputWidth, outputHeight, sourceWidth, sourceHeight);
+            
+            // 创建画布
+            const canvas = document.createElement('canvas');
+            const scale = 0.3; // 缩放显示
+            canvas.width = outputWidth * scale;
+            canvas.height = outputHeight * scale;
+            
+            const ctx = canvas.getContext('2d');
+            
+            // 绘制背景
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制视频区域
+            ctx.fillStyle = '#007bff';
+            ctx.fillRect(
+                layout.x * scale,
+                layout.y * scale,
+                layout.width * scale,
+                layout.height * scale
+            );
+            
+            // 绘制边框
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(0, 0, canvas.width, canvas.height);
+            
+            // 添加到页面
+            const container = document.getElementById(`${testId}-canvas`);
+            container.innerHTML = '';
+            
+            const canvasContainer = document.createElement('div');
+            canvasContainer.className = 'canvas-container';
+            
+            const info = document.createElement('div');
+            info.className = 'canvas-info';
+            info.textContent = `${outputWidth}×${outputHeight}`;
+            
+            canvasContainer.appendChild(info);
+            canvasContainer.appendChild(canvas);
+            container.appendChild(canvasContainer);
+            
+            // 计算结果
+            const sourceAspectRatio = sourceWidth / sourceHeight;
+            const layoutAspectRatio = layout.width / layout.height;
+            const aspectRatioDiff = Math.abs(sourceAspectRatio - layoutAspectRatio);
+            const isProportional = aspectRatioDiff < 0.01;
+            
+            const scaleX = layout.width / sourceWidth;
+            const scaleY = layout.height / sourceHeight;
+            const distortionRatio = Math.max(scaleX, scaleY) / Math.min(scaleX, scaleY);
+            
+            // 显示结果
+            const resultDiv = document.getElementById(`${testId}-result`);
+            const resultClass = isProportional && distortionRatio < 1.01 ? 'success' : 'error';
+            
+            resultDiv.innerHTML = `
+                <div class="result ${resultClass}">
+                    <strong>测试结果:</strong><br>
+                    画布尺寸: ${outputWidth}×${outputHeight} (${(outputWidth/outputHeight).toFixed(3)})<br>
+                    视频布局: ${layout.width.toFixed(0)}×${layout.height.toFixed(0)} at (${layout.x.toFixed(0)}, ${layout.y.toFixed(0)})<br>
+                    比例保持: ${isProportional ? '✅ 正确' : '❌ 错误'}<br>
+                    失真比例: ${distortionRatio.toFixed(3)} ${distortionRatio < 1.01 ? '✅' : '⚠️'}<br>
+                    缩放比例: X=${scaleX.toFixed(3)}, Y=${scaleY.toFixed(3)}
+                </div>
+            `;
+        }
+
+        function runAllTests() {
+            drawTest('test1', 772, 1093);   // 竖向视频
+            drawTest('test2', 1920, 1080);  // 横向视频
+            drawTest('test3', 1080, 1080);  // 方形视频
+        }
+
+        function clearResults() {
+            ['test1', 'test2', 'test3'].forEach(testId => {
+                document.getElementById(`${testId}-result`).innerHTML = '';
+                document.getElementById(`${testId}-canvas`).innerHTML = '';
+            });
+        }
+
+        // 页面加载时运行测试
+        window.onload = runAllTests;
+    </script>
+</body>
+</html>

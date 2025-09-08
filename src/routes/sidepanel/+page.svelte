@@ -174,9 +174,39 @@
 
       // 6. 配置 Worker
       // 依据采集轨道的自然尺寸配置编码器，避免拉伸变形
-      const trackSettings = (videoTrack as any).getSettings ? (videoTrack as any).getSettings() : {}
-      const encoderWidth = trackSettings?.width || 1920
-      const encoderHeight = trackSettings?.height || 1080
+      const trackSettings = videoTrack.getSettings ? videoTrack.getSettings() : {}
+      console.log('📐 [WORKER-MAIN] Track settings:', trackSettings)
+
+      // 更可靠的尺寸获取策略
+      let encoderWidth = 1920
+      let encoderHeight = 1080
+
+      // 策略1: 从 track settings 获取
+      if (trackSettings?.width && trackSettings?.height) {
+        encoderWidth = trackSettings.width
+        encoderHeight = trackSettings.height
+        console.log('✅ [WORKER-MAIN] Using track settings dimensions:', { encoderWidth, encoderHeight })
+      } else {
+        // 策略2: 从 track constraints 获取
+        const constraints = videoTrack.getConstraints ? videoTrack.getConstraints() : {}
+        console.log('📐 [WORKER-MAIN] Track constraints:', constraints)
+
+        if (constraints?.width && constraints?.height) {
+          encoderWidth = typeof constraints.width === 'object' ? constraints.width.ideal || constraints.width.max || 1920 : constraints.width
+          encoderHeight = typeof constraints.height === 'object' ? constraints.height.ideal || constraints.height.max || 1080 : constraints.height
+          console.log('✅ [WORKER-MAIN] Using track constraints dimensions:', { encoderWidth, encoderHeight })
+        } else {
+          console.warn('⚠️ [WORKER-MAIN] No reliable dimensions found, using defaults:', { encoderWidth, encoderHeight })
+        }
+      }
+
+      // 验证尺寸合理性
+      if (encoderWidth < 100 || encoderHeight < 100 || encoderWidth > 7680 || encoderHeight > 4320) {
+        console.warn('⚠️ [WORKER-MAIN] Invalid dimensions detected, using safe defaults')
+        encoderWidth = 1920
+        encoderHeight = 1080
+      }
+
       const encoderFps = Math.round(trackSettings?.frameRate || 30)
 
       const workerConfig = {
@@ -434,6 +464,22 @@
       const compatibleChunks = elementRecordingIntegration.convertToMainSystemFormat(recordingData)
 
       console.log('🔄 [Sidepanel] Converted', compatibleChunks.length, 'chunks for editing');
+
+      // 调试：检查转换后的第一个数据块
+      if (compatibleChunks.length > 0) {
+        const firstChunk = compatibleChunks[0];
+        console.log('🔍 [Sidepanel] First converted chunk:', {
+          codedWidth: firstChunk.codedWidth,
+          codedHeight: firstChunk.codedHeight,
+          aspectRatio: firstChunk.codedWidth && firstChunk.codedHeight ?
+            (firstChunk.codedWidth / firstChunk.codedHeight).toFixed(3) : 'unknown',
+          size: firstChunk.size,
+          type: firstChunk.type,
+          codec: firstChunk.codec,
+          hasData: !!firstChunk.data,
+          dataType: typeof firstChunk.data
+        });
+      }
 
       // 将元素录制数据设置到主系统
       workerEncodedChunks = compatibleChunks
