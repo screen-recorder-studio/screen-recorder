@@ -63,6 +63,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'SET_MODE':
         state.mode = message.mode === 'region' ? 'region' : 'element';
         broadcastToTab(tabId, { type: 'STATE_UPDATE', state });
+        try { sendResponse({ ok: true, state }); } catch (e) {}
         return true;
 
       case 'ENTER_SELECTION':
@@ -71,12 +72,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           chrome.tabs.sendMessage(tabId, { type: 'ENTER_SELECTION', mode: state.mode });
         });
         broadcastToTab(tabId, { type: 'STATE_UPDATE', state });
+        try { sendResponse({ ok: true, state }); } catch (e) {}
         return true;
 
       case 'EXIT_SELECTION':
         state.selecting = false;
         chrome.tabs.sendMessage(tabId, { type: 'EXIT_SELECTION' });
         broadcastToTab(tabId, { type: 'STATE_UPDATE', state });
+        try { sendResponse({ ok: true, state }); } catch (e) {}
         return true;
 
       case 'START_CAPTURE':
@@ -85,26 +88,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           chrome.tabs.sendMessage(tabId, { type: 'START_CAPTURE' });
         });
         broadcastToTab(tabId, { type: 'STATE_UPDATE', state });
+        try { sendResponse({ ok: true, state }); } catch (e) {}
         return true;
 
       case 'STOP_CAPTURE':
         state.recording = false;
         chrome.tabs.sendMessage(tabId, { type: 'STOP_CAPTURE' });
         broadcastToTab(tabId, { type: 'STATE_UPDATE', state });
+        try { sendResponse({ ok: true, state }); } catch (e) {}
         return true;
 
       case 'CLEAR_SELECTION':
         chrome.tabs.sendMessage(tabId, { type: 'CLEAR_SELECTION' });
         broadcastToTab(tabId, { type: 'STATE_UPDATE', state });
+        try { sendResponse({ ok: true, state }); } catch (e) {}
         return true;
 
       case 'DOWNLOAD_VIDEO':
         chrome.tabs.sendMessage(tabId, { type: 'DOWNLOAD_VIDEO' });
+        try { sendResponse({ ok: true }); } catch (e) {}
         return true;
 
       case 'CONTENT_REPORT':
         // pass-through updates to side panel
         broadcastToTab(tabId, { type: 'STATE_UPDATE', state: { ...state, ...message.partial } });
+        try { sendResponse({ ok: true }); } catch (e) {}
         return true;
 
       case 'ELEMENT_RECORDING_COMPLETE':

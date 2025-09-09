@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte'
+  import { MousePointer, Crop, Play, Square, Eraser } from '@lucide/svelte'
 
   // 状态管理
   let mode = $state<'element' | 'region'>('element')
@@ -84,46 +85,67 @@
     await sendToBackground('SET_MODE', { mode: newMode })
   }
 
-  async function handleEnterSelection() {
+  async function handleEnterElementSelection() {
+    // 快速切换前，退出并清理当前选区（严格顺序）
+    await sendToBackground('EXIT_SELECTION')
+    await sendToBackground('CLEAR_SELECTION')
+    // 切换到元素模式
+    await handleModeChange('element')
+    // 进入选择
     await sendToBackground('ENTER_SELECTION')
   }
 
-  async function handleExitSelection() {
+  async function handleEnterRegionSelection() {
+    // 快速切换前，退出并清理当前选区（严格顺序）
     await sendToBackground('EXIT_SELECTION')
+    await sendToBackground('CLEAR_SELECTION')
+    // 切换到区域模式
+    await handleModeChange('region')
+    // 进入选择
+    await sendToBackground('ENTER_SELECTION')
   }
+
+
+
+
 
   async function handleStartCapture() {
     await sendToBackground('START_CAPTURE')
   }
 
   async function handleStopCapture() {
+    // 结束录制
     await sendToBackground('STOP_CAPTURE')
+    // 回到初始状态：退出选择并清除已选
+    await sendToBackground('EXIT_SELECTION')
+    await sendToBackground('CLEAR_SELECTION')
   }
 
   async function handleClearSelection() {
+    // 合并：先退出选择，再清空已选（严格顺序）
+    await sendToBackground('EXIT_SELECTION')
     await sendToBackground('CLEAR_SELECTION')
+  }
+
+  async function handleToggleCapture() {
+    if (recording) {
+      await handleStopCapture()
+    } else {
+      await handleStartCapture()
+    }
   }
 
   async function handleDownloadVideo() {
     await sendToBackground('DOWNLOAD_VIDEO')
   }
 
-  async function handleSwitchToEdit() {
-    // 停止当前录制并切换到编辑模式
-    if (recording) {
-      await sendToBackground('STOP_CAPTURE')
-    }
-
-    // 通知用户切换到编辑模式
-    console.log('🎬 [ElementSelector] Switching to edit mode...')
-  }
 
   // 监听来自 background 的消息
   let messageListener: ((msg: any) => void) | null = null
 
   onMount(() => {
     init()
-    
+
     if (hasExt) {
       messageListener = (msg: any) => {
         if (msg.type === 'STATE_UPDATE') {
@@ -153,90 +175,43 @@
     <h2 class="text-lg font-semibold text-gray-800 transition-colors duration-200">元素/区域录制</h2>
   </div>
 
-  <!-- 模式选择 -->
-  <div class="mb-4">
-    <div class="block text-sm font-medium text-gray-700 mb-2">录制模式：</div>
-    <div class="flex gap-4">
-      <label class="flex items-center">
-        <input
-          type="radio"
-          name="mode"
-          value="element"
-          checked={mode === 'element'}
-          onchange={() => handleModeChange('element')}
-          class="mr-2"
-        />
-        <span class="text-sm">元素选择</span>
-      </label>
-      <label class="flex items-center">
-        <input
-          type="radio"
-          name="mode"
-          value="region"
-          checked={mode === 'region'}
-          onchange={() => handleModeChange('region')}
-          class="mr-2"
-        />
-        <span class="text-sm">选区选择</span>
-      </label>
-    </div>
-  </div>
 
   <!-- 控制按钮 -->
   <div class="space-y-3">
-    <div class="flex gap-2">
-      <button 
-        onclick={handleEnterSelection}
-        class="flex-1 px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-        disabled={selecting}
-      >
-        进入选择
-      </button>
-      <button 
-        onclick={handleExitSelection}
-        class="flex-1 px-3 py-2 text-sm bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
-        disabled={!selecting}
-      >
-        退出选择
-      </button>
-    </div>
-    
-    <div class="flex gap-2">
-      <button
-        onclick={handleStartCapture}
-        class="flex-1 px-3 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-        disabled={recording}
-      >
-        开始录制
-      </button>
-      <button
-        onclick={handleStopCapture}
-        class="flex-1 px-3 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-        disabled={!recording}
-      >
-        停止录制
-      </button>
-    </div>
+    <button
+      onclick={handleEnterElementSelection}
+      class="w-full px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed disabled:hover:bg-gray-400 disabled:shadow-none disabled:opacity-80 flex items-center justify-center gap-2"
+      disabled={recording}
+      title={recording ? '录制中不可用' : undefined}
+    >
+      <MousePointer class="w-4 h-4" />
+      录制元素
+    </button>
 
-    <!-- 切换到编辑按钮 -->
-    {#if recording}
+    <button
+      onclick={handleEnterRegionSelection}
+      class="w-full px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed disabled:hover:bg-gray-400 disabled:shadow-none disabled:opacity-80 flex items-center justify-center gap-2"
+      disabled={recording}
+      title={recording ? '录制中不可用' : undefined}
+    >
+      <Crop class="w-4 h-4" />
+      录制区域
+    </button>
+
+    {#if selectedDesc}
       <button
-        onclick={handleSwitchToEdit}
-        class="w-full px-3 py-2 text-sm bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors flex items-center justify-center gap-2"
+        onclick={handleClearSelection}
+        class="w-full px-3 py-2 text-sm bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed disabled:hover:bg-gray-400 disabled:shadow-none disabled:opacity-80 flex items-center justify-center gap-2"
+        disabled={recording}
+        title={recording ? '录制中不可用' : undefined}
       >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-        </svg>
-        暂停并切换到编辑
+        <Eraser class="w-4 h-4" />
+        清除选择
       </button>
     {/if}
-    
-    <button
-      onclick={handleClearSelection}
-      class="w-full px-3 py-2 text-sm bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
-    >
-      清除选区
-    </button>
+
+
+
 
     <!-- 视频预览区域 -->
     {#if hasVideo && videoUrl}
@@ -273,6 +248,21 @@
         下载录制视频
       </button>
     {/if}
+
+    <!-- 录制控制按钮（最下方） -->
+    <button
+      onclick={handleToggleCapture}
+      class={recording ?
+        "w-full px-3 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center gap-2" :
+        "w-full px-3 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2"}
+    >
+      {#if recording}
+        <Square class="w-4 h-4" /> 结束录制
+      {:else}
+        <Play class="w-4 h-4" /> 开始录制
+      {/if}
+    </button>
+
   </div>
 
   <!-- 状态显示 -->

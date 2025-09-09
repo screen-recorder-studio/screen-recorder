@@ -795,6 +795,21 @@
   window.addEventListener('scroll', syncElementContainer, { passive: true });
   window.addEventListener('resize', syncElementContainer, { passive: true });
 
+
+  // ESC 取消：退出并清除选择
+  function onEscKey(e) {
+    if (e.key === 'Escape' || e.key === 'Esc') {
+      const hasSel = state.selecting || !!state.elementContainer || !!state.regionContainer || (state.selectionBox && state.selectionBox.style.display !== 'none');
+      if (!hasSel) return;
+      try { exitSelection(); } catch {}
+      try { clearSelection(); } catch {}
+      report({ selecting: false, selectedDesc: undefined });
+      e.stopPropagation();
+      e.preventDefault();
+    }
+  }
+  window.addEventListener('keydown', onEscKey, true);
+
   chrome.runtime.onMessage.addListener((msg) => {
     switch (msg.type) {
       case 'ENTER_SELECTION':

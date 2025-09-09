@@ -1,18 +1,11 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte'
   import { ChromeAPIWrapper } from '$lib/utils/chrome-api'
-  import { TriangleAlert, Activity } from '@lucide/svelte'
+  import { TriangleAlert } from '@lucide/svelte'
 
   // 引入 Worker 系统
   import { recordingService } from '$lib/services/recording-service'
   import { recordingStore } from '$lib/stores/recording.svelte'
-  import VideoPreviewComposite from '$lib/components/VideoPreviewComposite.svelte'
-  import VideoExportPanel from '$lib/components/VideoExportPanel.svelte'
-  import BackgroundColorPicker from '$lib/components/BackgroundColorPicker.svelte'
-  import BorderRadiusControl from '$lib/components/BorderRadiusControl.svelte'
-  import PaddingControl from '$lib/components/PaddingControl.svelte'
-  import AspectRatioControl from '$lib/components/AspectRatioControl.svelte'
-  import ShadowControl from '$lib/components/ShadowControl.svelte'
   import RecordButton from '$lib/components/RecordButton.svelte'
   import ElementRegionSelector from '$lib/components/ElementRegionSelector.svelte'
   import { elementRecordingIntegration, type ElementRecordingData } from '$lib/utils/element-recording-integration'
