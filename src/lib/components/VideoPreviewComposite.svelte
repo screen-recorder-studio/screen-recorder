@@ -53,42 +53,59 @@
   let previewWidth = $state(displayWidth)
   let previewHeight = $state(displayHeight)
 
-  // 更新预览尺寸 - 根据输出比例调整预览显示
+  // 更新预览尺寸 - 智能适应全高度布局
   function updatePreviewSize() {
     const aspectRatio = outputWidth / outputHeight
-    const maxWidth = displayWidth
-    const maxHeight = displayHeight
 
-    // 计算适合的预览尺寸，保持纵横比，并确保充分利用空间
-    if (aspectRatio > maxWidth / maxHeight) {
+    // 计算可用空间 - 考虑控制栏和时间轴的高度
+    const headerHeight = 60  // 预览信息栏高度
+    const controlsHeight = showControls && totalFrames > 0 ? 56 : 0  // 播放控制栏高度
+    const timelineHeight = showTimeline && totalFrames > 0 ? 48 : 0  // 时间轴高度
+    const padding = 32  // Canvas 区域的内边距 (p-4 = 16px * 2)
+
+    const availableWidth = displayWidth - padding
+    const availableHeight = displayHeight - headerHeight - controlsHeight - timelineHeight - padding
+
+    // 计算适合的预览尺寸，保持纵横比，充分利用可用空间
+    let calculatedWidth, calculatedHeight
+
+    if (aspectRatio > availableWidth / availableHeight) {
       // 宽度受限
-      previewWidth = maxWidth
-      previewHeight = Math.round(maxWidth / aspectRatio)
+      calculatedWidth = Math.min(availableWidth, displayWidth * 0.9) // 最大不超过90%宽度
+      calculatedHeight = Math.round(calculatedWidth / aspectRatio)
     } else {
       // 高度受限
-      previewHeight = maxHeight
-      previewWidth = Math.round(maxHeight * aspectRatio)
+      calculatedHeight = Math.min(availableHeight, displayHeight * 0.7) // 最大不超过70%高度
+      calculatedWidth = Math.round(calculatedHeight * aspectRatio)
     }
 
     // 确保最小尺寸，避免过小的预览
-    const minSize = 200
-    if (previewWidth < minSize || previewHeight < minSize) {
+    const minSize = 300
+    if (calculatedWidth < minSize || calculatedHeight < minSize) {
       if (aspectRatio > 1) {
         // 横屏视频
-        previewWidth = Math.max(minSize, previewWidth)
+        previewWidth = Math.max(minSize, calculatedWidth)
         previewHeight = Math.round(previewWidth / aspectRatio)
       } else {
         // 竖屏视频
-        previewHeight = Math.max(minSize, previewHeight)
+        previewHeight = Math.max(minSize, calculatedHeight)
         previewWidth = Math.round(previewHeight * aspectRatio)
       }
+    } else {
+      previewWidth = calculatedWidth
+      previewHeight = calculatedHeight
     }
+
+    // 确保不超过容器限制
+    previewWidth = Math.min(previewWidth, availableWidth)
+    previewHeight = Math.min(previewHeight, availableHeight)
 
     console.log('📐 [VideoPreview] Preview size updated:', {
       outputSize: { width: outputWidth, height: outputHeight },
       previewSize: { width: previewWidth, height: previewHeight },
-      aspectRatio,
-      displayConstraints: { maxWidth, maxHeight }
+      availableSpace: { width: availableWidth, height: availableHeight },
+      uiElements: { headerHeight, controlsHeight, timelineHeight, padding },
+      aspectRatio: aspectRatio.toFixed(3)
     })
   }
 
@@ -633,10 +650,10 @@
   }
 </script>
 
-<!-- 视频预览容器 -->
-<div class="flex flex-col gap-3 bg-gray-900 rounded-lg p-4 overflow-hidden {className}">
-  <!-- 预览信息栏 -->
-  <div class="flex justify-between items-center pb-2 border-b border-gray-700">
+<!-- 视频预览容器 - 优化为全高度布局 -->
+<div class="flex flex-col h-full bg-gray-900 rounded-lg overflow-hidden {className}">
+  <!-- 预览信息栏 - 固定高度 -->
+  <div class="flex-shrink-0 flex justify-between items-center p-3 border-b border-gray-700">
     <div class="flex items-center gap-2">
       <Monitor class="w-4 h-4 text-gray-400" />
       <span class="text-sm font-semibold text-gray-100">视频预览</span>
@@ -646,26 +663,28 @@
     </span>
   </div>
 
-  <!-- Canvas 显示区域 -->
-  <div class="relative bg-black flex items-center justify-center rounded overflow-hidden mx-auto" style="width: {previewWidth}px; height: {previewHeight}px;">
-    <canvas
-      bind:this={canvas}
-      class="block rounded transition-opacity duration-300"
-      class:opacity-50={isProcessing}
-      style="width: {previewWidth}px; height: {previewHeight}px;"
-    ></canvas>
+  <!-- Canvas 显示区域 - 占据剩余空间 -->
+  <div class="flex-1 flex items-center justify-center p-4 min-h-0">
+    <div class="relative bg-black flex items-center justify-center rounded overflow-hidden" style="width: {previewWidth}px; height: {previewHeight}px;">
+      <canvas
+        bind:this={canvas}
+        class="block rounded transition-opacity duration-300"
+        class:opacity-50={isProcessing}
+        style="width: {previewWidth}px; height: {previewHeight}px;"
+      ></canvas>
 
-    {#if isProcessing}
-      <div class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white">
-        <LoaderCircle class="w-8 h-8 text-blue-500 animate-spin mb-2" />
-        <span class="text-sm">正在处理视频...</span>
-      </div>
-    {/if}
+      {#if isProcessing}
+        <div class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white">
+          <LoaderCircle class="w-8 h-8 text-blue-500 animate-spin mb-2" />
+          <span class="text-sm">正在处理视频...</span>
+        </div>
+      {/if}
+    </div>
   </div>
 
-  <!-- 播放控制 -->
+  <!-- 播放控制 - 固定高度 -->
   {#if showControls && totalFrames > 0}
-    <div class="flex items-center justify-between p-3 bg-gray-800 text-white text-sm rounded">
+    <div class="flex-shrink-0 flex items-center justify-between p-3 bg-gray-800 text-white text-sm">
       <div class="flex items-center gap-2">
         <button
           class="flex items-center justify-center w-8 h-8 border border-gray-600 text-white rounded cursor-pointer transition-all duration-200 hover:bg-gray-700 hover:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -699,9 +718,9 @@
     </div>
   {/if}
 
-  <!-- 时间轴 -->
+  <!-- 时间轴 - 固定高度 -->
   {#if showTimeline && totalFrames > 0}
-    <div class="p-2 bg-gray-800 rounded">
+    <div class="flex-shrink-0 p-3 bg-gray-800">
       <input
         type="range"
         class="w-full h-1 bg-gray-600 rounded-sm outline-none cursor-pointer timeline-slider"

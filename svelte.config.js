@@ -20,7 +20,7 @@ const config = {
 		},
 		appDir: 'app',
 		prerender: {
-			entries: ['/', '/sidepanel', '/popup']
+			entries: ['/', '/sidepanel', '/studio', '/popup']
 		}
 	}
 };

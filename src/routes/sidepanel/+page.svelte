@@ -16,6 +16,7 @@
   import RecordButton from '$lib/components/RecordButton.svelte'
   import ElementRegionSelector from '$lib/components/ElementRegionSelector.svelte'
   import { elementRecordingIntegration, type ElementRecordingData } from '$lib/utils/element-recording-integration'
+  import { recordingCache } from '$lib/services/recording-cache'
 
   // 录制状态
   let isRecording = $state(false)
@@ -37,6 +38,15 @@
   let workerEncodedChunks = $state<any[]>([])
   let workerCurrentWorker: Worker | null = null
 
+
+
+	  // 跳转提示
+	  let showHandoffNotice = $state(false)
+	  let handoffText = $state('将转到 Studio 中...')
+
+
+	  // 避免重复触发 handoff 的保护标记
+	  let handoffInProgress = $state(false)
 
 
   // 处理录制完成后的视频预览
@@ -390,27 +400,25 @@
       console.log(`📊 [WORKER-MAIN] Total encoded data size: ${(totalSize / 1024 / 1024).toFixed(2)} MB`)
 
       if (workerEncodedChunks.length > 0) {
-        console.log('🎨 [WORKER-MAIN] Rendering encoded chunks to Canvas...')
-
         try {
-          // 方案1：使用 VideoPreview 组件渲染（推荐）
-          console.log('🎨 [WORKER-MAIN] Preparing video preview...')
-          await handleVideoPreview(workerEncodedChunks)
-
-          console.log('✅ Worker recording prepared for video preview')
+          // 标记完成状态
           recordingStore.updateStatus('completed')
 
+          // 显示跳转提示
+          console.log('🔄 [WORKER-MAIN] 录制完成，正在保存并跳转到 Studio...')
+
+          // 自动跳转到 Studio
+          await openInStudio()
         } catch (error) {
-          console.error('❌ Failed to prepare video preview:', error)
+          console.error('❌ Failed to handoff to Studio page:', error)
         }
       } else {
         console.warn('⚠️ No encoded chunks to save')
         recordingStore.updateStatus('error', 'No encoded chunks to save')
       }
 
-      // 清理 Worker 引用（但保留编码数据供预览使用）
+      // 清理 Worker 引用
       workerCurrentWorker = null
-      // 注意：不清空 workerEncodedChunks，让预览组件继续使用
 
     } catch (error) {
       console.error('❌ Worker stop failed:', error)
@@ -433,7 +441,7 @@
   }
 
   // 处理元素录制数据
-  function handleElementRecordingData(message: any) {
+  async function handleElementRecordingData(message: any) {
     try {
       console.log('🎬 [Sidepanel] Received element recording data:', {
         chunks: message.encodedChunks?.length || 0,
@@ -481,8 +489,13 @@
         });
       }
 
+
+
       // 将元素录制数据设置到主系统
       workerEncodedChunks = compatibleChunks
+
+	      console.log(' \ud83d\udd04 [Sidepanel] \u5f55\u5236\u6574\u5408\u6210\u529f\uff0c\u6b63\u51c6\u5907\u4fdd\u5b58\u5e76\u8df3\u8f6c\u5230 Studio...')
+	      try { await openInStudio() } catch (e) { console.error('\u274c [Sidepanel] Auto handoff to Studio failed:', e) }
 
       // 更新录制状态为完成
       recordingStore.updateStatus('completed')
@@ -512,6 +525,75 @@
     }
   }
 
+  // 将当前录制数据保存并在新标签打开 Studio 页面
+  async function openInStudio() {
+    try {
+      if (!workerEncodedChunks || workerEncodedChunks.length === 0) {
+        console.warn('⚠️ [Sidepanel] No chunks to handoff to Studio')
+        return
+      }
+      if (handoffInProgress) {
+        console.warn('⏳ [Sidepanel] Handoff already in progress')
+        return
+      }
+      handoffInProgress = true
+      const totalSize = workerEncodedChunks.reduce((s, c) => s + (c.size || 0), 0)
+      const first = workerEncodedChunks[0] || {}
+      const id = `rec_${Date.now()}`
+      const meta = {
+        width: first.codedWidth || 1920,
+        height: first.codedHeight || 1080,
+        fps: 30,
+        codec: first.codec || 'vp9',
+        engine: 'webcodecs',
+        totalChunks: workerEncodedChunks.length,
+        totalSize
+      }
+      console.log('💾 [Sidepanel] Saving recording to IndexedDB...', { id, meta })
+      await recordingCache.save(id, workerEncodedChunks, meta)
+
+      // 打开扩展根目录下的 studio.html（按需加载 id）
+      const targetUrl = (typeof chrome !== 'undefined' && chrome.runtime)
+        ? chrome.runtime.getURL(`studio.html?id=${encodeURIComponent(id)}`)
+        : `/studio.html?id=${encodeURIComponent(id)}`
+      console.log('🧭 [Sidepanel] Opening Studio URL:', targetUrl)
+
+      // 显示“将转到 Studio 中...”提示
+      showHandoffNotice = true
+
+      if (typeof chrome !== 'undefined' && chrome.tabs && chrome.runtime) {
+        chrome.tabs.create({ url: targetUrl }, () => {
+          const err = chrome.runtime.lastError
+          if (err) {
+            console.error('❌ [Sidepanel] chrome.tabs.create failed:', err.message)
+            // 失败则保留当前编辑态，提示仍显示片刻后隐藏
+            setTimeout(() => { showHandoffNotice = false; handoffInProgress = false }, 1500)
+          } else {
+            console.log('✅ [Sidepanel] Studio tab opened')
+            // 成功后复位 sidepanel，避免进入编辑模式
+            workerEncodedChunks = []
+            recordingStore.updateStatus('idle')
+            showHandoffNotice = false
+            handoffInProgress = false
+          }
+        })
+      } else {
+        // 非扩展环境（开发模式）回退
+        window.open(targetUrl, '_blank')
+        setTimeout(() => {
+          workerEncodedChunks = []
+          recordingStore.updateStatus('idle')
+          showHandoffNotice = false
+          handoffInProgress = false
+        }, 300)
+      }
+    } catch (e) {
+      console.error('❌ [Sidepanel] openInStudio failed:', e)
+      showHandoffNotice = false
+      handoffInProgress = false
+    }
+  }
+
   // 显示集成成功通知
   function showIntegrationNotification(metadata: any, summary?: any) {
     // 这里可以添加 UI 通知逻辑
@@ -536,7 +618,7 @@
 
 
 
-  
+
 
   // 处理录制错误
   function handleRecordingError(message: string) {
@@ -738,6 +820,31 @@
     // 检查 Worker 环境
     checkWorkerEnvironment()
 
+	    // 如果作为新标签页打开并带有 studio=1，则从 IndexedDB 加载并进入编辑模式
+	    // ;(async () => {
+	    //   try {
+	    //     const params = new URLSearchParams(location.search)
+	    //     if (params.get('studio') === '1') {
+	    //       const id = params.get('id')
+	    //       if (id) {
+	    //         console.log('📦 [Sidepanel->Studio] Loading recording by id:', id)
+	    //         const result = await recordingCache.load(id)
+	    //         if (result?.chunks?.length) {
+	    //           workerEncodedChunks = result.chunks
+	    //           recordingStore.updateStatus('completed')
+	    //           recordingStore.setEngine('webcodecs')
+	    //           console.log('✅ [Sidepanel->Studio] Loaded', result.chunks.length, 'chunks', result.meta)
+	    //         } else {
+	    //           console.warn('⚠️ [Sidepanel->Studio] No data found for id:', id)
+	    //         }
+	    //       }
+	    //     }
+	    //   } catch (e) {
+	    //     console.error('❌ [Sidepanel->Studio] Failed to load from IndexedDB:', e)
+	    //   }
+	    // })()
+
+
     // 设置元素录制集成监听器
     const elementRecordingListener = (data: ElementRecordingData) => {
       console.log('🎬 [Sidepanel] Element recording integration callback:', data)
@@ -771,6 +878,7 @@
     }
 
     if (typeof chrome !== 'undefined' && chrome.runtime) {
+
       chrome.runtime.onMessage.addListener(messageListener)
     }
 
@@ -795,8 +903,15 @@
 </svelte:head>
 
 <!-- 极简录制模式 -->
+
 {#if isMinimalMode}
   <div class="flex flex-col items-center justify-center min-h-screen p-4 bg-gradient-to-br from-gray-50 to-gray-100 transition-all duration-300 ease-in-out">
+{#if showHandoffNotice}
+  <div class="fixed top-3 left-1/2 -translate-x-1/2 z-50 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-xs shadow-lg">
+    {handoffText}
+  </div>
+{/if}
+
     <!-- 简化的页面标题 -->
     <div class="text-center mb-8 animate-fade-in">
       <h1 class="text-2xl font-bold text-gray-800 mb-1 transition-colors duration-200">屏幕录制工具</h1>
@@ -848,102 +963,6 @@
         status={workerStatus}
         onclick={handleWorkerRecordButtonClick}
       />
-    </div>
-  </div>
-{/if}
-
-<!-- 完整编辑模式 -->
-{#if isEditingMode}
-  <div class="flex flex-col lg:flex-row min-h-screen p-4 gap-6 font-sans bg-gradient-to-br from-gray-50 to-gray-100 transition-all duration-500 ease-in-out">
-
-    <!-- 视频预览区域：小屏全宽在上，大屏左侧（更宽） -->
-    <div class="w-full lg:w-3/4 space-y-4 lg:space-y-6 transition-all duration-300 ease-in-out">
-      <!-- 页面标题（编辑模式） -->
-      <div class="text-center lg:text-left animate-fade-in">
-        <h1 class="text-2xl font-bold text-gray-800 mb-1 transition-colors duration-200">视频编辑</h1>
-        <p class="text-sm text-gray-600 transition-colors duration-200">录制完成，开始编辑</p>
-      </div>
-
-      <!-- 视频预览面板 -->
-      <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-lg transition-all duration-300 ease-in-out hover:shadow-xl">
-        <div class="flex items-center gap-2 mb-6">
-          <div class="w-2 h-2 bg-blue-500 rounded-full transition-colors duration-200"></div>
-          <h2 class="text-lg font-semibold text-gray-800 transition-colors duration-200">录制预览</h2>
-        </div>
-
-        <!-- 使用新的 VideoPreviewComposite 组件 -->
-        <div class="w-full">
-          <VideoPreviewComposite
-            encodedChunks={workerEncodedChunks}
-            isRecordingComplete={workerStatus === 'completed' || workerStatus === 'idle'}
-            displayWidth={640}
-            displayHeight={360}
-            showControls={true}
-            showTimeline={true}
-            className="worker-video-preview w-full"
-          />
-        </div>
-
-        {#if workerEncodedChunks.length > 0}
-          <div class="flex items-center gap-2 mt-4 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
-            <Activity class="w-4 h-4" />
-            <span>已收集 {workerEncodedChunks.length} 个编码块</span>
-          </div>
-        {/if}
-      </div>
-    </div>
-
-    <!-- 配置和导出区域：小屏下方，大屏右侧（更窄） -->
-    <div class="w-full lg:w-1/4 lg:max-w-sm space-y-4 lg:space-y-6 transition-all duration-300 ease-in-out">
-      <!-- 视频配置面板 -->
-      <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-lg transition-all duration-300 ease-in-out hover:shadow-xl">
-        <div class="flex items-center gap-2 mb-6">
-          <div class="w-2 h-2 bg-purple-500 rounded-full transition-colors duration-200"></div>
-          <h2 class="text-lg font-semibold text-gray-800 transition-colors duration-200">视频配置</h2>
-        </div>
-
-        <!-- 配置选项网格：小屏2列，大屏1列 -->
-        <div class="grid grid-cols-2 lg:grid-cols-1 gap-4">
-          <!-- 背景颜色选择 -->
-          <div class="col-span-2 lg:col-span-1">
-            <BackgroundColorPicker />
-          </div>
-
-          <!-- 圆角配置 -->
-          <div>
-            <BorderRadiusControl />
-          </div>
-
-          <!-- 边距配置 -->
-          <div>
-            <PaddingControl />
-          </div>
-
-          <!-- 视频比例配置 -->
-          <div class="col-span-2 lg:col-span-1">
-            <AspectRatioControl />
-          </div>
-
-          <!-- 阴影配置 -->
-          <div class="col-span-2 lg:col-span-1">
-            <ShadowControl />
-          </div>
-        </div>
-      </div>
-
-      <!-- 视频导出面板 -->
-      <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-lg transition-all duration-300 ease-in-out hover:shadow-xl">
-        <div class="flex items-center gap-2 mb-6">
-          <div class="w-2 h-2 bg-green-500 rounded-full transition-colors duration-200"></div>
-          <h2 class="text-lg font-semibold text-gray-800 transition-colors duration-200">视频导出</h2>
-        </div>
-
-        <VideoExportPanel
-          encodedChunks={workerEncodedChunks}
-          isRecordingComplete={workerStatus === 'completed' || workerStatus === 'idle'}
-          className="export-panel"
-        />
-      </div>
     </div>
   </div>
 {/if}
