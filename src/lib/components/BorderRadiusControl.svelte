@@ -1,17 +1,18 @@
 <!-- 圆角配置控件 -->
 <script lang="ts">
+  import { Square, Circle, Eye, SlidersHorizontal } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
 
   // 当前圆角值
   const currentRadius = $derived(backgroundConfigStore.config.borderRadius || 0)
 
-  // 预设圆角值
+  // 预设圆角值 - 增大范围使效果更明显
   const PRESET_RADIUS = [
-    { name: '无圆角', value: 0 },
-    { name: '小圆角', value: 8 },
-    { name: '中圆角', value: 16 },
-    { name: '大圆角', value: 24 },
-    { name: '超大圆角', value: 32 }
+    { name: '无圆角', value: 0, icon: Square },
+    { name: '小圆角', value: 20, icon: Circle },
+    { name: '中圆角', value: 40, icon: Circle },
+    { name: '大圆角', value: 60, icon: Circle },
+    { name: '超大圆角', value: 80, icon: Circle }
   ] as const
 
   // 处理滑块变化
@@ -34,85 +35,74 @@
 </script>
 
 <!-- 圆角配置控件 -->
-<div class="border-radius-control">
-  <h3 class="control-title">视频圆角</h3>
-  
+<div class="p-4 border border-gray-200 rounded-lg bg-white">
+  <div class="flex items-center gap-2 mb-4">
+    <SlidersHorizontal class="w-4 h-4 text-gray-600" />
+    <h3 class="text-sm font-semibold text-gray-700">视频圆角</h3>
+  </div>
+
   <!-- 滑块控制 -->
-  <div class="slider-container">
+  <div class="flex items-center gap-3 mb-4">
     <input
       type="range"
-      class="radius-slider"
+      class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
       min="0"
-      max="50"
-      step="1"
+      max="100"
+      step="2"
       value={currentRadius}
       oninput={handleSliderChange}
     />
-    <div class="slider-value">
+    <div class="min-w-[50px] text-center text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded">
       {currentRadius}px
     </div>
   </div>
-  
+
   <!-- 预设值快速选择 -->
-  <div class="preset-buttons">
+  <div class="flex gap-2 mb-4 flex-wrap">
     {#each PRESET_RADIUS as preset}
+      {@const IconComponent = preset.icon}
       <button
-        class="preset-btn"
-        class:selected={isPresetSelected(preset.value)}
+        class="flex items-center gap-1.5 px-3 py-2 text-xs border rounded-md cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+        class:border-blue-500={isPresetSelected(preset.value)}
+        class:bg-blue-500={isPresetSelected(preset.value)}
+        class:text-white={isPresetSelected(preset.value)}
+        class:border-gray-300={!isPresetSelected(preset.value)}
+        class:bg-white={!isPresetSelected(preset.value)}
+        class:text-gray-700={!isPresetSelected(preset.value)}
+        class:hover:border-blue-400={!isPresetSelected(preset.value)}
+        class:hover:bg-blue-50={!isPresetSelected(preset.value)}
         onclick={() => handlePresetSelect(preset)}
         title="{preset.name} ({preset.value}px)"
       >
-        {preset.name}
+        <IconComponent class="w-3 h-3" />
+        <span>{preset.name}</span>
       </button>
     {/each}
   </div>
-  
+
   <!-- 视觉预览 -->
-  <div class="preview-container">
-    <div class="preview-label">预览效果:</div>
-    <div 
-      class="preview-box"
-      style="border-radius: {currentRadius}px"
-    >
-      <div class="preview-content">
-        视频区域
+  <div class="mt-4">
+    <div class="flex items-center gap-2 mb-2">
+      <Eye class="w-3 h-3 text-gray-600" />
+      <div class="text-xs text-gray-600 font-medium">预览效果:</div>
+    </div>
+    <div class="flex items-center justify-center p-6 bg-gray-50 rounded-md">
+      <div
+        class="w-40 h-28 bg-gradient-to-br from-blue-100 to-purple-100 border-2 border-gray-300 flex items-center justify-center transition-all duration-300 overflow-hidden shadow-sm"
+        style="border-radius: {currentRadius}px"
+      >
+        <div class="text-sm text-gray-700 text-center font-medium">
+          视频区域<br>
+          <span class="text-xs text-gray-500">{currentRadius}px 圆角</span>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
 <style>
-  .border-radius-control {
-    padding: 16px;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    background: white;
-  }
-
-  .control-title {
-    margin: 0 0 16px 0;
-    font-size: 14px;
-    font-weight: 600;
-    color: #374151;
-  }
-
-  .slider-container {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
-  }
-
-  .radius-slider {
-    flex: 1;
-    height: 6px;
-    background: #e5e7eb;
-    border-radius: 3px;
-    outline: none;
-    cursor: pointer;
-  }
-
-  .radius-slider::-webkit-slider-thumb {
+  /* 自定义滑块样式 */
+  .slider-thumb::-webkit-slider-thumb {
     appearance: none;
     width: 20px;
     height: 20px;
@@ -120,9 +110,15 @@
     border-radius: 50%;
     cursor: pointer;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
   }
 
-  .radius-slider::-moz-range-thumb {
+  .slider-thumb::-webkit-slider-thumb:hover {
+    background: #2563eb;
+    transform: scale(1.1);
+  }
+
+  .slider-thumb::-moz-range-thumb {
     width: 20px;
     height: 20px;
     background: #3b82f6;
@@ -130,73 +126,11 @@
     cursor: pointer;
     border: none;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-
-  .slider-value {
-    min-width: 40px;
-    text-align: center;
-    font-size: 12px;
-    font-weight: 600;
-    color: #3b82f6;
-    background: #eff6ff;
-    padding: 4px 8px;
-    border-radius: 4px;
-  }
-
-  .preset-buttons {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-  }
-
-  .preset-btn {
-    padding: 6px 12px;
-    font-size: 11px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    background: white;
-    color: #6b7280;
-    cursor: pointer;
     transition: all 0.2s ease;
   }
 
-  .preset-btn:hover {
-    border-color: #3b82f6;
-    color: #3b82f6;
-  }
-
-  .preset-btn.selected {
-    background: #3b82f6;
-    border-color: #3b82f6;
-    color: white;
-  }
-
-  .preview-container {
-    margin-top: 16px;
-  }
-
-  .preview-label {
-    font-size: 12px;
-    color: #6b7280;
-    margin-bottom: 8px;
-  }
-
-  .preview-box {
-    width: 120px;
-    height: 68px;
-    background: #f3f4f6;
-    border: 2px solid #d1d5db;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: border-radius 0.2s ease;
-    overflow: hidden;
-  }
-
-  .preview-content {
-    font-size: 11px;
-    color: #6b7280;
-    text-align: center;
+  .slider-thumb::-moz-range-thumb:hover {
+    background: #2563eb;
+    transform: scale(1.1);
   }
 </style>
