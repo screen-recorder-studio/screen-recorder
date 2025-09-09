@@ -1,5 +1,6 @@
 <!-- 阴影配置控件 -->
 <script lang="ts">
+  import { Zap, Eye, Palette, Move, Focus, Sun, Moon, Sparkles, SlidersHorizontal } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import type { BackgroundConfig } from '$lib/types/background'
 
@@ -22,7 +23,8 @@
       offsetY: 4,
       blur: 8,
       color: '#000000',
-      opacity: 0.2
+      opacity: 0.2,
+      icon: Sun
     },
     {
       name: '标准阴影',
@@ -30,7 +32,8 @@
       offsetY: 8,
       blur: 16,
       color: '#000000',
-      opacity: 0.3
+      opacity: 0.3,
+      icon: Moon
     },
     {
       name: '深度阴影',
@@ -38,7 +41,8 @@
       offsetY: 12,
       blur: 24,
       color: '#000000',
-      opacity: 0.4
+      opacity: 0.4,
+      icon: Focus
     },
     {
       name: '远距阴影',
@@ -46,7 +50,8 @@
       offsetY: 16,
       blur: 32,
       color: '#000000',
-      opacity: 0.25
+      opacity: 0.25,
+      icon: Sparkles
     }
   ] as const
 
@@ -121,55 +126,68 @@
 </script>
 
 <!-- 阴影配置控件 -->
-<div class="shadow-control">
-  <div class="control-header">
-    <h3 class="control-title">视频阴影</h3>
-    <label class="shadow-toggle">
+<div class="p-4 border border-gray-200 rounded-lg bg-white">
+  <div class="flex justify-between items-center mb-4">
+    <div class="flex items-center gap-2">
+      <Zap class="w-4 h-4 text-gray-600" />
+      <h3 class="text-sm font-semibold text-gray-700">视频阴影</h3>
+    </div>
+    <label class="relative inline-block w-11 h-6">
       <input
         type="checkbox"
+        class="opacity-0 w-0 h-0"
         checked={isEnabled}
         onchange={toggleShadow}
       />
-      <span class="toggle-slider"></span>
+      <span class="absolute cursor-pointer top-0 left-0 right-0 bottom-0 bg-gray-300 transition-all duration-300 rounded-full before:absolute before:content-[''] before:h-4 before:w-4 before:left-1 before:bottom-1 before:bg-white before:transition-all before:duration-300 before:rounded-full"
+            class:bg-amber-500={isEnabled}
+            class:before:translate-x-5={isEnabled}></span>
     </label>
   </div>
 
   {#if isEnabled}
     <!-- 预设阴影选择 -->
-    <div class="preset-section">
-      <h4 class="section-title">预设效果</h4>
-      <div class="preset-grid">
+    <div class="mb-4">
+      <h4 class="text-xs font-semibold text-gray-600 mb-3">预设效果</h4>
+      <div class="grid grid-cols-2 gap-2">
         {#each SHADOW_PRESETS as preset}
+          {@const IconComponent = preset.icon}
           <button
-            class="preset-card"
+            class="flex flex-col items-center gap-2 p-3 border border-gray-300 rounded-md bg-white cursor-pointer transition-all duration-200 hover:border-amber-400 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-opacity-50"
             onclick={() => applyPreset(preset)}
             title={preset.name}
           >
-            <div class="preset-preview">
-              <div 
-                class="preview-shadow"
+            <div class="w-10 h-6 bg-gray-100 rounded flex items-center justify-center">
+              <div
+                class="w-6 h-4 bg-amber-500 rounded-sm"
                 style="
                   box-shadow: {preset.offsetX}px {preset.offsetY}px {preset.blur}px {hexToRgba(preset.color, preset.opacity)};
                 "
               ></div>
             </div>
-            <span class="preset-name">{preset.name}</span>
+            <div class="flex items-center gap-1">
+              <IconComponent class="w-3 h-3 text-gray-600" />
+              <span class="text-xs text-gray-700 font-medium">{preset.name}</span>
+            </div>
           </button>
         {/each}
       </div>
     </div>
 
     <!-- 自定义参数 -->
-    <div class="custom-section">
-      <h4 class="section-title">自定义参数</h4>
-      
+    <div class="mb-4">
+      <h4 class="text-xs font-semibold text-gray-600 mb-3">自定义参数</h4>
+
       <!-- X偏移 -->
-      <div class="parameter-group">
-        <label class="parameter-label" for="shadow-offset-x">X偏移: {offsetX}px</label>
+      <div class="mb-3">
+        <div class="flex items-center gap-2 mb-1">
+          <Move class="w-3 h-3 text-gray-600" />
+          <label class="text-xs text-gray-700 font-medium" for="shadow-offset-x">X偏移: {offsetX}px</label>
+        </div>
         <input
           id="shadow-offset-x"
           type="range"
-          class="parameter-slider"
+          class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
           min="-20"
           max="20"
           step="1"
@@ -179,12 +197,15 @@
       </div>
 
       <!-- Y偏移 -->
-      <div class="parameter-group">
-        <label class="parameter-label" for="shadow-offset-y">Y偏移: {offsetY}px</label>
+      <div class="mb-3">
+        <div class="flex items-center gap-2 mb-1">
+          <Move class="w-3 h-3 text-gray-600 rotate-90" />
+          <label class="text-xs text-gray-700 font-medium" for="shadow-offset-y">Y偏移: {offsetY}px</label>
+        </div>
         <input
           id="shadow-offset-y"
           type="range"
-          class="parameter-slider"
+          class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
           min="-20"
           max="20"
           step="1"
@@ -194,12 +215,15 @@
       </div>
 
       <!-- 模糊半径 -->
-      <div class="parameter-group">
-        <label class="parameter-label" for="shadow-blur">模糊: {blur}px</label>
+      <div class="mb-3">
+        <div class="flex items-center gap-2 mb-1">
+          <Focus class="w-3 h-3 text-gray-600" />
+          <label class="text-xs text-gray-700 font-medium" for="shadow-blur">模糊: {blur}px</label>
+        </div>
         <input
           id="shadow-blur"
           type="range"
-          class="parameter-slider"
+          class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
           min="0"
           max="40"
           step="1"
@@ -209,23 +233,26 @@
       </div>
 
       <!-- 颜色和透明度 -->
-      <div class="color-group">
-        <div class="color-input">
-          <label class="parameter-label" for="shadow-color">颜色</label>
+      <div class="flex gap-3">
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-1">
+            <Palette class="w-3 h-3 text-gray-600" />
+            <label class="text-xs text-gray-700 font-medium" for="shadow-color">颜色</label>
+          </div>
           <input
             id="shadow-color"
             type="color"
-            class="color-picker"
+            class="w-full h-8 border border-gray-300 rounded cursor-pointer"
             bind:value={color}
             oninput={handleParameterChange}
           />
         </div>
-        <div class="opacity-input">
-          <label class="parameter-label" for="shadow-opacity">透明度: {Math.round(opacity * 100)}%</label>
+        <div class="flex-2">
+          <label class="text-xs text-gray-700 font-medium block mb-1" for="shadow-opacity">透明度: {Math.round(opacity * 100)}%</label>
           <input
             id="shadow-opacity"
             type="range"
-            class="parameter-slider"
+            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
             min="0"
             max="1"
             step="0.05"
@@ -237,11 +264,14 @@
     </div>
 
     <!-- 实时预览 -->
-    <div class="preview-section">
-      <h4 class="section-title">预览效果</h4>
-      <div class="preview-container">
-        <div 
-          class="preview-box"
+    <div class="mt-4">
+      <div class="flex items-center gap-2 mb-2">
+        <Eye class="w-3 h-3 text-gray-600" />
+        <h4 class="text-xs font-semibold text-gray-600">预览效果</h4>
+      </div>
+      <div class="flex justify-center p-4 bg-gray-50 rounded-md">
+        <div
+          class="w-20 h-12 bg-amber-500 rounded flex items-center justify-center text-white text-xs font-semibold"
           style="
             box-shadow: {offsetX}px {offsetY}px {blur}px {hexToRgba(color, opacity)};
           "
@@ -251,163 +281,15 @@
       </div>
     </div>
   {:else}
-    <div class="disabled-message">
+    <div class="text-center text-gray-600 text-xs p-6 bg-gray-50 rounded-md">
       开启阴影开关以配置阴影效果
     </div>
   {/if}
 </div>
 
 <style>
-  .shadow-control {
-    padding: 16px;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    background: white;
-  }
-
-  .control-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-  }
-
-  .control-title {
-    margin: 0;
-    font-size: 14px;
-    font-weight: 600;
-    color: #374151;
-  }
-
-  .shadow-toggle {
-    position: relative;
-    display: inline-block;
-    width: 44px;
-    height: 24px;
-  }
-
-  .shadow-toggle input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-  }
-
-  .toggle-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #d1d5db;
-    transition: 0.3s;
-    border-radius: 24px;
-  }
-
-  .toggle-slider:before {
-    position: absolute;
-    content: "";
-    height: 18px;
-    width: 18px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: 0.3s;
-    border-radius: 50%;
-  }
-
-  input:checked + .toggle-slider {
-    background-color: #f59e0b;
-  }
-
-  input:checked + .toggle-slider:before {
-    transform: translateX(20px);
-  }
-
-  .section-title {
-    margin: 0 0 12px 0;
-    font-size: 12px;
-    font-weight: 600;
-    color: #6b7280;
-  }
-
-  .preset-section {
-    margin-bottom: 16px;
-  }
-
-  .preset-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
-
-  .preset-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    padding: 8px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    background: white;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .preset-card:hover {
-    border-color: #f59e0b;
-    background: #fffbeb;
-  }
-
-  .preset-preview {
-    width: 40px;
-    height: 24px;
-    background: #f3f4f6;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .preview-shadow {
-    width: 24px;
-    height: 16px;
-    background: #f59e0b;
-    border-radius: 2px;
-  }
-
-  .preset-name {
-    font-size: 10px;
-    color: #6b7280;
-    text-align: center;
-  }
-
-  .custom-section {
-    margin-bottom: 16px;
-  }
-
-  .parameter-group {
-    margin-bottom: 12px;
-  }
-
-  .parameter-label {
-    display: block;
-    font-size: 11px;
-    color: #6b7280;
-    margin-bottom: 4px;
-    font-weight: 500;
-  }
-
-  .parameter-slider {
-    width: 100%;
-    height: 6px;
-    background: #e5e7eb;
-    border-radius: 3px;
-    outline: none;
-    cursor: pointer;
-  }
-
-  .parameter-slider::-webkit-slider-thumb {
+  /* 自定义滑块样式 - 使用橙色主题 */
+  .slider-thumb::-webkit-slider-thumb {
     appearance: none;
     width: 18px;
     height: 18px;
@@ -415,9 +297,15 @@
     border-radius: 50%;
     cursor: pointer;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
   }
 
-  .parameter-slider::-moz-range-thumb {
+  .slider-thumb::-webkit-slider-thumb:hover {
+    background: #d97706;
+    transform: scale(1.1);
+  }
+
+  .slider-thumb::-moz-range-thumb {
     width: 18px;
     height: 18px;
     background: #f59e0b;
@@ -425,60 +313,11 @@
     cursor: pointer;
     border: none;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
   }
 
-  .color-group {
-    display: flex;
-    gap: 12px;
-  }
-
-  .color-input {
-    flex: 1;
-  }
-
-  .opacity-input {
-    flex: 2;
-  }
-
-  .color-picker {
-    width: 100%;
-    height: 32px;
-    border: 1px solid #d1d5db;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-
-  .preview-section {
-    margin-bottom: 8px;
-  }
-
-  .preview-container {
-    display: flex;
-    justify-content: center;
-    padding: 16px;
-    background: #f9fafb;
-    border-radius: 6px;
-  }
-
-  .preview-box {
-    width: 80px;
-    height: 48px;
-    background: #f59e0b;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 10px;
-    color: white;
-    font-weight: 600;
-  }
-
-  .disabled-message {
-    text-align: center;
-    color: #6b7280;
-    font-size: 12px;
-    padding: 24px;
-    background: #f9fafb;
-    border-radius: 6px;
+  .slider-thumb::-moz-range-thumb:hover {
+    background: #d97706;
+    transform: scale(1.1);
   }
 </style>

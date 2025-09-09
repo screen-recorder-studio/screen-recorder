@@ -2,24 +2,8 @@
 // 使用 OffscreenCanvas 进行高性能视频合成
 // 支持预览显示和 MP4 导出
 
-// 类型定义
-interface BackgroundConfig {
-  type: 'solid-color' | 'gradient';
-  color: string;
-  padding: number;
-  outputRatio: '16:9' | '1:1' | '9:16' | '4:5' | 'custom';
-  customWidth?: number;
-  customHeight?: number;
-  videoPosition: 'center' | 'top' | 'bottom';
-  borderRadius?: number; // 视频圆角半径，默认 0px
-  inset?: number; // 视频内缩距离，默认 0px
-  shadow?: {
-    offsetX: number;
-    offsetY: number;
-    blur: number;
-    color: string;
-  }; // 阴影效果，可选
-}
+// 导入类型定义
+import type { BackgroundConfig, GradientConfig, GradientStop, ImageBackgroundConfig } from '../types/background'
 
 interface CompositeMessage {
   type: 'init' | 'process' | 'play' | 'pause' | 'seek' | 'config';
@@ -51,6 +35,8 @@ let animationId: number | null = null;
 // 固定的视频布局（避免每帧重新计算）
 let fixedVideoLayout: VideoLayout | null = null;
 let videoInfo: { width: number; height: number } | null = null;
+// 🔧 新增：存储修正后的视频尺寸信息
+let correctedVideoSize: { width: number; height: number } | null = null;
 
 // 初始化 OffscreenCanvas
 function initializeCanvas(width: number, height: number) {
@@ -81,36 +67,40 @@ function initializeCanvas(width: number, height: number) {
 function calculateOutputSize(config: BackgroundConfig, sourceWidth: number, sourceHeight: number) {
   let outputWidth: number, outputHeight: number;
 
+  console.log('🔍 [COMPOSITE-WORKER] Calculating output size:', {
+    sourceWidth,
+    sourceHeight,
+    sourceAspectRatio: (sourceWidth / sourceHeight).toFixed(3),
+    outputRatio: config.outputRatio
+  });
+
   if (config.outputRatio === 'custom') {
     outputWidth = config.customWidth || 1920;
     outputHeight = config.customHeight || 1080;
+    console.log('✅ [COMPOSITE-WORKER] Using custom output size:', { outputWidth, outputHeight });
   } else {
-    // 基于源视频尺寸的动态计算
-    const baseWidth = Math.max(sourceWidth, 1920);
-    const baseHeight = Math.max(sourceHeight, 1080);
-
-    const ratios = {
-      '16:9': {
-        w: Math.max(baseWidth, 1920),
-        h: Math.max(Math.round(baseWidth * 9 / 16), 1080)
-      },
-      '1:1': {
-        w: Math.max(baseWidth, baseHeight),
-        h: Math.max(baseWidth, baseHeight)
-      },
-      '9:16': {
-        w: Math.max(Math.round(baseHeight * 9 / 16), 1080),
-        h: Math.max(baseHeight, 1920)
-      },
-      '4:5': {
-        w: Math.max(Math.round(baseHeight * 4 / 5), 1080),
-        h: Math.max(baseHeight, 1350)
-      }
+    // 平台标准输出分辨率（与 UI 显示一致），优先保证编码兼容性
+    const standardSizes: Record<BackgroundConfig['outputRatio'], { width: number; height: number }> = {
+      '16:9': { width: 1920, height: 1080 },
+      '1:1': { width: 1080, height: 1080 },
+      '9:16': { width: 1080, height: 1920 },
+      '4:5': { width: 1080, height: 1350 },
+      'custom': { width: 1920, height: 1080 }
     };
 
-    const ratio = ratios[config.outputRatio] || ratios['16:9'];
-    outputWidth = ratio.w;
-    outputHeight = ratio.h;
+    const target = standardSizes[config.outputRatio] || standardSizes['16:9'];
+    outputWidth = target.width;
+    outputHeight = target.height;
+
+    // 记录选择结果
+    console.log('✅ [COMPOSITE-WORKER] Using standard canvas size for ratio:', {
+      ratio: config.outputRatio,
+      outputWidth,
+      outputHeight
+    });
+
+    // 说明：padding/inset 仅影响视频布局（calculateVideoLayout），不再放大画布，
+    // 以避免 16:9 因 padding 导致分辨率超过常见 H.264 Level 限制而报错。
   }
 
   return { outputWidth, outputHeight };
@@ -141,22 +131,44 @@ function calculateVideoLayout(
 
   // 保持视频纵横比的缩放计算
   const videoAspectRatio = videoWidth / videoHeight;
-  const targetAspectRatio = availableWidth / availableHeight;
+  const availableAspectRatio = availableWidth / availableHeight;
+
+  console.log('📐 [COMPOSITE-WORKER] Aspect ratio comparison:', {
+    videoAspectRatio: videoAspectRatio.toFixed(3),
+    availableAspectRatio: availableAspectRatio.toFixed(3),
+    videoIsWider: videoAspectRatio > availableAspectRatio
+  });
 
   let layoutWidth: number, layoutHeight: number, layoutX: number, layoutY: number;
 
-  if (videoAspectRatio > targetAspectRatio) {
+  if (videoAspectRatio > availableAspectRatio) {
     // 视频更宽，以可用宽度为准
     layoutWidth = availableWidth;
     layoutHeight = availableWidth / videoAspectRatio;
     layoutX = totalPadding;
     layoutY = totalPadding + (availableHeight - layoutHeight) / 2; // 垂直居中
+
+    console.log('📏 [COMPOSITE-WORKER] Video is wider - fit to width:', {
+      layoutWidth,
+      layoutHeight,
+      layoutX,
+      layoutY,
+      verticalMargin: (availableHeight - layoutHeight) / 2
+    });
   } else {
     // 视频更高，以可用高度为准
     layoutHeight = availableHeight;
     layoutWidth = availableHeight * videoAspectRatio;
     layoutX = totalPadding + (availableWidth - layoutWidth) / 2; // 水平居中
     layoutY = totalPadding;
+
+    console.log('📏 [COMPOSITE-WORKER] Video is taller - fit to height:', {
+      layoutWidth,
+      layoutHeight,
+      layoutX,
+      layoutY,
+      horizontalMargin: (availableWidth - layoutWidth) / 2
+    });
   }
 
   return {
@@ -171,22 +183,253 @@ function calculateVideoLayout(
 function renderBackground(config: BackgroundConfig) {
   if (!ctx || !offscreenCanvas) return;
 
-  if (config.type === 'gradient') {
-    // 创建渐变背景
-    const gradient = ctx.createLinearGradient(0, 0, offscreenCanvas.width, offscreenCanvas.height);
-
-    // 蓝色到紫色的渐变
-    gradient.addColorStop(0, '#3b82f6');    // 蓝色
-    gradient.addColorStop(0.5, '#8b5cf6');  // 紫色
-    gradient.addColorStop(1, '#ec4899');    // 粉色
-
-    ctx.fillStyle = gradient;
+  if (config.type === 'gradient' && config.gradient) {
+    // 使用新的渐变配置系统
+    const gradientStyle = createGradient(config.gradient);
+    if (gradientStyle) {
+      ctx.fillStyle = gradientStyle;
+    } else {
+      // 回退到纯色
+      ctx.fillStyle = config.color;
+    }
+    ctx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+  } else if (config.type === 'image' && config.image) {
+    // 用户上传的图片背景
+    renderImageBackground(config.image);
+  } else if (config.type === 'wallpaper' && config.wallpaper) {
+    // 壁纸背景
+    renderImageBackground(config.wallpaper);
   } else {
     // 纯色背景
     ctx.fillStyle = config.color;
+    ctx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+  }
+}
+
+// 创建渐变对象
+function createGradient(gradientConfig: GradientConfig): CanvasGradient | null {
+  if (!ctx || !offscreenCanvas) return null;
+
+  const { width, height } = offscreenCanvas;
+
+  try {
+    let gradient: CanvasGradient;
+
+    switch (gradientConfig.type) {
+      case 'linear':
+        gradient = createLinearGradient(gradientConfig, width, height);
+        break;
+      case 'radial':
+        gradient = createRadialGradient(gradientConfig, width, height);
+        break;
+      case 'conic':
+        gradient = createConicGradient(gradientConfig, width, height);
+        break;
+      default:
+        console.warn('🎨 [COMPOSITE-WORKER] Unsupported gradient type:', (gradientConfig as any).type);
+        return null;
+    }
+
+    // 添加颜色停止点
+    gradientConfig.stops.forEach((stop: GradientStop) => {
+      gradient.addColorStop(stop.position, stop.color);
+    });
+
+    return gradient;
+  } catch (error) {
+    console.error('🎨 [COMPOSITE-WORKER] Error creating gradient:', error);
+    return null;
+  }
+}
+
+// 创建线性渐变
+function createLinearGradient(config: any, width: number, height: number): CanvasGradient {
+  const angle = config.angle || 0;
+  const radians = (angle * Math.PI) / 180;
+
+  // 计算渐变的起点和终点
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const diagonal = Math.sqrt(width * width + height * height) / 2;
+
+  const x1 = centerX - Math.cos(radians) * diagonal;
+  const y1 = centerY - Math.sin(radians) * diagonal;
+  const x2 = centerX + Math.cos(radians) * diagonal;
+  const y2 = centerY + Math.sin(radians) * diagonal;
+
+  return ctx!.createLinearGradient(x1, y1, x2, y2);
+}
+
+// 创建径向渐变
+function createRadialGradient(config: any, width: number, height: number): CanvasGradient {
+  const centerX = (config.centerX || 0.5) * width;
+  const centerY = (config.centerY || 0.5) * height;
+  const radius = (config.radius || 0.5) * Math.min(width, height);
+
+  return ctx!.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+}
+
+// 创建圆锥渐变
+function createConicGradient(config: any, width: number, height: number): CanvasGradient {
+  const centerX = (config.centerX || 0.5) * width;
+  const centerY = (config.centerY || 0.5) * height;
+  const angle = (config.angle || 0) * Math.PI / 180;
+
+  return ctx!.createConicGradient(angle, centerX, centerY);
+}
+
+// 渲染图片背景
+function renderImageBackground(config: ImageBackgroundConfig) {
+  if (!ctx || !offscreenCanvas || !config.imageBitmap) return;
+
+  const { imageBitmap, fit, position, opacity, blur, scale, offsetX, offsetY } = config;
+  const canvasWidth = offscreenCanvas.width;
+  const canvasHeight = offscreenCanvas.height;
+
+  // 保存状态
+  ctx.save();
+
+  // 应用透明度
+  if (opacity !== undefined && opacity < 1) {
+    ctx.globalAlpha = opacity;
   }
 
-  ctx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+  // 应用模糊
+  if (blur && blur > 0) {
+    ctx.filter = `blur(${blur}px)`;
+  }
+
+  // 计算绘制参数
+  const drawParams = calculateImageDrawParams(
+    imageBitmap.width,
+    imageBitmap.height,
+    canvasWidth,
+    canvasHeight,
+    fit,
+    position,
+    scale,
+    offsetX,
+    offsetY
+  );
+
+  // 绘制图片
+  ctx.drawImage(
+    imageBitmap,
+    drawParams.x,
+    drawParams.y,
+    drawParams.width,
+    drawParams.height
+  );
+
+  // 恢复状态
+  ctx.restore();
+}
+
+// 计算图片绘制参数
+function calculateImageDrawParams(
+  imageWidth: number,
+  imageHeight: number,
+  canvasWidth: number,
+  canvasHeight: number,
+  fit: string,
+  position: string,
+  scale: number = 1,
+  offsetX: number = 0,
+  offsetY: number = 0
+): { x: number; y: number; width: number; height: number } {
+  const imageAspect = imageWidth / imageHeight;
+  const canvasAspect = canvasWidth / canvasHeight;
+
+  let drawWidth: number, drawHeight: number;
+
+  // 根据适应模式计算尺寸
+  switch (fit) {
+    case 'cover':
+      if (imageAspect > canvasAspect) {
+        drawHeight = canvasHeight;
+        drawWidth = drawHeight * imageAspect;
+      } else {
+        drawWidth = canvasWidth;
+        drawHeight = drawWidth / imageAspect;
+      }
+      break;
+    case 'contain':
+      if (imageAspect > canvasAspect) {
+        drawWidth = canvasWidth;
+        drawHeight = drawWidth / imageAspect;
+      } else {
+        drawHeight = canvasHeight;
+        drawWidth = drawHeight * imageAspect;
+      }
+      break;
+    case 'fill':
+      drawWidth = canvasWidth;
+      drawHeight = canvasHeight;
+      break;
+    case 'stretch':
+    default:
+      drawWidth = canvasWidth;
+      drawHeight = canvasHeight;
+      break;
+  }
+
+  // 应用缩放
+  drawWidth *= scale;
+  drawHeight *= scale;
+
+  // 计算位置
+  let x: number, y: number;
+
+  // 基础居中位置
+  x = (canvasWidth - drawWidth) / 2;
+  y = (canvasHeight - drawHeight) / 2;
+
+  // 根据位置调整
+  switch (position) {
+    case 'top':
+      y = 0;
+      break;
+    case 'bottom':
+      y = canvasHeight - drawHeight;
+      break;
+    case 'left':
+      x = 0;
+      break;
+    case 'right':
+      x = canvasWidth - drawWidth;
+      break;
+    case 'top-left':
+      x = 0;
+      y = 0;
+      break;
+    case 'top-right':
+      x = canvasWidth - drawWidth;
+      y = 0;
+      break;
+    case 'bottom-left':
+      x = 0;
+      y = canvasHeight - drawHeight;
+      break;
+    case 'bottom-right':
+      x = canvasWidth - drawWidth;
+      y = canvasHeight - drawHeight;
+      break;
+    case 'center':
+    default:
+      // 已经是居中位置
+      break;
+  }
+
+  // 应用偏移
+  x += offsetX * canvasWidth;
+  y += offsetY * canvasHeight;
+
+  return {
+    x: Math.round(x),
+    y: Math.round(y),
+    width: Math.round(drawWidth),
+    height: Math.round(drawHeight)
+  };
 }
 
 // 创建圆角路径
@@ -251,7 +494,63 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
 
     // 6. 绘制视频帧（优先使用可见区域，避免非方像素/裁剪导致的形变）
     const vr = frame.visibleRect;
-    if (vr) {
+
+    // 验证帧尺寸信息
+    const frameInfo = {
+      displayWidth: frame.displayWidth,
+      displayHeight: frame.displayHeight,
+      codedWidth: frame.codedWidth,
+      codedHeight: frame.codedHeight,
+      visibleRect: vr ? { x: vr.x, y: vr.y, width: vr.width, height: vr.height } : null
+    };
+
+    // 计算渲染的缩放比例
+    let sourceWidth, sourceHeight;
+    if (vr && vr.width > 0 && vr.height > 0) {
+      sourceWidth = vr.width;
+      sourceHeight = vr.height;
+    } else {
+      // 🔧 关键修复：使用修正后的尺寸，而不是 VideoFrame 的原始尺寸
+      if (correctedVideoSize) {
+        sourceWidth = correctedVideoSize.width;
+        sourceHeight = correctedVideoSize.height;
+        console.log('✅ [COMPOSITE-WORKER] Using corrected video size for rendering:', {
+          correctedWidth: sourceWidth,
+          correctedHeight: sourceHeight,
+          frameDisplayWidth: frame.displayWidth,
+          frameDisplayHeight: frame.displayHeight,
+          frameCodedWidth: frame.codedWidth,
+          frameCodedHeight: frame.codedHeight
+        });
+      } else {
+        sourceWidth = frame.displayWidth || frame.codedWidth || 1920;
+        sourceHeight = frame.displayHeight || frame.codedHeight || 1080;
+        console.warn('⚠️ [COMPOSITE-WORKER] No corrected size available, using frame dimensions');
+      }
+    }
+
+    const scaleX = layout.width / sourceWidth;
+    const scaleY = layout.height / sourceHeight;
+    const isProportional = Math.abs(scaleX - scaleY) < 0.01; // 允许1%误差
+
+    // 每60帧输出一次调试信息
+    if (currentFrameIndex % 60 === 0) {
+      console.log('🎞️ [COMPOSITE-WORKER] Frame rendering analysis:', {
+        frameInfo,
+        layout,
+        sourceSize: { width: sourceWidth, height: sourceHeight },
+        targetSize: { width: layout.width, height: layout.height },
+        scale: { x: scaleX.toFixed(3), y: scaleY.toFixed(3) },
+        isProportional,
+        distortionRatio: (Math.max(scaleX, scaleY) / Math.min(scaleX, scaleY)).toFixed(3)
+      });
+
+      if (!isProportional) {
+        console.warn('⚠️ [COMPOSITE-WORKER] Non-proportional scaling detected! Video may be distorted.');
+      }
+    }
+
+    if (vr && vr.width > 0 && vr.height > 0) {
       // 使用 9 参数重载：源裁剪区域 + 目标区域
       ctx.drawImage(
         frame,
@@ -333,11 +632,78 @@ async function initializeDecoder(chunks: any[]) {
 
   // 使用首帧的显示尺寸作为视频自然尺寸（考虑非方像素/可见区域）
   const firstFrame = decodedFrames[0];
-  const displayWidth = (firstFrame as any).displayWidth || (firstFrame as any).codedWidth || firstChunk.codedWidth || 1920;
-  const displayHeight = (firstFrame as any).displayHeight || (firstFrame as any).codedHeight || firstChunk.codedHeight || 1080;
+
+  // 更可靠的尺寸获取策略
+  let displayWidth = 1920;
+  let displayHeight = 1080;
+
+  console.log('🔍 [COMPOSITE-WORKER] Analyzing first frame properties:', {
+    displayWidth: firstFrame.displayWidth,
+    displayHeight: firstFrame.displayHeight,
+    codedWidth: firstFrame.codedWidth,
+    codedHeight: firstFrame.codedHeight,
+    visibleRect: firstFrame.visibleRect
+  });
+
+  // 🔧 策略1: 优先使用修正后的 chunk 尺寸（对于元素/区域录制最准确）
+  if (firstChunk.codedWidth && firstChunk.codedHeight) {
+    displayWidth = firstChunk.codedWidth;
+    displayHeight = firstChunk.codedHeight;
+    console.log('✅ [COMPOSITE-WORKER] Using corrected chunk dimensions (highest priority):', {
+      displayWidth,
+      displayHeight,
+      aspectRatio: (displayWidth / displayHeight).toFixed(3)
+    });
+  }
+  // 策略2: 使用 displayWidth/Height (考虑像素纵横比)
+  else if (firstFrame.displayWidth && firstFrame.displayHeight) {
+    displayWidth = firstFrame.displayWidth;
+    displayHeight = firstFrame.displayHeight;
+    console.log('✅ [COMPOSITE-WORKER] Using displayWidth/Height:', { displayWidth, displayHeight });
+  }
+  // 策略3: 使用 visibleRect (考虑裁剪区域)
+  else if (firstFrame.visibleRect && firstFrame.visibleRect.width && firstFrame.visibleRect.height) {
+    displayWidth = firstFrame.visibleRect.width;
+    displayHeight = firstFrame.visibleRect.height;
+    console.log('✅ [COMPOSITE-WORKER] Using visibleRect dimensions:', { displayWidth, displayHeight });
+  }
+  // 策略4: 使用 codedWidth/Height
+  else if (firstFrame.codedWidth && firstFrame.codedHeight) {
+    displayWidth = firstFrame.codedWidth;
+    displayHeight = firstFrame.codedHeight;
+    console.log('✅ [COMPOSITE-WORKER] Using codedWidth/Height:', { displayWidth, displayHeight });
+  }
+  else {
+    console.warn('⚠️ [COMPOSITE-WORKER] No reliable dimensions found, using defaults:', { displayWidth, displayHeight });
+  }
+
+  // 验证尺寸合理性
+  if (displayWidth < 100 || displayHeight < 100 || displayWidth > 7680 || displayHeight > 4320) {
+    console.warn('⚠️ [COMPOSITE-WORKER] Invalid dimensions detected, using safe defaults');
+    displayWidth = 1920;
+    displayHeight = 1080;
+  }
 
   videoInfo = { width: displayWidth, height: displayHeight };
-  console.log('📐 [COMPOSITE-WORKER] Video info (from decoded frame):', videoInfo);
+  console.log('📐 [COMPOSITE-WORKER] Final video info:', videoInfo);
+
+  // 🔧 确保 correctedVideoSize 与 videoInfo 一致
+  correctedVideoSize = { width: displayWidth, height: displayHeight };
+  console.log('✅ [COMPOSITE-WORKER] Corrected video size synchronized:', correctedVideoSize);
+
+  // 可选：内联首帧维度日志（避免外部依赖导致构建失败）
+  if (decodedFrames.length > 0) {
+    try {
+      const f = decodedFrames[0];
+      console.log('🔍 [COMPOSITE-WORKER] Inline frame dimension log:', {
+        displayWidth: f.displayWidth,
+        displayHeight: f.displayHeight,
+        codedWidth: f.codedWidth,
+        codedHeight: f.codedHeight,
+        visibleRect: f.visibleRect
+      });
+    } catch {}
+  }
 }
 
 // 计算并缓存固定的视频布局
@@ -460,8 +826,45 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
 
         // 计算输出尺寸
         const firstChunk = data.chunks[0];
+        console.log('🔍 [COMPOSITE-WORKER] First chunk analysis:', {
+          codedWidth: firstChunk.codedWidth,
+          codedHeight: firstChunk.codedHeight,
+          size: firstChunk.size,
+          type: firstChunk.type,
+          codec: firstChunk.codec,
+          hasData: !!firstChunk.data
+        });
+
         const sourceWidth = firstChunk.codedWidth || 1920;
         const sourceHeight = firstChunk.codedHeight || 1080;
+
+        // 🔧 保存修正后的视频尺寸，用于后续渲染
+        correctedVideoSize = { width: sourceWidth, height: sourceHeight };
+
+        console.log('📐 [COMPOSITE-WORKER] Source dimensions determined:', {
+          sourceWidth,
+          sourceHeight,
+          aspectRatio: (sourceWidth / sourceHeight).toFixed(3),
+          isFromChunk: !!firstChunk.codedWidth && !!firstChunk.codedHeight,
+          firstChunkDetails: {
+            codedWidth: firstChunk.codedWidth,
+            codedHeight: firstChunk.codedHeight,
+            size: firstChunk.size,
+            type: firstChunk.type,
+            codec: firstChunk.codec
+          }
+        });
+
+        // 🚨 特别检查：如果是竖向视频，确认尺寸正确
+        if (sourceHeight > sourceWidth) {
+          console.log('📱 [COMPOSITE-WORKER] PORTRAIT VIDEO DETECTED:', {
+            width: sourceWidth,
+            height: sourceHeight,
+            aspectRatio: (sourceWidth / sourceHeight).toFixed(3),
+            isPortrait: true
+          });
+        }
+
         const { outputWidth, outputHeight } = calculateOutputSize(currentConfig, sourceWidth, sourceHeight);
         
         // 初始化 Canvas

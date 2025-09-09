@@ -1,5 +1,6 @@
 <!-- 视频导出面板组件 -->
 <script lang="ts">
+  import { Download, Video, Film, LoaderCircle, Info, TriangleAlert, CircleCheck, Clock } from '@lucide/svelte'
   import { ExportManager } from '$lib/services/export-manager'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
 
@@ -68,12 +69,55 @@
         videoPosition: backgroundConfig.videoPosition,
         borderRadius: backgroundConfig.borderRadius,
         inset: backgroundConfig.inset,
+        // 深度转换 gradient 对象
+        gradient: backgroundConfig.gradient ? {
+          type: backgroundConfig.gradient.type,
+          ...(backgroundConfig.gradient.type === 'linear' && 'angle' in backgroundConfig.gradient ? { angle: backgroundConfig.gradient.angle } : {}),
+          ...(backgroundConfig.gradient.type === 'radial' && 'centerX' in backgroundConfig.gradient ? {
+            centerX: backgroundConfig.gradient.centerX,
+            centerY: backgroundConfig.gradient.centerY,
+            radius: backgroundConfig.gradient.radius
+          } : {}),
+          ...(backgroundConfig.gradient.type === 'conic' && 'centerX' in backgroundConfig.gradient ? {
+            centerX: backgroundConfig.gradient.centerX,
+            centerY: backgroundConfig.gradient.centerY,
+            angle: 'angle' in backgroundConfig.gradient ? backgroundConfig.gradient.angle : 0
+          } : {}),
+          stops: backgroundConfig.gradient.stops.map(stop => ({
+            color: stop.color,
+            position: stop.position
+          }))
+        } : undefined,
         // 深度转换 shadow 对象
         shadow: backgroundConfig.shadow ? {
           offsetX: backgroundConfig.shadow.offsetX,
           offsetY: backgroundConfig.shadow.offsetY,
           blur: backgroundConfig.shadow.blur,
           color: backgroundConfig.shadow.color
+        } : undefined,
+        // 深度转换 image 对象
+        image: backgroundConfig.image ? {
+          imageId: backgroundConfig.image.imageId,
+          imageBitmap: backgroundConfig.image.imageBitmap,
+          fit: backgroundConfig.image.fit,
+          position: backgroundConfig.image.position,
+          opacity: backgroundConfig.image.opacity,
+          blur: backgroundConfig.image.blur,
+          scale: backgroundConfig.image.scale,
+          offsetX: backgroundConfig.image.offsetX,
+          offsetY: backgroundConfig.image.offsetY
+        } : undefined,
+        // 深度转换 wallpaper 对象
+        wallpaper: backgroundConfig.wallpaper ? {
+          imageId: backgroundConfig.wallpaper.imageId,
+          imageBitmap: backgroundConfig.wallpaper.imageBitmap,
+          fit: backgroundConfig.wallpaper.fit,
+          position: backgroundConfig.wallpaper.position,
+          opacity: backgroundConfig.wallpaper.opacity,
+          blur: backgroundConfig.wallpaper.blur,
+          scale: backgroundConfig.wallpaper.scale,
+          offsetX: backgroundConfig.wallpaper.offsetX,
+          offsetY: backgroundConfig.wallpaper.offsetY
         } : undefined
       } : undefined
 
@@ -82,7 +126,7 @@
         {
           format: 'webm',
           includeBackground: !!plainBackgroundConfig,
-          backgroundConfig: plainBackgroundConfig,
+          backgroundConfig: plainBackgroundConfig as any,
           quality: 'medium'
         },
         (progress) => {
@@ -133,12 +177,55 @@
         videoPosition: backgroundConfig.videoPosition,
         borderRadius: backgroundConfig.borderRadius,
         inset: backgroundConfig.inset,
+        // 深度转换 gradient 对象
+        gradient: backgroundConfig.gradient ? {
+          type: backgroundConfig.gradient.type,
+          ...(backgroundConfig.gradient.type === 'linear' && 'angle' in backgroundConfig.gradient ? { angle: backgroundConfig.gradient.angle } : {}),
+          ...(backgroundConfig.gradient.type === 'radial' && 'centerX' in backgroundConfig.gradient ? {
+            centerX: backgroundConfig.gradient.centerX,
+            centerY: backgroundConfig.gradient.centerY,
+            radius: backgroundConfig.gradient.radius
+          } : {}),
+          ...(backgroundConfig.gradient.type === 'conic' && 'centerX' in backgroundConfig.gradient ? {
+            centerX: backgroundConfig.gradient.centerX,
+            centerY: backgroundConfig.gradient.centerY,
+            angle: 'angle' in backgroundConfig.gradient ? backgroundConfig.gradient.angle : 0
+          } : {}),
+          stops: backgroundConfig.gradient.stops.map(stop => ({
+            color: stop.color,
+            position: stop.position
+          }))
+        } : undefined,
         // 深度转换 shadow 对象
         shadow: backgroundConfig.shadow ? {
           offsetX: backgroundConfig.shadow.offsetX,
           offsetY: backgroundConfig.shadow.offsetY,
           blur: backgroundConfig.shadow.blur,
           color: backgroundConfig.shadow.color
+        } : undefined,
+        // 深度转换 image 对象
+        image: backgroundConfig.image ? {
+          imageId: backgroundConfig.image.imageId,
+          imageBitmap: backgroundConfig.image.imageBitmap,
+          fit: backgroundConfig.image.fit,
+          position: backgroundConfig.image.position,
+          opacity: backgroundConfig.image.opacity,
+          blur: backgroundConfig.image.blur,
+          scale: backgroundConfig.image.scale,
+          offsetX: backgroundConfig.image.offsetX,
+          offsetY: backgroundConfig.image.offsetY
+        } : undefined,
+        // 深度转换 wallpaper 对象
+        wallpaper: backgroundConfig.wallpaper ? {
+          imageId: backgroundConfig.wallpaper.imageId,
+          imageBitmap: backgroundConfig.wallpaper.imageBitmap,
+          fit: backgroundConfig.wallpaper.fit,
+          position: backgroundConfig.wallpaper.position,
+          opacity: backgroundConfig.wallpaper.opacity,
+          blur: backgroundConfig.wallpaper.blur,
+          scale: backgroundConfig.wallpaper.scale,
+          offsetX: backgroundConfig.wallpaper.offsetX,
+          offsetY: backgroundConfig.wallpaper.offsetY
         } : undefined
       } : undefined
 
@@ -147,7 +234,7 @@
         {
           format: 'mp4',
           includeBackground: !!plainBackgroundConfig,
-          backgroundConfig: plainBackgroundConfig,
+          backgroundConfig: plainBackgroundConfig as any,
           quality: 'medium'
         },
         (progress) => {
@@ -237,77 +324,86 @@
 </script>
 
 <!-- 导出面板 -->
-<div class="video-export-panel {className}">
-  <div class="export-header">
-    <h3 class="export-title">导出视频</h3>
-    <div class="export-info">
+<div class="flex flex-col gap-4 p-4 bg-slate-50 border border-slate-200 rounded-lg {className}">
+  <div class="flex justify-between items-center">
+    <div class="flex items-center gap-2">
+      <Download class="w-4 h-4 text-gray-600" />
+      <h3 class="text-base font-semibold text-slate-800 m-0">导出视频</h3>
+    </div>
+    <div class="flex gap-2 text-xs">
       {#if encodedChunks.length > 0}
-        <span class="chunk-count">{encodedChunks.length} 帧</span>
+        <span class="bg-blue-500 text-white px-2 py-1 rounded">{encodedChunks.length} 帧</span>
         {#if backgroundConfig}
-          <span class="background-indicator">包含背景</span>
+          <span class="bg-emerald-500 text-white px-2 py-1 rounded">包含背景</span>
         {/if}
       {:else}
-        <span class="no-data">暂无录制数据</span>
+        <span class="text-slate-500">暂无录制数据</span>
       {/if}
     </div>
   </div>
 
   <!-- 导出按钮 -->
-  <div class="export-buttons">
+  <div class="flex gap-3">
     <button
-      class="export-btn webm-btn"
-      class:loading={isExportingWebM}
+      class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-500 text-white text-sm font-medium rounded-md cursor-pointer transition-all duration-200 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
+      class:opacity-80={isExportingWebM}
       disabled={!canExport}
       onclick={exportWebM}
     >
       {#if isExportingWebM}
-        <div class="btn-spinner"></div>
+        <LoaderCircle class="w-4 h-4 animate-spin" />
         导出 WebM...
       {:else}
-        📹 导出 WebM
+        <Video class="w-4 h-4" />
+        导出 WebM
       {/if}
     </button>
 
     <button
-      class="export-btn mp4-btn"
-      class:loading={isExportingMP4}
+      class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-emerald-500 text-white text-sm font-medium rounded-md cursor-pointer transition-all duration-200 hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
+      class:opacity-80={isExportingMP4}
       disabled={!canExport}
       onclick={exportMP4}
     >
       {#if isExportingMP4}
-        <div class="btn-spinner"></div>
+        <LoaderCircle class="w-4 h-4 animate-spin" />
         导出 MP4...
       {:else}
-        🎥 导出 MP4
+        <Film class="w-4 h-4" />
+        导出 MP4
       {/if}
     </button>
   </div>
 
   <!-- 导出进度 -->
   {#if exportProgress}
-    <div class="export-progress">
-      <div class="progress-header">
-        <span class="progress-title">
+    <div class="bg-white border border-slate-200 rounded-md p-3">
+      <div class="flex justify-between items-center mb-2">
+        <span class="text-sm font-medium text-gray-700">
           导出 {exportProgress.type.toUpperCase()} - {formatStage(exportProgress.stage)}
         </span>
-        <span class="progress-percentage">
+        <span class="text-sm font-semibold text-gray-900">
           {Math.round(exportProgress.progress)}%
         </span>
       </div>
-      
-      <div class="progress-bar">
-        <div 
-          class="progress-fill {exportProgress.type}"
+
+      <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mb-2">
+        <div
+          class="h-full transition-all duration-300 rounded-full"
+          class:bg-blue-500={exportProgress.type === 'webm'}
+          class:bg-emerald-500={exportProgress.type === 'mp4'}
           style="width: {exportProgress.progress}%"
         ></div>
       </div>
-      
-      <div class="progress-details">
-        <span class="frame-info">
+
+      <div class="flex justify-between text-xs text-slate-600">
+        <span class="flex items-center gap-1">
+          <CircleCheck class="w-3 h-3" />
           {exportProgress.currentFrame} / {exportProgress.totalFrames} 帧
         </span>
         {#if exportProgress.estimatedTimeRemaining > 0}
-          <span class="time-remaining">
+          <span class="flex items-center gap-1">
+            <Clock class="w-3 h-3" />
             剩余 {formatTime(exportProgress.estimatedTimeRemaining)}
           </span>
         {/if}
@@ -317,194 +413,16 @@
 
   <!-- 提示信息 -->
   {#if !isRecordingComplete}
-    <div class="export-hint">
-      <span class="hint-icon">ℹ️</span>
+    <div class="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md text-sm text-amber-800">
+      <Info class="w-4 h-4 text-amber-600" />
       请先完成录制后再导出视频
     </div>
   {:else if encodedChunks.length === 0}
-    <div class="export-hint">
-      <span class="hint-icon">⚠️</span>
+    <div class="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md text-sm text-amber-800">
+      <TriangleAlert class="w-4 h-4 text-amber-600" />
       没有可导出的视频数据
     </div>
   {/if}
 </div>
 
-<style>
-  .video-export-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    padding: 1rem;
-    background-color: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-  }
-
-  .export-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .export-title {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #1e293b;
-    margin: 0;
-  }
-
-  .export-info {
-    display: flex;
-    gap: 0.5rem;
-    font-size: 0.75rem;
-  }
-
-  .chunk-count {
-    background-color: #3b82f6;
-    color: white;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-  }
-
-  .background-indicator {
-    background-color: #10b981;
-    color: white;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-  }
-
-  .no-data {
-    color: #64748b;
-  }
-
-  .export-buttons {
-    display: flex;
-    gap: 0.75rem;
-  }
-
-  .export-btn {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1rem;
-    border: none;
-    border-radius: 6px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .webm-btn {
-    background-color: #3b82f6;
-    color: white;
-  }
-
-  .webm-btn:hover:not(:disabled) {
-    background-color: #2563eb;
-  }
-
-  .mp4-btn {
-    background-color: #10b981;
-    color: white;
-  }
-
-  .mp4-btn:hover:not(:disabled) {
-    background-color: #059669;
-  }
-
-  .export-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .export-btn.loading {
-    opacity: 0.8;
-  }
-
-  .btn-spinner {
-    width: 1rem;
-    height: 1rem;
-    border: 2px solid transparent;
-    border-top-color: currentColor;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-
-  .export-progress {
-    background-color: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    padding: 0.75rem;
-  }
-
-  .progress-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-  }
-
-  .progress-title {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: #374151;
-  }
-
-  .progress-percentage {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #1f2937;
-  }
-
-  .progress-bar {
-    width: 100%;
-    height: 6px;
-    background-color: #f1f5f9;
-    border-radius: 3px;
-    overflow: hidden;
-    margin-bottom: 0.5rem;
-  }
-
-  .progress-fill {
-    height: 100%;
-    transition: width 0.3s ease;
-  }
-
-  .progress-fill.webm {
-    background-color: #3b82f6;
-  }
-
-  .progress-fill.mp4 {
-    background-color: #10b981;
-  }
-
-  .progress-details {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.75rem;
-    color: #64748b;
-  }
-
-  .export-hint {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem;
-    background-color: #fef3c7;
-    border: 1px solid #f59e0b;
-    border-radius: 6px;
-    font-size: 0.875rem;
-    color: #92400e;
-  }
-
-  .hint-icon {
-    font-size: 1rem;
-  }
-</style>
+<!-- 所有样式已迁移到 Tailwind CSS -->

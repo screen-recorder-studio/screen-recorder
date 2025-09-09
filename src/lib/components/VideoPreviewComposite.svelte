@@ -1,8 +1,10 @@
 <!-- 视频预览组件 - 使用 VideoComposite Worker 进行背景合成 -->
 <script lang="ts">
   import { onMount } from 'svelte'
+  import { Play, Pause, Square, LoaderCircle, Monitor, Info } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import { DataFormatValidator } from '$lib/utils/data-format-validator'
+  import { imageBackgroundManager } from '$lib/services/image-background-manager'
 
   // Props
   interface Props {
@@ -51,42 +53,59 @@
   let previewWidth = $state(displayWidth)
   let previewHeight = $state(displayHeight)
 
-  // 更新预览尺寸 - 根据输出比例调整预览显示
+  // 更新预览尺寸 - 智能适应全高度布局
   function updatePreviewSize() {
     const aspectRatio = outputWidth / outputHeight
-    const maxWidth = displayWidth
-    const maxHeight = displayHeight
 
-    // 计算适合的预览尺寸，保持纵横比，并确保充分利用空间
-    if (aspectRatio > maxWidth / maxHeight) {
+    // 计算可用空间 - 考虑控制栏和时间轴的高度
+    const headerHeight = 60  // 预览信息栏高度
+    const controlsHeight = showControls && totalFrames > 0 ? 56 : 0  // 播放控制栏高度
+    const timelineHeight = showTimeline && totalFrames > 0 ? 48 : 0  // 时间轴高度
+    const padding = 32  // Canvas 区域的内边距 (p-4 = 16px * 2)
+
+    const availableWidth = displayWidth - padding
+    const availableHeight = displayHeight - headerHeight - controlsHeight - timelineHeight - padding
+
+    // 计算适合的预览尺寸，保持纵横比，充分利用可用空间
+    let calculatedWidth, calculatedHeight
+
+    if (aspectRatio > availableWidth / availableHeight) {
       // 宽度受限
-      previewWidth = maxWidth
-      previewHeight = Math.round(maxWidth / aspectRatio)
+      calculatedWidth = Math.min(availableWidth, displayWidth * 0.9) // 最大不超过90%宽度
+      calculatedHeight = Math.round(calculatedWidth / aspectRatio)
     } else {
       // 高度受限
-      previewHeight = maxHeight
-      previewWidth = Math.round(maxHeight * aspectRatio)
+      calculatedHeight = Math.min(availableHeight, displayHeight * 0.7) // 最大不超过70%高度
+      calculatedWidth = Math.round(calculatedHeight * aspectRatio)
     }
 
     // 确保最小尺寸，避免过小的预览
-    const minSize = 200
-    if (previewWidth < minSize || previewHeight < minSize) {
+    const minSize = 300
+    if (calculatedWidth < minSize || calculatedHeight < minSize) {
       if (aspectRatio > 1) {
         // 横屏视频
-        previewWidth = Math.max(minSize, previewWidth)
+        previewWidth = Math.max(minSize, calculatedWidth)
         previewHeight = Math.round(previewWidth / aspectRatio)
       } else {
         // 竖屏视频
-        previewHeight = Math.max(minSize, previewHeight)
+        previewHeight = Math.max(minSize, calculatedHeight)
         previewWidth = Math.round(previewHeight * aspectRatio)
       }
+    } else {
+      previewWidth = calculatedWidth
+      previewHeight = calculatedHeight
     }
+
+    // 确保不超过容器限制
+    previewWidth = Math.min(previewWidth, availableWidth)
+    previewHeight = Math.min(previewHeight, availableHeight)
 
     console.log('📐 [VideoPreview] Preview size updated:', {
       outputSize: { width: outputWidth, height: outputHeight },
       previewSize: { width: previewWidth, height: previewHeight },
-      aspectRatio,
-      displayConstraints: { maxWidth, maxHeight }
+      availableSpace: { width: availableWidth, height: availableHeight },
+      uiElements: { headerHeight, controlsHeight, timelineHeight, padding },
+      aspectRatio: aspectRatio.toFixed(3)
     })
   }
 
@@ -212,7 +231,7 @@
   }
 
   // 处理视频数据
-  function processVideo() {
+  async function processVideo() {
     if (!compositeWorker || !encodedChunks.length) {
       console.warn('⚠️ [VideoPreview] Cannot process: missing worker or chunks')
       return
@@ -271,6 +290,20 @@
 
     console.log('📤 [VideoPreview] Prepared', transferableChunks.length, 'transferable chunks');
 
+    // 调试：检查第一个数据块的尺寸信息
+    if (transferableChunks.length > 0) {
+      const firstChunk = transferableChunks[0];
+      console.log('🔍 [VideoPreview] First chunk dimensions:', {
+        codedWidth: firstChunk.codedWidth,
+        codedHeight: firstChunk.codedHeight,
+        aspectRatio: firstChunk.codedWidth && firstChunk.codedHeight ?
+          (firstChunk.codedWidth / firstChunk.codedHeight).toFixed(3) : 'unknown',
+        size: firstChunk.size,
+        type: firstChunk.type,
+        codec: firstChunk.codec
+      });
+    }
+
     // 收集所有 ArrayBuffer 用于转移
     const transferList = transferableChunks.map(chunk => chunk.data)
 
@@ -283,13 +316,99 @@
       videoPosition: backgroundConfig.videoPosition,
       borderRadius: backgroundConfig.borderRadius,
       inset: backgroundConfig.inset,
+      // 深度转换 gradient 对象
+      gradient: backgroundConfig.gradient ? {
+        type: backgroundConfig.gradient.type,
+        ...(backgroundConfig.gradient.type === 'linear' && 'angle' in backgroundConfig.gradient ? { angle: backgroundConfig.gradient.angle } : {}),
+        ...(backgroundConfig.gradient.type === 'radial' && 'centerX' in backgroundConfig.gradient ? {
+          centerX: backgroundConfig.gradient.centerX,
+          centerY: backgroundConfig.gradient.centerY,
+          radius: backgroundConfig.gradient.radius
+        } : {}),
+        ...(backgroundConfig.gradient.type === 'conic' && 'centerX' in backgroundConfig.gradient ? {
+          centerX: backgroundConfig.gradient.centerX,
+          centerY: backgroundConfig.gradient.centerY,
+          angle: 'angle' in backgroundConfig.gradient ? backgroundConfig.gradient.angle : 0
+        } : {}),
+        stops: backgroundConfig.gradient.stops.map(stop => ({
+          color: stop.color,
+          position: stop.position
+        }))
+      } : undefined,
       // 深度转换 shadow 对象
       shadow: backgroundConfig.shadow ? {
         offsetX: backgroundConfig.shadow.offsetX,
         offsetY: backgroundConfig.shadow.offsetY,
         blur: backgroundConfig.shadow.blur,
         color: backgroundConfig.shadow.color
+      } : undefined,
+      // 深度转换 image 对象 - 获取新的ImageBitmap避免detached问题
+      image: backgroundConfig.image ? {
+        imageId: backgroundConfig.image.imageId,
+        imageBitmap: null as any, // 先设为null，稍后获取新的ImageBitmap
+        fit: backgroundConfig.image.fit,
+        position: backgroundConfig.image.position,
+        opacity: backgroundConfig.image.opacity,
+        blur: backgroundConfig.image.blur,
+        scale: backgroundConfig.image.scale,
+        offsetX: backgroundConfig.image.offsetX,
+        offsetY: backgroundConfig.image.offsetY
+      } : undefined,
+      // 深度转换 wallpaper 对象 - 获取新的ImageBitmap避免detached问题
+      wallpaper: backgroundConfig.wallpaper ? {
+        imageId: backgroundConfig.wallpaper.imageId,
+        imageBitmap: null as any, // 先设为null，稍后获取新的ImageBitmap
+        fit: backgroundConfig.wallpaper.fit,
+        position: backgroundConfig.wallpaper.position,
+        opacity: backgroundConfig.wallpaper.opacity,
+        blur: backgroundConfig.wallpaper.blur,
+        scale: backgroundConfig.wallpaper.scale,
+        offsetX: backgroundConfig.wallpaper.offsetX,
+        offsetY: backgroundConfig.wallpaper.offsetY
       } : undefined
+    }
+
+    // 如果是图片背景，获取新的ImageBitmap
+    const transferObjects: Transferable[] = [...transferList]
+    if (plainBackgroundConfig.image && backgroundConfig.image) {
+      try {
+        // 从ImageBackgroundManager获取新的ImageBitmap
+        const freshImageBitmap = imageBackgroundManager.getImageBitmap(backgroundConfig.image.imageId)
+
+        if (freshImageBitmap) {
+          // 创建ImageBitmap的副本用于传输
+          const imageBitmapCopy = await createImageBitmap(freshImageBitmap)
+          plainBackgroundConfig.image.imageBitmap = imageBitmapCopy
+          transferObjects.push(imageBitmapCopy as any)
+        } else {
+          console.warn('⚠️ [VideoPreview] ImageBitmap not found for imageId:', backgroundConfig.image.imageId)
+          plainBackgroundConfig.image = undefined // 如果找不到ImageBitmap，移除image配置
+        }
+      } catch (error) {
+        console.error('❌ [VideoPreview] Failed to get ImageBitmap:', error)
+        plainBackgroundConfig.image = undefined
+      }
+    }
+
+    // 如果是壁纸背景，获取新的ImageBitmap
+    if (plainBackgroundConfig.wallpaper && backgroundConfig.wallpaper) {
+      try {
+        // 从ImageBackgroundManager获取新的ImageBitmap
+        const freshImageBitmap = imageBackgroundManager.getImageBitmap(backgroundConfig.wallpaper.imageId)
+
+        if (freshImageBitmap) {
+          // 创建ImageBitmap的副本用于传输
+          const imageBitmapCopy = await createImageBitmap(freshImageBitmap)
+          plainBackgroundConfig.wallpaper.imageBitmap = imageBitmapCopy
+          transferObjects.push(imageBitmapCopy as any)
+        } else {
+          console.warn('⚠️ [VideoPreview] ImageBitmap not found for wallpaper imageId:', backgroundConfig.wallpaper.imageId)
+          plainBackgroundConfig.wallpaper = undefined // 如果找不到ImageBitmap，移除wallpaper配置
+        }
+      } catch (error) {
+        console.error('❌ [VideoPreview] Failed to get wallpaper ImageBitmap:', error)
+        plainBackgroundConfig.wallpaper = undefined
+      }
     }
 
     console.log('📤 [VideoPreview] Sending config to worker:', plainBackgroundConfig);
@@ -300,7 +419,7 @@
         chunks: transferableChunks,
         backgroundConfig: plainBackgroundConfig
       }
-    }, { transfer: transferList })
+    }, { transfer: transferObjects })
   }
 
   // 播放控制
@@ -344,7 +463,7 @@
   }
 
   // 更新背景配置
-  function updateBackgroundConfig(newConfig: typeof backgroundConfig) {
+  async function updateBackgroundConfig(newConfig: typeof backgroundConfig) {
     if (!compositeWorker) return
 
     // 将 Svelte 5 的 Proxy 对象转换为普通对象
@@ -356,21 +475,107 @@
       videoPosition: newConfig.videoPosition,
       borderRadius: newConfig.borderRadius,
       inset: newConfig.inset,
+      // 深度转换 gradient 对象
+      gradient: newConfig.gradient ? {
+        type: newConfig.gradient.type,
+        ...(newConfig.gradient.type === 'linear' && 'angle' in newConfig.gradient ? { angle: newConfig.gradient.angle } : {}),
+        ...(newConfig.gradient.type === 'radial' && 'centerX' in newConfig.gradient ? {
+          centerX: newConfig.gradient.centerX,
+          centerY: newConfig.gradient.centerY,
+          radius: newConfig.gradient.radius
+        } : {}),
+        ...(newConfig.gradient.type === 'conic' && 'centerX' in newConfig.gradient ? {
+          centerX: newConfig.gradient.centerX,
+          centerY: newConfig.gradient.centerY,
+          angle: 'angle' in newConfig.gradient ? newConfig.gradient.angle : 0
+        } : {}),
+        stops: newConfig.gradient.stops.map(stop => ({
+          color: stop.color,
+          position: stop.position
+        }))
+      } : undefined,
       // 深度转换 shadow 对象
       shadow: newConfig.shadow ? {
         offsetX: newConfig.shadow.offsetX,
         offsetY: newConfig.shadow.offsetY,
         blur: newConfig.shadow.blur,
         color: newConfig.shadow.color
+      } : undefined,
+      // 深度转换 image 对象 - 获取新的ImageBitmap避免detached问题
+      image: newConfig.image ? {
+        imageId: newConfig.image.imageId,
+        imageBitmap: null as any, // 先设为null，稍后获取新的ImageBitmap
+        fit: newConfig.image.fit,
+        position: newConfig.image.position,
+        opacity: newConfig.image.opacity,
+        blur: newConfig.image.blur,
+        scale: newConfig.image.scale,
+        offsetX: newConfig.image.offsetX,
+        offsetY: newConfig.image.offsetY
+      } : undefined,
+      // 深度转换 wallpaper 对象 - 获取新的ImageBitmap避免detached问题
+      wallpaper: newConfig.wallpaper ? {
+        imageId: newConfig.wallpaper.imageId,
+        imageBitmap: null as any, // 先设为null，稍后获取新的ImageBitmap
+        fit: newConfig.wallpaper.fit,
+        position: newConfig.wallpaper.position,
+        opacity: newConfig.wallpaper.opacity,
+        blur: newConfig.wallpaper.blur,
+        scale: newConfig.wallpaper.scale,
+        offsetX: newConfig.wallpaper.offsetX,
+        offsetY: newConfig.wallpaper.offsetY
       } : undefined
     }
 
     console.log('⚙️ [VideoPreview] Updating background config:', plainConfig)
 
+    // 如果是图片背景，获取新的ImageBitmap
+    const transferObjects: Transferable[] = []
+    if (plainConfig.image && newConfig.image) {
+      try {
+        // 从ImageBackgroundManager获取新的ImageBitmap
+        const freshImageBitmap = imageBackgroundManager.getImageBitmap(newConfig.image.imageId)
+
+        if (freshImageBitmap) {
+          // 创建ImageBitmap的副本用于传输
+          const imageBitmapCopy = await createImageBitmap(freshImageBitmap)
+          plainConfig.image.imageBitmap = imageBitmapCopy
+          transferObjects.push(imageBitmapCopy as any)
+        } else {
+          console.warn('⚠️ [VideoPreview] ImageBitmap not found for imageId:', newConfig.image.imageId)
+          plainConfig.image = undefined // 如果找不到ImageBitmap，移除image配置
+        }
+      } catch (error) {
+        console.error('❌ [VideoPreview] Failed to get ImageBitmap:', error)
+        plainConfig.image = undefined
+      }
+    }
+
+    // 如果是壁纸背景，获取新的ImageBitmap
+    if (plainConfig.wallpaper && newConfig.wallpaper) {
+      try {
+        // 从ImageBackgroundManager获取新的ImageBitmap
+        const freshImageBitmap = imageBackgroundManager.getImageBitmap(newConfig.wallpaper.imageId)
+
+        if (freshImageBitmap) {
+          // 创建ImageBitmap的副本用于传输
+          const imageBitmapCopy = await createImageBitmap(freshImageBitmap)
+          plainConfig.wallpaper.imageBitmap = imageBitmapCopy
+          transferObjects.push(imageBitmapCopy as any)
+        } else {
+          console.warn('⚠️ [VideoPreview] ImageBitmap not found for wallpaper imageId:', newConfig.wallpaper.imageId)
+          plainConfig.wallpaper = undefined // 如果找不到ImageBitmap，移除wallpaper配置
+        }
+      } catch (error) {
+        console.error('❌ [VideoPreview] Failed to get wallpaper ImageBitmap:', error)
+        plainConfig.wallpaper = undefined
+      }
+    }
+
     compositeWorker.postMessage({
       type: 'config',
       data: { backgroundConfig: plainConfig }
-    })
+    }, transferObjects.length > 0 ? { transfer: transferObjects } : undefined)
   }
 
   // 响应式处理 - 只在录制完成后处理一次
@@ -394,7 +599,9 @@
 
       console.log('🎬 [VideoPreview] Processing completed recording with', encodedChunks.length, 'chunks')
       hasProcessed = true
-      processVideo()
+      processVideo().catch(error => {
+        console.error('❌ [VideoPreview] Failed to process video:', error)
+      })
     }
   })
 
@@ -443,69 +650,80 @@
   }
 </script>
 
-<!-- 视频预览容器 -->
-<div class="video-preview {className}">
-  <!-- 预览信息栏 -->
-  <div class="preview-info-bar">
-    <span class="preview-title">视频预览</span>
-    <span class="preview-ratio">{backgroundConfig.outputRatio === 'custom' ? `${outputWidth}×${outputHeight}` : backgroundConfig.outputRatio}</span>
+<!-- 视频预览容器 - 优化为全高度布局 -->
+<div class="flex flex-col h-full bg-gray-900 rounded-lg overflow-hidden {className}">
+  <!-- 预览信息栏 - 固定高度 -->
+  <div class="flex-shrink-0 flex justify-between items-center p-3 border-b border-gray-700">
+    <div class="flex items-center gap-2">
+      <Monitor class="w-4 h-4 text-gray-400" />
+      <span class="text-sm font-semibold text-gray-100">视频预览</span>
+    </div>
+    <span class="text-xs font-medium text-purple-400 bg-purple-500/10 px-2 py-1 rounded border border-purple-500/20">
+      {backgroundConfig.outputRatio === 'custom' ? `${outputWidth}×${outputHeight}` : backgroundConfig.outputRatio}
+    </span>
   </div>
 
-  <!-- Canvas 显示区域 -->
-  <div class="canvas-container" style="width: {previewWidth}px; height: {previewHeight}px;">
-    <canvas
-      bind:this={canvas}
-      class="video-canvas"
-      class:processing={isProcessing}
-      style="width: {previewWidth}px; height: {previewHeight}px;"
-    ></canvas>
+  <!-- Canvas 显示区域 - 占据剩余空间 -->
+  <div class="flex-1 flex items-center justify-center p-4 min-h-0">
+    <div class="relative bg-black flex items-center justify-center rounded overflow-hidden" style="width: {previewWidth}px; height: {previewHeight}px;">
+      <canvas
+        bind:this={canvas}
+        class="block rounded transition-opacity duration-300"
+        class:opacity-50={isProcessing}
+        style="width: {previewWidth}px; height: {previewHeight}px;"
+      ></canvas>
 
-    {#if isProcessing}
-      <div class="processing-overlay">
-        <div class="spinner"></div>
-        <span>正在处理视频...</span>
-      </div>
-    {/if}
+      {#if isProcessing}
+        <div class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white">
+          <LoaderCircle class="w-8 h-8 text-blue-500 animate-spin mb-2" />
+          <span class="text-sm">正在处理视频...</span>
+        </div>
+      {/if}
+    </div>
   </div>
 
-  <!-- 播放控制 -->
+  <!-- 播放控制 - 固定高度 -->
   {#if showControls && totalFrames > 0}
-    <div class="controls-bar">
-      <div class="playback-controls">
-        <button 
-          class="control-btn" 
+    <div class="flex-shrink-0 flex items-center justify-between p-3 bg-gray-800 text-white text-sm">
+      <div class="flex items-center gap-2">
+        <button
+          class="flex items-center justify-center w-8 h-8 border border-gray-600 text-white rounded cursor-pointer transition-all duration-200 hover:bg-gray-700 hover:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
           onclick={isPlaying ? pause : play}
           disabled={isProcessing}
         >
-          {isPlaying ? '⏸️' : '▶️'}
+          {#if isPlaying}
+            <Pause class="w-4 h-4" />
+          {:else}
+            <Play class="w-4 h-4" />
+          {/if}
         </button>
-        
-        <button 
-          class="control-btn" 
+
+        <button
+          class="flex items-center justify-center w-8 h-8 border border-gray-600 text-white rounded cursor-pointer transition-all duration-200 hover:bg-gray-700 hover:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
           onclick={stop}
           disabled={isProcessing}
         >
-          ⏹️
+          <Square class="w-4 h-4" />
         </button>
-        
-        <span class="time-display">
+
+        <span class="font-mono text-sm text-gray-300 ml-2">
           {Math.floor(currentTime)}s / {Math.floor(duration)}s
         </span>
       </div>
 
-      <div class="frame-info">
+      <div class="flex gap-4 text-xs text-gray-400">
         <span>帧: {currentFrameIndex + 1}/{totalFrames}</span>
         <span>分辨率: {outputWidth}×{outputHeight}</span>
       </div>
     </div>
   {/if}
 
-  <!-- 时间轴 -->
+  <!-- 时间轴 - 固定高度 -->
   {#if showTimeline && totalFrames > 0}
-    <div class="timeline-container">
+    <div class="flex-shrink-0 p-3 bg-gray-800">
       <input
         type="range"
-        class="timeline-slider"
+        class="w-full h-1 bg-gray-600 rounded-sm outline-none cursor-pointer timeline-slider"
         min="0"
         max={totalFrames - 1}
         value={currentFrameIndex}
@@ -517,150 +735,7 @@
 </div>
 
 <style>
-  .video-preview {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    background-color: #1a1a1a;
-    border-radius: 8px;
-    padding: 1rem;
-    overflow: hidden;
-  }
-
-  .preview-info-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #374151;
-  }
-
-  .preview-title {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #f3f4f6;
-  }
-
-  .preview-ratio {
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: #8b5cf6;
-    background-color: rgba(139, 92, 246, 0.1);
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    border: 1px solid rgba(139, 92, 246, 0.2);
-  }
-
-  .canvas-container {
-    position: relative;
-    background-color: #000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    overflow: hidden;
-    margin: 0 auto; /* 居中显示 */
-  }
-
-  .video-canvas {
-    display: block;
-    transition: opacity 0.3s ease;
-    border-radius: 4px;
-  }
-
-  .video-canvas.processing {
-    opacity: 0.5;
-  }
-
-  .processing-overlay {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background-color: rgba(0, 0, 0, 0.5);
-    color: white;
-  }
-
-  .spinner {
-    width: 2rem;
-    height: 2rem;
-    border: 4px solid #3b82f6;
-    border-top-color: transparent;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 0.5rem;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-
-  .controls-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.75rem;
-    background-color: #374151;
-    color: white;
-    font-size: 0.875rem;
-  }
-
-  .playback-controls {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .control-btn {
-    background: none;
-    border: 1px solid #6b7280;
-    color: white;
-    padding: 0.5rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 1rem;
-    transition: all 0.2s ease;
-  }
-
-  .control-btn:hover:not(:disabled) {
-    background-color: #4b5563;
-    border-color: #9ca3af;
-  }
-
-  .control-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .time-display {
-    font-family: monospace;
-    font-size: 0.875rem;
-    color: #d1d5db;
-  }
-
-  .frame-info {
-    display: flex;
-    gap: 1rem;
-    font-size: 0.75rem;
-    color: #9ca3af;
-  }
-
-  .timeline-container {
-    padding: 0.5rem 0.75rem;
-    background-color: #374151;
-  }
-
-  .timeline-slider {
-    width: 100%;
-    height: 4px;
-    background: #4b5563;
-    border-radius: 2px;
-    outline: none;
-    cursor: pointer;
-  }
-
+  /* 自定义时间轴滑块样式 - 使用蓝色主题 */
   .timeline-slider::-webkit-slider-thumb {
     appearance: none;
     width: 16px;
@@ -668,6 +743,12 @@
     background: #3b82f6;
     border-radius: 50%;
     cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .timeline-slider::-webkit-slider-thumb:hover {
+    background: #2563eb;
+    transform: scale(1.1);
   }
 
   .timeline-slider::-moz-range-thumb {
@@ -677,6 +758,12 @@
     border-radius: 50%;
     cursor: pointer;
     border: none;
+    transition: all 0.2s ease;
+  }
+
+  .timeline-slider::-moz-range-thumb:hover {
+    background: #2563eb;
+    transform: scale(1.1);
   }
 
   .timeline-slider:disabled {

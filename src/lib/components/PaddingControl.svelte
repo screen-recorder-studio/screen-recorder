@@ -1,5 +1,6 @@
 <!-- 边距配置控件 -->
 <script lang="ts">
+  import { Move, Minimize2, Maximize2, Eye, SlidersHorizontal } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
 
   // 当前边距值
@@ -7,11 +8,11 @@
 
   // 预设边距值
   const PRESET_PADDING = [
-    { name: '无边距', value: 0 },
-    { name: '小边距', value: 30 },
-    { name: '中边距', value: 60 },
-    { name: '大边距', value: 120 },
-    { name: '超大边距', value: 200 }
+    { name: '无边距', value: 0, icon: Minimize2 },
+    { name: '小边距', value: 30, icon: Move },
+    { name: '中边距', value: 60, icon: Move },
+    { name: '大边距', value: 120, icon: Move },
+    { name: '超大边距', value: 200, icon: Maximize2 }
   ] as const
 
   // 处理滑块变化
@@ -31,55 +32,90 @@
   function isPresetSelected(value: number) {
     return currentPadding === value
   }
+
+  // 计算预览边距 - 使用更小的比例并设置最大值
+  const previewPadding = $derived(Math.min(Math.round(currentPadding * 0.2), 40))
+
+  // 根据边距大小决定文字显示内容
+  const displayText = $derived(currentPadding > 150 ? '视频' : '视频区域')
+  const showPaddingValue = $derived(currentPadding <= 120)
 </script>
 
 <!-- 边距配置控件 -->
-<div class="padding-control">
-  <h3 class="control-title">视频边距</h3>
-  
+<div class="p-4 border border-gray-200 rounded-lg bg-white">
+  <div class="flex items-center gap-2 mb-4">
+    <SlidersHorizontal class="w-4 h-4 text-gray-600" />
+    <h3 class="text-sm font-semibold text-gray-700">视频边距</h3>
+  </div>
+
   <!-- 滑块控制 -->
-  <div class="slider-container">
+  <div class="flex items-center gap-3 mb-4">
     <input
       type="range"
-      class="padding-slider"
+      class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
       min="0"
-      max="250"
+      max="200"
       step="5"
       value={currentPadding}
       oninput={handleSliderChange}
     />
-    <div class="slider-value">
+    <div class="min-w-[60px] text-center text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
       {currentPadding}px
     </div>
   </div>
-  
+
   <!-- 预设值快速选择 -->
-  <div class="preset-buttons">
+  <div class="flex gap-2 mb-4 flex-wrap">
     {#each PRESET_PADDING as preset}
+      {@const IconComponent = preset.icon}
       <button
-        class="preset-btn"
-        class:selected={isPresetSelected(preset.value)}
+        class="flex items-center gap-1.5 px-3 py-2 text-xs border rounded-md cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50"
+        class:border-emerald-500={isPresetSelected(preset.value)}
+        class:bg-emerald-500={isPresetSelected(preset.value)}
+        class:text-white={isPresetSelected(preset.value)}
+        class:border-gray-300={!isPresetSelected(preset.value)}
+        class:bg-white={!isPresetSelected(preset.value)}
+        class:text-gray-700={!isPresetSelected(preset.value)}
+        class:hover:border-emerald-400={!isPresetSelected(preset.value)}
+        class:hover:bg-emerald-50={!isPresetSelected(preset.value)}
         onclick={() => handlePresetSelect(preset)}
         title="{preset.name} ({preset.value}px)"
       >
-        {preset.name}
+        <IconComponent class="w-3 h-3" />
+        <span>{preset.name}</span>
       </button>
     {/each}
   </div>
-  
+
   <!-- 视觉预览 -->
-  <div class="preview-container">
-    <div class="preview-label">预览效果:</div>
-    <div class="preview-wrapper">
-      <div 
-        class="preview-background"
-        style="padding: {Math.round(currentPadding * 0.3)}px"
-      >
-        <div class="preview-video">
-          视频区域
+  <div class="mt-4">
+    <div class="flex items-center gap-2 mb-2">
+      <Eye class="w-3 h-3 text-gray-600" />
+      <div class="text-xs text-gray-600 font-medium">预览效果:</div>
+    </div>
+    <div class="flex flex-col gap-2">
+      <div class="flex items-center justify-center p-6 bg-gray-50 rounded-md">
+        <div
+          class="w-48 h-32 bg-gray-200 border-2 border-gray-300 rounded flex items-center justify-center transition-all duration-300"
+          style="padding: {previewPadding}px"
+        >
+          <div class="bg-emerald-500 text-white font-medium rounded flex items-center justify-center w-full h-full min-w-[60px] min-h-[40px]"
+               class:text-xs={currentPadding > 150}
+               class:text-sm={currentPadding <= 150}
+               class:p-1={currentPadding > 150}
+               class:p-2={currentPadding > 100 && currentPadding <= 150}
+               class:p-3={currentPadding <= 100}>
+            <span class="text-center leading-tight overflow-hidden">
+              {displayText}
+              {#if showPaddingValue}
+                <br>
+                <span class="text-xs opacity-90">{currentPadding}px</span>
+              {/if}
+            </span>
+          </div>
         </div>
       </div>
-      <div class="preview-info">
+      <div class="text-xs text-gray-600 text-center font-medium">
         边距: {currentPadding}px
       </div>
     </div>
@@ -87,37 +123,8 @@
 </div>
 
 <style>
-  .padding-control {
-    padding: 16px;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    background: white;
-  }
-
-  .control-title {
-    margin: 0 0 16px 0;
-    font-size: 14px;
-    font-weight: 600;
-    color: #374151;
-  }
-
-  .slider-container {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
-  }
-
-  .padding-slider {
-    flex: 1;
-    height: 6px;
-    background: #e5e7eb;
-    border-radius: 3px;
-    outline: none;
-    cursor: pointer;
-  }
-
-  .padding-slider::-webkit-slider-thumb {
+  /* 自定义滑块样式 - 使用绿色主题 */
+  .slider-thumb::-webkit-slider-thumb {
     appearance: none;
     width: 20px;
     height: 20px;
@@ -125,9 +132,15 @@
     border-radius: 50%;
     cursor: pointer;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
   }
 
-  .padding-slider::-moz-range-thumb {
+  .slider-thumb::-webkit-slider-thumb:hover {
+    background: #059669;
+    transform: scale(1.1);
+  }
+
+  .slider-thumb::-moz-range-thumb {
     width: 20px;
     height: 20px;
     background: #10b981;
@@ -135,93 +148,11 @@
     cursor: pointer;
     border: none;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-
-  .slider-value {
-    min-width: 50px;
-    text-align: center;
-    font-size: 12px;
-    font-weight: 600;
-    color: #10b981;
-    background: #ecfdf5;
-    padding: 4px 8px;
-    border-radius: 4px;
-  }
-
-  .preset-buttons {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-  }
-
-  .preset-btn {
-    padding: 6px 12px;
-    font-size: 11px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    background: white;
-    color: #6b7280;
-    cursor: pointer;
     transition: all 0.2s ease;
   }
 
-  .preset-btn:hover {
-    border-color: #10b981;
-    color: #10b981;
-  }
-
-  .preset-btn.selected {
-    background: #10b981;
-    border-color: #10b981;
-    color: white;
-  }
-
-  .preview-container {
-    margin-top: 16px;
-  }
-
-  .preview-label {
-    font-size: 12px;
-    color: #6b7280;
-    margin-bottom: 8px;
-  }
-
-  .preview-wrapper {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .preview-background {
-    width: 120px;
-    height: 68px;
-    background: #f3f4f6;
-    border: 2px solid #d1d5db;
-    border-radius: 4px;
-    transition: padding 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .preview-video {
-    background: #10b981;
-    color: white;
-    font-size: 10px;
-    text-align: center;
-    padding: 8px;
-    border-radius: 2px;
-    flex: 1;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .preview-info {
-    font-size: 11px;
-    color: #6b7280;
-    text-align: center;
+  .slider-thumb::-moz-range-thumb:hover {
+    background: #059669;
+    transform: scale(1.1);
   }
 </style>
