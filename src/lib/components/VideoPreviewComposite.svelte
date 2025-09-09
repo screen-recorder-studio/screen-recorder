@@ -1,6 +1,7 @@
 <!-- 视频预览组件 - 使用 VideoComposite Worker 进行背景合成 -->
 <script lang="ts">
   import { onMount } from 'svelte'
+  import { Play, Pause, Square, LoaderCircle, Monitor, Info } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import { DataFormatValidator } from '$lib/utils/data-format-validator'
   import { imageBackgroundManager } from '$lib/services/image-background-manager'
@@ -633,56 +634,65 @@
 </script>
 
 <!-- 视频预览容器 -->
-<div class="video-preview {className}">
+<div class="flex flex-col gap-3 bg-gray-900 rounded-lg p-4 overflow-hidden {className}">
   <!-- 预览信息栏 -->
-  <div class="preview-info-bar">
-    <span class="preview-title">视频预览</span>
-    <span class="preview-ratio">{backgroundConfig.outputRatio === 'custom' ? `${outputWidth}×${outputHeight}` : backgroundConfig.outputRatio}</span>
+  <div class="flex justify-between items-center pb-2 border-b border-gray-700">
+    <div class="flex items-center gap-2">
+      <Monitor class="w-4 h-4 text-gray-400" />
+      <span class="text-sm font-semibold text-gray-100">视频预览</span>
+    </div>
+    <span class="text-xs font-medium text-purple-400 bg-purple-500/10 px-2 py-1 rounded border border-purple-500/20">
+      {backgroundConfig.outputRatio === 'custom' ? `${outputWidth}×${outputHeight}` : backgroundConfig.outputRatio}
+    </span>
   </div>
 
   <!-- Canvas 显示区域 -->
-  <div class="canvas-container" style="width: {previewWidth}px; height: {previewHeight}px;">
+  <div class="relative bg-black flex items-center justify-center rounded overflow-hidden mx-auto" style="width: {previewWidth}px; height: {previewHeight}px;">
     <canvas
       bind:this={canvas}
-      class="video-canvas"
-      class:processing={isProcessing}
+      class="block rounded transition-opacity duration-300"
+      class:opacity-50={isProcessing}
       style="width: {previewWidth}px; height: {previewHeight}px;"
     ></canvas>
 
     {#if isProcessing}
-      <div class="processing-overlay">
-        <div class="spinner"></div>
-        <span>正在处理视频...</span>
+      <div class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white">
+        <LoaderCircle class="w-8 h-8 text-blue-500 animate-spin mb-2" />
+        <span class="text-sm">正在处理视频...</span>
       </div>
     {/if}
   </div>
 
   <!-- 播放控制 -->
   {#if showControls && totalFrames > 0}
-    <div class="controls-bar">
-      <div class="playback-controls">
-        <button 
-          class="control-btn" 
+    <div class="flex items-center justify-between p-3 bg-gray-800 text-white text-sm rounded">
+      <div class="flex items-center gap-2">
+        <button
+          class="flex items-center justify-center w-8 h-8 border border-gray-600 text-white rounded cursor-pointer transition-all duration-200 hover:bg-gray-700 hover:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
           onclick={isPlaying ? pause : play}
           disabled={isProcessing}
         >
-          {isPlaying ? '⏸️' : '▶️'}
+          {#if isPlaying}
+            <Pause class="w-4 h-4" />
+          {:else}
+            <Play class="w-4 h-4" />
+          {/if}
         </button>
-        
-        <button 
-          class="control-btn" 
+
+        <button
+          class="flex items-center justify-center w-8 h-8 border border-gray-600 text-white rounded cursor-pointer transition-all duration-200 hover:bg-gray-700 hover:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
           onclick={stop}
           disabled={isProcessing}
         >
-          ⏹️
+          <Square class="w-4 h-4" />
         </button>
-        
-        <span class="time-display">
+
+        <span class="font-mono text-sm text-gray-300 ml-2">
           {Math.floor(currentTime)}s / {Math.floor(duration)}s
         </span>
       </div>
 
-      <div class="frame-info">
+      <div class="flex gap-4 text-xs text-gray-400">
         <span>帧: {currentFrameIndex + 1}/{totalFrames}</span>
         <span>分辨率: {outputWidth}×{outputHeight}</span>
       </div>
@@ -691,10 +701,10 @@
 
   <!-- 时间轴 -->
   {#if showTimeline && totalFrames > 0}
-    <div class="timeline-container">
+    <div class="p-2 bg-gray-800 rounded">
       <input
         type="range"
-        class="timeline-slider"
+        class="w-full h-1 bg-gray-600 rounded-sm outline-none cursor-pointer timeline-slider"
         min="0"
         max={totalFrames - 1}
         value={currentFrameIndex}
@@ -706,150 +716,7 @@
 </div>
 
 <style>
-  .video-preview {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    background-color: #1a1a1a;
-    border-radius: 8px;
-    padding: 1rem;
-    overflow: hidden;
-  }
-
-  .preview-info-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #374151;
-  }
-
-  .preview-title {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #f3f4f6;
-  }
-
-  .preview-ratio {
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: #8b5cf6;
-    background-color: rgba(139, 92, 246, 0.1);
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    border: 1px solid rgba(139, 92, 246, 0.2);
-  }
-
-  .canvas-container {
-    position: relative;
-    background-color: #000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    overflow: hidden;
-    margin: 0 auto; /* 居中显示 */
-  }
-
-  .video-canvas {
-    display: block;
-    transition: opacity 0.3s ease;
-    border-radius: 4px;
-  }
-
-  .video-canvas.processing {
-    opacity: 0.5;
-  }
-
-  .processing-overlay {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background-color: rgba(0, 0, 0, 0.5);
-    color: white;
-  }
-
-  .spinner {
-    width: 2rem;
-    height: 2rem;
-    border: 4px solid #3b82f6;
-    border-top-color: transparent;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 0.5rem;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-
-  .controls-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.75rem;
-    background-color: #374151;
-    color: white;
-    font-size: 0.875rem;
-  }
-
-  .playback-controls {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .control-btn {
-    background: none;
-    border: 1px solid #6b7280;
-    color: white;
-    padding: 0.5rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 1rem;
-    transition: all 0.2s ease;
-  }
-
-  .control-btn:hover:not(:disabled) {
-    background-color: #4b5563;
-    border-color: #9ca3af;
-  }
-
-  .control-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .time-display {
-    font-family: monospace;
-    font-size: 0.875rem;
-    color: #d1d5db;
-  }
-
-  .frame-info {
-    display: flex;
-    gap: 1rem;
-    font-size: 0.75rem;
-    color: #9ca3af;
-  }
-
-  .timeline-container {
-    padding: 0.5rem 0.75rem;
-    background-color: #374151;
-  }
-
-  .timeline-slider {
-    width: 100%;
-    height: 4px;
-    background: #4b5563;
-    border-radius: 2px;
-    outline: none;
-    cursor: pointer;
-  }
-
+  /* 自定义时间轴滑块样式 - 使用蓝色主题 */
   .timeline-slider::-webkit-slider-thumb {
     appearance: none;
     width: 16px;
@@ -857,6 +724,12 @@
     background: #3b82f6;
     border-radius: 50%;
     cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .timeline-slider::-webkit-slider-thumb:hover {
+    background: #2563eb;
+    transform: scale(1.1);
   }
 
   .timeline-slider::-moz-range-thumb {
@@ -866,6 +739,12 @@
     border-radius: 50%;
     cursor: pointer;
     border: none;
+    transition: all 0.2s ease;
+  }
+
+  .timeline-slider::-moz-range-thumb:hover {
+    background: #2563eb;
+    transform: scale(1.1);
   }
 
   .timeline-slider:disabled {
