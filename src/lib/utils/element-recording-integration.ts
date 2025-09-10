@@ -117,12 +117,13 @@ export class ElementRecordingIntegration {
     });
 
     // 🚨 重要：检查是否为区域录制
-    const isRegionRecording = data.metadata.mode === 'region' && data.metadata.selectedRegion;
-    if (isRegionRecording) {
+    const sr = data.metadata.selectedRegion;
+    const isRegionRecording = data.metadata.mode === 'region' && !!sr;
+    if (isRegionRecording && sr) {
       console.log('🎯 [ElementRecordingIntegration] REGION RECORDING DETECTED! Will use selectedRegion dimensions:', {
-        selectedWidth: data.metadata.selectedRegion.width,
-        selectedHeight: data.metadata.selectedRegion.height,
-        selectedAspectRatio: (data.metadata.selectedRegion.width / data.metadata.selectedRegion.height).toFixed(3),
+        selectedWidth: sr.width,
+        selectedHeight: sr.height,
+        selectedAspectRatio: (sr.width / sr.height).toFixed(3),
         metadataWidth: data.metadata.width,
         metadataHeight: data.metadata.height,
         metadataAspectRatio: (data.metadata.width / data.metadata.height).toFixed(3)
@@ -138,10 +139,11 @@ export class ElementRecordingIntegration {
       if (!(chunk.data instanceof Uint8Array)) {
         console.warn('⚠️ [ElementRecordingIntegration] Unexpected data format:', typeof chunk.data);
         // 尝试转换为 Uint8Array
-        if (chunk.data instanceof ArrayBuffer) {
-          processedData = new Uint8Array(chunk.data);
-        } else if (Array.isArray(chunk.data)) {
-          processedData = new Uint8Array(chunk.data);
+        const anyData: any = chunk.data;
+        if (anyData instanceof ArrayBuffer) {
+          processedData = new Uint8Array(anyData);
+        } else if (Array.isArray(anyData)) {
+          processedData = new Uint8Array(anyData);
         }
       }
 
