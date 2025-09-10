@@ -1,22 +1,16 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte'
-  import { ChromeAPIWrapper } from '$lib/utils/chrome-api'
-  import { TriangleAlert, Activity } from '@lucide/svelte'
+  import { TriangleAlert } from '@lucide/svelte'
 
   // 引入 Worker 系统
   import { recordingService } from '$lib/services/recording-service'
   import { recordingStore } from '$lib/stores/recording.svelte'
-  import VideoPreviewComposite from '$lib/components/VideoPreviewComposite.svelte'
-  import VideoExportPanel from '$lib/components/VideoExportPanel.svelte'
-  import BackgroundColorPicker from '$lib/components/BackgroundColorPicker.svelte'
-  import BorderRadiusControl from '$lib/components/BorderRadiusControl.svelte'
-  import PaddingControl from '$lib/components/PaddingControl.svelte'
-  import AspectRatioControl from '$lib/components/AspectRatioControl.svelte'
-  import ShadowControl from '$lib/components/ShadowControl.svelte'
   import RecordButton from '$lib/components/RecordButton.svelte'
   import ElementRegionSelector from '$lib/components/ElementRegionSelector.svelte'
   import { elementRecordingIntegration, type ElementRecordingData } from '$lib/utils/element-recording-integration'
   import { recordingCache } from '$lib/services/recording-cache'
+  import { recordingModeStore } from '$lib/stores/recording-mode.svelte'
+  import { sendToBackground } from '$lib/utils/background'
 
   // 录制状态
   let isRecording = $state(false)
@@ -49,20 +43,6 @@
 	  let handoffInProgress = $state(false)
 
 
-  // 处理录制完成后的视频预览
-  async function handleVideoPreview(chunks: any[]): Promise<void> {
-    try {
-      console.log('🎨 [VideoPreview] Preparing video preview with', chunks.length, 'chunks')
-
-      // VideoPreview 组件会自动处理解码和渲染
-      // 这里只需要设置状态，组件会响应 encodedChunks 的变化
-
-    } catch (error) {
-      console.error('❌ [VideoPreview] Error preparing video preview:', error)
-    }
-  }
-
-
   // Worker 系统的计算属性
   const workerIsRecording = $derived(recordingStore.isRecording)
   const workerStatus = $derived(recordingStore.state.status)
@@ -72,10 +52,6 @@
   const isMinimalMode = $derived(
     workerStatus !== 'completed' || workerEncodedChunks.length === 0
   )
-  const isEditingMode = $derived(
-    workerStatus === 'completed' && workerEncodedChunks.length > 0
-  )
-
 
   // Worker 系统函数 - 正确的 WebCodecs 架构
   async function startWorkerRecording() {
@@ -103,11 +79,6 @@
       })
 
       // 2. 检查 WebCodecs 支持
-      console.log('🔍 [WORKER-MAIN] Step 3: Checking WebCodecs support...')
-      if (typeof VideoEncoder === 'undefined') {
-        console.warn('❌ [WORKER-MAIN] WebCodecs not supported, falling back to MediaRecorder')
-        return startSimpleRecording(stream)
-      }
       console.log('✅ [WORKER-MAIN] VideoEncoder available')
 
       // 3. 创建 MediaStreamTrackProcessor（主线程）
@@ -124,11 +95,6 @@
         readyState: videoTrack.readyState
       })
 
-      // 检查 MediaStreamTrackProcessor 支持
-      if (typeof MediaStreamTrackProcessor === 'undefined') {
-        console.warn('❌ [WORKER-MAIN] MediaStreamTrackProcessor not supported, falling back to MediaRecorder')
-        return startSimpleRecording(stream)
-      }
       console.log('✅ [WORKER-MAIN] MediaStreamTrackProcessor available')
 
       const processor = new MediaStreamTrackProcessor({ track: videoTrack })
@@ -353,34 +319,6 @@
     }
   }
 
-  // 降级到简单录制
-  function startSimpleRecording(stream: MediaStream) {
-    const mimeType = getSupportedMimeType()
-    const recorder = new MediaRecorder(stream, {
-      mimeType,
-      videoBitsPerSecond: 8000000
-    })
-
-    let chunks: Blob[] = []
-
-    recorder.ondataavailable = (event) => {
-      if (event.data && event.data.size > 0) {
-        chunks.push(event.data)
-      }
-    }
-
-    recorder.onstop = async () => {
-      const videoBlob = new Blob(chunks, { type: mimeType })
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-      const filename = `worker-fallback-${timestamp}.webm`
-
-      await ChromeAPIWrapper.saveVideo(videoBlob, filename)
-      console.log('✅ Fallback recording saved:', filename)
-    }
-
-    recorder.start(1000)
-    console.log('✅ Fallback recording started')
-  }
 
   async function stopWorkerRecording() {
     try {
@@ -615,6 +553,38 @@
       await startWorkerRecording()
     }
   }
+  // 从 ElementRegionSelector 移动过来的录制函数
+  const recording = $derived(recordingModeStore.isRecording)
+  const currentMode = $derived(recordingModeStore.currentMode)
+
+  // 录制按钮显示逻辑
+  const shouldShowElementRecordButton = $derived(currentMode === 'element' || currentMode === 'region')
+  const shouldShowWebCodecsRecordButton = $derived(currentMode === 'tab' || currentMode === 'window' || currentMode === 'screen')
+
+  // Element/Region 录制状态适配为 RecordButton 接口
+  const elementRecordingStatus = $derived<'idle' | 'requesting' | 'recording' | 'stopping' | 'error' | 'completed'>(
+    recording ? 'recording' : 'idle'
+  )
+
+  async function handleStartCapture() {
+    await sendToBackground('START_CAPTURE')
+  }
+
+  async function handleStopCapture() {
+    // 结束录制
+    await sendToBackground('STOP_CAPTURE')
+    // 回到初始状态：退出选择并清除已选
+    await sendToBackground('EXIT_SELECTION')
+    await sendToBackground('CLEAR_SELECTION')
+  }
+
+  async function handleToggleCapture() {
+    if (recording) {
+      await handleStopCapture()
+    } else {
+      await handleStartCapture()
+    }
+  }
 
 
 
@@ -664,7 +634,22 @@
 
       console.log('📞 Calling chrome.desktopCapture.chooseDesktopMedia...')
 
-      const sources = ['screen', 'window', 'tab', 'audio']
+      // 根据当前用户选择的模式确定 sources
+      const currentSelectedMode = recordingModeStore.currentMode
+      let sources: string[]
+
+      if (currentSelectedMode === 'tab') {
+        sources = ['tab']
+      } else if (currentSelectedMode === 'window') {
+        sources = ['window']
+      } else if (currentSelectedMode === 'screen') {
+        sources = ['screen']
+      } else {
+        // 默认情况（element/region 模式不应该调用这个函数，但作为后备）
+        sources = ['screen', 'window', 'tab']
+      }
+
+      console.log('🎯 Using sources for mode:', currentSelectedMode, '→', sources)
 
       const requestId = chrome.desktopCapture.chooseDesktopMedia(
         sources,
@@ -760,24 +745,6 @@
     }
   }
 
-  // 获取支持的MIME类型
-  function getSupportedMimeType(): string {
-    const types = [
-      'video/webm;codecs=vp9',
-      'video/webm;codecs=vp8',
-      'video/webm'
-    ]
-
-    for (const type of types) {
-      if (MediaRecorder.isTypeSupported(type)) {
-        console.log('📋 Using MIME type:', type)
-        return type
-      }
-    }
-
-    console.warn('⚠️ No preferred MIME type supported, using default')
-    return 'video/webm'
-  }
 
   // 检查扩展环境和权限
   async function checkExtensionEnvironment() {
@@ -819,31 +786,6 @@
 
     // 检查 Worker 环境
     checkWorkerEnvironment()
-
-	    // 如果作为新标签页打开并带有 studio=1，则从 IndexedDB 加载并进入编辑模式
-	    // ;(async () => {
-	    //   try {
-	    //     const params = new URLSearchParams(location.search)
-	    //     if (params.get('studio') === '1') {
-	    //       const id = params.get('id')
-	    //       if (id) {
-	    //         console.log('📦 [Sidepanel->Studio] Loading recording by id:', id)
-	    //         const result = await recordingCache.load(id)
-	    //         if (result?.chunks?.length) {
-	    //           workerEncodedChunks = result.chunks
-	    //           recordingStore.updateStatus('completed')
-	    //           recordingStore.setEngine('webcodecs')
-	    //           console.log('✅ [Sidepanel->Studio] Loaded', result.chunks.length, 'chunks', result.meta)
-	    //         } else {
-	    //           console.warn('⚠️ [Sidepanel->Studio] No data found for id:', id)
-	    //         }
-	    //       }
-	    //     }
-	    //   } catch (e) {
-	    //     console.error('❌ [Sidepanel->Studio] Failed to load from IndexedDB:', e)
-	    //   }
-	    // })()
-
 
     // 设置元素录制集成监听器
     const elementRecordingListener = (data: ElementRecordingData) => {
@@ -923,8 +865,27 @@
       <ElementRegionSelector />
     </div>
 
-    <!-- 录制控制面板（简化版） -->
-    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-lg max-w-md w-full transform transition-all duration-300 ease-in-out hover:shadow-xl hover:scale-105">
+    <!-- 录制控制按钮 -->
+    {#if shouldShowElementRecordButton}
+      <!-- Element/Region 录制按钮 -->
+      <div class="max-w-md w-full mb-6">
+        <RecordButton
+          isRecording={recording}
+          status={elementRecordingStatus}
+          onclick={handleToggleCapture}
+        />
+      </div>
+    {:else if shouldShowWebCodecsRecordButton}
+      <!-- Tab/Window/Screen 录制按钮 -->
+      <div class="max-w-md w-full mb-6">
+        <RecordButton
+          isRecording={workerIsRecording}
+          status={workerStatus}
+          onclick={handleWorkerRecordButtonClick}
+        />
+      </div>
+    {/if}
+
       <!-- 错误信息显示 -->
       {#if workerErrorMessage || workerEnvironmentIssues.length > 0}
         <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
@@ -956,14 +917,6 @@
           {/if}
         </div>
       {/if}
-
-      <!-- 录制控制区域 -->
-      <RecordButton
-        isRecording={workerIsRecording}
-        status={workerStatus}
-        onclick={handleWorkerRecordButtonClick}
-      />
-    </div>
   </div>
 {/if}
 

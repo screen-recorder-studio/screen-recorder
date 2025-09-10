@@ -4,6 +4,74 @@ console.log('Screen Recorder Extension Service Worker loaded')
 // 添加 lab 功能：每个标签页的状态管理
 const tabStates = new Map(); // tabId -> { mode: 'element'|'region', selecting: boolean, recording: boolean }
 
+// 能力探测：计算某个标签页是否允许内容脚本（用于隐藏元素/区域录制）
+async function computeCapabilities(tabId) {
+  let url = ''
+  try {
+    const tab = await chrome.tabs.get(tabId)
+    url = tab?.url || ''
+  } catch (e) {
+    // ignore
+  }
+
+  const result = {
+    contentScriptAvailable: false,
+    reason: 'unknown',
+    url
+  }
+
+  if (!url) {
+    return result
+  }
+
+  const lower = url.toLowerCase()
+
+  // 1) 静态禁区：chrome://、chrome-extension://、edge://、about:*、Chrome Web Store
+  const isForbiddenScheme = lower.startsWith('chrome://') || lower.startsWith('chrome-extension://') || lower.startsWith('edge://') || lower.startsWith('about:')
+  const isWebStore = lower.startsWith('https://chrome.google.com/webstore') || lower.includes('chrome.google.com/webstore')
+  if (isForbiddenScheme || isWebStore) {
+    result.reason = 'forbidden_url'
+    return result
+  }
+
+  // 2) file:// 需要“允许访问文件URL”权限
+  if (lower.startsWith('file://')) {
+    const allowed = await new Promise((resolve) => {
+      try {
+        if (chrome.extension?.isAllowedFileSchemeAccess) {
+          chrome.extension.isAllowedFileSchemeAccess(resolve)
+        } else {
+          resolve(false)
+        }
+      } catch {
+        resolve(false)
+      }
+    })
+    if (!allowed) {
+      result.reason = 'no_file_access'
+      return result
+    }
+  }
+
+  // 3) 兜底：尝试轻量 executeScript 检查注入能力
+  try {
+    await chrome.scripting.executeScript({ target: { tabId }, func: () => true })
+    return { contentScriptAvailable: true, url }
+  } catch (e) {
+    result.reason = 'runtime_denied'
+    return result
+  }
+}
+
+// 辅助：带能力信息广播当前 tab 状态
+async function broadcastStateWithCapabilities(tabId) {
+  // Ensure state exists
+  if (!tabStates.has(tabId)) tabStates.set(tabId, { mode: 'element', selecting: false, recording: false })
+  const state = tabStates.get(tabId)
+  const capabilities = await computeCapabilities(tabId)
+  broadcastToTab(tabId, { type: 'STATE_UPDATE', state: { ...state, capabilities } })
+}
+
 // 扩展安装时的初始化
 chrome.runtime.onInstalled.addListener((details) => {
   console.log('Extension installed:', details.reason)
@@ -57,12 +125,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     switch (message.type) {
       case 'GET_STATE':
-        sendResponse({ ok: true, state });
+        (async () => {
+          const capabilities = await computeCapabilities(tabId);
+          try { sendResponse({ ok: true, state: { ...state, capabilities } }); } catch (e) {}
+        })();
         return true;
 
       case 'SET_MODE':
         state.mode = message.mode === 'region' ? 'region' : 'element';
-        broadcastToTab(tabId, { type: 'STATE_UPDATE', state });
+        broadcastStateWithCapabilities(tabId);
+        try { sendResponse({ ok: true, state }); } catch (e) {}
         return true;
 
       case 'ENTER_SELECTION':
@@ -70,13 +142,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         ensureContentInjected(tabId).then(() => {
           chrome.tabs.sendMessage(tabId, { type: 'ENTER_SELECTION', mode: state.mode });
         });
-        broadcastToTab(tabId, { type: 'STATE_UPDATE', state });
+        broadcastStateWithCapabilities(tabId);
+        try { sendResponse({ ok: true, state }); } catch (e) {}
         return true;
 
       case 'EXIT_SELECTION':
         state.selecting = false;
         chrome.tabs.sendMessage(tabId, { type: 'EXIT_SELECTION' });
-        broadcastToTab(tabId, { type: 'STATE_UPDATE', state });
+        broadcastStateWithCapabilities(tabId);
+        try { sendResponse({ ok: true, state }); } catch (e) {}
         return true;
 
       case 'START_CAPTURE':
@@ -84,27 +158,32 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         ensureContentInjected(tabId).then(() => {
           chrome.tabs.sendMessage(tabId, { type: 'START_CAPTURE' });
         });
-        broadcastToTab(tabId, { type: 'STATE_UPDATE', state });
+        broadcastStateWithCapabilities(tabId);
+        try { sendResponse({ ok: true, state }); } catch (e) {}
         return true;
 
       case 'STOP_CAPTURE':
         state.recording = false;
         chrome.tabs.sendMessage(tabId, { type: 'STOP_CAPTURE' });
-        broadcastToTab(tabId, { type: 'STATE_UPDATE', state });
+        broadcastStateWithCapabilities(tabId);
+        try { sendResponse({ ok: true, state }); } catch (e) {}
         return true;
 
       case 'CLEAR_SELECTION':
         chrome.tabs.sendMessage(tabId, { type: 'CLEAR_SELECTION' });
-        broadcastToTab(tabId, { type: 'STATE_UPDATE', state });
+        broadcastStateWithCapabilities(tabId);
+        try { sendResponse({ ok: true, state }); } catch (e) {}
         return true;
 
       case 'DOWNLOAD_VIDEO':
         chrome.tabs.sendMessage(tabId, { type: 'DOWNLOAD_VIDEO' });
+        try { sendResponse({ ok: true }); } catch (e) {}
         return true;
 
       case 'CONTENT_REPORT':
         // pass-through updates to side panel
         broadcastToTab(tabId, { type: 'STATE_UPDATE', state: { ...state, ...message.partial } });
+        try { sendResponse({ ok: true }); } catch (e) {}
         return true;
 
       case 'ELEMENT_RECORDING_COMPLETE':
@@ -586,6 +665,18 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   tabStates.delete(tabId);
 });
 
+// 当用户切换活动标签页时，重新广播包含能力信息的状态
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  try {
+    if (activeInfo?.tabId != null) {
+      await broadcastStateWithCapabilities(activeInfo.tabId)
+    }
+  } catch (e) {
+    // ignore
+  }
+})
+
+
 chrome.tabs.onUpdated.addListener((tabId, info) => {
   if (info.status === 'loading') {
     // reset selecting/recording on navigation
@@ -593,7 +684,7 @@ chrome.tabs.onUpdated.addListener((tabId, info) => {
     if (st) {
       st.selecting = false;
       st.recording = false;
-      broadcastToTab(tabId, { type: 'STATE_UPDATE', state: st });
+      broadcastStateWithCapabilities(tabId);
     }
   }
 });

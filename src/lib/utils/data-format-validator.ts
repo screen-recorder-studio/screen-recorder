@@ -5,7 +5,7 @@ export interface ChunkValidationResult {
   isValid: boolean
   errors: string[]
   warnings: string[]
-  format: 'uint8array' | 'arraybuffer' | 'typed-array' | 'unknown'
+  format: 'uint8array' | 'arraybuffer' | 'typed-array' | 'array' | 'unknown'
   size: number
 }
 
@@ -54,7 +54,7 @@ export class DataFormatValidator {
       result.format = 'array'
       result.size = chunk.data.length
       // 验证数组元素
-      if (!chunk.data.every(v => typeof v === 'number' && v >= 0 && v <= 255)) {
+      if (!chunk.data.every((v: unknown) => typeof v === 'number' && v >= 0 && v <= 255)) {
         result.warnings.push('Array contains invalid byte values')
       }
     } else if (chunk.data && typeof chunk.data === 'object' && 'buffer' in chunk.data) {
@@ -147,7 +147,7 @@ export class DataFormatValidator {
 
       if (Array.isArray(data)) {
         // 验证数组元素都是有效的字节值
-        if (data.every(v => typeof v === 'number' && v >= 0 && v <= 255)) {
+        if (data.every((v: unknown) => typeof v === 'number' && v >= 0 && v <= 255)) {
           return new Uint8Array(data);
         } else {
           console.warn('⚠️ [DataFormatValidator] Array contains invalid byte values');
@@ -158,17 +158,17 @@ export class DataFormatValidator {
       // 处理序列化后的 ArrayBuffer 或 Uint8Array 对象
       if (data && typeof data === 'object') {
         // 方法1：尝试从 Object.values 获取数据（最常见的序列化形式）
-        const values = Object.values(data);
-        if (values.length > 0 && values.every(v => typeof v === 'number' && v >= 0 && v <= 255)) {
-          return new Uint8Array(values);
+        const values = Object.values(data) as unknown[];
+        if (values.length > 0 && values.every((v: unknown) => typeof v === 'number' && v >= 0 && v <= 255)) {
+          return new Uint8Array(values as number[]);
         }
 
         // 方法2：尝试从索引属性重建（适用于类数组对象）
         if (data.length !== undefined && typeof data.length === 'number' && data.length > 0) {
-          const values = [];
+          const values: number[] = [];
           for (let i = 0; i < data.length; i++) {
             if (data[i] !== undefined && typeof data[i] === 'number') {
-              values.push(data[i]);
+              values.push(data[i] as number);
             }
           }
           if (values.length > 0) {

@@ -90,7 +90,7 @@ export const recordingCache = {
 
       chunks.forEach((chunk, index) => {
         const uint8 = DataFormatValidator.convertToUint8Array(chunk.data)
-        const buffer = uint8 ? uint8.buffer.slice(uint8.byteOffset, uint8.byteOffset + uint8.byteLength) : new Uint8Array().buffer
+        const buffer: ArrayBuffer = uint8 ? (uint8.buffer.slice(uint8.byteOffset, uint8.byteOffset + uint8.byteLength) as ArrayBuffer) : new Uint8Array().buffer
         const record: StoredChunk = {
           key: `${recordingId}:${index}`,
           recordingId,
