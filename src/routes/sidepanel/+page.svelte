@@ -886,8 +886,6 @@
       </div>
     {/if}
 
-    <!-- 录制控制面板（简化版） -->
-    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-lg max-w-md w-full transform transition-all duration-300 ease-in-out hover:shadow-xl hover:scale-105">
       <!-- 错误信息显示 -->
       {#if workerErrorMessage || workerEnvironmentIssues.length > 0}
         <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
@@ -919,9 +917,6 @@
           {/if}
         </div>
       {/if}
-
-      
-    </div>
   </div>
 {/if}
 
