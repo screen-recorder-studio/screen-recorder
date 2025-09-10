@@ -16,6 +16,16 @@
   const mode = $derived(recordingModeStore.currentMode)
   // const selecting = $derived(recordingModeStore.isSelecting)
   const recording = $derived(recordingModeStore.isRecording)
+  const canUseElementRegion = $derived(capabilities?.contentScriptAvailable !== false)
+  const contentScriptBlocked = $derived(capabilities?.contentScriptAvailable === false)
+
+  // 当从可注入页面切换到受保护页面时，若当前为 element/region，则自动切换为 tab
+  $effect(() => {
+    if (contentScriptBlocked && (mode === 'element' || mode === 'region')) {
+      recordingModeStore.setMode('tab')
+    }
+  })
+
 
   // 设置UI状态
   function setUIState(state: any) {
@@ -68,8 +78,8 @@
     await sendToBackground('EXIT_SELECTION')
     await sendToBackground('CLEAR_SELECTION')
     }
-   
-    
+
+
   }
 
   async function handleWindowSelection() {
@@ -79,7 +89,7 @@
     await sendToBackground('EXIT_SELECTION')
     await sendToBackground('CLEAR_SELECTION')
     }
-    
+
   }
 
   async function handleScreenSelection() {
@@ -89,7 +99,7 @@
        await sendToBackground('EXIT_SELECTION')
        await sendToBackground('CLEAR_SELECTION')
      }
-    
+
   }
 
 
@@ -132,25 +142,27 @@
 
   <!-- 控制按钮 -->
   <div class="space-y-3">
-    <button
-      onclick={handleEnterElementSelection}
-      class="w-full px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed disabled:hover:bg-gray-400 disabled:shadow-none disabled:opacity-80 flex items-center justify-center gap-2"
-      disabled={recording}
-      title={recording ? '录制中不可用' : undefined}
-    >
-      <MousePointer class="w-4 h-4" />
-      录制元素
-    </button>
+    {#if canUseElementRegion}
+      <button
+        onclick={handleEnterElementSelection}
+        class="w-full px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed disabled:hover:bg-gray-400 disabled:shadow-none disabled:opacity-80 flex items-center justify-center gap-2"
+        disabled={recording}
+        title={recording ? '录制中不可用' : undefined}
+      >
+        <MousePointer class="w-4 h-4" />
+        录制元素
+      </button>
 
-    <button
-      onclick={handleEnterRegionSelection}
-      class="w-full px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed disabled:hover:bg-gray-400 disabled:shadow-none disabled:opacity-80 flex items-center justify-center gap-2"
-      disabled={recording}
-      title={recording ? '录制中不可用' : undefined}
-    >
-      <Crop class="w-4 h-4" />
-      录制区域
-    </button>
+      <button
+        onclick={handleEnterRegionSelection}
+        class="w-full px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed disabled:hover:bg-gray-400 disabled:shadow-none disabled:opacity-80 flex items-center justify-center gap-2"
+        disabled={recording}
+        title={recording ? '录制中不可用' : undefined}
+      >
+        <Crop class="w-4 h-4" />
+        录制区域
+      </button>
+    {/if}
 
     {#if selectedDesc}
       <button

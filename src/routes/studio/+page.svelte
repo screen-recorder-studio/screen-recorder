@@ -314,10 +314,6 @@
     }
   }
 
-  .animate-fade-in {
-    animation: fade-in 0.5s ease-out;
-  }
-
   /* 优化滚动条样式 */
   :global(.overflow-y-auto::-webkit-scrollbar) {
     width: 6px;
