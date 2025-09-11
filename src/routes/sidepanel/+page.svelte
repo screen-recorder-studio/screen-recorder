@@ -39,6 +39,97 @@
 
 
 
+  // ========= OPFS Writer (feature-flagged) =========
+  const OPFS_WRITER_ENABLED = true // set true to enable OPFS side-write (dev only)
+  let opfsWriter: Worker | null = null
+  let opfsWriterReady = false
+  let opfsSessionId: string | null = null
+  let lastWorkerConfiguredConfig: any = null
+
+  function ensureOpfsSessionId() {
+    if (!opfsSessionId) opfsSessionId = `${Date.now()}`
+    return opfsSessionId
+  }
+
+  async function initOpfsWriter(meta: { codec?: string; width?: number; height?: number; fps?: number }) {
+    if (!OPFS_WRITER_ENABLED) return
+    try {
+      if (opfsWriter) return
+      opfsWriterReady = false
+      opfsWriter = new Worker(
+        new URL('../../lib/workers/opfs-writer-worker.ts', import.meta.url),
+        { type: 'module' }
+      )
+      const id = ensureOpfsSessionId()
+      opfsWriter.onmessage = (ev: MessageEvent) => {
+        const { type, id: rid } = ev.data || {}
+        if (type === 'ready') {
+          console.log('[OPFS] writer ready for', rid)
+          opfsWriterReady = true
+        } else if (type === 'progress') {
+          const { bytesWrittenTotal, chunksWritten } = ev.data
+          if (chunksWritten % 200 === 0) console.log('[OPFS] progress', { bytesWrittenTotal, chunksWritten })
+        } else if (type === 'error') {
+          console.warn('[OPFS] writer error', ev.data)
+        } else if (type === 'finalized') {
+          console.log('[OPFS] writer finalized for', rid)
+        }
+      }
+      opfsWriter.postMessage({ type: 'init', id, meta })
+    } catch (e) {
+      console.warn('[OPFS] init failed (feature disabled or env unsupported):', e)
+      opfsWriter = null
+      opfsWriterReady = false
+    }
+  }
+
+  function appendToOpfsFromEncodedChunk(d: { data: Uint8Array; timestamp?: number; type?: string; codedWidth?: number; codedHeight?: number; codec?: string }) {
+    if (!OPFS_WRITER_ENABLED || !opfsWriter || !opfsWriterReady) return
+    try {
+      // Do NOT transfer the same buffer because we still need it for IndexedDB handoff
+      const copy = new Uint8Array(d.data.byteLength)
+      copy.set(d.data)
+      opfsWriter.postMessage({
+        type: 'append',
+        buffer: copy.buffer,
+        timestamp: d.timestamp || 0,
+        chunkType: d.type === 'key' ? 'key' : 'delta',
+        codedWidth: d.codedWidth,
+        codedHeight: d.codedHeight,
+        codec: d.codec,
+        isKeyframe: d.type === 'key'
+      }, [copy.buffer])
+    } catch (e) {
+      console.warn('[OPFS] append failed', e)
+    }
+  }
+
+  async function finalizeOpfsWriter() {
+    if (!OPFS_WRITER_ENABLED || !opfsWriter) return
+    const writer = opfsWriter
+    try {
+      await new Promise<void>((resolve) => {
+        let settled = false
+        const onMsg = (ev: MessageEvent) => {
+          const t = (ev.data || {}).type
+          if (t === 'finalized' || t === 'error') {
+            if (!settled) { settled = true; try { writer.removeEventListener('message', onMsg as any) } catch {}; resolve() }
+          }
+        }
+        try { writer.addEventListener('message', onMsg as any) } catch {}
+        try { writer.postMessage({ type: 'finalize' }) } catch {}
+        // safety timeout
+        setTimeout(() => { if (!settled) { settled = true; try { writer.removeEventListener('message', onMsg as any) } catch {}; resolve() } }, 1500)
+      })
+    } catch (e) {
+      console.warn('[OPFS] finalize failed', e)
+    } finally {
+      try { writer.terminate() } catch {}
+      if (opfsWriter === writer) { opfsWriter = null; opfsWriterReady = false; opfsSessionId = null }
+    }
+  }
+
+
 	  // 跳转提示
 	  let showHandoffNotice = $state(false)
 	  let handoffText = $state('将转到 Studio 中...')
@@ -131,6 +222,21 @@
           } else if (event.data.type === 'configured') {
             console.log('✅ [WORKER-MAIN] Worker configuration confirmed')
             workerConfigured = true
+            // 保存实际配置，并在此时初始化 OPFS 写入（避免后续 handler 错过 configured 事件）
+            const cfg = event.data.config
+            lastWorkerConfiguredConfig = cfg
+            if (OPFS_WRITER_ENABLED) {
+              try {
+                initOpfsWriter({
+                  codec: cfg?.codec,
+                  width: cfg?.width,
+                  height: cfg?.height,
+                  fps: cfg?.framerate
+                })
+              } catch (e) {
+                console.warn('[OPFS] init during setup failed:', e)
+              }
+            }
             clearTimeout(timeout)
             resolve()
             // 配置完成后，设置正常的消息处理器
@@ -253,6 +359,17 @@
           switch (type) {
             case 'configured':
               console.log('✅ [WORKER-MAIN] Worker configured successfully:', config)
+              // Store actual configured config from worker
+              lastWorkerConfiguredConfig = config
+              // Initialize OPFS writer (feature-flagged)
+              if (OPFS_WRITER_ENABLED) {
+                initOpfsWriter({
+                  codec: config?.codec,
+                  width: config?.width,
+                  height: config?.height,
+                  fps: config?.framerate
+                })
+              }
               break
             case 'chunk':
               // 处理编码后的数据块
@@ -275,6 +392,8 @@
                   codedHeight: data.codedHeight || 1080
                 })
                 console.log(`💾 [WORKER-MAIN] Collected chunk ${workerEncodedChunks.length}, total size: ${workerEncodedChunks.reduce((sum, chunk) => sum + chunk.size, 0)} bytes`)
+                // Side-write to OPFS (does not transfer the same buffer)
+                try { appendToOpfsFromEncodedChunk(data) } catch {}
               }
               break
             case 'complete':
@@ -358,6 +477,10 @@
 
       // 清理 Worker 引用
       workerCurrentWorker = null
+
+
+	      // Finalize OPFS writer if enabled
+	      await finalizeOpfsWriter()
 
     } catch (error) {
       console.error('❌ Worker stop failed:', error)
@@ -595,21 +718,25 @@
   const shouldShowElementRecordButton = $derived(currentMode === 'element' || currentMode === 'region')
   const shouldShowWebCodecsRecordButton = $derived(currentMode === 'tab' || currentMode === 'window' || currentMode === 'screen')
 
-  // Element/Region 录制状态适配为 RecordButton 接口
-  const elementRecordingStatus = $derived<'idle' | 'requesting' | 'recording' | 'stopping' | 'error' | 'completed'>(
-    recording ? 'recording' : 'idle'
-  )
+  // Element/Region 录制 UI 状态（显式准备阶段）
+  let elementUIStatus = $state<'idle' | 'requesting' | 'recording' | 'stopping' | 'error' | 'completed'>('idle')
 
   async function handleStartCapture() {
+    // 进入准备阶段，先构建必要通道/资源
+    elementUIStatus = 'requesting'
+    // 触发内容脚本真正开始采集
     await sendToBackground('START_CAPTURE')
   }
 
   async function handleStopCapture() {
     // 结束录制
+    elementUIStatus = 'stopping'
     await sendToBackground('STOP_CAPTURE')
     // 回到初始状态：退出选择并清除已选
     await sendToBackground('EXIT_SELECTION')
     await sendToBackground('CLEAR_SELECTION')
+    // 复位 UI 状态
+    elementUIStatus = 'idle'
   }
 
   async function handleToggleCapture() {
@@ -833,10 +960,11 @@
 	          }
 	        })
 	        // 监听转发过来的 start/meta/chunk/end
-	        elementStreamPort.onMessage.addListener((msg: any) => {
+	        elementStreamPort.onMessage.addListener(async (msg: any) => {
 	          switch (msg?.type) {
 	            case 'start':
 	              streamingChunks = []
+                elementUIStatus = 'recording'
 	              console.log('[Stream][Sidepanel] start received; reset chunks')
 	              break
 	            case 'meta':
@@ -846,8 +974,7 @@
 	            case 'chunk': {
 	              try {
 	                const buf: ArrayBuffer | undefined = msg.data
-	                if (!buf) break
-	                const view = new Uint8Array(buf)
+	                const view = buf
 	                streamingChunks.push({
 	                  data: view,
 	                  timestamp: Number(msg.ts) || 0,
@@ -857,6 +984,7 @@
 	                  codedHeight: streamingMeta?.height || 1080,
 	                  codec: streamingMeta?.codec || 'vp8'
 	                })
+
 	              } catch (e) {
 	                console.warn('[Sidepanel] failed to accumulate chunk', e)
 	              }
@@ -872,9 +1000,17 @@
 
 	              // 使用与“大包”一致的数据结构进行处理
 	              if (streamingChunks.length > 0) {
+
+		              // finalize OPFS for element/region stream
+		              // try { await finalizeOpfsWriter() } catch (e) { console.warn('[OPFS] finalize (element-stream) failed', e) }
+
 	                handleElementRecordingData({ encodedChunks: streamingChunks, metadata: streamingMeta })
+                  elementUIStatus = 'completed'
+                  
 	              }
 	              streamingChunks = []
+
+
 	              streamingMeta = null
 	              break
 	            default:
@@ -976,7 +1112,7 @@
       <div class="max-w-md w-full mb-6">
         <RecordButton
           isRecording={recording}
-          status={elementRecordingStatus}
+          status={elementUIStatus}
           onclick={handleToggleCapture}
         />
       </div>

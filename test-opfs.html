@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OPFS Writer Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        button { padding: 10px 20px; margin: 10px; }
+        .log { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .error { background: #ffe6e6; color: #d00; }
+        .success { background: #e6ffe6; color: #080; }
+    </style>
+</head>
+<body>
+    <h1>OPFS Writer Worker Test</h1>
+    
+    <button onclick="testOpfsWriter()">Test OPFS Writer</button>
+    <button onclick="checkOpfsContents()">Check OPFS Contents</button>
+    <button onclick="clearLogs()">Clear Logs</button>
+    
+    <div id="logs"></div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const div = document.createElement('div');
+            div.className = `log ${type}`;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logs.appendChild(div);
+            console.log(message);
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+
+        async function testOpfsWriter() {
+            try {
+                log('Starting OPFS Writer test...');
+                
+                // Create worker
+                const worker = new Worker('/src/lib/workers/opfs-writer-worker.ts', { type: 'module' });
+                
+                // Set up message handler
+                worker.onmessage = (ev) => {
+                    const { type, id } = ev.data || {};
+                    log(`Worker message: ${type} ${id ? `(${id})` : ''}`, 'info');
+                    
+                    if (type === 'ready') {
+                        log('Worker ready, sending test data...', 'success');
+                        
+                        // Send some test data
+                        const testData = new TextEncoder().encode('Hello OPFS World! This is test data.');
+                        worker.postMessage({
+                            type: 'append',
+                            buffer: testData.buffer,
+                            timestamp: Date.now(),
+                            chunkType: 'key',
+                            codedWidth: 1920,
+                            codedHeight: 1080,
+                            codec: 'vp8',
+                            isKeyframe: true
+                        }, [testData.buffer]);
+                        
+                        // Send more test data
+                        setTimeout(() => {
+                            const moreData = new TextEncoder().encode(' Additional test chunk data.');
+                            worker.postMessage({
+                                type: 'append',
+                                buffer: moreData.buffer,
+                                timestamp: Date.now() + 100,
+                                chunkType: 'delta',
+                                codedWidth: 1920,
+                                codedHeight: 1080,
+                                codec: 'vp8',
+                                isKeyframe: false
+                            }, [moreData.buffer]);
+                            
+                            // Finalize after a short delay
+                            setTimeout(() => {
+                                log('Finalizing worker...', 'info');
+                                worker.postMessage({ type: 'finalize' });
+                            }, 500);
+                        }, 200);
+                    } else if (type === 'finalized') {
+                        log('Worker finalized successfully!', 'success');
+                        worker.terminate();
+                    } else if (type === 'error') {
+                        log(`Worker error: ${ev.data.message}`, 'error');
+                    }
+                };
+                
+                worker.onerror = (err) => {
+                    log(`Worker error: ${err.message}`, 'error');
+                };
+                
+                // Initialize worker
+                const sessionId = `test_${Date.now()}`;
+                worker.postMessage({
+                    type: 'init',
+                    id: sessionId,
+                    meta: {
+                        codec: 'vp8',
+                        width: 1920,
+                        height: 1080,
+                        fps: 30
+                    }
+                });
+                
+            } catch (error) {
+                log(`Test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkOpfsContents() {
+            try {
+                log('Checking OPFS contents...');
+                
+                if (!navigator.storage?.getDirectory) {
+                    log('OPFS not supported in this browser', 'error');
+                    return;
+                }
+                
+                const root = await navigator.storage.getDirectory();
+                log('OPFS root directory accessed', 'success');
+                
+                let foundRecordings = 0;
+                for await (const [name, handle] of root.entries()) {
+                    if (name.startsWith('rec_')) {
+                        foundRecordings++;
+                        log(`Found recording directory: ${name}`, 'info');
+                        
+                        if (handle.kind === 'directory') {
+                            const recDir = handle;
+                            
+                            // Check files in recording directory
+                            for await (const [fileName, fileHandle] of recDir.entries()) {
+                                if (fileHandle.kind === 'file') {
+                                    const file = await fileHandle.getFile();
+                                    log(`  File: ${fileName} (${file.size} bytes)`, 'info');
+                                    
+                                    if (fileName === 'data.bin' && file.size > 0) {
+                                        log(`  ✅ data.bin has content: ${file.size} bytes`, 'success');
+                                    } else if (fileName === 'data.bin' && file.size === 0) {
+                                        log(`  ❌ data.bin is empty`, 'error');
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                if (foundRecordings === 0) {
+                    log('No recording directories found. Run the test first.', 'info');
+                }
+                
+            } catch (error) {
+                log(`Failed to check OPFS: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -467,6 +467,8 @@
 
         state.worker.onmessage = (ev) => {
           const msg = ev.data || {};
+
+          console.log('worker message bbb', msg.data);
           switch (msg.type) {
             case 'configured':
               console.log('[encoder-worker] configured', { codec: 'vp8', width, height, framerate });
@@ -495,7 +497,7 @@
 
                 state.port?.postMessage({
                   type: 'chunk', ts: msg.ts, kind: msg.kind,
-                  size: msg.size, head: msg.head, data: msg.data
+                  size: msg.size, head: msg.head, data: new Uint8Array(msg.data)
                 }, msg.data ? [msg.data] : undefined);
               } catch (err) {
                 console.error('forward chunk failed', err);
