@@ -32,6 +32,11 @@
   let workerEncodedChunks = $state<any[]>([])
   let workerCurrentWorker: Worker | null = null
 
+  // 元素/区域录制：通过后台转发的流式收集（最小改动）
+  let elementStreamPort: chrome.runtime.Port | null = null
+  let streamingChunks: any[] = []
+  let streamingMeta: any = null
+
 
 
 	  // 跳转提示
@@ -48,10 +53,6 @@
   const workerStatus = $derived(recordingStore.state.status)
   const workerErrorMessage = $derived(recordingStore.state.error)
 
-  // 界面模式判断
-  const isMinimalMode = $derived(
-    workerStatus !== 'completed' || workerEncodedChunks.length === 0
-  )
 
   // Worker 系统函数 - 正确的 WebCodecs 架构
   async function startWorkerRecording() {
@@ -397,10 +398,36 @@
         console.warn('⚠️ [Sidepanel] Unexpected data format, expected array');
       }
 
-      // 使用集成工具处理数据
+      // 预标准化：确保 chunk.data 为 Uint8Array、补全尺寸/时间戳
+      const normalizedMeta = {
+        ...(message.metadata || {}),
+        mode: (message.metadata?.mode) || (message.metadata?.selectedRegion ? 'region' : 'element'),
+        source: (message.metadata?.source) || 'element-recording'
+      };
+      const normalizedChunks = (message.encodedChunks || []).map((c: any) => {
+        let data: any = c?.data;
+        if (!(data instanceof Uint8Array)) {
+          if (data instanceof ArrayBuffer) data = new Uint8Array(data);
+          else if (Array.isArray(data)) data = new Uint8Array(data);
+          else data = new Uint8Array(0);
+        }
+        const size = (typeof c?.size === 'number' && c.size > 0) ? c.size : (data?.byteLength || 0);
+        const ts = (typeof c?.timestamp === 'number') ? c.timestamp : 0;
+        return {
+          data,
+          timestamp: ts,
+          type: c?.type === 'key' ? 'key' : 'delta',
+          size,
+          codedWidth: c?.codedWidth || normalizedMeta.width || 1920,
+          codedHeight: c?.codedHeight || normalizedMeta.height || 1080,
+          codec: c?.codec || normalizedMeta.codec || 'vp8'
+        };
+      });
+
+      // 使用集成工具处理数据（已标准化）
       const recordingData: ElementRecordingData = {
-        encodedChunks: message.encodedChunks || [],
-        metadata: message.metadata || {}
+        encodedChunks: normalizedChunks,
+        metadata: normalizedMeta
       }
 
       // 通过集成工具处理
@@ -432,8 +459,13 @@
       // 将元素录制数据设置到主系统
       workerEncodedChunks = compatibleChunks
 
-	      console.log(' \ud83d\udd04 [Sidepanel] \u5f55\u5236\u6574\u5408\u6210\u529f\uff0c\u6b63\u51c6\u5907\u4fdd\u5b58\u5e76\u8df3\u8f6c\u5230 Studio...')
-	      try { await openInStudio() } catch (e) { console.error('\u274c [Sidepanel] Auto handoff to Studio failed:', e) }
+	    try {
+        console.log('[Handoff][Sidepanel] calling openInStudio with chunks', workerEncodedChunks?.length)
+
+        await openInStudio()
+      } catch (e) {
+        console.error('\u274c [Sidepanel] Auto handoff to Studio failed:', e)
+      }
 
       // 更新录制状态为完成
       recordingStore.updateStatus('completed')
@@ -466,12 +498,13 @@
   // 将当前录制数据保存并在新标签打开 Studio 页面
   async function openInStudio() {
     try {
+      console.log('[Handoff][Sidepanel] openInStudio entered', { chunks: workerEncodedChunks?.length, handoffInProgress })
       if (!workerEncodedChunks || workerEncodedChunks.length === 0) {
         console.warn('⚠️ [Sidepanel] No chunks to handoff to Studio')
         return
       }
       if (handoffInProgress) {
-        console.warn('⏳ [Sidepanel] Handoff already in progress')
+        console.warn('⏳ [Sidepanel] Handoff already in progress', { chunks: workerEncodedChunks?.length })
         return
       }
       handoffInProgress = true
@@ -488,6 +521,7 @@
         totalSize
       }
       console.log('💾 [Sidepanel] Saving recording to IndexedDB...', { id, meta })
+
       await recordingCache.save(id, workerEncodedChunks, meta)
 
       // 打开扩展根目录下的 studio.html（按需加载 id）
@@ -782,6 +816,76 @@
     console.log('📱 Sidepanel mounted with Worker system')
 
     // 检查扩展环境
+
+	    // 注册成为元素/区域编码流的消费者（通过 background 转发）
+	    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.tabs) {
+	      try {
+	        elementStreamPort = chrome.runtime.connect({ name: 'element-stream-consumer' })
+        console.log('[Stream][Sidepanel] connect element-stream-consumer port')
+
+	        // 绑定当前活动标签页 id
+	        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+	          const tabId = tabs?.[0]?.id
+	          if (typeof tabId === 'number') {
+	            try { elementStreamPort?.postMessage({ type: 'register', tabId }) } catch {}
+            console.log('[Stream][Sidepanel] register sent', { tabId })
+
+	          }
+	        })
+	        // 监听转发过来的 start/meta/chunk/end
+	        elementStreamPort.onMessage.addListener((msg: any) => {
+	          switch (msg?.type) {
+	            case 'start':
+	              streamingChunks = []
+	              console.log('[Stream][Sidepanel] start received; reset chunks')
+	              break
+	            case 'meta':
+	              streamingMeta = msg.metadata
+	              console.log('[Stream][Sidepanel] meta received', { width: streamingMeta?.width, height: streamingMeta?.height, codec: streamingMeta?.codec, startTime: streamingMeta?.startTime })
+	              break
+	            case 'chunk': {
+	              try {
+	                const buf: ArrayBuffer | undefined = msg.data
+	                if (!buf) break
+	                const view = new Uint8Array(buf)
+	                streamingChunks.push({
+	                  data: view,
+	                  timestamp: Number(msg.ts) || 0,
+	                  type: msg.kind === 'key' ? 'key' : 'delta',
+	                  size: (typeof msg.size === 'number' && msg.size > 0) ? msg.size : view.byteLength,
+	                  codedWidth: streamingMeta?.width || 1920,
+	                  codedHeight: streamingMeta?.height || 1080,
+	                  codec: streamingMeta?.codec || 'vp8'
+	                })
+	              } catch (e) {
+	                console.warn('[Sidepanel] failed to accumulate chunk', e)
+	              }
+	                const n = streamingChunks.length
+	                if (n <= 3 || n % 100 === 0) {
+	                  console.log('[Stream][Sidepanel] chunk received', { count: n, kind: msg.kind, size: msg.size })
+	                }
+
+	              break
+	            }
+	            case 'end':
+	              console.log('[Stream][Sidepanel] end received', { chunks: streamingChunks.length, hasMeta: !!streamingMeta })
+
+	              // 使用与“大包”一致的数据结构进行处理
+	              if (streamingChunks.length > 0) {
+	                handleElementRecordingData({ encodedChunks: streamingChunks, metadata: streamingMeta })
+	              }
+	              streamingChunks = []
+	              streamingMeta = null
+	              break
+	            default:
+	              break
+	          }
+	        })
+	      } catch (e) {
+	        console.warn('element-stream-consumer connect failed', e)
+	      }
+	    }
+
     checkExtensionEnvironment()
 
     // 检查 Worker 环境
@@ -828,6 +932,9 @@
       if (typeof chrome !== 'undefined' && chrome.runtime) {
         chrome.runtime.onMessage.removeListener(messageListener)
       }
+      // 断开流式端口
+      try { elementStreamPort?.disconnect?.() } catch {}
+      elementStreamPort = null
       // 清理元素录制监听器
       elementRecordingIntegration.removeListener(elementRecordingListener)
     }
@@ -844,9 +951,7 @@
   <title>屏幕录制</title>
 </svelte:head>
 
-<!-- 极简录制模式 -->
-
-{#if isMinimalMode}
+<!-- 录制面板（无 mini 模式） -->
   <div class="flex flex-col items-center justify-center min-h-screen p-4 bg-gradient-to-br from-gray-50 to-gray-100 transition-all duration-300 ease-in-out">
 {#if showHandoffNotice}
   <div class="fixed top-3 left-1/2 -translate-x-1/2 z-50 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-xs shadow-lg">
@@ -918,7 +1023,6 @@
         </div>
       {/if}
   </div>
-{/if}
 
 <style>
   /* 自定义动画类 */

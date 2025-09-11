@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 // Chrome 扩展 Service Worker
 console.log('Screen Recorder Extension Service Worker loaded')
 
@@ -240,9 +242,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ error: 'Unknown action' })
   }
 })
-// 接收内容脚本的 WebCodecs 编码数据流
+// Sidepanel 流消费者：tabId -> sidepanel Port
+const sidepanelConsumers = new Map();
+
+// 接收内容脚本的 WebCodecs 编码数据流，或接收 sidepanel 的注册
 chrome.runtime.onConnect.addListener((port) => {
+  if (port.name === 'element-stream-consumer') {
+    // Sidepanel 端注册成为流消费者，需提供 tabId
+    const onMsg = (msg) => {
+      if (msg && msg.type === 'register' && typeof msg.tabId === 'number') {
+        sidepanelConsumers.set(msg.tabId, port);
+        console.log('[Stream][BG] sidepanel consumer registered', { tabId: msg.tabId });
+        try { chrome.tabs.sendMessage(msg.tabId, { type: 'STREAMING_READY' }); console.log('[Stream][BG] STREAMING_READY sent to content', { tabId: msg.tabId }); } catch (e) { console.warn('[Stream][BG] STREAMING_READY send failed', e); }
+      }
+    };
+    port.onMessage.addListener(onMsg);
+    port.onDisconnect.addListener(() => {
+      // 清理所有相同 port 的注册项
+      for (const [tid, p] of sidepanelConsumers.entries()) {
+        if (p === port) {
+          sidepanelConsumers.delete(tid);
+          console.log('[Stream][BG] sidepanel consumer disconnected', { tabId: tid });
+        }
+      }
+    });
+    return;
+  }
+
   if (port.name !== 'encoded-stream') return;
+
+  const tabId = port.sender?.tab?.id;
   const sess = { started: false, chunks: 0, bytes: 0, codec: '', width: 0, height: 0, framerate: 0, logTimer: null };
   console.log('[encoded-stream] port connected');
   const logProgress = () => {
@@ -258,6 +287,9 @@ chrome.runtime.onConnect.addListener((port) => {
         sess.framerate = msg.framerate;
         if (!sess.logTimer) sess.logTimer = setInterval(logProgress, 1000);
         console.log('[encoded-stream] start', { codec: sess.codec, width: sess.width, height: sess.height, framerate: sess.framerate });
+        break;
+      case 'meta':
+        // 仅转发给 sidepanel
         break;
       case 'chunk':
         sess.chunks += 1;
@@ -285,6 +317,23 @@ chrome.runtime.onConnect.addListener((port) => {
         break;
       default:
         break;
+    }
+
+    // 转发给已注册的 sidepanel（按 tabId 匹配）
+    const consumer = (typeof tabId === 'number') ? sidepanelConsumers.get(tabId) : null;
+    if (consumer) {
+      try {
+        consumer.postMessage({ ...msg, tabId });
+        if (msg?.type === 'start' || msg?.type === 'meta' || msg?.type === 'end' || msg?.type === 'end-request') {
+          console.log('[Stream][BG] forwarded to sidepanel', { tabId, type: msg.type });
+        }
+      } catch (e) {
+        console.warn('[Stream][BG] forward to sidepanel failed', { tabId, type: msg?.type, error: e?.message });
+      }
+    } else {
+      if (msg?.type === 'start' || msg?.type === 'end' || msg?.type === 'end-request') {
+        console.log('[Stream][BG] no sidepanel consumer for tab', { tabId, type: msg?.type });
+      }
     }
   });
   port.onDisconnect.addListener(() => {

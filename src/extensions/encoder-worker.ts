@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 // encoder-worker.js (classic worker)
 // Receives VideoFrame objects from content script, encodes with WebCodecs VideoEncoder,
 // and posts EncodedVideoChunk payloads (ArrayBuffer) back to the content script.

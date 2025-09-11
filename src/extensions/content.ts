@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 // content.js - injected on demand
 (() => {
   if (window.__mcp_injected) return;
@@ -39,6 +41,10 @@
     encodedChunks: [],
     recordingMetadata: null
   };
+
+	  // 流式累积是否就绪（sidepanel注册后由 background 通知）
+	  let streamingReady = false;
+
 
   // Root overlay
   const root = document.createElement('div');
@@ -407,13 +413,30 @@
           framerate
         };
 
+        console.log('[Stream][Content] recordingMetadata prepared', {
+          startTime: state.recordingMetadata.startTime,
+          width: state.recordingMetadata.width,
+          height: state.recordingMetadata.height,
+          framerate: state.recordingMetadata.framerate,
+          selection: state.recordingMetadata.selection
+        });
+
         // 建立与 background 的 Port
         state.port = chrome.runtime.connect({ name: 'encoded-stream' });
         state.port.postMessage({ type: 'start', codec: 'vp8', width, height, framerate });
 
         // 初始化 Dedicated Worker 承担编码职责
         // 通过 fetch -> Blob URL 创建 Worker，避免跨源构造限制
+        console.log('[Stream][Content] port connected; sending start', { width, height, framerate });
+
         const workerUrl = chrome.runtime.getURL('encoder-worker.js');
+
+	        //    
+	        state.port?.postMessage({ type: 'meta', metadata: state.recordingMetadata });
+
+        console.log('[Stream][Content] meta posted to background', { startTime: state.recordingMetadata?.startTime });
+
+
         let workerText = '';
         try {
           const res = await fetch(workerUrl, { cache: 'no-cache' });
@@ -425,6 +448,23 @@
         const workerBlob = new Blob([workerText], { type: 'text/javascript' });
         state.workerBlobUrl = URL.createObjectURL(workerBlob);
         state.worker = new Worker(state.workerBlobUrl);
+
+        // 清理函数：确保只执行一次
+        let cleanedUp = false;
+        const finalizeStop = () => {
+          if (cleanedUp) return; cleanedUp = true;
+          try { state.stream && state.stream.getTracks().forEach(t => t.stop()); } catch {}
+          try { state.worker?.terminate(); } catch {}
+          if (state.workerBlobUrl) { try { URL.revokeObjectURL(state.workerBlobUrl); } catch {} }
+          state.worker = null;
+          state.workerBlobUrl = null;
+          state.port = null;
+          state.usingWebCodecs = false;
+          state.recording = false;
+          hidePreview();
+          report({ recording: false });
+        };
+
         state.worker.onmessage = (ev) => {
           const msg = ev.data || {};
           switch (msg.type) {
@@ -464,10 +504,14 @@
             case 'end':
               state.port?.postMessage({ type: 'end', chunks: state.chunkCount, bytes: state.byteCount });
               console.log(`🎬 [Element Recording] Collected ${state.encodedChunks.length} encoded chunks for editing`);
+              // worker 已完成，执行清理
+              finalizeStop();
               break;
             case 'error':
               console.error('[encoder-worker] error', msg.message);
               state.port?.postMessage({ type: 'error', message: msg.message });
+              // 出错也进行清理，避免悬挂
+              finalizeStop();
               break;
             default:
               break;
@@ -534,8 +578,11 @@
         });
         state.port?.postMessage({ type: 'end-request' });
 
-        // 传递编码数据给主系统进行编辑
-        if (state.encodedChunks.length > 0) {
+        // 传递编码数据给主系统进行编辑（仅在未建立流式通道时兜底一次性传递）
+        console.log('[Stream][Content] end-request posted', { streamingReady, encodedChunks: state.encodedChunks.length });
+        console.log('[Stream][Content] awaiting worker "end" to finalize...');
+
+        if (!streamingReady && state.encodedChunks.length > 0) {
           transferToMainSystem();
         }
       } else {
@@ -547,22 +594,25 @@
       // 停止媒体流
       if (state.stream) state.stream.getTracks().forEach(t => t.stop());
     } finally {
-      state.stream = null;
-      state.track = null;
-      state.mediaRecorder = null;
-      state.encoder = null;
-      state.processor = null;
-      state.reader = null;
-      try { state.worker?.terminate(); } catch {}
-      if (state.workerBlobUrl) { try { URL.revokeObjectURL(state.workerBlobUrl); } catch {} }
-      state.worker = null;
-      state.workerBlobUrl = null;
-      state.port = null;
-      state.usingWebCodecs = false;
-      state.recording = false;
-      hidePreview();
-      // WebCodecs 路径：主动报告
-      report({ recording: false });
+      // WebCodecs 路径下不在此处立即清理，等待 worker 'end' 回调中 finalizeStop 执行
+      if (!state.usingWebCodecs) {
+        state.stream = null;
+        state.track = null;
+        state.mediaRecorder = null;
+        state.encoder = null;
+        state.processor = null;
+        state.reader = null;
+        try { state.worker?.terminate(); } catch {}
+        if (state.workerBlobUrl) { try { URL.revokeObjectURL(state.workerBlobUrl); } catch {} }
+        state.worker = null;
+        state.workerBlobUrl = null;
+        state.port = null;
+        state.usingWebCodecs = false;
+        state.recording = false;
+        hidePreview();
+        // WebCodecs 路径：主动报告
+        report({ recording: false });
+      }
     }
   }
 
@@ -826,6 +876,10 @@
         downloadVideo(); break;
       case 'STATE_UPDATE':
         // no-op for now
+        break;
+      case 'STREAMING_READY':
+        streamingReady = true;
+        console.log('[Stream][Content] STREAMING_READY received', { startTime: state.recordingMetadata?.startTime });
         break;
       default:
         break;
