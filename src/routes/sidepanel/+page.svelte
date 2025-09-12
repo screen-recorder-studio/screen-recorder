@@ -32,6 +32,102 @@
   let workerEncodedChunks = $state<any[]>([])
   let workerCurrentWorker: Worker | null = null
 
+  // 元素/区域录制：通过后台转发的流式收集（最小改动）
+  let elementStreamPort: chrome.runtime.Port | null = null
+  let streamingChunks: any[] = []
+  let streamingMeta: any = null
+
+
+
+  // ========= OPFS Writer (feature-flagged) =========
+  const OPFS_WRITER_ENABLED = true // set true to enable OPFS side-write (dev only)
+  let opfsWriter: Worker | null = null
+  let opfsWriterReady = false
+  let opfsSessionId: string | null = null
+  let lastWorkerConfiguredConfig: any = null
+
+  function ensureOpfsSessionId() {
+    if (!opfsSessionId) opfsSessionId = `${Date.now()}`
+    return opfsSessionId
+  }
+
+  async function initOpfsWriter(meta: { codec?: string; width?: number; height?: number; fps?: number }) {
+    if (!OPFS_WRITER_ENABLED) return
+    try {
+      if (opfsWriter) return
+      opfsWriterReady = false
+      opfsWriter = new Worker(
+        new URL('../../lib/workers/opfs-writer-worker.ts', import.meta.url),
+        { type: 'module' }
+      )
+      const id = ensureOpfsSessionId()
+      opfsWriter.onmessage = (ev: MessageEvent) => {
+        const { type, id: rid } = ev.data || {}
+        if (type === 'ready') {
+          console.log('[OPFS] writer ready for', rid)
+          opfsWriterReady = true
+        } else if (type === 'progress') {
+          const { bytesWrittenTotal, chunksWritten } = ev.data
+          if (chunksWritten % 200 === 0) console.log('[OPFS] progress', { bytesWrittenTotal, chunksWritten })
+        } else if (type === 'error') {
+          console.warn('[OPFS] writer error', ev.data)
+        } else if (type === 'finalized') {
+          console.log('[OPFS] writer finalized for', rid)
+        }
+      }
+      opfsWriter.postMessage({ type: 'init', id, meta })
+    } catch (e) {
+      console.warn('[OPFS] init failed (feature disabled or env unsupported):', e)
+      opfsWriter = null
+      opfsWriterReady = false
+    }
+  }
+
+  function appendToOpfsFromEncodedChunk(d: { data: Uint8Array; timestamp?: number; type?: string; codedWidth?: number; codedHeight?: number; codec?: string }) {
+    if (!OPFS_WRITER_ENABLED || !opfsWriter || !opfsWriterReady) return
+    try {
+      // Do NOT transfer the same buffer because we still need it for IndexedDB handoff
+      const copy = new Uint8Array(d.data.byteLength)
+      copy.set(d.data)
+      opfsWriter.postMessage({
+        type: 'append',
+        buffer: copy.buffer,
+        timestamp: d.timestamp || 0,
+        chunkType: d.type === 'key' ? 'key' : 'delta',
+        codedWidth: d.codedWidth,
+        codedHeight: d.codedHeight,
+        codec: d.codec,
+        isKeyframe: d.type === 'key'
+      }, [copy.buffer])
+    } catch (e) {
+      console.warn('[OPFS] append failed', e)
+    }
+  }
+
+  async function finalizeOpfsWriter() {
+    if (!OPFS_WRITER_ENABLED || !opfsWriter) return
+    const writer = opfsWriter
+    try {
+      await new Promise<void>((resolve) => {
+        let settled = false
+        const onMsg = (ev: MessageEvent) => {
+          const t = (ev.data || {}).type
+          if (t === 'finalized' || t === 'error') {
+            if (!settled) { settled = true; try { writer.removeEventListener('message', onMsg as any) } catch {}; resolve() }
+          }
+        }
+        try { writer.addEventListener('message', onMsg as any) } catch {}
+        try { writer.postMessage({ type: 'finalize' }) } catch {}
+        // safety timeout
+        setTimeout(() => { if (!settled) { settled = true; try { writer.removeEventListener('message', onMsg as any) } catch {}; resolve() } }, 1500)
+      })
+    } catch (e) {
+      console.warn('[OPFS] finalize failed', e)
+    } finally {
+      try { writer.terminate() } catch {}
+      if (opfsWriter === writer) { opfsWriter = null; opfsWriterReady = false; opfsSessionId = null }
+    }
+  }
 
 
 	  // 跳转提示
@@ -48,10 +144,6 @@
   const workerStatus = $derived(recordingStore.state.status)
   const workerErrorMessage = $derived(recordingStore.state.error)
 
-  // 界面模式判断
-  const isMinimalMode = $derived(
-    workerStatus !== 'completed' || workerEncodedChunks.length === 0
-  )
 
   // Worker 系统函数 - 正确的 WebCodecs 架构
   async function startWorkerRecording() {
@@ -130,6 +222,21 @@
           } else if (event.data.type === 'configured') {
             console.log('✅ [WORKER-MAIN] Worker configuration confirmed')
             workerConfigured = true
+            // 保存实际配置，并在此时初始化 OPFS 写入（避免后续 handler 错过 configured 事件）
+            const cfg = event.data.config
+            lastWorkerConfiguredConfig = cfg
+            if (OPFS_WRITER_ENABLED) {
+              try {
+                initOpfsWriter({
+                  codec: cfg?.codec,
+                  width: cfg?.width,
+                  height: cfg?.height,
+                  fps: cfg?.framerate
+                })
+              } catch (e) {
+                console.warn('[OPFS] init during setup failed:', e)
+              }
+            }
             clearTimeout(timeout)
             resolve()
             // 配置完成后，设置正常的消息处理器
@@ -252,6 +359,17 @@
           switch (type) {
             case 'configured':
               console.log('✅ [WORKER-MAIN] Worker configured successfully:', config)
+              // Store actual configured config from worker
+              lastWorkerConfiguredConfig = config
+              // Initialize OPFS writer (feature-flagged)
+              if (OPFS_WRITER_ENABLED) {
+                initOpfsWriter({
+                  codec: config?.codec,
+                  width: config?.width,
+                  height: config?.height,
+                  fps: config?.framerate
+                })
+              }
               break
             case 'chunk':
               // 处理编码后的数据块
@@ -274,6 +392,8 @@
                   codedHeight: data.codedHeight || 1080
                 })
                 console.log(`💾 [WORKER-MAIN] Collected chunk ${workerEncodedChunks.length}, total size: ${workerEncodedChunks.reduce((sum, chunk) => sum + chunk.size, 0)} bytes`)
+                // Side-write to OPFS (does not transfer the same buffer)
+                try { appendToOpfsFromEncodedChunk(data) } catch {}
               }
               break
             case 'complete':
@@ -358,6 +478,10 @@
       // 清理 Worker 引用
       workerCurrentWorker = null
 
+
+	      // Finalize OPFS writer if enabled
+	      await finalizeOpfsWriter()
+
     } catch (error) {
       console.error('❌ Worker stop failed:', error)
     }
@@ -381,10 +505,6 @@
   // 处理元素录制数据
   async function handleElementRecordingData(message: any) {
     try {
-      console.log('🎬 [Sidepanel] Received element recording data:', {
-        chunks: message.encodedChunks?.length || 0,
-        metadata: message.metadata
-      })
 
       if (!message.encodedChunks || message.encodedChunks.length === 0) {
         console.warn('⚠️ [Sidepanel] No encoded chunks in element recording data')
@@ -397,43 +517,51 @@
         console.warn('⚠️ [Sidepanel] Unexpected data format, expected array');
       }
 
-      // 使用集成工具处理数据
+      // 预标准化：确保 chunk.data 为 Uint8Array、补全尺寸/时间戳
+      const normalizedMeta = {
+        ...(message.metadata || {}),
+        mode: (message.metadata?.mode) || (message.metadata?.selectedRegion ? 'region' : 'element'),
+        source: (message.metadata?.source) || 'element-recording'
+      };
+      const normalizedChunks = (message.encodedChunks || []).map((c: any) => {
+        let data: any = c?.data;
+        if (!(data instanceof Uint8Array)) {
+          if (data instanceof ArrayBuffer) data = new Uint8Array(data);
+          else if (Array.isArray(data)) data = new Uint8Array(data);
+          else data = new Uint8Array(0);
+        }
+        const size = (typeof c?.size === 'number' && c.size > 0) ? c.size : (data?.byteLength || 0);
+        const ts = (typeof c?.timestamp === 'number') ? c.timestamp : 0;
+        return {
+          data,
+          timestamp: ts,
+          type: c?.type === 'key' ? 'key' : 'delta',
+          size,
+          codedWidth: normalizedMeta.selectedRegion?.width,
+          codedHeight: normalizedMeta.selectedRegion?.height,
+          codec: c?.codec || normalizedMeta.codec || 'vp8'
+        };
+      });
+
+      // 使用集成工具处理数据（已标准化）
       const recordingData: ElementRecordingData = {
-        encodedChunks: message.encodedChunks || [],
-        metadata: message.metadata || {}
+        encodedChunks: normalizedChunks,
+        metadata: normalizedMeta
       }
 
       // 通过集成工具处理
       elementRecordingIntegration.handleRecordingData(recordingData)
 
-      // 转换为主系统格式
-      const compatibleChunks = elementRecordingIntegration.convertToMainSystemFormat(recordingData)
-
-      console.log('🔄 [Sidepanel] Converted', compatibleChunks.length, 'chunks for editing');
-
-      // 调试：检查转换后的第一个数据块
-      if (compatibleChunks.length > 0) {
-        const firstChunk = compatibleChunks[0];
-        console.log('🔍 [Sidepanel] First converted chunk:', {
-          codedWidth: firstChunk.codedWidth,
-          codedHeight: firstChunk.codedHeight,
-          aspectRatio: firstChunk.codedWidth && firstChunk.codedHeight ?
-            (firstChunk.codedWidth / firstChunk.codedHeight).toFixed(3) : 'unknown',
-          size: firstChunk.size,
-          type: firstChunk.type,
-          codec: firstChunk.codec,
-          hasData: !!firstChunk.data,
-          dataType: typeof firstChunk.data
-        });
-      }
-
-
-
       // 将元素录制数据设置到主系统
-      workerEncodedChunks = compatibleChunks
+      workerEncodedChunks = recordingData.encodedChunks
 
-	      console.log(' \ud83d\udd04 [Sidepanel] \u5f55\u5236\u6574\u5408\u6210\u529f\uff0c\u6b63\u51c6\u5907\u4fdd\u5b58\u5e76\u8df3\u8f6c\u5230 Studio...')
-	      try { await openInStudio() } catch (e) { console.error('\u274c [Sidepanel] Auto handoff to Studio failed:', e) }
+	    try {
+        console.log('[Handoff][Sidepanel] calling openInStudio with chunks', workerEncodedChunks?.length)
+
+        await openInStudio()
+      } catch (e) {
+        console.error('\u274c [Sidepanel] Auto handoff to Studio failed:', e)
+      }
 
       // 更新录制状态为完成
       recordingStore.updateStatus('completed')
@@ -466,12 +594,13 @@
   // 将当前录制数据保存并在新标签打开 Studio 页面
   async function openInStudio() {
     try {
+      console.log('[Handoff][Sidepanel] openInStudio entered', { chunks: workerEncodedChunks?.length, handoffInProgress })
       if (!workerEncodedChunks || workerEncodedChunks.length === 0) {
         console.warn('⚠️ [Sidepanel] No chunks to handoff to Studio')
         return
       }
       if (handoffInProgress) {
-        console.warn('⏳ [Sidepanel] Handoff already in progress')
+        console.warn('⏳ [Sidepanel] Handoff already in progress', { chunks: workerEncodedChunks?.length })
         return
       }
       handoffInProgress = true
@@ -488,6 +617,7 @@
         totalSize
       }
       console.log('💾 [Sidepanel] Saving recording to IndexedDB...', { id, meta })
+
       await recordingCache.save(id, workerEncodedChunks, meta)
 
       // 打开扩展根目录下的 studio.html（按需加载 id）
@@ -561,21 +691,25 @@
   const shouldShowElementRecordButton = $derived(currentMode === 'element' || currentMode === 'region')
   const shouldShowWebCodecsRecordButton = $derived(currentMode === 'tab' || currentMode === 'window' || currentMode === 'screen')
 
-  // Element/Region 录制状态适配为 RecordButton 接口
-  const elementRecordingStatus = $derived<'idle' | 'requesting' | 'recording' | 'stopping' | 'error' | 'completed'>(
-    recording ? 'recording' : 'idle'
-  )
+  // Element/Region 录制 UI 状态（显式准备阶段）
+  let elementUIStatus = $state<'idle' | 'requesting' | 'recording' | 'stopping' | 'error' | 'completed'>('idle')
 
   async function handleStartCapture() {
+    // 进入准备阶段，先构建必要通道/资源
+    elementUIStatus = 'requesting'
+    // 触发内容脚本真正开始采集
     await sendToBackground('START_CAPTURE')
   }
 
   async function handleStopCapture() {
     // 结束录制
+    elementUIStatus = 'stopping'
     await sendToBackground('STOP_CAPTURE')
     // 回到初始状态：退出选择并清除已选
     await sendToBackground('EXIT_SELECTION')
     await sendToBackground('CLEAR_SELECTION')
+    // 复位 UI 状态
+    elementUIStatus = 'idle'
   }
 
   async function handleToggleCapture() {
@@ -782,6 +916,85 @@
     console.log('📱 Sidepanel mounted with Worker system')
 
     // 检查扩展环境
+
+	    // 注册成为元素/区域编码流的消费者（通过 background 转发）
+	    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.tabs) {
+	      try {
+	        elementStreamPort = chrome.runtime.connect({ name: 'element-stream-consumer' })
+          console.log('[Stream][Sidepanel] connect element-stream-consumer port')
+
+	        // 绑定当前活动标签页 id
+	        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+	          const tabId = tabs?.[0]?.id
+	          if (typeof tabId === 'number') {
+	            try { elementStreamPort?.postMessage({ type: 'register', tabId }) } catch {}
+            console.log('[Stream][Sidepanel] register sent', { tabId })
+
+	          }
+	        })
+	        // 监听转发过来的 start/meta/chunk/end
+	        elementStreamPort.onMessage.addListener(async (msg: any) => {
+	          switch (msg?.type) {
+	            case 'start':
+	              streamingChunks = []
+                elementUIStatus = 'recording'
+	              console.log('[Stream][Sidepanel] start received; reset chunks')
+	              break
+	            case 'meta':
+	              streamingMeta = msg.metadata
+	              console.log('[Stream][Sidepanel] meta received', { width: streamingMeta?.width, height: streamingMeta?.height, codec: streamingMeta?.codec, startTime: streamingMeta?.startTime })
+	              break
+	            case 'chunk': {
+	              try {
+	                const buf: ArrayBuffer | undefined = msg.data
+	                const view = buf
+	                streamingChunks.push({
+	                  data: view,
+	                  timestamp: Number(msg.ts) || 0,
+	                  type: msg.kind === 'key' ? 'key' : 'delta',
+	                  size: (typeof msg.size === 'number' && msg.size > 0) ? msg.size : view.byteLength,
+	                  codedWidth: streamingMeta?.width || 1920,
+	                  codedHeight: streamingMeta?.height || 1080,
+	                  codec: streamingMeta?.codec || 'vp8'
+	                })
+
+	              } catch (e) {
+	                console.warn('[Sidepanel] failed to accumulate chunk', e)
+	              }
+	                const n = streamingChunks.length
+	                if (n <= 3 || n % 100 === 0) {
+	                  console.log('[Stream][Sidepanel] chunk received', { count: n, kind: msg.kind, size: msg.size })
+	                }
+
+	              break
+	            }
+	            case 'end':
+	              console.log('[Stream][Sidepanel] end received', { chunks: streamingChunks.length, hasMeta: !!streamingMeta })
+
+	              // 使用与“大包”一致的数据结构进行处理
+	              if (streamingChunks.length > 0) {
+
+		              // finalize OPFS for element/region stream
+		              // try { await finalizeOpfsWriter() } catch (e) { console.warn('[OPFS] finalize (element-stream) failed', e) }
+
+	                handleElementRecordingData({ encodedChunks: streamingChunks, metadata: streamingMeta })
+                  elementUIStatus = 'completed'
+                  
+	              }
+	              streamingChunks = []
+
+
+	              streamingMeta = null
+	              break
+	            default:
+	              break
+	          }
+	        })
+	      } catch (e) {
+	        console.warn('element-stream-consumer connect failed', e)
+	      }
+	    }
+
     checkExtensionEnvironment()
 
     // 检查 Worker 环境
@@ -828,6 +1041,9 @@
       if (typeof chrome !== 'undefined' && chrome.runtime) {
         chrome.runtime.onMessage.removeListener(messageListener)
       }
+      // 断开流式端口
+      try { elementStreamPort?.disconnect?.() } catch {}
+      elementStreamPort = null
       // 清理元素录制监听器
       elementRecordingIntegration.removeListener(elementRecordingListener)
     }
@@ -844,9 +1060,7 @@
   <title>屏幕录制</title>
 </svelte:head>
 
-<!-- 极简录制模式 -->
-
-{#if isMinimalMode}
+<!-- 录制面板（无 mini 模式） -->
   <div class="flex flex-col items-center justify-center min-h-screen p-4 bg-gradient-to-br from-gray-50 to-gray-100 transition-all duration-300 ease-in-out">
 {#if showHandoffNotice}
   <div class="fixed top-3 left-1/2 -translate-x-1/2 z-50 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-xs shadow-lg">
@@ -871,7 +1085,7 @@
       <div class="max-w-md w-full mb-6">
         <RecordButton
           isRecording={recording}
-          status={elementRecordingStatus}
+          status={elementUIStatus}
           onclick={handleToggleCapture}
         />
       </div>
@@ -918,7 +1132,6 @@
         </div>
       {/if}
   </div>
-{/if}
 
 <style>
   /* 自定义动画类 */

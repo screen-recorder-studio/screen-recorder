@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OPFS Drive 功能测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        button {
+            padding: 8px 16px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .danger {
+            background: #dc3545;
+        }
+        .danger:hover {
+            background: #c82333;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 OPFS Drive 功能测试</h1>
+    
+    <div class="test-section">
+        <h3>📁 创建测试录制数据</h3>
+        <p>创建一些模拟的录制数据来测试全部删除功能</p>
+        <button onclick="createTestRecordings()">创建测试数据</button>
+        <button onclick="checkOPFS()">检查 OPFS 状态</button>
+    </div>
+
+    <div class="test-section">
+        <h3>🗑️ 测试删除功能</h3>
+        <p>测试单个删除和批量删除功能</p>
+        <button onclick="listRecordings()">列出录制</button>
+        <button onclick="deleteFirstRecording()">删除第一个</button>
+        <button class="danger" onclick="deleteAllRecordings()">删除全部</button>
+    </div>
+
+    <div class="test-section">
+        <h3>📊 OPFS Drive 页面</h3>
+        <p>打开实际的 OPFS Drive 调试页面</p>
+        <button onclick="openOPFSDrive()">打开 OPFS Drive</button>
+    </div>
+
+    <div class="log" id="log"></div>
+
+    <script>
+        function log(message) {
+            const logEl = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logEl.textContent += `[${timestamp}] ${message}\n`;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        async function checkOPFS() {
+            try {
+                if (!navigator.storage?.getDirectory) {
+                    log('❌ OPFS 不可用');
+                    return;
+                }
+                
+                const root = await navigator.storage.getDirectory();
+                log('✅ OPFS 可用');
+                
+                const estimate = await navigator.storage.estimate();
+                log(`📊 存储用量: ${Math.round(estimate.usage / 1024)} KB / ${Math.round(estimate.quota / 1024 / 1024)} MB`);
+                
+                // 列出现有目录
+                let count = 0;
+                for await (const [name, handle] of root.entries()) {
+                    if (name.startsWith('rec_')) {
+                        count++;
+                    }
+                }
+                log(`📁 现有录制目录: ${count} 个`);
+                
+            } catch (error) {
+                log(`❌ 检查 OPFS 失败: ${error.message}`);
+            }
+        }
+
+        async function createTestRecordings() {
+            try {
+                const root = await navigator.storage.getDirectory();
+                
+                for (let i = 1; i <= 3; i++) {
+                    const dirName = `rec_test_${Date.now()}_${i}`;
+                    const recDir = await root.getDirectoryHandle(dirName, { create: true });
+                    
+                    // 创建 meta.json
+                    const metaHandle = await recDir.getFileHandle('meta.json', { create: true });
+                    const metaWritable = await metaHandle.createWritable();
+                    await metaWritable.write(JSON.stringify({
+                        id: `test_${Date.now()}_${i}`,
+                        createdAt: Date.now(),
+                        completed: true,
+                        codec: 'vp9',
+                        width: 1920,
+                        height: 1080,
+                        fps: 30
+                    }, null, 2));
+                    await metaWritable.close();
+                    
+                    // 创建 data.bin (模拟数据)
+                    const dataHandle = await recDir.getFileHandle('data.bin', { create: true });
+                    const dataWritable = await dataHandle.createWritable();
+                    const testData = new Uint8Array(1024 * (i * 10)); // 不同大小的测试数据
+                    testData.fill(i * 50); // 填充不同的值
+                    await dataWritable.write(testData);
+                    await dataWritable.close();
+                    
+                    // 创建 index.jsonl
+                    const indexHandle = await recDir.getFileHandle('index.jsonl', { create: true });
+                    const indexWritable = await indexHandle.createWritable();
+                    await indexWritable.write(`{"offset":0,"size":${testData.length},"timestamp":${Date.now()},"type":"key"}\n`);
+                    await indexWritable.close();
+                    
+                    log(`✅ 创建测试录制: ${dirName}`);
+                }
+                
+                log('🎉 测试数据创建完成');
+                
+            } catch (error) {
+                log(`❌ 创建测试数据失败: ${error.message}`);
+            }
+        }
+
+        async function listRecordings() {
+            try {
+                const root = await navigator.storage.getDirectory();
+                const recordings = [];
+                
+                for await (const [name, handle] of root.entries()) {
+                    if (name.startsWith('rec_') && handle.kind === 'directory') {
+                        recordings.push(name);
+                    }
+                }
+                
+                log(`📋 找到 ${recordings.length} 个录制:`);
+                recordings.forEach(name => log(`  - ${name}`));
+                
+            } catch (error) {
+                log(`❌ 列出录制失败: ${error.message}`);
+            }
+        }
+
+        async function deleteFirstRecording() {
+            try {
+                const root = await navigator.storage.getDirectory();
+                
+                for await (const [name, handle] of root.entries()) {
+                    if (name.startsWith('rec_') && handle.kind === 'directory') {
+                        await root.removeEntry(name, { recursive: true });
+                        log(`🗑️ 删除录制: ${name}`);
+                        return;
+                    }
+                }
+                
+                log('ℹ️ 没有找到可删除的录制');
+                
+            } catch (error) {
+                log(`❌ 删除录制失败: ${error.message}`);
+            }
+        }
+
+        async function deleteAllRecordings() {
+            if (!confirm('确定要删除所有测试录制数据吗？')) {
+                return;
+            }
+            
+            try {
+                const root = await navigator.storage.getDirectory();
+                const recordings = [];
+                
+                for await (const [name, handle] of root.entries()) {
+                    if (name.startsWith('rec_') && handle.kind === 'directory') {
+                        recordings.push(name);
+                    }
+                }
+                
+                log(`🗑️ 开始删除 ${recordings.length} 个录制...`);
+                
+                for (const name of recordings) {
+                    await root.removeEntry(name, { recursive: true });
+                    log(`  ✅ 删除: ${name}`);
+                }
+                
+                log('🎉 所有录制已删除');
+                
+            } catch (error) {
+                log(`❌ 批量删除失败: ${error.message}`);
+            }
+        }
+
+        function openOPFSDrive() {
+            window.open('/opfs-drive', '_blank');
+        }
+
+        // 初始化
+        log('🚀 OPFS Drive 测试工具已加载');
+        checkOPFS();
+    </script>
+</body>
+</html>

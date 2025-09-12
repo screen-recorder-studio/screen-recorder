@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OPFS API 测试验证</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .panel {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            background: #f9f9f9;
+        }
+        .test-section {
+            margin-bottom: 30px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 2px solid #007acc;
+            padding-bottom: 5px;
+        }
+        button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px 5px 5px 0;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #005a9e;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .log {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            height: 400px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+        .log-entry.success { color: #28a745; }
+        .log-entry.error { color: #dc3545; }
+        .log-entry.info { color: #17a2b8; }
+        .log-entry.warning { color: #ffc107; }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        .status.supported { background: #d4edda; color: #155724; }
+        .status.unsupported { background: #f8d7da; color: #721c24; }
+        .clear-btn {
+            background: #6c757d;
+            float: right;
+        }
+        .clear-btn:hover {
+            background: #545b62;
+        }
+    </style>
+</head>
+<body>
+    <h1>🗂️ OPFS API 测试验证</h1>
+    
+    <div id="support-status"></div>
+    
+    <div class="container">
+        <div class="panel">
+            <h2>📋 测试项目</h2>
+            
+            <div class="test-section">
+                <h3>基础 OPFS 测试</h3>
+                <button onclick="testBasicOpfs()">测试基础 OPFS</button>
+                <button onclick="testFileOperations()">测试文件操作</button>
+                <button onclick="testDirectoryOperations()">测试目录操作</button>
+            </div>
+            
+            <div class="test-section">
+                <h3>SyncAccessHandle 测试</h3>
+                <button onclick="testSyncAccessHandle()">测试同步访问句柄</button>
+                <button onclick="testSyncWriteRead()">测试同步读写</button>
+                <button onclick="testSyncPerformance()">测试性能对比</button>
+            </div>
+            
+            <div class="test-section">
+                <h3>Worker 中的 OPFS</h3>
+                <button onclick="testWorkerOpfs()">测试 Worker OPFS</button>
+                <button onclick="testWorkerSync()">测试 Worker 同步操作</button>
+            </div>
+            
+            <div class="test-section">
+                <h3>实际应用场景</h3>
+                <button onclick="testVideoChunkWrite()">模拟视频块写入</button>
+                <button onclick="testLargeFileWrite()">测试大文件写入</button>
+                <button onclick="testConcurrentWrites()">测试并发写入</button>
+            </div>
+
+            <div class="test-section">
+                <h3>修复验证</h3>
+                <button onclick="testFixedOpfsWriter()" style="background: #28a745;">测试修复后的 OPFS Writer</button>
+                <button onclick="testWorkerBasics()">测试 Worker 基础功能</button>
+            </div>
+            
+            <div class="test-section">
+                <h3>管理操作</h3>
+                <button onclick="listOpfsContents()">列出 OPFS 内容</button>
+                <button onclick="estimateStorage()">存储用量估算</button>
+                <button onclick="clearOpfs()" style="background: #dc3545;">清空 OPFS</button>
+                <button onclick="clearLogs()" class="clear-btn">清空日志</button>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <h2>📝 测试日志</h2>
+            <div id="logs" class="log"></div>
+        </div>
+    </div>
+
+    <script src="opfs-tests.js"></script>
+</body>
+</html>

@@ -11,7 +11,7 @@
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-		"build:extension": "pnpm run build && cp static/manifest.json build/",
+		"build:extension": "pnpm run build && node scripts/build-content.mjs && node scripts/build-background.mjs && node scripts/build-worker.mjs && node scripts/build-offscreen.mjs && node scripts/build-opfs-writer.mjs && cp static/manifest.json build/",
 		"package:extension": "pnpm run build:extension && cd build && zip -r ../screen-recorder-extension.zip ."
 	},
 	"devDependencies": {

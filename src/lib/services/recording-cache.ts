@@ -28,7 +28,7 @@ export interface StoredChunk {
 }
 
 const DB_NAME = 'vrdb'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const STORE_RECORDINGS = 'recordings'
 const STORE_CHUNKS = 'chunks'
 
@@ -38,12 +38,21 @@ async function openDB(): Promise<IDBDatabase> {
 
     request.onupgradeneeded = () => {
       const db = request.result
+      // recordings store
       if (!db.objectStoreNames.contains(STORE_RECORDINGS)) {
         db.createObjectStore(STORE_RECORDINGS, { keyPath: 'id' })
       }
+      // chunks store and indexes (ensure exists and has by_recording index)
+      let chunksStore: IDBObjectStore
       if (!db.objectStoreNames.contains(STORE_CHUNKS)) {
-        const store = db.createObjectStore(STORE_CHUNKS, { keyPath: 'key' })
-        store.createIndex('by_recording', 'recordingId', { unique: false })
+        chunksStore = db.createObjectStore(STORE_CHUNKS, { keyPath: 'key' })
+      } else {
+        // during upgrade, existing store can be accessed via the upgrade transaction
+        const upgradeTx = request.transaction as IDBTransaction
+        chunksStore = upgradeTx.objectStore(STORE_CHUNKS)
+      }
+      if (chunksStore && !chunksStore.indexNames.contains('by_recording')) {
+        chunksStore.createIndex('by_recording', 'recordingId', { unique: false })
       }
     }
 

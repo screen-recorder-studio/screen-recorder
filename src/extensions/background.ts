@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 // Chrome 扩展 Service Worker
 console.log('Screen Recorder Extension Service Worker loaded')
 
@@ -240,9 +242,52 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ error: 'Unknown action' })
   }
 })
-// 接收内容脚本的 WebCodecs 编码数据流
+// Sidepanel 流消费者：tabId -> sidepanel Port
+const sidepanelConsumers = new Map();
+
+// Offscreen writer sink (OPFS)
+let offscreenWriterPort: chrome.runtime.Port | null = null;
+const offscreenQueue: any[] = [];
+
+
+// 接收内容脚本的 WebCodecs 编码数据流，或接收 sidepanel 的注册
 chrome.runtime.onConnect.addListener((port) => {
+  if (port.name === 'opfs-writer-sink') {
+    offscreenWriterPort = port;
+    console.log('[Stream][BG] opfs-writer-sink connected');
+    // Flush any buffered messages
+    try { while (offscreenQueue.length) { const m = offscreenQueue.shift(); port.postMessage(m); } } catch {}
+    port.onDisconnect.addListener(() => {
+      if (offscreenWriterPort === port) offscreenWriterPort = null;
+      console.log('[Stream][BG] opfs-writer-sink disconnected');
+    });
+    return;
+  }
+  if (port.name === 'element-stream-consumer') {
+    // Sidepanel 端注册成为流消费者，需提供 tabId
+    const onMsg = (msg) => {
+      if (msg && msg.type === 'register' && typeof msg.tabId === 'number') {
+        sidepanelConsumers.set(msg.tabId, port);
+        console.log('[Stream][BG] sidepanel consumer registered', { tabId: msg.tabId });
+        try { chrome.tabs.sendMessage(msg.tabId, { type: 'STREAMING_READY' }); console.log('[Stream][BG] STREAMING_READY sent to content', { tabId: msg.tabId }); } catch (e) { console.warn('[Stream][BG] STREAMING_READY send failed', e); }
+      }
+    };
+    port.onMessage.addListener(onMsg);
+    port.onDisconnect.addListener(() => {
+      // 清理所有相同 port 的注册项
+      for (const [tid, p] of sidepanelConsumers.entries()) {
+        if (p === port) {
+          sidepanelConsumers.delete(tid);
+          console.log('[Stream][BG] sidepanel consumer disconnected', { tabId: tid });
+        }
+      }
+    });
+    return;
+  }
+
   if (port.name !== 'encoded-stream') return;
+
+  const tabId = port.sender?.tab?.id;
   const sess = { started: false, chunks: 0, bytes: 0, codec: '', width: 0, height: 0, framerate: 0, logTimer: null };
   console.log('[encoded-stream] port connected');
   const logProgress = () => {
@@ -258,6 +303,9 @@ chrome.runtime.onConnect.addListener((port) => {
         sess.framerate = msg.framerate;
         if (!sess.logTimer) sess.logTimer = setInterval(logProgress, 1000);
         console.log('[encoded-stream] start', { codec: sess.codec, width: sess.width, height: sess.height, framerate: sess.framerate });
+        break;
+      case 'meta':
+        // 仅转发给 sidepanel
         break;
       case 'chunk':
         sess.chunks += 1;
@@ -285,6 +333,42 @@ chrome.runtime.onConnect.addListener((port) => {
         break;
       default:
         break;
+    }
+
+    // 转发给已注册的 sidepanel（按 tabId 匹配）
+    const consumer = (typeof tabId === 'number') ? sidepanelConsumers.get(tabId) : null;
+    if (consumer) {
+      try {
+        consumer.postMessage({ ...msg, tabId });
+
+        if (msg?.type === 'start' || msg?.type === 'meta' || msg?.type === 'end' || msg?.type === 'end-request') {
+          console.log('[Stream][BG] forwarded to sidepanel', { tabId, type: msg.type });
+        }
+      } catch (e) {
+        console.warn('[Stream][BG] forward to sidepanel failed', { tabId, type: msg?.type, error: e?.message });
+      }
+    } else {
+      if (msg?.type === 'start' || msg?.type === 'end' || msg?.type === 'end-request') {
+        console.log('[Stream][BG] no sidepanel consumer for tab', { tabId, type: msg?.type });
+      }
+    }
+
+    // 同步转发给 Offscreen 写入器（未就绪则缓冲，并在首次 start 时确保创建）
+    try {
+      if (offscreenWriterPort) {
+        offscreenWriterPort.postMessage({ ...msg, tabId });
+        if (msg?.type === 'start' || msg?.type === 'meta' || msg?.type === 'end' || msg?.type === 'end-request') {
+          console.log('[Stream][BG] forwarded to offscreen', { tabId, type: msg.type });
+        }
+      } else {
+        offscreenQueue.push({ ...msg, tabId });
+        if (msg?.type === 'start') {
+          ensureOffscreenDocument().catch(() => {});
+          console.log('[Stream][BG] offscreen not ready; queued start and requested offscreen');
+        }
+      }
+    } catch (e) {
+      console.warn('[Stream][BG] forward to offscreen failed', { tabId, type: msg?.type, error: e?.message });
     }
   });
   port.onDisconnect.addListener(() => {
@@ -561,38 +645,38 @@ chrome.downloads.onChanged.addListener((downloadDelta) => {
   }
 })
 
+
+let offscreenCreating: Promise<void> | null = null;
+
+async function ensureOffscreenDocument() {
+  if (offscreenWriterPort) return
+  if (offscreenCreating) { await offscreenCreating; return }
+
+  offscreenCreating = (async () => {
+    try {
+      const existing = await (chrome.runtime as any).getContexts?.({
+        contextTypes: ['OFFSCREEN_DOCUMENT'],
+        documentUrls: [chrome.runtime.getURL('offscreen.html')]
+      })
+      if (existing && existing.length > 0) return
+      await chrome.offscreen.createDocument({
+        url: 'offscreen.html',
+        reasons: ['BLOBS'],
+        justification: 'Stream recording chunks to OPFS'
+      })
+    } finally {
+      offscreenCreating = null
+    }
+  })()
+
+  await offscreenCreating
+}
+
 // 处理扩展启动
 chrome.runtime.onStartup.addListener(() => {
   console.log('Extension startup')
 })
 
-// Offscreen document 管理
-// async function ensureOffscreenDocument() {
-//   try {
-//     // 检查是否已有offscreen document
-//     const existingContexts = await chrome.runtime.getContexts({
-//       contextTypes: ['OFFSCREEN_DOCUMENT'],
-//       documentUrls: [chrome.runtime.getURL('offscreen.html')]
-//     })
-
-//     if (existingContexts.length > 0) {
-//       console.log('Offscreen document already exists')
-//       return
-//     }
-
-//     // 创建offscreen document
-//     await chrome.offscreen.createDocument({
-//       url: 'offscreen.html',
-//       reasons: ['USER_MEDIA'],
-//       justification: 'Screen recording requires getUserMedia access'
-//     })
-
-//     console.log('Offscreen document created')
-//   } catch (error) {
-//     console.error('Failed to create offscreen document:', error)
-//     throw error
-//   }
-// }
 
 // 全局录制状态
 let currentRecording = {
