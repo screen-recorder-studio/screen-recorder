@@ -505,10 +505,6 @@
   // 处理元素录制数据
   async function handleElementRecordingData(message: any) {
     try {
-      console.log('🎬 [Sidepanel] Received element recording data:', {
-        chunks: message.encodedChunks?.length || 0,
-        metadata: message.metadata
-      })
 
       if (!message.encodedChunks || message.encodedChunks.length === 0) {
         console.warn('⚠️ [Sidepanel] No encoded chunks in element recording data')
@@ -541,8 +537,8 @@
           timestamp: ts,
           type: c?.type === 'key' ? 'key' : 'delta',
           size,
-          codedWidth: c?.codedWidth || normalizedMeta.width || 1920,
-          codedHeight: c?.codedHeight || normalizedMeta.height || 1080,
+          codedWidth: normalizedMeta.selectedRegion?.width,
+          codedHeight: normalizedMeta.selectedRegion?.height,
           codec: c?.codec || normalizedMeta.codec || 'vp8'
         };
       });
@@ -556,31 +552,8 @@
       // 通过集成工具处理
       elementRecordingIntegration.handleRecordingData(recordingData)
 
-      // 转换为主系统格式
-      const compatibleChunks = elementRecordingIntegration.convertToMainSystemFormat(recordingData)
-
-      console.log('🔄 [Sidepanel] Converted', compatibleChunks.length, 'chunks for editing');
-
-      // 调试：检查转换后的第一个数据块
-      if (compatibleChunks.length > 0) {
-        const firstChunk = compatibleChunks[0];
-        console.log('🔍 [Sidepanel] First converted chunk:', {
-          codedWidth: firstChunk.codedWidth,
-          codedHeight: firstChunk.codedHeight,
-          aspectRatio: firstChunk.codedWidth && firstChunk.codedHeight ?
-            (firstChunk.codedWidth / firstChunk.codedHeight).toFixed(3) : 'unknown',
-          size: firstChunk.size,
-          type: firstChunk.type,
-          codec: firstChunk.codec,
-          hasData: !!firstChunk.data,
-          dataType: typeof firstChunk.data
-        });
-      }
-
-
-
       // 将元素录制数据设置到主系统
-      workerEncodedChunks = compatibleChunks
+      workerEncodedChunks = recordingData.encodedChunks
 
 	    try {
         console.log('[Handoff][Sidepanel] calling openInStudio with chunks', workerEncodedChunks?.length)
@@ -948,7 +921,7 @@
 	    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.tabs) {
 	      try {
 	        elementStreamPort = chrome.runtime.connect({ name: 'element-stream-consumer' })
-        console.log('[Stream][Sidepanel] connect element-stream-consumer port')
+          console.log('[Stream][Sidepanel] connect element-stream-consumer port')
 
 	        // 绑定当前活动标签页 id
 	        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
