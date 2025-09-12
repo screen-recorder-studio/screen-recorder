@@ -16,7 +16,6 @@
   import RecordButton from '$lib/components/RecordButton.svelte'
   import ElementRegionSelector from '$lib/components/ElementRegionSelector.svelte'
   import { elementRecordingIntegration, type ElementRecordingData } from '$lib/utils/element-recording-integration'
-  import { recordingCache } from '$lib/services/recording-cache'
 
   // 录制状态
   let isRecording = $state(false)
@@ -74,54 +73,47 @@
     // 检查扩展环境
     // checkExtensionEnvironment()
 
-    // 检查 Worker 环境
-    // 如果 URL 携带 id，则从 IndexedDB 加载并进入编辑模式（通用入口）
-    ;(async () => {
-      try {
-        const params = new URLSearchParams(location.search)
-        const id = params.get('id')
-        if (id && workerEncodedChunks.length === 0) {
-          console.log('📦 [Studio] Loading recording from IndexedDB by id:', id)
-          const result = await recordingCache.load(id)
-          if (result?.chunks?.length) {
-            workerEncodedChunks = result.chunks
-            recordingStore.updateStatus('completed')
-            recordingStore.setEngine('webcodecs')
-            console.log('✅ [Studio] Loaded', result.chunks.length, 'chunks for editing', result.meta)
-          } else {
-            console.warn('⚠️ [Studio] No data found for id:', id)
+    // 基于 OPFSReaderWorker 打开录制并获取首批编码块
+    try {
+      const params = new URLSearchParams(location.search)
+      const dirId = params.get('id') || ''
+      if (dirId && workerEncodedChunks.length === 0) {
+        console.log('� [Studio] Opening OPFS recording by dirId:', dirId)
+        const readerWorker = new Worker(
+          new URL('$lib/workers/opfs-reader-worker.ts', import.meta.url),
+          { type: 'module' }
+        )
+
+        // 监听 Reader 事件
+        readerWorker.onmessage = (ev: MessageEvent<any>) => {
+          const { type, summary, meta, start, count, chunks, code, message } = ev.data || {}
+          if (type === 'ready') {
+            console.log('✅ [OPFSReader] Ready:', { summary, meta })
+            // 读取首批数据（例如前 300 个块，约 10 秒@30fps）
+            readerWorker.postMessage({ type: 'getRange', start: 0, count: 300 })
+          } else if (type === 'range') {
+            console.log('📦 [OPFSReader] Received range:', { start, count })
+            if (Array.isArray(chunks) && chunks.length > 0) {
+              workerEncodedChunks = chunks
+              recordingStore.updateStatus('completed')
+              recordingStore.setEngine('webcodecs')
+              console.log('🎬 [Studio] Prepared', chunks.length, 'chunks from OPFS for preview')
+            } else {
+              console.warn('⚠️ [OPFSReader] Empty range received')
+            }
+          } else if (type === 'error') {
+            console.error('❌ [OPFSReader] Error:', code, message)
           }
         }
-      } catch (error) {
-        console.error('❌ [Studio] Failed to load recording:', error)
+
+        // 打开目录
+        readerWorker.postMessage({ type: 'open', dirId })
       }
-    })()
+    } catch (error) {
+      console.error('❌ [Studio] Failed to open OPFS recording:', error)
+    }
 
-    // checkWorkerEnvironment()
-
-	    // 如果作为新标签页打开并带有 studio=1，则从 IndexedDB 加载并进入编辑模式
-	    ;(async () => {
-	      try {
-	        const params = new URLSearchParams(location.search)
-	        if (params.get('studio') === '1') {
-	          const id = params.get('id')
-	          if (id) {
-	            console.log('📦 [Sidepanel->Studio] Loading recording by id:', id)
-	            const result = await recordingCache.load(id)
-	            if (result?.chunks?.length) {
-	              workerEncodedChunks = result.chunks
-	              recordingStore.updateStatus('completed')
-	              recordingStore.setEngine('webcodecs')
-	              console.log('✅ [Sidepanel->Studio] Loaded', result.chunks.length, 'chunks', result.meta)
-	            } else {
-	              console.warn('⚠️ [Sidepanel->Studio] No data found for id:', id)
-	            }
-	          }
-	        }
-	      } catch (e) {
-	        console.error('❌ [Sidepanel->Studio] Failed to load from IndexedDB:', e)
-	      }
-	    })()
+    // 结束 OPFSReader 初始化
 
 
  
