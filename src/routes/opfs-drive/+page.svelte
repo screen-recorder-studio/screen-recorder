@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { Trash2, RefreshCw, Folder, HardDrive, FileText, Info, XCircle } from '@lucide/svelte'
+  import { Trash2, RefreshCw, Folder, HardDrive, FileText, Info, XCircle, AlertTriangle } from '@lucide/svelte'
 
   type RecSummary = {
     id: string
@@ -26,6 +26,11 @@
   let originStr = $state<string>('')
   let opfsAvailable = $state<boolean>(false)
   let persisted = $state<boolean | null>(null)
+
+  // 全部删除相关状态
+  let showDeleteAllConfirm = $state(false)
+  let deletingAll = $state(false)
+  let deleteProgress = $state<{current: number, total: number} | null>(null)
 
   async function checkEnv() {
     try {
@@ -140,6 +145,10 @@
   }
 
   async function deleteRecording(dirName: string) {
+    if (!confirm(`确定要删除录制 "${dirName}" 吗？此操作不可撤销。`)) {
+      return
+    }
+
     try {
       // @ts-ignore
       const root: FileSystemDirectoryHandle = await navigator.storage.getDirectory()
@@ -152,7 +161,88 @@
     }
   }
 
-  onMount(async () => { await checkEnv(); await listRecordings() })
+  async function deleteAllRecordings() {
+    if (summaries.length === 0) return
+
+    deletingAll = true
+    deleteProgress = { current: 0, total: summaries.length }
+
+    try {
+      // @ts-ignore
+      const root: FileSystemDirectoryHandle = await navigator.storage.getDirectory()
+
+      const errors: string[] = []
+
+      for (let i = 0; i < summaries.length; i++) {
+        const summary = summaries[i]
+        deleteProgress = { current: i + 1, total: summaries.length }
+
+        try {
+          // @ts-ignore
+          await root.removeEntry(summary.dirName, { recursive: true })
+        } catch (e: any) {
+          errors.push(`${summary.dirName}: ${e?.message || String(e)}`)
+        }
+
+        // 添加小延迟避免阻塞UI
+        await new Promise(resolve => setTimeout(resolve, 10))
+      }
+
+      // 重新加载列表
+      await listRecordings()
+
+      if (errors.length > 0) {
+        alert(`部分删除失败:\n${errors.join('\n')}`)
+      } else {
+        alert('所有录制数据已成功删除')
+      }
+
+    } catch (e: any) {
+      alert('批量删除失败: ' + (e?.message || String(e)))
+    } finally {
+      deletingAll = false
+      deleteProgress = null
+      showDeleteAllConfirm = false
+    }
+  }
+
+  function confirmDeleteAll() {
+    if (summaries.length === 0) {
+      alert('没有可删除的录制数据')
+      return
+    }
+    showDeleteAllConfirm = true
+  }
+
+  function cancelDeleteAll() {
+    showDeleteAllConfirm = false
+  }
+
+  onMount(async () => {
+    await checkEnv();
+    await listRecordings();
+
+    // 添加键盘快捷键支持
+    const handleKeydown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'r') {
+          e.preventDefault()
+          if (!loading && !deletingAll) {
+            listRecordings()
+          }
+        }
+      }
+      if (e.key === 'Escape' && showDeleteAllConfirm) {
+        cancelDeleteAll()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeydown)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeydown)
+    }
+  })
 
   function formatBytes(n?: number) {
     if (!n || n <= 0) return '0 B'
@@ -179,9 +269,19 @@
       <HardDrive class="w-5 h-5 text-gray-700" />
       <h1 class="m-0 text-lg font-semibold">OPFS Drive 调试</h1>
     </div>
-    <button class="px-3 py-1.5 text-sm bg-slate-700 text-white rounded" onclick={() => listRecordings()} disabled={loading}>
-      <RefreshCw class="inline w-4 h-4 mr-1" /> 刷新
-    </button>
+    <div class="flex items-center gap-2">
+      <button
+        class="px-3 py-1.5 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        onclick={confirmDeleteAll}
+        disabled={loading || deletingAll || summaries.length === 0}
+        title={summaries.length === 0 ? '没有可删除的数据' : `删除所有 ${summaries.length} 个录制`}
+      >
+        <Trash2 class="inline w-4 h-4 mr-1" /> 全部删除
+      </button>
+      <button class="px-3 py-1.5 text-sm bg-slate-700 text-white rounded hover:bg-slate-800 disabled:opacity-50" onclick={() => listRecordings()} disabled={loading || deletingAll}>
+        <RefreshCw class="inline w-4 h-4 mr-1" /> 刷新
+      </button>
+    </div>
   </div>
 
   {#if usageInfo}
@@ -197,8 +297,11 @@
     <div class="flex items-center gap-2">
       持久化: <b class={persisted ? 'text-green-700' : 'text-yellow-700'}>{persisted === null ? '未知' : (persisted ? '是' : '否')}</b>
       {#if persisted === false}
-        <button class="px-2 py-1 bg-slate-700 text-white rounded" onclick={() => requestPersist()}>申请持久化</button>
+        <button class="px-2 py-1 bg-slate-700 text-white rounded hover:bg-slate-800" onclick={() => requestPersist()}>申请持久化</button>
       {/if}
+    </div>
+    <div class="mt-2 pt-2 border-t border-slate-300 text-gray-500">
+      💡 快捷键: Ctrl+R 刷新 | ESC 取消操作
     </div>
   </div>
 
@@ -208,11 +311,80 @@
     </div>
   {/if}
 
+  <!-- 全部删除确认对话框 -->
+  {#if showDeleteAllConfirm}
+    <div
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onclick={(e) => e.target === e.currentTarget && cancelDeleteAll()}
+      onkeydown={(e) => e.key === 'Escape' && cancelDeleteAll()}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="delete-confirm-title"
+      tabindex="-1"
+    >
+      <div
+        class="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl"
+        role="document"
+      >
+        <div class="flex items-center gap-3 mb-4">
+          <AlertTriangle class="w-6 h-6 text-red-500" />
+          <h3 id="delete-confirm-title" class="text-lg font-semibold text-gray-900">确认删除所有录制</h3>
+        </div>
+        <p class="text-gray-700 mb-6">
+          您即将删除所有 <strong>{summaries.length}</strong> 个录制数据。此操作不可撤销，请确认是否继续？
+        </p>
+        <div class="flex justify-end gap-3">
+          <button
+            class="px-4 py-2 text-sm bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+            onclick={cancelDeleteAll}
+          >
+            取消
+          </button>
+          <button
+            class="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+            onclick={deleteAllRecordings}
+          >
+            确认删除
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
+
+  <!-- 删除进度显示 -->
+  {#if deletingAll && deleteProgress}
+    <div class="mb-4 p-3 border border-blue-200 bg-blue-50 rounded">
+      <div class="flex items-center gap-2 mb-2">
+        <RefreshCw class="w-4 h-4 animate-spin text-blue-600" />
+        <span class="text-sm font-medium text-blue-800">正在删除录制数据...</span>
+      </div>
+      <div class="text-xs text-blue-700 mb-2">
+        进度: {deleteProgress.current} / {deleteProgress.total}
+      </div>
+      <div class="w-full bg-blue-200 rounded-full h-2">
+        <div
+          class="bg-blue-600 h-2 rounded-full transition-all duration-300"
+          style="width: {(deleteProgress.current / deleteProgress.total) * 100}%"
+        ></div>
+      </div>
+    </div>
+  {/if}
+
   {#if loading}
-    <div class="text-sm text-gray-500">加载中...</div>
+    <div class="flex items-center gap-2 text-sm text-gray-500">
+      <RefreshCw class="w-4 h-4 animate-spin" />
+      加载中...
+    </div>
   {:else if summaries.length === 0}
-    <div class="text-sm text-gray-500">暂无 rec_* 目录</div>
+    <div class="text-center py-8">
+      <Folder class="w-12 h-12 text-gray-300 mx-auto mb-3" />
+      <div class="text-sm text-gray-500">暂无录制数据</div>
+      <div class="text-xs text-gray-400 mt-1">录制的数据将显示在这里</div>
+    </div>
   {:else}
+    <div class="mb-3 text-sm text-gray-600">
+      共找到 <strong>{summaries.length}</strong> 个录制，总大小约 <strong>{formatBytes(summaries.reduce((sum, s) => sum + (s.dataSize || 0), 0))}</strong>
+    </div>
     <div class="space-y-3">
       {#each summaries as s}
         <div class="border border-slate-200 rounded p-3 bg-white">
@@ -225,7 +397,11 @@
               <span class="px-2 py-0.5 rounded bg-slate-100">{s.completed ? '已完成' : '进行中'}</span>
               <span class="px-2 py-0.5 rounded bg-slate-100">{formatBytes(s.dataSize)}</span>
 
-              <button class="px-2 py-1 bg-red-500 text-white rounded" onclick={() => deleteRecording(s.dirName)}>
+              <button
+                class="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                onclick={() => deleteRecording(s.dirName)}
+                disabled={deletingAll}
+              >
                 <Trash2 class="inline w-3 h-3 mr-1" /> 删除
               </button>
             </div>
