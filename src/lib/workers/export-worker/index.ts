@@ -1,13 +1,12 @@
 // MP4 导出 Worker - 协调视频合成和 MP4 导出
 // 使用 video-composite-worker 进行合成，然后用 Mediabunny 导出 MP4
-import type { EncodedChunk, ExportOptions, BackgroundConfig, GradientConfig, ImageBackgroundConfig } from '../types/background'
-import {
-  Output,
-  Mp4OutputFormat,
-  BufferTarget,
-  CanvasSource,
-  StreamTarget
-} from 'mediabunny'
+import type { EncodedChunk, ExportOptions, BackgroundConfig, GradientConfig, ImageBackgroundConfig } from '../../types/background'
+import { Mp4Strategy } from './strategies/mp4'
+import { WebmStrategy } from './strategies/webm'
+
+import { Output, Mp4OutputFormat, BufferTarget, CanvasSource } from 'mediabunny'
+
+
 
 interface ExportData {
   chunks: EncodedChunk[]
@@ -64,7 +63,7 @@ async function initializeOpfsReader(dirId: string, windowSize?: number): Promise
   try {
     console.log('🗂️ [MP4-Export-Worker] Initializing OPFS reader for dirId:', dirId)
 
-    opfsReader = new Worker(new URL('./opfs-reader-worker.ts', import.meta.url), { type: 'module' })
+    opfsReader = new Worker(new URL('../opfs-reader-worker.ts', import.meta.url), { type: 'module' })
     opfsWindowSize = Math.max(30, Math.min(windowSize ?? 90, 150)) // 限制窗口大小
 
     // 打开 OPFS 目录并获取摘要
@@ -414,11 +413,51 @@ async function handleExport(exportData: ExportData) {
   shouldCancel = false
 
   try {
-    console.log('🎬 [MP4-Export-Worker] Starting MP4 export')
-    console.log('📊 [MP4-Export-Worker] Input chunks:', exportData.chunks.length)
-    console.log('⚙️ [MP4-Export-Worker] Export options:', exportData.options)
-
     const { chunks, options } = exportData
+    console.log('🎬 [Export-Worker] Starting export', { format: options?.format })
+    console.log('📊 [Export-Worker] Input chunks:', chunks.length)
+    console.log('⚙️ [Export-Worker] Export options:', options)
+
+    // 分支：WebM 兼容路径（保持原 webm-export-worker 行为：不使用 OPFS 窗口/流式）
+    if (options?.format === 'webm') {
+      // 更新进度：准备阶段
+      updateProgress({ stage: 'preparing', progress: 5, currentFrame: 0, totalFrames: chunks.length })
+      if (shouldCancel) return
+
+      // 1) 创建并初始化 composite worker
+      console.log('🔄 [WebM-Export-Worker] Creating composite worker')
+      await createCompositeWorker()
+      if (shouldCancel) return
+
+      // 2) 处理视频合成（OPFS/内存）
+      console.log('🎨 [WebM-Export-Worker] Starting video composition')
+      if ((options as any)?.source === 'opfs' && (options as any)?.opfsDirId) {
+        await initializeOpfsReader((options as any).opfsDirId, (options as any).windowSize)
+        const { chunks: firstChunks, actualStart } = await loadOpfsWindow(0, opfsWindowSize)
+        await processVideoCompositionOpfs(firstChunks, options, actualStart)
+      } else {
+        await processVideoComposition(chunks, options)
+      }
+      if (shouldCancel) return
+
+      // 3) 导出 WebM（支持 OPFS 流式写入）
+      console.log('📦 [WebM-Export-Worker] Starting WebM export')
+      const webmResult: any = await exportToWEBMCompat(options)
+      if (shouldCancel) return
+
+      console.log('✅ [WebM-Export-Worker] WebM export completed')
+      if (webmResult && (webmResult as any).savedToOpfs) {
+        self.postMessage({ type: 'complete', data: { savedToOpfs: (webmResult as any).savedToOpfs } })
+      } else {
+        self.postMessage({ type: 'complete', data: { blob: webmResult as Blob } })
+      }
+      return
+    }
+
+    // 默认：MP4 路径（保留现有 MP4 行为）
+    console.log('🎬 [MP4-Export-Worker] Starting MP4 export')
+    console.log('📊 [MP4-Export-Worker] Input chunks:', chunks.length)
+    console.log('⚙️ [MP4-Export-Worker] Export options:', options)
 
     // 当来源为 OPFS 时，初始化 OPFS 读取器（用于实际导出）
     if ((options as any)?.source === 'opfs' && (options as any)?.opfsDirId) {
@@ -471,7 +510,7 @@ async function handleExport(exportData: ExportData) {
     }
 
   } catch (error) {
-    console.error('❌ [MP4-Export-Worker] Export failed:', error)
+    console.error('❌ [Export-Worker] Export failed:', error)
     self.postMessage({
       type: 'error',
       data: { error: (error as Error).message }
@@ -490,7 +529,7 @@ async function createCompositeWorker(): Promise<void> {
     try {
       // 创建 composite worker
       compositeWorker = new Worker(
-        new URL('./video-composite-worker.ts', import.meta.url),
+        new URL('../video-composite-worker.ts', import.meta.url),
         { type: 'module' }
       )
 
@@ -1005,6 +1044,9 @@ async function checkH264Support(): Promise<{ supported: boolean; reason: string 
 /**
  * 导出 MP4
  */
+
+
+
 async function exportToMP4(options: ExportOptions): Promise<any> {
   if (!offscreenCanvas || !videoInfo) {
     throw new Error('Canvas or video info not available')
@@ -1031,6 +1073,8 @@ async function exportToMP4(options: ExportOptions): Promise<any> {
       throw new Error(`H.264 编码器不支持: ${h264Support.reason}。请尝试导出为 WebM 格式。`)
     }
 
+    const strategy = new Mp4Strategy()
+
     // 更新进度：编码阶段
     updateProgress({
       stage: 'encoding',
@@ -1039,39 +1083,13 @@ async function exportToMP4(options: ExportOptions): Promise<any> {
       totalFrames: 100
     })
 
-    // 创建 Mediabunny 输出（支持 OPFS 流式写入）
+    // 创建 Mediabunny 输出（使用策略，支持 OPFS 流式写入）
     console.log('🏗️ [MP4-Export-Worker] Creating Mediabunny Output...')
 
     const useOpfsStream = Boolean((options as any)?.saveToOpfs && (options as any)?.opfsDirId)
-    let opfsFileHandle: FileSystemFileHandle | null = null
-    let opfsWritable: any | null = null
-    let output: any
+    const { output } = await strategy.createOutput(useOpfsStream, options)
 
-    if (useOpfsStream) {
-      if (!(self as any).navigator?.storage?.getDirectory) {
-        throw new Error('OPFS not available in worker; cannot stream to OPFS')
-      }
-      const dirId = (options as any).opfsDirId as string
-      const fileName = (options as any).opfsFileName || `export-${Date.now()}.mp4`
-      console.log('📁 [MP4-Export-Worker] OPFS stream target:', { dirId, fileName })
-      const root = await (self as any).navigator.storage.getDirectory()
-      const dir = await (root as any).getDirectoryHandle(dirId, { create: false })
-      opfsFileHandle = await (dir as any).getFileHandle(fileName, { create: true })
-      opfsWritable = await (opfsFileHandle as any).createWritable()
-
-      output = new Output({
-        format: new Mp4OutputFormat(),
-        target: new StreamTarget(opfsWritable, { chunked: true })
-      })
-    } else {
-      output = new Output({
-        format: new Mp4OutputFormat(),
-        target: new BufferTarget()
-      })
-    }
-
-    // 创建 CanvasSource（为 MP4 显式指定 H.264 与分辨率/帧率）
-    console.log('🎨 [MP4-Export-Worker] Creating CanvasSource with H.264 codec...')
+    // 创建 CanvasSource（通过策略）
     console.log('🎨 [MP4-Export-Worker] CanvasSource config:', {
       canvasSize: { width: offscreenCanvas.width, height: offscreenCanvas.height },
       videoInfo,
@@ -1079,10 +1097,7 @@ async function exportToMP4(options: ExportOptions): Promise<any> {
       bitrate: options.bitrate || 8000000
     })
 
-    const videoSource = new CanvasSource(offscreenCanvas, {
-      codec: 'avc',
-      bitrate: options.bitrate || 8000000
-    })
+    const videoSource = strategy.createVideoSource(offscreenCanvas, { bitrate: options.bitrate || 8000000 })
 
     console.log('✅ [MP4-Export-Worker] CanvasSource created successfully')
 
@@ -1090,15 +1105,8 @@ async function exportToMP4(options: ExportOptions): Promise<any> {
     console.log('🎬 [MP4-Export-Worker] Adding video track to output...')
     output.addVideoTrack(videoSource)
 
-    // 启动输出
-    console.log('🚀 [MP4-Export-Worker] Starting Mediabunny output...')
-    try {
-      await output.start()
-      console.log('✅ [MP4-Export-Worker] Mediabunny output started successfully')
-    } catch (startError) {
-      console.error('❌ [MP4-Export-Worker] Failed to start Mediabunny output:', startError)
-      throw new Error(`Mediabunny 输出启动失败: ${(startError as Error).message}`)
-    }
+    // 启动输出（交由策略处理）
+    await strategy.start(output)
 
     // 更新进度：封装阶段
     updateProgress({
@@ -1141,33 +1149,15 @@ async function exportToMP4(options: ExportOptions): Promise<any> {
       totalFrames: (isOpfsMode ? totalOpfsFrames : totalFrames)
     })
 
-    console.log('🔚 [MP4-Export-Worker] Finalizing Mediabunny output...')
-    try {
-      await output.finalize()
-      console.log('✅ [MP4-Export-Worker] Mediabunny output finalized successfully')
-      // 关闭 CanvasSource，释放编码端资源
-      try { if (videoSource && typeof (videoSource as any).close === 'function') { (videoSource as any).close() } } catch {}
-      try { if ((videoSource as any)?.destroy) { (videoSource as any).destroy() } } catch {}
-      // 若使用 OPFS 流式写入，确保 Writable 关闭，释放句柄
-      try { if (typeof opfsWritable !== 'undefined' && opfsWritable) { await opfsWritable.close() } } catch {}
-    } catch (finalizeError) {
-      console.error('❌ [MP4-Export-Worker] Failed to finalize Mediabunny output:', finalizeError)
-      throw new Error(`Mediabunny 输出完成失败: ${(finalizeError as Error).message}`)
-    }
+    // 完成输出（交由策略处理），并关闭视频源
+    await strategy.finalize(output)
+    try { if (videoSource) { strategy.closeVideoSource?.(videoSource) } } catch {}
 
     // 获取结果
     if (useOpfsStream) {
-      let bytes = 0
-      let fileName = (options as any).opfsFileName || 'export.mp4'
-      try {
-        const file = await (opfsFileHandle as any)?.getFile()
-        if (file) {
-          bytes = file.size
-          fileName = (file as any).name || fileName
-        }
-      } catch {}
+      const info = (await (strategy.getOpfsResultInfo?.(options as any) || Promise.resolve({ bytes: 0, fileName: (options as any).opfsFileName || 'export.mp4' }))) as { bytes: number; fileName: string }
 
-      console.log('✅ [MP4-Export-Worker] MP4 export streamed to OPFS', { bytes })
+      console.log('✅ [MP4-Export-Worker] MP4 export streamed to OPFS', { bytes: info.bytes })
       console.log(`📊 [MP4-Export-Worker] Added frames: ${addedFrames}/${totalFrames} (${((addedFrames / totalFrames) * 100).toFixed(1)}%)`)
       console.log(`📊 [MP4-Export-Worker] Estimated duration: ${(totalFrames / videoInfo.frameRate).toFixed(2)}s`)
 
@@ -1177,10 +1167,10 @@ async function exportToMP4(options: ExportOptions): Promise<any> {
         progress: 100,
         currentFrame: (isOpfsMode ? totalOpfsFrames : totalFrames),
         totalFrames: (isOpfsMode ? totalOpfsFrames : totalFrames),
-        fileSize: bytes
+        fileSize: info.bytes
       })
 
-      return { savedToOpfs: { dirId: (options as any).opfsDirId, fileName, bytesWritten: bytes } }
+      return { savedToOpfs: { dirId: (options as any).opfsDirId, fileName: info.fileName, bytesWritten: info.bytes } }
     } else {
       const buffer = output.target.buffer
       if (!buffer) {
@@ -1194,6 +1184,8 @@ async function exportToMP4(options: ExportOptions): Promise<any> {
       const mp4Blob = new Blob([buffer], { type: 'video/mp4' })
 
       // 🔧 验证生成的 MP4 文件
+
+
       console.log('🔍 [MP4-Export-Worker] Validating generated MP4...')
       const validation = validateMP4Blob(mp4Blob, addedFrames, totalFrames)
       console.log('🔍 [MP4-Export-Worker] MP4 validation result:', validation)
@@ -1316,6 +1308,8 @@ async function renderFramesForExport(videoSource: any, frameDuration: number): P
       console.error(`❌ [MP4-Export-Worker] Failed to process frame ${frameIndex}:`, error)
       console.error(`❌ [MP4-Export-Worker] Request error details:`, {
         frameIndex,
+
+
         timestamp,
         requestErrors,
         addedCount,
@@ -1619,3 +1613,106 @@ testCases.forEach(testCase => {
 })
 
 console.log('✅ [MP4-Export-Worker] Initialization checks completed')
+
+
+/**
+ * WebM 导出（支持 OPFS 流式写入；否则走内存 BufferTarget）
+ */
+async function exportToWEBMCompat(options: ExportOptions): Promise<any> {
+  if (!offscreenCanvas || !videoInfo) {
+    throw new Error('Canvas or video info not available')
+  }
+
+  // 编码阶段进度
+  updateProgress({ stage: 'encoding', progress: 75, currentFrame: 0, totalFrames: 100 })
+
+  const strategy = new WebmStrategy()
+
+  const useOpfsStream = Boolean((options as any)?.saveToOpfs && (options as any)?.opfsDirId)
+  const { output } = await strategy.createOutput(useOpfsStream, options)
+
+  // 创建 CanvasSource（vp9，默认 8Mbps）
+  const videoSource = strategy.createVideoSource(offscreenCanvas, { bitrate: options.bitrate || 8_000_000 })
+  output.addVideoTrack(videoSource)
+
+  await strategy.start(output)
+  console.log('✅ [WebM-Export-Worker] Mediabunny output started')
+
+  // 封装阶段进度
+  updateProgress({ stage: 'muxing', progress: 80, currentFrame: 0, totalFrames })
+
+  const frameRate = videoInfo.frameRate
+  const frameDuration = 1 / frameRate
+
+  console.log(`📊 [WebM-Export-Worker] Export parameters: totalFrames=${totalFrames}, frameRate=${frameRate}`)
+
+  // 逐帧渲染并添加（OPFS 模式走窗口化渲染）
+  const addedFrames = isOpfsMode
+    ? await renderFramesForExportOpfs(videoSource, frameDuration, options)
+    : await renderFramesForExportWebm(videoSource, frameDuration)
+  console.log(`📊 [WebM-Export-Worker] Successfully added ${addedFrames} frames to VP9 encoder`)
+
+  // 完成输出
+  updateProgress({ stage: 'finalizing', progress: 95, currentFrame: totalFrames, totalFrames })
+
+  await strategy.finalize(output)
+  console.log('✅ [WebM-Export-Worker] Mediabunny output finalized')
+
+  if (useOpfsStream) {
+    const info = (await (strategy.getOpfsResultInfo?.(options as any) || Promise.resolve({ bytes: 0, fileName: (options as any).opfsFileName || 'export.webm' }))) as { bytes: number; fileName: string }
+    updateProgress({ stage: 'finalizing', progress: 100, currentFrame: totalFrames, totalFrames, fileSize: info.bytes })
+    // 资源清理（最佳努力）
+    try { strategy.closeVideoSource?.(videoSource) } catch {}
+    return { savedToOpfs: { dirId: (options as any).opfsDirId, fileName: info.fileName, bytesWritten: info.bytes } }
+  }
+
+  const buffer = (output as any).target?.buffer as ArrayBuffer | undefined
+  if (!buffer) throw new Error('No buffer data available from Mediabunny output')
+
+  const webmBlob = new Blob([buffer], { type: 'video/webm' })
+
+  // 最终进度
+  updateProgress({ stage: 'finalizing', progress: 100, currentFrame: totalFrames, totalFrames, fileSize: buffer.byteLength })
+
+  // 资源清理（最佳努力）
+  try { strategy.closeVideoSource?.(videoSource) } catch {}
+
+  return webmBlob
+}
+
+/**
+ * WebM 逐帧渲染：包含 16ms 等待，保持与原 webm-export-worker 一致
+ */
+async function renderFramesForExportWebm(videoSource: any, frameDuration: number): Promise<void> {
+  if (!compositeWorker || !totalFrames) {
+    throw new Error('Composite worker or frame count not available')
+  }
+
+  console.log(`🎬 [WebM-Export-Worker] Starting frame rendering for ${totalFrames} frames`)
+
+  for (let frameIndex = 0; frameIndex < totalFrames; frameIndex++) {
+    if (shouldCancel) break
+
+    const timestamp = frameIndex * frameDuration
+
+    try {
+      await requestCompositeFrame(frameIndex)
+      // 等待一帧时间确保渲染完成（与原实现保持一致）
+      await new Promise(resolve => setTimeout(resolve, 16))
+
+      await videoSource.add(timestamp, frameDuration)
+
+      const progress = 80 + (frameIndex / totalFrames) * 15 // 80%-95%
+      updateProgress({ stage: 'muxing', progress, currentFrame: frameIndex + 1, totalFrames })
+
+      if (frameIndex % 10 === 0) {
+        console.log(`📊 [WebM-Export-Worker] Added frame ${frameIndex + 1}/${totalFrames}, ts: ${timestamp.toFixed(3)}s`)
+      }
+    } catch (error) {
+      console.error(`❌ [WebM-Export-Worker] Failed to add frame ${frameIndex}:`, error)
+      // 不中断整个过程
+    }
+  }
+
+  console.log('✅ [WebM-Export-Worker] All frames added to CanvasSource')
+}

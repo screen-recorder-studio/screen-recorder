@@ -197,7 +197,7 @@
         } : undefined
       } : undefined
 
-      const videoBlob = await exportManager.exportEditedVideo(
+      const videoResult = await exportManager.exportEditedVideo(
         encodedChunks,
         {
           format: 'webm',
@@ -205,7 +205,13 @@
           backgroundConfig: plainBackgroundConfig as any,
           quality: 'medium',
           source: opfsDirId ? 'opfs' : 'chunks',
-          opfsDirId: opfsDirId || undefined
+          opfsDirId: opfsDirId || undefined,
+          saveToOpfs: !!opfsDirId,
+          opfsFileName: (() => {
+            if (!opfsDirId) return undefined
+            const ts = new Date().toISOString().replace(/[:.]/g, '-')
+            return `edited-video-${ts}.webm`
+          })()
         },
         (progress) => {
           // 缓存并节流更新非关键字段，避免整块区域高频重渲染
@@ -223,13 +229,28 @@
       // 确保显示进度达 100%
       setProgressTarget(100)
 
-      // 下载文件
+      // 完成处理：OPFS 或 Blob 下载
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-      const filename = `edited-video-${timestamp}.webm`
+      const fallbackFilename = `edited-video-${timestamp}.webm`
 
-      await downloadBlob(videoBlob, filename)
-
-      console.log('✅ [Export] WebM export completed:', filename)
+      if (videoResult && (videoResult as any).savedToOpfs) {
+        const info = (videoResult as any).savedToOpfs as { dirId: string; fileName: string; bytesWritten: number }
+        console.log('✅ [Export] WebM saved to OPFS:', info)
+        try {
+          const root: any = await (navigator as any).storage.getDirectory()
+          const dir: any = await root.getDirectoryHandle(info.dirId, { create: false })
+          const fileHandle: any = await dir.getFileHandle(info.fileName, { create: false })
+          const file: File = await fileHandle.getFile()
+          const blob = file.slice(0, file.size, 'video/webm')
+          await downloadBlob(blob, info.fileName)
+          console.log('⬇️ [Export] Downloaded WebM from OPFS:', info.fileName)
+        } catch (e) {
+          console.warn('⚠️ [Export] Failed to read WebM from OPFS, falling back to no-op:', e)
+        }
+      } else {
+        await downloadBlob(videoResult as Blob, fallbackFilename)
+        console.log('✅ [Export] WebM export completed:', fallbackFilename)
+      }
 
     } catch (error) {
       console.error('❌ [Export] WebM export failed:', error)
