@@ -8,14 +8,21 @@
   interface Props {
     encodedChunks?: any[]
     isRecordingComplete?: boolean
+    totalFramesAll?: number
+    opfsDirId?: string
     className?: string
   }
 
   let {
     encodedChunks = [],
     isRecordingComplete = false,
+    totalFramesAll = 0,
+    opfsDirId = '',
     className = ''
   }: Props = $props()
+
+  // 显示用总帧数：优先使用全量(totalFramesAll)，否则退回当前窗口(encodedChunks.length)
+  const displayTotalFrames = $derived(totalFramesAll > 0 ? totalFramesAll : encodedChunks.length)
 
   // 使用全局背景配置
   const backgroundConfig = $derived(backgroundConfigStore.config)
@@ -32,14 +39,83 @@
     estimatedTimeRemaining: number
   } | null>(null)
 
+
+  // 平滑显示的导出进度，避免高频率更新导致 UI 闪动
+  let displayedProgress = $state(0)
+  let targetProgress = $state(0)
+  let rafId: number | null = null
+
+  function resetProgressAnimation() {
+    if (rafId) {
+      cancelAnimationFrame(rafId)
+      rafId = null
+    }
+    displayedProgress = 0
+    targetProgress = 0
+  }
+
+  function animateProgress() {
+    if (rafId) return
+    const step = () => {
+      const diff = targetProgress - displayedProgress
+      if (Math.abs(diff) < 0.5) {
+        displayedProgress = targetProgress
+        rafId = null
+        return
+      }
+      // 缓动到目标，降低重绘频率，减少闪动
+      displayedProgress += diff * 0.25
+      rafId = requestAnimationFrame(step)
+    }
+    rafId = requestAnimationFrame(step)
+  }
+
+  function setProgressTarget(p: number) {
+    // 防止进度回退造成的视觉跳变
+    const clamped = Math.max(0, Math.min(100, p))
+    if (clamped >= targetProgress) {
+      targetProgress = clamped
+      animateProgress()
+    }
+  }
+
+  // 节流导出进度字段更新，降低模板重渲染频率
+  let pendingProgress: {
+    stage: 'preparing' | 'compositing' | 'encoding' | 'muxing' | 'finalizing'
+    currentFrame: number
+    totalFrames: number
+    estimatedTimeRemaining: number
+  } | null = null
+  let scheduled = false
+  let lastUIUpdate = 0
+  const MIN_UPDATE_INTERVAL = 80 // 毫秒
+
+  function scheduleProgressFieldsUpdate() {
+    if (scheduled) return
+    scheduled = true
+    requestAnimationFrame(() => {
+      scheduled = false
+      const now = performance.now()
+      if (now - lastUIUpdate < MIN_UPDATE_INTERVAL) return
+      lastUIUpdate = now
+      if (exportProgress && pendingProgress) {
+        exportProgress.stage = pendingProgress.stage
+        exportProgress.currentFrame = pendingProgress.currentFrame
+        exportProgress.totalFrames = pendingProgress.totalFrames
+        exportProgress.estimatedTimeRemaining = pendingProgress.estimatedTimeRemaining || 0
+      }
+    })
+  }
+
+
   // 导出管理器
   const exportManager = new ExportManager()
 
   // 检查是否可以导出
   const canExport = $derived(
-    isRecordingComplete && 
-    encodedChunks.length > 0 && 
-    !isExportingWebM && 
+    isRecordingComplete &&
+    encodedChunks.length > 0 &&
+    !isExportingWebM &&
     !isExportingMP4
   )
 
@@ -127,19 +203,32 @@
           format: 'webm',
           includeBackground: !!plainBackgroundConfig,
           backgroundConfig: plainBackgroundConfig as any,
-          quality: 'medium'
+          quality: 'medium',
+          source: opfsDirId ? 'opfs' : 'chunks',
+          opfsDirId: opfsDirId || undefined
         },
         (progress) => {
-          exportProgress = { ...progress, type: 'webm' }
+          // 缓存并节流更新非关键字段，避免整块区域高频重渲染
+          pendingProgress = {
+            stage: progress.stage,
+            currentFrame: progress.currentFrame,
+            totalFrames: progress.totalFrames,
+            estimatedTimeRemaining: progress.estimatedTimeRemaining || 0
+          }
+          setProgressTarget(progress.progress)
+          scheduleProgressFieldsUpdate()
         }
       )
+
+      // 确保显示进度达 100%
+      setProgressTarget(100)
 
       // 下载文件
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
       const filename = `edited-video-${timestamp}.webm`
-      
+
       await downloadBlob(videoBlob, filename)
-      
+
       console.log('✅ [Export] WebM export completed:', filename)
 
     } catch (error) {
@@ -147,6 +236,7 @@
       // TODO: 显示错误提示
     } finally {
       isExportingWebM = false
+      resetProgressAnimation()
       exportProgress = null
     }
   }
@@ -235,19 +325,32 @@
           format: 'mp4',
           includeBackground: !!plainBackgroundConfig,
           backgroundConfig: plainBackgroundConfig as any,
-          quality: 'medium'
+          quality: 'medium',
+          source: opfsDirId ? 'opfs' : 'chunks',
+          opfsDirId: opfsDirId || undefined
         },
         (progress) => {
-          exportProgress = { ...progress, type: 'mp4' }
+          // 缓存并节流更新非关键字段，避免整块区域高频重渲染
+          pendingProgress = {
+            stage: progress.stage,
+            currentFrame: progress.currentFrame,
+            totalFrames: progress.totalFrames,
+            estimatedTimeRemaining: progress.estimatedTimeRemaining || 0
+          }
+          setProgressTarget(progress.progress)
+          scheduleProgressFieldsUpdate()
         }
       )
 
       // 下载文件
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
       const filename = `edited-video-${timestamp}.mp4`
-      
+
+      // 确保显示进度达 100%
+      setProgressTarget(100)
+
       await downloadBlob(videoBlob, filename)
-      
+
       console.log('✅ [Export] MP4 export completed:', filename)
 
     } catch (error) {
@@ -255,6 +358,7 @@
       // TODO: 显示错误提示
     } finally {
       isExportingMP4 = false
+      resetProgressAnimation()
       exportProgress = null
     }
   }
@@ -265,7 +369,7 @@
       // 尝试使用 Chrome API
       if (typeof chrome !== 'undefined' && chrome.runtime) {
         const url = URL.createObjectURL(blob)
-        
+
         chrome.runtime.sendMessage({
           action: 'saveRecording',
           filename,
@@ -294,11 +398,11 @@
     a.href = url
     a.download = filename
     a.style.display = 'none'
-    
+
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
-    
+
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
 
@@ -332,7 +436,7 @@
     </div>
     <div class="flex gap-2 text-xs">
       {#if encodedChunks.length > 0}
-        <span class="bg-blue-500 text-white px-2 py-1 rounded">{encodedChunks.length} 帧</span>
+        <span class="bg-blue-500 text-white px-2 py-1 rounded">{displayTotalFrames} 帧</span>
         {#if backgroundConfig}
           <span class="bg-emerald-500 text-white px-2 py-1 rounded">包含背景</span>
         {/if}
@@ -348,7 +452,7 @@
       class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-500 text-white text-sm font-medium rounded-md cursor-pointer transition-all duration-200 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
       class:opacity-80={isExportingWebM}
       disabled={!canExport}
-      onclick={exportWebM}
+      onclick={() => { resetProgressAnimation(); exportWebM() }}
     >
       {#if isExportingWebM}
         <LoaderCircle class="w-4 h-4 animate-spin" />
@@ -363,7 +467,7 @@
       class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-emerald-500 text-white text-sm font-medium rounded-md cursor-pointer transition-all duration-200 hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
       class:opacity-80={isExportingMP4}
       disabled={!canExport}
-      onclick={exportMP4}
+      onclick={() => { resetProgressAnimation(); exportMP4() }}
     >
       {#if isExportingMP4}
         <LoaderCircle class="w-4 h-4 animate-spin" />
@@ -383,23 +487,23 @@
           导出 {exportProgress.type.toUpperCase()} - {formatStage(exportProgress.stage)}
         </span>
         <span class="text-sm font-semibold text-gray-900">
-          {Math.round(exportProgress.progress)}%
+          {Math.round(displayedProgress)}%
         </span>
       </div>
 
       <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mb-2">
         <div
-          class="h-full transition-all duration-300 rounded-full"
+          class="h-full origin-left transition-transform duration-300 rounded-full will-change-transform"
           class:bg-blue-500={exportProgress.type === 'webm'}
           class:bg-emerald-500={exportProgress.type === 'mp4'}
-          style="width: {exportProgress.progress}%"
+          style="transform: scaleX({displayedProgress / 100})"
         ></div>
       </div>
 
       <div class="flex justify-between text-xs text-slate-600">
         <span class="flex items-center gap-1">
           <CircleCheck class="w-3 h-3" />
-          {exportProgress.currentFrame} / {exportProgress.totalFrames} 帧
+          {exportProgress.currentFrame} / {displayTotalFrames} 帧
         </span>
         {#if exportProgress.estimatedTimeRemaining > 0}
           <span class="flex items-center gap-1">

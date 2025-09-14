@@ -16,22 +16,23 @@ export class ExportManager {
     options: ExportOptions,
     progressCallback?: (progress: ExportProgress) => void
   ): Promise<Blob> {
-    
+
     this.progressCallback = progressCallback || null
-    
+
     try {
       console.log(`🎬 [ExportManager] Starting ${options.format.toUpperCase()} export`)
       console.log('📊 [ExportManager] Export options:', options)
       console.log('📦 [ExportManager] Input chunks:', encodedChunks.length)
 
-      // 验证输入数据
+
+      // 验证输入数据（保持现状：仅当使用内存块导出时必须提供）
       if (!encodedChunks || encodedChunks.length === 0) {
         throw new Error('No encoded chunks provided')
       }
 
       // 准备导出数据
       const exportData = this.prepareExportData(encodedChunks, options)
-      
+
       // 根据格式选择导出方式
       if (options.format === 'webm') {
         return await this.exportWebM(exportData, options)
@@ -48,6 +49,7 @@ export class ExportManager {
       this.cleanup()
     }
   }
+
 
   /**
    * 准备导出数据
@@ -84,9 +86,9 @@ export class ExportManager {
     exportData: { chunks: EncodedChunk[], options: ExportOptions },
     options: ExportOptions
   ): Promise<Blob> {
-    
+
     console.log('🎬 [ExportManager] Starting WebM export process')
-    
+
     return new Promise((resolve, reject) => {
       // 创建 WebM 导出 Worker
       this.currentExportWorker = new Worker(

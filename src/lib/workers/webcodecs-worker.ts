@@ -7,8 +7,8 @@ let currentEncoderConfig: VideoEncoderConfig | null = null
 
 // 处理主线程消息
 self.onmessage = async (event) => {
-  const { type, config, frame } = event.data
-  console.log(`📨 [WORKER] Received message from main thread:`, { type, hasConfig: !!config, hasFrame: !!frame })
+  const { type, config, frame, keyFrame } = event.data
+  console.log(`📨 [WORKER] Received message from main thread:`, { type, hasConfig: !!config, hasFrame: !!frame, keyFrame: keyFrame === true })
 
   switch (type) {
     case 'configure':
@@ -18,7 +18,7 @@ self.onmessage = async (event) => {
 
     case 'encode':
       if (encoder && frame) {
-        await encodeFrame(frame)
+        await encodeFrame(frame, keyFrame === true)
       } else {
         console.warn('⚠️ [WORKER] Cannot encode: encoder or frame missing')
       }
@@ -148,8 +148,8 @@ async function configureEncoder(config: any) {
   }
 }
 
-// 编码帧
-async function encodeFrame(frame: VideoFrame) {
+// 编码帧（支持外部控制关键帧）
+async function encodeFrame(frame: VideoFrame, forceKey: boolean = false) {
   try {
     if (!encoder) {
       throw new Error('Encoder not configured')
@@ -169,8 +169,8 @@ async function encodeFrame(frame: VideoFrame) {
       }
     } catch {}
 
-    // 编码帧
-    encoder.encode(frame, { keyFrame: false })
+    // 编码帧（与元素/区域策略一致：由调用方控制是否关键帧）
+    encoder.encode(frame, { keyFrame: forceKey === true })
 
     // 关闭帧以释放内存
     frame.close()

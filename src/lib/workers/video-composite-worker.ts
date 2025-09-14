@@ -6,12 +6,13 @@
 import type { BackgroundConfig, GradientConfig, GradientStop, ImageBackgroundConfig } from '../types/background'
 
 interface CompositeMessage {
-  type: 'init' | 'process' | 'play' | 'pause' | 'seek' | 'config';
+  type: 'init' | 'process' | 'play' | 'pause' | 'seek' | 'config' | 'appendWindow';
   data: {
     chunks?: any[];
     backgroundConfig?: BackgroundConfig;
     timestamp?: number;
     frameIndex?: number;
+    startGlobalFrame?: number; // 新增：窗口全局起点（用于C-2复用判断）
   };
 }
 
@@ -26,11 +27,34 @@ interface VideoLayout {
 let offscreenCanvas: OffscreenCanvas | null = null;
 let ctx: OffscreenCanvasRenderingContext2D | null = null;
 let videoDecoder: VideoDecoder | null = null;
+let videoDecoderCodec: string | null = null;
 let decodedFrames: VideoFrame[] = [];
 let currentConfig: BackgroundConfig | null = null;
+// 下一窗口后台解码帧缓冲（C-2）
+let nextDecoded: VideoFrame[] = []
+let nextMeta: { start: number | null; codec: string | null } | null = null
+// 解码输出目标：当前窗口 or 下一窗口
+let outputTarget: 'current' | 'next' = 'current'
+
 let isPlaying = false;
+let isDecoding = false; // streaming decode in progress
+let pendingSeekIndex: number | null = null; // seek request waiting for frames
 let currentFrameIndex = 0;
 let animationId: number | null = null;
+
+// 当前窗口边界（以帧数计）：来自 process(chunks.length)，用于界定 windowComplete
+let windowBoundaryFrames: number | null = null
+
+
+// 缓冲区与水位配置（阶段2B：预取调度基础）
+const BUFFER_CONFIG = {
+  capacity: 120,       // 约4秒@30fps
+  lowWatermark: 30,    // 1秒，建议开始预取
+  highWatermark: 90,   // 3秒，暂停预取
+  criticalLevel: 10    // 0.33秒，紧急预取
+};
+let lowWatermarkNotified = false;
+let criticalWatermarkNotified = false;
 
 // 固定的视频布局（避免每帧重新计算）
 let fixedVideoLayout: VideoLayout | null = null;
@@ -41,7 +65,7 @@ let correctedVideoSize: { width: number; height: number } | null = null;
 // 初始化 OffscreenCanvas
 function initializeCanvas(width: number, height: number) {
   console.log('🎨 [COMPOSITE-WORKER] Initializing OffscreenCanvas:', { width, height });
-  
+
   offscreenCanvas = new OffscreenCanvas(width, height);
   ctx = offscreenCanvas.getContext('2d', {
     alpha: false,           // 不需要透明度，提高性能
@@ -578,6 +602,161 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
     return null;
   }
 }
+// 基础流式解码：开始提交块并在后台flush，边解边播
+function startStreamingDecode(chunks: any[]) {
+  if (!chunks || chunks.length === 0) {
+    throw new Error('No video chunks provided');
+  }
+
+  // 清理旧帧（保留解码器以复用）
+  if (decodedFrames.length > 0) {
+    console.log('[progress] VideoComposite - cleaning old decoded frames (streaming):', decodedFrames.length)
+    for (const frame of decodedFrames) {
+      try { frame.close(); } catch {}
+    }
+    decodedFrames = [];
+  }
+
+  const firstChunk = chunks[0];
+  const codec = firstChunk.codec || 'vp8';
+
+  const needRecreate = !videoDecoder || videoDecoderCodec !== codec;
+  if (needRecreate) {
+    console.log('🎬 [COMPOSITE-WORKER] (Re)initializing VideoDecoder for streaming, codec:', codec);
+
+    videoDecoder = new VideoDecoder({
+      output: (frame: VideoFrame) => {
+        const targetBuf = (outputTarget === 'next') ? nextDecoded : decodedFrames;
+        targetBuf.push(frame);
+        // 仅当输出到当前窗口时，才执行日志与 pending seek 渲染
+        if (outputTarget !== 'next') {
+          if (decodedFrames.length % 60 === 0) {
+            console.log(`📽️ [COMPOSITE-WORKER] [stream] Frames decoded: ${decodedFrames.length}/${chunks.length}`);
+          }
+          if (pendingSeekIndex !== null && decodedFrames.length > pendingSeekIndex) {
+            try {
+              if (currentConfig && fixedVideoLayout) {
+                const f = decodedFrames[pendingSeekIndex];
+                const bitmap = renderCompositeFrame(f, fixedVideoLayout, currentConfig);
+                if (bitmap) {
+                  self.postMessage({
+                    type: 'frame',
+                    data: { bitmap, frameIndex: pendingSeekIndex, timestamp: f.timestamp }
+                  }, { transfer: [bitmap] });
+                  currentFrameIndex = pendingSeekIndex;
+                }
+              }
+            } catch (e) {
+              console.warn('[progress] VideoComposite - pending seek render failed:', e);
+            } finally {
+              pendingSeekIndex = null;
+            }
+          }
+        }
+      },
+      error: (error: Error) => {
+        console.error('❌ [COMPOSITE-WORKER] Decoder error (stream):', error);
+        self.postMessage({ type: 'error', data: error.message });
+      }
+    });
+
+    const decoderConfig: VideoDecoderConfig = { codec } as VideoDecoderConfig;
+    console.log('[progress] VideoComposite - configuring decoder (stream) with:', decoderConfig)
+    try {
+      videoDecoder.configure(decoderConfig);
+      videoDecoderCodec = codec;
+      console.log('✅ [COMPOSITE-WORKER] VideoDecoder configured for streaming');
+    } catch (error) {
+      console.error('[progress] VideoComposite - decoder configuration error (stream):', error);
+      throw new Error(`Failed to configure decoder: ${error}`);
+    }
+  } else {
+    console.log('[progress] VideoComposite - reusing existing VideoDecoder (stream), codec:', codec)
+  }
+
+  // 开始流式解码
+  isDecoding = true;
+  console.log('[progress] VideoComposite - starting streaming decode, chunks:', chunks.length)
+  try {
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      const data = chunk.data instanceof ArrayBuffer ? new Uint8Array(chunk.data) : chunk.data;
+      const encodedChunk = new EncodedVideoChunk({
+        type: chunk.type === 'key' ? 'key' : 'delta',
+        timestamp: chunk.timestamp,
+        data
+      });
+      videoDecoder!.decode(encodedChunk);
+      if ((i + 1) % 10 === 0) {
+        console.log(`[progress] VideoComposite - submitted ${i + 1}/${chunks.length} chunks (stream)`)
+      }
+    }
+  } catch (error) {
+    console.error('[progress] VideoComposite - error during streaming decode submit:', error);
+    throw error;
+  }
+
+  // 后台flush，不阻塞ready/播放
+  videoDecoder!.flush().then(() => {
+    console.log('✅ [COMPOSITE-WORKER] Streaming decode flush complete, frames:', decodedFrames.length);
+    isDecoding = false;
+  }).catch((error) => {
+    console.error('[progress] VideoComposite - decoder flush error (stream):', error);
+    isDecoding = false;
+  });
+}
+
+// 追加解码：在现有解码器与帧缓冲基础上追加下一窗口的编码块（小步C）
+function appendStreamingDecode(chunks: any[]) {
+  if (!chunks || chunks.length === 0) {
+    console.warn('[COMPOSITE-WORKER] appendStreamingDecode: no chunks');
+    return;
+  }
+  const firstChunk = chunks[0];
+  const codec = firstChunk.codec || 'vp8';
+
+  if (!videoDecoder) {
+    console.warn('[COMPOSITE-WORKER] appendStreamingDecode: decoder not initialized, ignoring');
+    return;
+  }
+  if (videoDecoderCodec !== codec) {
+    console.warn('[COMPOSITE-WORKER] appendStreamingDecode: codec mismatch, expected', videoDecoderCodec, 'got', codec);
+    return;
+  }
+
+  isDecoding = true;
+  console.log('[progress] VideoComposite - appending streaming decode, chunks:', chunks.length)
+  try {
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      const data = chunk.data instanceof ArrayBuffer ? new Uint8Array(chunk.data) : chunk.data;
+      const encodedChunk = new EncodedVideoChunk({
+        type: chunk.type === 'key' ? 'key' : 'delta',
+        timestamp: chunk.timestamp,
+        data
+      });
+      videoDecoder!.decode(encodedChunk);
+      if ((i + 1) % 10 === 0) {
+        console.log(`[progress] VideoComposite - appended ${i + 1}/${chunks.length} chunks`)
+      }
+    }
+  } catch (error) {
+    console.error('[progress] VideoComposite - error during append decode submit:', error);
+    return;
+  }
+
+  videoDecoder!.flush().then(() => {
+    console.log('✅ [COMPOSITE-WORKER] Append decode flush complete, next frames:', nextDecoded.length);
+    isDecoding = false;
+    outputTarget = 'current';
+  }).catch((error) => {
+    console.error('[progress] VideoComposite - decoder flush error (append):', error);
+    isDecoding = false;
+    outputTarget = 'current';
+  });
+}
+
+
 
 // 初始化视频解码器（以解码后帧的 displayWidth/displayHeight 为准，避免拉伸变形）
 async function initializeDecoder(chunks: any[]) {
@@ -585,17 +764,29 @@ async function initializeDecoder(chunks: any[]) {
     throw new Error('No video chunks provided');
   }
 
+  // 🔧 清理旧的解码帧（但尽量复用解码器）
+  console.log('[progress] VideoComposite - cleaning old decoded frames:', decodedFrames.length)
+  for (const frame of decodedFrames) {
+    frame.close();
+  }
+  decodedFrames = [];
+
   const firstChunk = chunks[0];
   const codec = firstChunk.codec || 'vp8';
 
-  console.log('🎬 [COMPOSITE-WORKER] Initializing VideoDecoder with codec:', codec);
+  // 仅当解码器不存在或编解码器变化时才重建
+  const needRecreate = !videoDecoder || videoDecoderCodec !== codec;
+  if (needRecreate) {
+    console.log('🎬 [COMPOSITE-WORKER] (Re)initializing VideoDecoder with codec:', codec);
 
-  videoDecoder = new VideoDecoder({
+    videoDecoder = new VideoDecoder({
     output: (frame: VideoFrame) => {
-      decodedFrames.push(frame);
-      // 仅调试：不要打印过多日志
-      if (decodedFrames.length % 60 === 0) {
-        console.log(`📽️ [COMPOSITE-WORKER] Frames decoded: ${decodedFrames.length}/${chunks.length}`);
+      const targetBuf = (outputTarget === 'next') ? nextDecoded : decodedFrames;
+      targetBuf.push(frame);
+      if (outputTarget !== 'next') {
+        if (decodedFrames.length % 60 === 0) {
+          console.log(`📽️ [COMPOSITE-WORKER] Frames decoded: ${decodedFrames.length}/${chunks.length}`);
+        }
       }
     },
     error: (error: Error) => {
@@ -609,22 +800,56 @@ async function initializeDecoder(chunks: any[]) {
 
   // 仅使用 codec 配置，让解码器自行确定帧尺寸/显示比例
   const decoderConfig: VideoDecoderConfig = { codec } as VideoDecoderConfig;
-  videoDecoder.configure(decoderConfig);
-  console.log('✅ [COMPOSITE-WORKER] VideoDecoder configured:', decoderConfig);
+  console.log('[progress] VideoComposite - configuring decoder with:', decoderConfig)
+
+  try {
+    videoDecoder.configure(decoderConfig);
+    videoDecoderCodec = codec;
+    console.log('✅ [COMPOSITE-WORKER] VideoDecoder configured:', decoderConfig);
+
+    // 🔧 给解码器一点时间来完全初始化
+    await new Promise(resolve => setTimeout(resolve, 10));
+    console.log('[progress] VideoComposite - decoder ready for decoding');
+  } catch (error) {
+    console.error('[progress] VideoComposite - decoder configuration error:', error);
+    throw new Error(`Failed to configure decoder: ${error}`);
+  }
+} else {
+  console.log('[progress] VideoComposite - reusing existing VideoDecoder with codec:', codec)
+}
 
   // 解码所有块
-  for (const chunk of chunks) {
-    const data = chunk.data instanceof ArrayBuffer ? new Uint8Array(chunk.data) : chunk.data;
-    const encodedChunk = new EncodedVideoChunk({
-      type: chunk.type === 'key' ? 'key' : 'delta',
-      timestamp: chunk.timestamp,
-      data
-    });
-    videoDecoder.decode(encodedChunk);
+  console.log('[progress] VideoComposite - starting to decode chunks:', chunks.length)
+  try {
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      const data = chunk.data instanceof ArrayBuffer ? new Uint8Array(chunk.data) : chunk.data;
+      const encodedChunk = new EncodedVideoChunk({
+        type: chunk.type === 'key' ? 'key' : 'delta',
+        timestamp: chunk.timestamp,
+        data
+      });
+      videoDecoder!.decode(encodedChunk);
+
+      // 每10帧输出一次进度
+      if ((i + 1) % 10 === 0) {
+        console.log(`[progress] VideoComposite - decoded ${i + 1}/${chunks.length} chunks`)
+      }
+    }
+    console.log('[progress] VideoComposite - all chunks submitted for decoding')
+  } catch (error) {
+    console.error('[progress] VideoComposite - error during chunk decoding:', error);
+    throw error;
   }
 
-  await videoDecoder.flush();
-  console.log(`✅ [COMPOSITE-WORKER] All frames decoded: ${decodedFrames.length} frames`);
+  console.log('[progress] VideoComposite - flushing decoder')
+  try {
+    await videoDecoder!.flush();
+    console.log(`✅ [COMPOSITE-WORKER] All frames decoded: ${decodedFrames.length} frames`);
+  } catch (error) {
+    console.error('[progress] VideoComposite - decoder flush error:', error)
+    throw error;
+  }
 
   if (decodedFrames.length === 0) {
     throw new Error('No frames decoded');
@@ -732,8 +957,8 @@ function calculateAndCacheLayout() {
 
 // 播放控制
 function startPlayback() {
-  if (!currentConfig || decodedFrames.length === 0) {
-    console.error('❌ [COMPOSITE-WORKER] Cannot start playback: missing config or frames');
+  if (!currentConfig) {
+    console.error('❌ [COMPOSITE-WORKER] Cannot start playback: missing config');
     return;
   }
 
@@ -747,7 +972,9 @@ function startPlayback() {
     return;
   }
 
+  // 流式播放：即使没有帧也可以开始播放循环，等待帧到来
   isPlaying = true;
+  console.log('[progress] VideoComposite - starting playback loop, current frames:', decodedFrames.length);
   const fps = 30;
   const frameInterval = 1000 / fps;
   let lastFrameTime = 0;
@@ -757,6 +984,18 @@ function startPlayback() {
 
     const now = performance.now();
     if (now - lastFrameTime >= frameInterval) {
+      const boundary = windowBoundaryFrames ?? decodedFrames.length;
+      // 若已到达窗口边界，则立即宣告窗口完成（不受追加解码影响）
+      if (currentFrameIndex >= boundary) {
+        console.log('[progress] VideoComposite - reached window boundary, requesting next window');
+        self.postMessage({
+          type: 'windowComplete',
+          data: { totalFrames: boundary, lastFrameIndex: Math.max(0, currentFrameIndex - 1) }
+        });
+        isPlaying = false;
+        return;
+      }
+
       if (currentFrameIndex < decodedFrames.length) {
         const frame = decodedFrames[currentFrameIndex];
 
@@ -776,14 +1015,89 @@ function startPlayback() {
 
         currentFrameIndex++;
         lastFrameTime = now;
+
+        // 水位检测与提示（相对当前窗口边界）
+        const boundaryForWatermark = windowBoundaryFrames ?? decodedFrames.length;
+        const remaining = Math.max(0, boundaryForWatermark - currentFrameIndex);
+        if (remaining <= BUFFER_CONFIG.criticalLevel && !criticalWatermarkNotified) {
+          self.postMessage({
+            type: 'bufferStatus',
+            data: {
+              level: 'critical',
+              remaining,
+              decoded: decodedFrames.length,
+              currentIndex: currentFrameIndex,
+              config: BUFFER_CONFIG,
+              isDecoding
+            }
+          });
+          criticalWatermarkNotified = true;
+          lowWatermarkNotified = true;
+        } else if (remaining <= BUFFER_CONFIG.lowWatermark && !lowWatermarkNotified) {
+          self.postMessage({
+            type: 'bufferStatus',
+            data: {
+              level: 'low',
+              remaining,
+              decoded: decodedFrames.length,
+              currentIndex: currentFrameIndex,
+              config: BUFFER_CONFIG,
+              isDecoding
+            }
+          });
+          lowWatermarkNotified = true;
+        } else if (
+          remaining >= BUFFER_CONFIG.highWatermark &&
+          (lowWatermarkNotified || criticalWatermarkNotified)
+        ) {
+          self.postMessage({
+            type: 'bufferStatus',
+            data: {
+              level: 'healthy',
+              remaining,
+              decoded: decodedFrames.length,
+              currentIndex: currentFrameIndex,
+              config: BUFFER_CONFIG,
+              isDecoding
+            }
+          });
+          lowWatermarkNotified = false;
+          criticalWatermarkNotified = false;
+        }
       } else {
-        // 播放完成
-        isPlaying = false;
-        self.postMessage({
-          type: 'complete',
-          data: { totalFrames: decodedFrames.length }
-        });
-        return;
+        // 如果还在解码，等待更多帧；否则宣布窗口完成
+        if (isDecoding) {
+          // 缓冲为空且仍在解码：触发一次紧急水位提示
+          if (!criticalWatermarkNotified) {
+            const remaining = 0;
+            self.postMessage({
+              type: 'bufferStatus',
+              data: {
+                level: 'critical',
+                remaining,
+                decoded: decodedFrames.length,
+                currentIndex: currentFrameIndex,
+                config: BUFFER_CONFIG,
+                isDecoding
+              }
+            });
+            criticalWatermarkNotified = true;
+            lowWatermarkNotified = true;
+          }
+          // 等待下一帧到来，不要停止播放循环
+        } else {
+          console.log('[progress] VideoComposite - window playback complete, requesting next window')
+          self.postMessage({
+            type: 'windowComplete',
+            data: {
+              totalFrames: decodedFrames.length,
+              lastFrameIndex: currentFrameIndex - 1
+            }
+          });
+          // 暂停播放，等待新窗口数据
+          isPlaying = false;
+          return;
+        }
       }
     }
 
@@ -797,6 +1111,8 @@ function startPlayback() {
 self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
   const { type, data } = event.data;
 
+  console.log('[progress] VideoComposite - received message:', type)
+
   try {
     switch (type) {
       case 'init':
@@ -809,10 +1125,27 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
 
       case 'process':
         console.log('🎬 [COMPOSITE-WORKER] Processing video chunks...');
-        
+
         if (!data.chunks || !data.backgroundConfig) {
           throw new Error('Missing chunks or background config');
         }
+
+        // 🔧 重置播放状态 - 处理新窗口数据
+        console.log('[progress] VideoComposite - resetting state for new window data')
+        isPlaying = false;
+        currentFrameIndex = 0;
+        if (animationId) {
+          self.cancelAnimationFrame(animationId);
+          animationId = null;
+        }
+        // 重置水位提示状态，确保每个窗口都会重新发出 low/critical 事件
+
+        // 记录本窗口边界帧数（用于按窗口触发 windowComplete）
+        windowBoundaryFrames = data.chunks.length;
+        console.log('[COMPOSITE-WORKER] Window boundary set to', windowBoundaryFrames, 'frames')
+
+        lowWatermarkNotified = false;
+        criticalWatermarkNotified = false;
 
         currentConfig = data.backgroundConfig;
 
@@ -824,8 +1157,54 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
           shadow: currentConfig.shadow
         });
 
-        // 计算输出尺寸
+
+        // 前置：首块与源尺寸（供复用与后续流程共享）
         const firstChunk = data.chunks[0];
+        const sourceWidth = firstChunk.codedWidth || 1920;
+        const sourceHeight = firstChunk.codedHeight || 1080;
+
+        // C-2   a复用判断：若 append  a a a a a目标起点匹配且编解码器一致，则直接切入 nextDecoded  a
+        const requestedStart = (data.startGlobalFrame ?? null) as number | null
+        const incomingCodec = (firstChunk.codec || 'vp8') as string
+        const canReuse = !!(nextMeta && requestedStart !== null && nextMeta.start === requestedStart && videoDecoder && videoDecoderCodec === incomingCodec && nextDecoded.length > 0)
+        if (canReuse) {
+          console.log('🔁 [COMPOSITE-WORKER] Reusing predecoded next window frames:', nextDecoded.length, 'start:', requestedStart)
+          // 关闭旧的当前窗口帧
+          if (decodedFrames.length > 0) {
+            for (const f of decodedFrames) { try { f.close() } catch {} }
+          }
+          decodedFrames = nextDecoded
+          nextDecoded = []
+
+          //        a a a a a a a a a a a a a a a a a a a a a a a a a correctedVideoSize  a a videoInfo
+          correctedVideoSize = { width: sourceWidth, height: sourceHeight };
+          videoInfo = { width: sourceWidth, height: sourceHeight };
+
+          nextMeta = null
+
+          // 确认边界并进入就绪态
+          windowBoundaryFrames = decodedFrames.length
+
+          // 初始化 Canvas 与布局（沿用现有尺寸推导）
+          const { outputWidth, outputHeight } = calculateOutputSize(currentConfig!, sourceWidth, sourceHeight);
+          initializeCanvas(outputWidth, outputHeight);
+          calculateAndCacheLayout();
+
+          // 发送 ready（totalFrames  a a以复用帧数 a a a a a a为准）
+          self.postMessage({
+            type: 'ready',
+            data: {
+              totalFrames: windowBoundaryFrames,
+              outputSize: { width: outputWidth, height: outputHeight },
+              videoLayout: fixedVideoLayout
+            }
+          });
+          break;
+        }
+
+
+
+        // 计算输出尺寸（firstChunk 已在前方定义）
         console.log('🔍 [COMPOSITE-WORKER] First chunk analysis:', {
           codedWidth: firstChunk.codedWidth,
           codedHeight: firstChunk.codedHeight,
@@ -835,8 +1214,7 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
           hasData: !!firstChunk.data
         });
 
-        const sourceWidth = firstChunk.codedWidth || 1920;
-        const sourceHeight = firstChunk.codedHeight || 1080;
+        // sourceWidth/sourceHeight 已在前方定义
 
         // 🔧 保存修正后的视频尺寸，用于后续渲染
         correctedVideoSize = { width: sourceWidth, height: sourceHeight };
@@ -866,20 +1244,27 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         }
 
         const { outputWidth, outputHeight } = calculateOutputSize(currentConfig, sourceWidth, sourceHeight);
-        
+
         // 初始化 Canvas
+
+        // 缓存视频自然尺寸，供布局与渲染使用（流式播放提前就绪）
+        videoInfo = { width: sourceWidth, height: sourceHeight };
+
         initializeCanvas(outputWidth, outputHeight);
-        
-        // 初始化解码器并解码
-        await initializeDecoder(data.chunks);
+
+        // 启动流式解码（不阻塞ready）
+        console.log('[progress] VideoComposite - starting streaming decode')
+        startStreamingDecode(data.chunks);
+        console.log('[progress] VideoComposite - streaming decode started')
 
         // 计算固定布局
         calculateAndCacheLayout();
 
+        console.log('[progress] VideoComposite - sending ready message')
         self.postMessage({
           type: 'ready',
           data: {
-            totalFrames: decodedFrames.length,
+            totalFrames: data.chunks.length,
             outputSize: { width: outputWidth, height: outputHeight },
             videoLayout: fixedVideoLayout
           }
@@ -900,26 +1285,60 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         }
         break;
 
+      case 'appendWindow':
+        console.log('➕ [COMPOSITE-WORKER] Appending next window chunks...')
+        if (data.chunks && data.chunks.length > 0) {
+          // 记录下一窗口元数据，清理不匹配的遗留
+          const start = (data.startGlobalFrame ?? null) as number | null
+          if (start !== null && nextMeta && nextMeta.start !== start && nextDecoded.length > 0) {
+            console.log('[COMPOSITE-WORKER] Discarding stale nextDecoded frames:', nextDecoded.length)
+            for (const f of nextDecoded) { try { f.close() } catch {} }
+            nextDecoded = []
+          }
+          nextMeta = { start, codec: videoDecoderCodec }
+
+          // 将解码输出切换到 nextDecoded
+          outputTarget = 'next'
+          appendStreamingDecode(data.chunks)
+          // flush 完成后会在 appendStreamingDecode 内部复位 outputTarget
+        } else {
+          console.warn('[COMPOSITE-WORKER] appendWindow: missing chunks')
+        }
+        break;
+
       case 'seek':
         console.log('⏭️ [COMPOSITE-WORKER] Seeking to frame:', data.frameIndex);
-        if (data.frameIndex !== undefined && data.frameIndex < decodedFrames.length) {
-          currentFrameIndex = data.frameIndex;
-          
-          // 渲染指定帧
-          if (currentConfig && decodedFrames[currentFrameIndex] && fixedVideoLayout) {
-            const frame = decodedFrames[currentFrameIndex];
-
-            // 使用固定布局
-            const bitmap = renderCompositeFrame(frame, fixedVideoLayout, currentConfig);
-            if (bitmap) {
-              self.postMessage({
-                type: 'frame',
-                data: {
-                  bitmap,
-                  frameIndex: currentFrameIndex,
-                  timestamp: frame.timestamp
-                }
-              }, { transfer: [bitmap] });
+        if (data.frameIndex !== undefined) {
+          const target = Math.max(0, data.frameIndex);
+          if (target < decodedFrames.length) {
+            currentFrameIndex = target;
+            if (currentConfig && decodedFrames[currentFrameIndex] && fixedVideoLayout) {
+              const frame = decodedFrames[currentFrameIndex];
+              const bitmap = renderCompositeFrame(frame, fixedVideoLayout, currentConfig);
+              if (bitmap) {
+                self.postMessage({
+                  type: 'frame',
+                  data: { bitmap, frameIndex: currentFrameIndex, timestamp: frame.timestamp }
+                }, { transfer: [bitmap] });
+              }
+            }
+          } else if (isDecoding) {
+            // 目标帧尚未解码，挂起本次seek，待足够帧可用时立即渲染
+            pendingSeekIndex = target;
+            console.log('[progress] VideoComposite - pending seek set to', target);
+          } else {
+            // 不在解码且目标越界，回退到最后一帧
+            const last = Math.max(0, decodedFrames.length - 1);
+            currentFrameIndex = last;
+            if (currentConfig && decodedFrames[last] && fixedVideoLayout) {
+              const frame = decodedFrames[last];
+              const bitmap = renderCompositeFrame(frame, fixedVideoLayout, currentConfig);
+              if (bitmap) {
+                self.postMessage({
+                  type: 'frame',
+                  data: { bitmap, frameIndex: last, timestamp: frame.timestamp }
+                }, { transfer: [bitmap] });
+              }
             }
           }
         }
@@ -994,6 +1413,8 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
       data: (error as Error).message
     });
   }
+
+  console.log('[progress] VideoComposite - message processing complete:', type)
 };
 
 console.log('🎨 [COMPOSITE-WORKER] Video Composite Worker loaded');

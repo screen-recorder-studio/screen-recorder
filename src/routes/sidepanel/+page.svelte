@@ -324,6 +324,8 @@
 
           console.log('✅ [WORKER-MAIN] Worker is ready, starting frame processing')
 
+          // 与元素/区域录制一致：首帧 + 每 2 秒关键帧
+          let frameIndex = 0
           while (true) {
             const { done, value: frame } = await reader.read()
             if (done) {
@@ -333,16 +335,23 @@
               break
             }
 
+            // 统计帧
             frameCount++
             if (frameCount % 30 === 0) { // 每秒日志一次（假设30fps）
               console.log(`📊 [WORKER-MAIN] Processing frame ${frameCount}, timestamp: ${frame.timestamp}`)
             }
 
+            // 关键帧策略：首帧或每 2 秒强制关键帧
+            const keyFrame = frameIndex === 0 || (frameIndex % (encoderFps * 2) === 0)
+
             // 传递 VideoFrame 到 Worker（Transferable Object）
             worker.postMessage({
               type: 'encode',
-              frame: frame
+              frame: frame,
+              keyFrame
             }, [frame])
+
+            frameIndex++
           }
         } catch (error) {
           console.error('❌ [WORKER-MAIN] Frame processing error:', error)
