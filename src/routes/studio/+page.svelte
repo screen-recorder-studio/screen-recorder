@@ -31,6 +31,8 @@
   // Worker 系统状态
   let workerSystemReady = $state(false)
   let workerEnvironmentIssues = $state<string[]>([])
+  // 当前会话的 OPFS 目录 id（用于导出时触发只读日志）
+  let opfsDirId = $state('')
 
 
   // Worker 录制数据收集
@@ -98,6 +100,8 @@
     try {
       const params = new URLSearchParams(location.search)
       const dirId = params.get('id') || ''
+      //  :  UI  VideoExportPanel  OPFS id
+      opfsDirId = dirId
       if (dirId && workerEncodedChunks.length === 0) {
         console.log('� [Studio] Opening OPFS recording by dirId:', dirId)
         const readerWorker = new Worker(
@@ -421,6 +425,8 @@
       <VideoExportPanel
           encodedChunks={workerEncodedChunks}
           isRecordingComplete={workerStatus === 'completed' || workerStatus === 'idle'}
+          totalFramesAll={globalTotalFrames}
+          opfsDirId={opfsDirId}
           className="export-panel"
         />
     </div>

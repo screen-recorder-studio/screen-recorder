@@ -155,6 +155,16 @@ export interface ExportOptions {
   }
   bitrate?: number
   framerate?: number
+  // 新增：导出数据源（默认为 'chunks' 保持兼容）
+  source?: 'chunks' | 'opfs'
+  // 当 source 为 'opfs' 时需要提供目录 id
+  opfsDirId?: string
+  // 可选：导出时的窗口大小（帧数），不设置则由 worker 取默认值
+  windowSize?: number
+  // 当需要直接写入 OPFS（流式）时启用
+  saveToOpfs?: boolean
+  // 指定写入 OPFS 的文件名（不含路径），缺省时自动生成
+  opfsFileName?: string
 }
 
 export interface ExportProgress {

@@ -5,7 +5,8 @@ import {
   Output,
   Mp4OutputFormat,
   BufferTarget,
-  CanvasSource
+  CanvasSource,
+  StreamTarget
 } from 'mediabunny'
 
 interface ExportData {
@@ -32,6 +33,111 @@ let canvasCtx: OffscreenCanvasRenderingContext2D | null = null
 let exportBgColor: string = '#000000'
 // 当前背景配置（用于渐变背景处理）
 let currentBackgroundConfig: BackgroundConfig | null = null
+
+// ---- OPFS data processing utilities ----
+function onceFromWorker<T = any>(worker: Worker, type: string): Promise<T> {
+  return new Promise(resolve => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === type) {
+        worker.removeEventListener('message', handler as any)
+        resolve(e.data as T)
+      }
+    }
+    worker.addEventListener('message', handler as any)
+  })
+}
+
+// OPFS 驱动器状态
+let opfsReader: Worker | null = null
+let opfsSummary: any = null
+let opfsWindowSize = 90
+
+let totalOpfsFrames = 0
+let consumedGlobalFrames = 0
+let currentWindowFrames = 0
+let lastEmittedGlobalEnd = 0
+let warnedCanvasSizeMismatch = false
+
+let isOpfsMode = false
+
+async function initializeOpfsReader(dirId: string, windowSize?: number): Promise<void> {
+  try {
+    console.log('🗂️ [MP4-Export-Worker] Initializing OPFS reader for dirId:', dirId)
+
+    opfsReader = new Worker(new URL('./opfs-reader-worker.ts', import.meta.url), { type: 'module' })
+    opfsWindowSize = Math.max(30, Math.min(windowSize ?? 90, 150)) // 限制窗口大小
+
+    // 打开 OPFS 目录并获取摘要
+    opfsReader.postMessage({ type: 'open', dirId })
+    const ready: any = await onceFromWorker(opfsReader, 'ready')
+
+    opfsSummary = ready?.summary || { totalChunks: 0 }
+    totalOpfsFrames = Number(opfsSummary.totalChunks) || 0
+
+    consumedGlobalFrames = 0
+    lastEmittedGlobalEnd = 0
+    isOpfsMode = true
+
+    console.log('✅ [MP4-Export-Worker] OPFS reader initialized:', {
+      totalFrames: totalOpfsFrames,
+      windowSize: opfsWindowSize,
+      durationMs: opfsSummary.durationMs,
+      fps: ready?.meta?.fps || 30,
+      keyframes: opfsSummary.keyframeCount
+    })
+
+  } catch (error) {
+    console.error('❌ [MP4-Export-Worker] Failed to initialize OPFS reader:', error)
+    throw error
+  }
+}
+
+async function loadOpfsWindow(start: number, count: number): Promise<{ chunks: any[]; actualStart: number; actualCount: number }> {
+  if (!opfsReader) {
+    throw new Error('OPFS reader not initialized')
+  }
+
+  console.log(`📦 [MP4-Export-Worker] Loading OPFS window: request start=${start}, count=${count}`)
+
+  opfsReader.postMessage({ type: 'getRange', start, count })
+  const range: any = await onceFromWorker(opfsReader, 'range')
+
+  const chunks = range?.chunks || []
+  const actualStart = Number(range?.start ?? start)
+  const actualCount = Number(range?.count ?? chunks.length ?? 0)
+
+  console.log(`✅ [MP4-Export-Worker] OPFS window loaded:`, {
+    requestedStart: start,
+    requestedCount: count,
+    actualStart,
+    actualCount,
+    chunksReceived: chunks.length,
+    firstChunkType: chunks[0]?.type,
+    hasKeyframe: chunks.some((c: any) => c.type === 'key')
+  })
+
+  return { chunks, actualStart, actualCount }
+}
+
+function cleanupOpfsReader(): void {
+  if (opfsReader) {
+    try {
+      opfsReader.postMessage({ type: 'close' })
+      opfsReader.terminate()
+    } catch (e) {
+      console.warn('⚠️ [MP4-Export-Worker] Error cleaning up OPFS reader:', e)
+    }
+    opfsReader = null
+  }
+
+  opfsSummary = null
+  totalOpfsFrames = 0
+
+  consumedGlobalFrames = 0
+  lastEmittedGlobalEnd = 0
+  isOpfsMode = false
+}
+// ---- end OPFS data processing utilities ----
 
 // 合成状态
 let totalFrames = 0
@@ -314,12 +420,17 @@ async function handleExport(exportData: ExportData) {
 
     const { chunks, options } = exportData
 
+    // 当来源为 OPFS 时，初始化 OPFS 读取器（用于实际导出）
+    if ((options as any)?.source === 'opfs' && (options as any)?.opfsDirId) {
+      await initializeOpfsReader((options as any).opfsDirId, (options as any).windowSize)
+    }
+
     // 更新进度：准备阶段
     updateProgress({
       stage: 'preparing',
       progress: 5,
       currentFrame: 0,
-      totalFrames: chunks.length
+      totalFrames: (((options as any)?.source === 'opfs' && totalOpfsFrames > 0) ? totalOpfsFrames : chunks.length)
     })
 
     if (shouldCancel) return
@@ -332,22 +443,32 @@ async function handleExport(exportData: ExportData) {
 
     // 2. 处理视频合成
     console.log('🎨 [MP4-Export-Worker] Starting video composition')
-    await processVideoComposition(chunks, options)
+    if (((options as any)?.source === 'opfs') && totalOpfsFrames > 0) {
+      // OPFS 模式：先处理首窗口，触发 composite ready（创建 OffscreenCanvas/设置 videoInfo）
+      const { chunks: firstChunks, actualStart } = await loadOpfsWindow(0, opfsWindowSize)
+      await processVideoCompositionOpfs(firstChunks, options, actualStart)
+      // 记录下一窗口起点，供渲染循环跳过首窗（避免重复）
+      // 不跳过首窗：由渲染循环按去重逻辑决定是否输出，避免丢帧
+    } else {
+      // 非 OPFS 模式，按内存 chunks 处理一次
+      await processVideoComposition(chunks, options)
+    }
 
     if (shouldCancel) return
 
-    // 3. 导出 MP4
+    // 3. 导出 MP4（支持内存或 OPFS 流式写入）
     console.log('📦 [MP4-Export-Worker] Starting MP4 export')
-    const mp4Blob = await exportToMP4(options)
+    const result: any = await exportToMP4(options)
 
     if (shouldCancel) return
 
     // 完成导出
     console.log('✅ [MP4-Export-Worker] MP4 export completed')
-    self.postMessage({
-      type: 'complete',
-      data: { blob: mp4Blob }
-    })
+    if (result && (result as any).savedToOpfs) {
+      self.postMessage({ type: 'complete', data: { savedToOpfs: (result as any).savedToOpfs } })
+    } else {
+      self.postMessage({ type: 'complete', data: { blob: result as Blob } })
+    }
 
   } catch (error) {
     console.error('❌ [MP4-Export-Worker] Export failed:', error)
@@ -386,14 +507,29 @@ async function createCompositeWorker(): Promise<void> {
           case 'ready':
             console.log('✅ [MP4-Export-Worker] Video composition ready:', data)
             totalFrames = data.totalFrames
-            videoInfo = {
-              width: data.outputSize.width,
-              height: data.outputSize.height,
-              frameRate: 30 // 默认帧率
+            if (!videoInfo) {
+              videoInfo = {
+                width: data.outputSize.width,
+                height: data.outputSize.height,
+                frameRate: 30 // 默认帧率
+              }
             }
 
-            // 创建 OffscreenCanvas 用于接收合成帧
-            createOffscreenCanvas(data.outputSize.width, data.outputSize.height)
+            // 仅在首次 ready 时创建 OffscreenCanvas；后续窗口不重复创建，以免与 CanvasSource 绑定的画布失联导致黑屏
+            if (!offscreenCanvas) {
+              createOffscreenCanvas(data.outputSize.width, data.outputSize.height)
+            } else {
+              // 可选：如果尺寸不同，记录日志但保持现有画布，避免破坏 CanvasSource 引用
+              if (offscreenCanvas.width !== data.outputSize.width || offscreenCanvas.height !== data.outputSize.height) {
+                if (!warnedCanvasSizeMismatch) {
+                  console.warn('⚠️ [MP4-Export-Worker] Ready reports different size after canvas created; keep existing canvas to avoid black frames:', {
+                    existing: { w: offscreenCanvas.width, h: offscreenCanvas.height },
+                    reported: data.outputSize
+                  })
+                  warnedCanvasSizeMismatch = true
+                }
+              }
+            }
             break
 
           case 'frame':
@@ -485,16 +621,22 @@ async function processVideoComposition(chunks: EncodedChunk[], options: ExportOp
       totalFrames: chunks.length
     })
 
-    // 准备可传输的数据块
-    const transferableChunks = chunks.map(chunk => ({
-      data: chunk.data.buffer.slice(chunk.data.byteOffset, chunk.data.byteOffset + chunk.data.byteLength),
-      timestamp: chunk.timestamp,
-      type: chunk.type,
-      size: chunk.size,
-      codedWidth: chunk.codedWidth,
-      codedHeight: chunk.codedHeight,
-      codec: chunk.codec
-    }))
+    // 准备可传输的数据块（兼容 Uint8Array / ArrayBuffer）
+    const transferableChunks = chunks.map((chunk: any) => {
+      let buf: ArrayBuffer
+      if (chunk.data instanceof ArrayBuffer) buf = chunk.data
+      else if (chunk.data?.buffer) buf = chunk.data.buffer.slice(chunk.data.byteOffset, chunk.data.byteOffset + chunk.data.byteLength)
+      else buf = chunk.data
+      return {
+        data: buf,
+        timestamp: chunk.timestamp,
+        type: chunk.type,
+        size: chunk.size,
+        codedWidth: chunk.codedWidth,
+        codedHeight: chunk.codedHeight,
+        codec: chunk.codec
+      }
+    })
 
     // 收集所有 ArrayBuffer 用于转移
     const transferList = transferableChunks.map(chunk => chunk.data)
@@ -538,12 +680,84 @@ async function processVideoComposition(chunks: EncodedChunk[], options: ExportOp
   })
 }
 
+// 专用于 OPFS 
+async function processVideoCompositionOpfs(wireChunks: any[], options: ExportOptions, startGlobalFrame: number): Promise<void> {
+  try {
+    currentBackgroundConfig = options.backgroundConfig || null
+    exportBgColor = options.backgroundConfig?.color || exportBgColor
+  } catch {}
+
+  return new Promise((resolve, reject) => {
+    if (!compositeWorker) {
+      reject(new Error('Composite worker not available'))
+      return
+    }
+
+    // 
+    updateProgress({
+      stage: 'compositing',
+      progress: 10,
+      currentFrame: isOpfsMode ? lastEmittedGlobalEnd : consumedGlobalFrames,
+      totalFrames: (totalOpfsFrames > 0 ? totalOpfsFrames : wireChunks.length)
+    })
+
+    //  (ArrayBuffer) 
+    const transferable = wireChunks.map((c: any) => ({
+      data: c.data as ArrayBuffer,
+      timestamp: c.timestamp,
+      type: c.type,
+      size: c.size,
+      codedWidth: c.codedWidth,
+      codedHeight: c.codedHeight,
+      codec: c.codec
+    }))
+    const transferList = transferable.map(c => c.data)
+
+    //  process
+    const originalOnMessage = compositeWorker.onmessage
+    compositeWorker.onmessage = (event) => {
+      const { type, data } = event.data
+      if (type === 'ready') {
+        // 记录当前窗口帧数（由 composite worker 基于 chunks.length 返回）
+        try {
+          currentWindowFrames = Number(data?.totalFrames) || transferable.length
+          console.log('🪟 [MP4-Export-Worker] Current window frames set to', currentWindowFrames)
+        } catch {}
+        compositeWorker!.onmessage = originalOnMessage
+        if (originalOnMessage && compositeWorker) {
+          originalOnMessage.call(compositeWorker, event)
+        }
+        resolve()
+      } else if (type === 'error') {
+        compositeWorker!.onmessage = originalOnMessage
+        reject(new Error(data.error || 'Composition failed'))
+      } else {
+        if (originalOnMessage && compositeWorker) {
+          originalOnMessage.call(compositeWorker, event)
+        }
+      }
+    }
+
+    compositeWorker.postMessage({
+      type: 'process',
+      data: {
+        chunks: transferable,
+        backgroundConfig: options.backgroundConfig || {
+          type: 'solid-color', color: '#000000', padding: 0, outputRatio: '16:9', videoPosition: 'center'
+        },
+        startGlobalFrame
+      }
+    }, { transfer: transferList })
+  })
+}
+
 /**
  * 处理合成帧
  */
 function handleCompositeFrame(bitmap: ImageBitmap, frameIndex: number) {
   if (!canvasCtx || !offscreenCanvas) {
     console.error('❌ [MP4-Export-Worker] Canvas not available')
+    try { bitmap.close() } catch {}
     return
   }
 
@@ -614,13 +828,17 @@ function handleCompositeFrame(bitmap: ImageBitmap, frameIndex: number) {
       stage: 'compositing',
       progress,
       currentFrame: processedFrames,
-      totalFrames
+      totalFrames: isOpfsMode ? totalOpfsFrames : totalFrames
     })
 
-    console.log(`🎨 [MP4-Export-Worker] Frame ${frameIndex} composited (${processedFrames}/${totalFrames})`)
+    const totalForLog = isOpfsMode ? totalOpfsFrames : totalFrames
+    console.log(`🎨 [MP4-Export-Worker] Frame ${frameIndex} composited (${processedFrames}/${totalForLog})`)
 
   } catch (error) {
     console.error('❌ [MP4-Export-Worker] Error handling composite frame:', error)
+  } finally {
+    // 释放 GPU 侧的 ImageBitmap 资源，避免长视频导出内存飙升
+    try { bitmap.close() } catch {}
   }
 }
 
@@ -790,7 +1008,7 @@ async function checkH264Support(): Promise<{ supported: boolean; reason: string 
 /**
  * 导出 MP4
  */
-async function exportToMP4(options: ExportOptions): Promise<Blob> {
+async function exportToMP4(options: ExportOptions): Promise<any> {
   if (!offscreenCanvas || !videoInfo) {
     throw new Error('Canvas or video info not available')
   }
@@ -824,12 +1042,36 @@ async function exportToMP4(options: ExportOptions): Promise<Blob> {
       totalFrames: 100
     })
 
-    // 创建 Mediabunny 输出
+    // 创建 Mediabunny 输出（支持 OPFS 流式写入）
     console.log('🏗️ [MP4-Export-Worker] Creating Mediabunny Output...')
-    const output = new Output({
-      format: new Mp4OutputFormat(),
-      target: new BufferTarget()
-    })
+
+    const useOpfsStream = Boolean((options as any)?.saveToOpfs && (options as any)?.opfsDirId)
+    let opfsFileHandle: FileSystemFileHandle | null = null
+    let opfsWritable: any | null = null
+    let output: any
+
+    if (useOpfsStream) {
+      if (!(self as any).navigator?.storage?.getDirectory) {
+        throw new Error('OPFS not available in worker; cannot stream to OPFS')
+      }
+      const dirId = (options as any).opfsDirId as string
+      const fileName = (options as any).opfsFileName || `export-${Date.now()}.mp4`
+      console.log('📁 [MP4-Export-Worker] OPFS stream target:', { dirId, fileName })
+      const root = await (self as any).navigator.storage.getDirectory()
+      const dir = await (root as any).getDirectoryHandle(dirId, { create: false })
+      opfsFileHandle = await (dir as any).getFileHandle(fileName, { create: true })
+      opfsWritable = await (opfsFileHandle as any).createWritable()
+
+      output = new Output({
+        format: new Mp4OutputFormat(),
+        target: new StreamTarget(opfsWritable, { chunked: true })
+      })
+    } else {
+      output = new Output({
+        format: new Mp4OutputFormat(),
+        target: new BufferTarget()
+      })
+    }
 
     // 创建 CanvasSource（为 MP4 显式指定 H.264 与分辨率/帧率）
     console.log('🎨 [MP4-Export-Worker] Creating CanvasSource with H.264 codec...')
@@ -865,20 +1107,23 @@ async function exportToMP4(options: ExportOptions): Promise<Blob> {
     updateProgress({
       stage: 'muxing',
       progress: 80,
-      currentFrame: 0,
-      totalFrames: totalFrames
+      currentFrame: isOpfsMode ? lastEmittedGlobalEnd : 0,
+      totalFrames: isOpfsMode ? totalOpfsFrames : totalFrames
     })
 
-    // 计算帧参数
-    const { frameRate } = videoInfo
-    const duration = totalFrames / frameRate
+    // 计算帧参数（OPFS 模式下 videoInfo 可能尚未通过 ready 返回，优先使用 options 或默认值）
+    const frameRate = (options as any)?.frameRate || videoInfo?.frameRate || 30
+    const totalTargetFrames = isOpfsMode ? totalOpfsFrames : totalFrames
+    const duration = totalTargetFrames / frameRate
     const frameDuration = 1 / frameRate
 
-    console.log(`📊 [MP4-Export-Worker] Export parameters: duration=${duration}s, totalFrames=${totalFrames}, frameRate=${frameRate}`)
+    console.log(`📊 [MP4-Export-Worker] Export parameters: duration=${duration}s, totalFrames=${totalTargetFrames}, frameRate=${frameRate}`)
 
     // 请求 composite worker 逐帧渲染并添加到 CanvasSource
-    console.log(`🎬 [MP4-Export-Worker] Starting frame rendering for ${totalFrames} frames`)
-    const addedFrames = await renderFramesForExport(videoSource, frameDuration)
+    console.log(`🎬 [MP4-Export-Worker] Starting frame rendering for ${totalTargetFrames} frames`)
+    const addedFrames = isOpfsMode
+      ? await renderFramesForExportOpfs(videoSource, frameDuration, options)
+      : await renderFramesForExport(videoSource, frameDuration)
     console.log(`📊 [MP4-Export-Worker] Successfully added ${addedFrames} frames to H.264 encoder`)
 
     // 🔧 修复：更宽松的错误检查，与 WebM Worker 保持一致
@@ -895,57 +1140,89 @@ async function exportToMP4(options: ExportOptions): Promise<Blob> {
     updateProgress({
       stage: 'finalizing',
       progress: 95,
-      currentFrame: totalFrames,
-      totalFrames
+      currentFrame: (isOpfsMode ? totalOpfsFrames : totalFrames),
+      totalFrames: (isOpfsMode ? totalOpfsFrames : totalFrames)
     })
 
     console.log('🔚 [MP4-Export-Worker] Finalizing Mediabunny output...')
     try {
       await output.finalize()
       console.log('✅ [MP4-Export-Worker] Mediabunny output finalized successfully')
+      // 关闭 CanvasSource，释放编码端资源
+      try { if (videoSource && typeof (videoSource as any).close === 'function') { (videoSource as any).close() } } catch {}
+      try { if ((videoSource as any)?.destroy) { (videoSource as any).destroy() } } catch {}
+      // 若使用 OPFS 流式写入，确保 Writable 关闭，释放句柄
+      try { if (typeof opfsWritable !== 'undefined' && opfsWritable) { await opfsWritable.close() } } catch {}
     } catch (finalizeError) {
       console.error('❌ [MP4-Export-Worker] Failed to finalize Mediabunny output:', finalizeError)
       throw new Error(`Mediabunny 输出完成失败: ${(finalizeError as Error).message}`)
     }
 
     // 获取结果
-    const buffer = output.target.buffer
-    if (!buffer) {
-      throw new Error('Mediabunny 输出缓冲区为空，可能编码过程失败')
+    if (useOpfsStream) {
+      let bytes = 0
+      let fileName = (options as any).opfsFileName || 'export.mp4'
+      try {
+        const file = await (opfsFileHandle as any)?.getFile()
+        if (file) {
+          bytes = file.size
+          fileName = (file as any).name || fileName
+        }
+      } catch {}
+
+      console.log('✅ [MP4-Export-Worker] MP4 export streamed to OPFS', { bytes })
+      console.log(`📊 [MP4-Export-Worker] Added frames: ${addedFrames}/${totalFrames} (${((addedFrames / totalFrames) * 100).toFixed(1)}%)`)
+      console.log(`📊 [MP4-Export-Worker] Estimated duration: ${(totalFrames / videoInfo.frameRate).toFixed(2)}s`)
+
+      // 最终进度
+      updateProgress({
+        stage: 'finalizing',
+        progress: 100,
+        currentFrame: (isOpfsMode ? totalOpfsFrames : totalFrames),
+        totalFrames: (isOpfsMode ? totalOpfsFrames : totalFrames),
+        fileSize: bytes
+      })
+
+      return { savedToOpfs: { dirId: (options as any).opfsDirId, fileName, bytesWritten: bytes } }
+    } else {
+      const buffer = output.target.buffer
+      if (!buffer) {
+        throw new Error('Mediabunny 输出缓冲区为空，可能编码过程失败')
+      }
+
+      if (buffer.byteLength === 0) {
+        throw new Error('Mediabunny 输出缓冲区大小为 0，编码可能失败')
+      }
+
+      const mp4Blob = new Blob([buffer], { type: 'video/mp4' })
+
+      // 🔧 验证生成的 MP4 文件
+      console.log('🔍 [MP4-Export-Worker] Validating generated MP4...')
+      const validation = validateMP4Blob(mp4Blob, addedFrames, totalFrames)
+      console.log('🔍 [MP4-Export-Worker] MP4 validation result:', validation)
+
+      if (!validation.isValid) {
+        console.warn('⚠️ [MP4-Export-Worker] MP4 validation failed, but continuing with export')
+        console.warn('⚠️ [MP4-Export-Worker] Validation issues:', validation.issues)
+      }
+
+      console.log('✅ [MP4-Export-Worker] MP4 export completed successfully')
+      console.log(`📊 [MP4-Export-Worker] Final MP4 size: ${buffer.byteLength} bytes (${(buffer.byteLength / 1024 / 1024).toFixed(2)} MB)`)
+      console.log(`📊 [MP4-Export-Worker] Added frames: ${addedFrames}/${totalFrames} (${((addedFrames / totalFrames) * 100).toFixed(1)}%)`)
+      console.log(`📊 [MP4-Export-Worker] Estimated duration: ${(totalFrames / videoInfo.frameRate).toFixed(2)}s`)
+      console.log(`📊 [MP4-Export-Worker] Average bitrate: ${((buffer.byteLength * 8) / (totalFrames / videoInfo.frameRate) / 1000).toFixed(0)} kbps`)
+
+      // 最终进度
+      updateProgress({
+        stage: 'finalizing',
+        progress: 100,
+        currentFrame: (isOpfsMode ? totalOpfsFrames : totalFrames),
+        totalFrames: (isOpfsMode ? totalOpfsFrames : totalFrames),
+        fileSize: buffer.byteLength
+      })
+
+      return mp4Blob
     }
-
-    if (buffer.byteLength === 0) {
-      throw new Error('Mediabunny 输出缓冲区大小为 0，编码可能失败')
-    }
-
-    const mp4Blob = new Blob([buffer], { type: 'video/mp4' })
-
-    // 🔧 验证生成的 MP4 文件
-    console.log('🔍 [MP4-Export-Worker] Validating generated MP4...')
-    const validation = validateMP4Blob(mp4Blob, addedFrames, totalFrames)
-    console.log('🔍 [MP4-Export-Worker] MP4 validation result:', validation)
-
-    if (!validation.isValid) {
-      console.warn('⚠️ [MP4-Export-Worker] MP4 validation failed, but continuing with export')
-      console.warn('⚠️ [MP4-Export-Worker] Validation issues:', validation.issues)
-    }
-
-    console.log('✅ [MP4-Export-Worker] MP4 export completed successfully')
-    console.log(`📊 [MP4-Export-Worker] Final MP4 size: ${buffer.byteLength} bytes (${(buffer.byteLength / 1024 / 1024).toFixed(2)} MB)`)
-    console.log(`📊 [MP4-Export-Worker] Added frames: ${addedFrames}/${totalFrames} (${((addedFrames / totalFrames) * 100).toFixed(1)}%)`)
-    console.log(`📊 [MP4-Export-Worker] Estimated duration: ${(totalFrames / videoInfo.frameRate).toFixed(2)}s`)
-    console.log(`📊 [MP4-Export-Worker] Average bitrate: ${((buffer.byteLength * 8) / (totalFrames / videoInfo.frameRate) / 1000).toFixed(0)} kbps`)
-
-    // 最终进度
-    updateProgress({
-      stage: 'finalizing',
-      progress: 100,
-      currentFrame: totalFrames,
-      totalFrames,
-      fileSize: buffer.byteLength
-    })
-
-    return mp4Blob
 
   } catch (error) {
     console.error('❌ [MP4-Export-Worker] MP4 export failed:', error)
@@ -975,6 +1252,7 @@ async function renderFramesForExport(videoSource: any, frameDuration: number): P
       break
     }
 
+
     const timestamp = frameIndex * frameDuration
 
     try {
@@ -982,9 +1260,6 @@ async function renderFramesForExport(videoSource: any, frameDuration: number): P
       console.log(`🎬 [MP4-Export-Worker] Requesting frame ${frameIndex}...`)
       await requestCompositeFrame(frameIndex)
       console.log(`✅ [MP4-Export-Worker] Frame ${frameIndex} rendered successfully`)
-
-      // 等待一帧时间确保渲染完成
-      await new Promise(resolve => setTimeout(resolve, 16))
 
       // 验证 Canvas 状态
       if (!offscreenCanvas || !canvasCtx) {
@@ -1126,6 +1401,8 @@ async function requestCompositeFrame(frameIndex: number): Promise<void> {
 
     // 请求渲染指定帧
     console.log(`📤 [MP4-Export-Worker] Sending seek request for frame ${frameIndex}`)
+
+
     compositeWorker.postMessage({
       type: 'seek',
       data: { frameIndex }
@@ -1161,6 +1438,9 @@ function cleanup() {
     compositeWorker = null
   }
 
+  //    OPFS reader
+  try { cleanupOpfsReader() } catch {}
+
   offscreenCanvas = null
   canvasCtx = null
   totalFrames = 0
@@ -1186,6 +1466,149 @@ const hasWebCodecs = typeof VideoEncoder !== 'undefined'
 console.log('🎬 [MP4-Export-Worker] WebCodecs support:', hasWebCodecs)
 
 // 测试 H.264 尺寸验证
+
+/**
+ * 基于 OPFS 的逐窗口帧渲染与添加
+ */
+async function renderFramesForExportOpfs(videoSource: any, frameDuration: number, options: ExportOptions): Promise<number> {
+  if (!compositeWorker || !totalOpfsFrames) {
+    throw new Error('Composite worker or OPFS frame count not available')
+  }
+
+  let addedCount = 0
+
+  // 自适应回看边际，初始保守，遇到缺口自动增大，遇到重叠适度减小
+  let adaptiveBacktrack = Math.min(30, Math.floor(opfsWindowSize / 2))
+  const maxBacktrack = Math.max(30, Math.floor(opfsWindowSize * 2 / 3))
+
+  let nextRequestStart = 0
+  // 重置去重边界
+  while (nextRequestStart < totalOpfsFrames) {
+    // 拉取并对齐窗口（可能因关键帧回退），带回看边际以降低“缺口”概率
+    let attempts = 0
+    let chunks: any[] = []
+    let actualStart = 0
+    let actualCount = 0
+    let backtrackMargin = adaptiveBacktrack
+    let requestStart = Math.max(0, nextRequestStart - backtrackMargin)
+    while (true) {
+      const win = await loadOpfsWindow(requestStart, opfsWindowSize)
+      chunks = win.chunks
+      actualStart = win.actualStart
+      actualCount = win.actualCount
+      if (actualCount <= 0 || chunks.length === 0) {
+        console.warn('⚠️ [MP4-Export-Worker] Empty OPFS window, stopping. nextRequestStart=', nextRequestStart)
+        break
+      }
+      if (actualStart > lastEmittedGlobalEnd && requestStart > 0 && adaptiveBacktrack < maxBacktrack && attempts < 2) {
+        const gap = actualStart - lastEmittedGlobalEnd
+        // 提高回看边际（至少覆盖缺口+15，或在当前基础上+10）
+        const increased = Math.max(adaptiveBacktrack + 10, gap + 15)
+        const newBacktrack = Math.min(maxBacktrack, increased)
+        if (newBacktrack !== adaptiveBacktrack) {
+          console.log(`📈 [MP4-Export-Worker] Increasing backtrack margin: ${adaptiveBacktrack} → ${newBacktrack}`)
+          adaptiveBacktrack = newBacktrack
+        }
+        backtrackMargin = adaptiveBacktrack
+        requestStart = Math.max(0, nextRequestStart - backtrackMargin)
+        attempts++
+        continue
+      }
+      break
+    }
+    if (actualCount <= 0 || chunks.length === 0) {
+      break
+    }
+
+    // 如仍存在缺口，则用上一帧进行“保持”填补，避免时间轴跳进造成卡顿
+    if (actualStart > lastEmittedGlobalEnd) {
+      const gap = actualStart - lastEmittedGlobalEnd
+      if (gap > 0 && addedCount > 0) {
+        const fill = Math.min(gap, totalOpfsFrames - lastEmittedGlobalEnd)
+        if (fill > 0) {
+          console.warn(`⏯️ [MP4-Export-Worker] Filling gap by holding last frame: ${fill} frame(s) (lastEnd=${lastEmittedGlobalEnd} → actualStart=${actualStart})`)
+          for (let i = 0; i < fill; i++) {
+            const globalIndex = lastEmittedGlobalEnd + i
+            const ts = globalIndex * frameDuration
+            try {
+              await videoSource.add(ts, frameDuration)
+              addedCount++
+              const progress = 80 + (globalIndex / totalOpfsFrames) * 15
+              updateProgress({ stage: 'muxing', progress, currentFrame: globalIndex + 1, totalFrames: totalOpfsFrames })
+            } catch (e) {
+              console.warn('⚠️ [MP4-Export-Worker] Gap fill frame add failed:', e)
+              break
+            }
+          }
+        }
+      }
+      // 无论是否填补，推进 lastEmittedGlobalEnd 至 actualStart，后续正常渲染新窗
+      lastEmittedGlobalEnd = actualStart
+    }
+
+    // 切换/初始化当前窗口
+    await processVideoCompositionOpfs(chunks, options, actualStart)
+
+    // 当前窗口内逐帧渲染（跳过与上一窗重叠的起始部分）
+    const localStartIndex = Math.max(0, lastEmittedGlobalEnd - actualStart)
+    if (localStartIndex > 0) {
+      console.log(`↩️ [MP4-Export-Worker] Skipping overlapped ${localStartIndex} frame(s) at window start (actualStart=${actualStart}, lastEnd=${lastEmittedGlobalEnd})`)
+      // 发生重叠，适度减小回看，避免过度回看导致的冗余
+      adaptiveBacktrack = Math.max(10, adaptiveBacktrack - Math.min(10, localStartIndex))
+    }
+    if (actualStart > lastEmittedGlobalEnd) {
+      const gap = actualStart - lastEmittedGlobalEnd
+      console.warn(`⏭️ [MP4-Export-Worker] Detected gap of ${gap} frame(s) between windows (lastEnd=${lastEmittedGlobalEnd} → actualStart=${actualStart}); requested with backtrack=${backtrackMargin}`)
+      // 发生缺口时，提高回看边际（至少覆盖缺口+15，或在当前基础上+10），上限不超过 2/3 窗口
+      const increased = Math.max(adaptiveBacktrack + 10, gap + 15)
+      const newBacktrack = Math.min(maxBacktrack, increased)
+      if (newBacktrack !== adaptiveBacktrack) {
+        console.log(`📈 [MP4-Export-Worker] Increasing backtrack margin: ${adaptiveBacktrack} → ${newBacktrack}`)
+        adaptiveBacktrack = newBacktrack
+      }
+    } else if (localStartIndex === 0 && adaptiveBacktrack > 10) {
+      // 连续无缺口、无重叠时，缓慢衰减回看，避免不必要的回看成本
+      adaptiveBacktrack = Math.max(10, adaptiveBacktrack - 1)
+    }
+    for (let localIndex = localStartIndex; localIndex < actualCount; localIndex++) {
+      if (shouldCancel) {
+        console.log(`🛑 [MP4-Export-Worker] Export cancelled at global frame ${actualStart + localIndex}`)
+        return addedCount
+      }
+
+      const globalIndex = actualStart + localIndex
+      const timestamp = globalIndex * frameDuration
+
+      try {
+        await requestCompositeFrame(localIndex)
+        await videoSource.add(timestamp, frameDuration)
+        addedCount++
+
+        // 进度按全量帧数汇报
+        const progress = 80 + (globalIndex / totalOpfsFrames) * 15
+        updateProgress({
+          stage: 'muxing',
+          progress,
+          currentFrame: globalIndex + 1,
+          totalFrames: totalOpfsFrames
+        })
+
+        if (globalIndex % 10 === 0) {
+          console.log(`📊 [MP4-Export-Worker] [OPFS] Progress: ${globalIndex + 1}/${totalOpfsFrames}`)
+        }
+      } catch (err) {
+        console.error(`❌ [MP4-Export-Worker] [OPFS] Failed to process global frame ${globalIndex}:`, err)
+      }
+    }
+
+    // 跳到下一窗口：使用上次已输出的全局末尾，避免重复与回退
+    lastEmittedGlobalEnd = Math.max(lastEmittedGlobalEnd, actualStart + actualCount)
+    nextRequestStart = lastEmittedGlobalEnd
+  }
+
+  return addedCount
+}
+
 console.log('🔧 [MP4-Export-Worker] Testing H.264 dimension validation...')
 const testCases = [
   { width: 719, height: 996, name: '奇数尺寸' },
