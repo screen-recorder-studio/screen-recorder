@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Captured Mouse Events Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        .primary {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .primary:hover {
+            background-color: #0056b3;
+        }
+        
+        .danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .danger:hover {
+            background-color: #c82333;
+        }
+        
+        .success {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .success:hover {
+            background-color: #218838;
+        }
+        
+        .disabled {
+            background-color: #6c757d;
+            color: white;
+            cursor: not-allowed;
+        }
+        
+        .video-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .video-section {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        video {
+            width: 100%;
+            max-width: 500px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .mouse-info {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        
+        .mouse-coords {
+            font-family: monospace;
+            font-size: 18px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        .event-log {
+            height: 200px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .status.info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        
+        .status.success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .status.error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .checkbox-group {
+            margin: 10px 0;
+        }
+        
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .stat-item {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <h1>Captured Mouse Events Test Page</h1>
+    
+    <div class="container">
+        <h2>Screen Capture Controls</h2>
+        <div id="status" class="status info">
+            Ready to start screen capture. Click "Start Capture" to begin.
+        </div>
+        
+        <div class="controls">
+            <button id="startCapture" class="primary">Start Capture</button>
+            <button id="stopCapture" class="danger disabled" disabled>Stop Capture</button>
+            <button id="clearLog" class="success">Clear Log</button>
+        </div>
+        
+        <div class="checkbox-group">
+            <label>
+                <input type="checkbox" id="includeCursor" checked>
+                Include cursor in video (cursor: "always")
+            </label>
+            <label>
+                <input type="checkbox" id="enableMouseEvents" checked>
+                Enable mouse event capture
+            </label>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h2>Captured Video & Mouse Information</h2>
+        <div class="video-container">
+            <div class="video-section">
+                <h3>Captured Screen</h3>
+                <video id="capturedVideo" autoplay muted></video>
+                
+                <div class="mouse-info">
+                    <h4>Current Mouse Position</h4>
+                    <div class="mouse-coords" id="mouseCoords">
+                        X: -, Y: -
+                    </div>
+                    <div id="mouseStatus">Mouse status: Not tracking</div>
+                </div>
+            </div>
+            
+            <div class="video-section">
+                <h3>Statistics</h3>
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="eventCount">0</div>
+                        <div class="stat-label">Mouse Events</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="frameRate">0</div>
+                        <div class="stat-label">FPS</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="captureTime">0s</div>
+                        <div class="stat-label">Capture Time</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h2>Event Log</h2>
+        <div id="eventLog" class="event-log"></div>
+    </div>
+
+    <script src="capture-test.js"></script>
+</body>
+</html>
