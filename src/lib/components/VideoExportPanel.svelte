@@ -221,7 +221,10 @@
             totalFrames: progress.totalFrames,
             estimatedTimeRemaining: progress.estimatedTimeRemaining || 0
           }
-          setProgressTarget(progress.progress)
+          // 使用“当前帧 / 显示用总帧数”计算百分比，保证与 136 / 1020 帧 一致
+          const denomWebm = displayTotalFrames || progress.totalFrames || 0
+          const frameBasedPctWebm = denomWebm > 0 ? (progress.currentFrame / denomWebm) * 100 : progress.progress
+          setProgressTarget(frameBasedPctWebm)
           scheduleProgressFieldsUpdate()
         }
       )
@@ -358,7 +361,18 @@
             totalFrames: progress.totalFrames,
             estimatedTimeRemaining: progress.estimatedTimeRemaining || 0
           }
-          setProgressTarget(progress.progress)
+          //
+
+
+
+
+
+
+
+
+          const denomMp4 = displayTotalFrames || progress.totalFrames || 0
+          const frameBasedPctMp4 = denomMp4 > 0 ? (progress.currentFrame / denomMp4) * 100 : progress.progress
+          setProgressTarget(frameBasedPctMp4)
           scheduleProgressFieldsUpdate()
         }
       )
