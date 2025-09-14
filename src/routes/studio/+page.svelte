@@ -100,7 +100,6 @@
     try {
       const params = new URLSearchParams(location.search)
       const dirId = params.get('id') || ''
-      //  :  UI  VideoExportPanel  OPFS id
       opfsDirId = dirId
       if (dirId && workerEncodedChunks.length === 0) {
         console.log('� [Studio] Opening OPFS recording by dirId:', dirId)

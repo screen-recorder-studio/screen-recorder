@@ -680,7 +680,7 @@ async function processVideoComposition(chunks: EncodedChunk[], options: ExportOp
   })
 }
 
-// 专用于 OPFS 
+// 专用于 OPFS
 async function processVideoCompositionOpfs(wireChunks: any[], options: ExportOptions, startGlobalFrame: number): Promise<void> {
   try {
     currentBackgroundConfig = options.backgroundConfig || null
@@ -693,7 +693,6 @@ async function processVideoCompositionOpfs(wireChunks: any[], options: ExportOpt
       return
     }
 
-    // 
     updateProgress({
       stage: 'compositing',
       progress: 10,
@@ -701,7 +700,6 @@ async function processVideoCompositionOpfs(wireChunks: any[], options: ExportOpt
       totalFrames: (totalOpfsFrames > 0 ? totalOpfsFrames : wireChunks.length)
     })
 
-    //  (ArrayBuffer) 
     const transferable = wireChunks.map((c: any) => ({
       data: c.data as ArrayBuffer,
       timestamp: c.timestamp,
@@ -713,7 +711,6 @@ async function processVideoCompositionOpfs(wireChunks: any[], options: ExportOpt
     }))
     const transferList = transferable.map(c => c.data)
 
-    //  process
     const originalOnMessage = compositeWorker.onmessage
     compositeWorker.onmessage = (event) => {
       const { type, data } = event.data
@@ -1438,7 +1435,6 @@ function cleanup() {
     compositeWorker = null
   }
 
-  //    OPFS reader
   try { cleanupOpfsReader() } catch {}
 
   offscreenCanvas = null
