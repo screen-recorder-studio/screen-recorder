@@ -24,10 +24,15 @@ function ensureSessionId() {
 
 function normalizeMeta(m: any) {
   if (!m) return {} as any;
+  const metaW = (typeof m.width === 'number') ? m.width : (m.codedWidth);
+  const metaH = (typeof m.height === 'number') ? m.height : (m.codedHeight);
+  const selW = (typeof m?.selectedRegion?.width === 'number') ? m.selectedRegion.width : undefined;
+  const selH = (typeof m?.selectedRegion?.height === 'number') ? m.selectedRegion.height : undefined;
   return {
     codec: m.codec || 'vp8',
-    width: m.width || m.codedWidth || 1920,
-    height: m.height || m.codedHeight || 1080,
+    // Prefer actual encoded/meta width/height; fallback to selectedRegion, then defaults
+    width: metaW ?? selW ?? 1920,
+    height: metaH ?? selH ?? 1080,
     fps: m.framerate || m.fps || 30,
   };
 }

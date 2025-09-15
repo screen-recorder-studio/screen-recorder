@@ -424,8 +424,27 @@
       if (canWebCodecs) {
         state.usingWebCodecs = true;
         const settings = state.track.getSettings ? state.track.getSettings() : {};
-        const width = settings.width || 1920;
-        const height = settings.height || 1080;
+        // Prefer the selected region/element size in device pixels (even-aligned), fallback to track settings
+        const dpr = (window.devicePixelRatio || 1);
+        let cssW = 0, cssH = 0;
+        try {
+          const rt = state.mode === 'element' ? state.elementRecordingTarget : (state.mode === 'region' ? state.regionRecordingTarget : null);
+          if (rt && typeof rt.getBoundingClientRect === 'function') {
+            const r = rt.getBoundingClientRect(); cssW = r.width || 0; cssH = r.height || 0;
+          } else if (state.mode === 'region' && state.selectionBox) {
+            cssW = parseFloat(state.selectionBox.style.width || '0') || 0;
+            cssH = parseFloat(state.selectionBox.style.height || '0') || 0;
+          }
+        } catch {}
+        let width = Math.max(2, Math.floor(cssW * dpr));
+        let height = Math.max(2, Math.floor(cssH * dpr));
+        if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 2 || height <= 2) {
+          width = settings.width || 1920;
+          height = settings.height || 1080;
+        }
+        // enforce even dimensions for better encoder compatibility
+        if (width % 2) width -= 1;
+        if (height % 2) height -= 1;
         const framerate = Math.round((settings.frameRate || 30));
 
         // 保存录制元数据
@@ -502,11 +521,19 @@
           console.log('worker message bbb', msg.data);
           switch (msg.type) {
             case 'configured':
-              console.log('[encoder-worker] configured', { codec: 'vp8', width, height, framerate });
+              try {
+                const cfg = msg.config || {};
+                if (cfg && (cfg.width || cfg.height || cfg.framerate)) {
+                  if (typeof cfg.width === 'number') state.recordingMetadata.width = cfg.width;
+                  if (typeof cfg.height === 'number') state.recordingMetadata.height = cfg.height;
+                  if (typeof cfg.framerate === 'number') state.recordingMetadata.framerate = cfg.framerate;
+                }
+              } catch {}
+              console.log('[encoder-worker] configured', { codec: state.recordingMetadata?.codec, width: state.recordingMetadata?.width, height: state.recordingMetadata?.height, framerate: state.recordingMetadata?.framerate });
               // Initialize probe iframe sink for logging (no pipeline changes)
               try { ensureSinkIframe().then(() => {
                 try {
-                  state.sinkWin?.postMessage({ type: 'start', codec: 'vp8', width, height, framerate }, '*');
+                  state.sinkWin?.postMessage({ type: 'start', codec: state.recordingMetadata?.codec || 'vp8', width: state.recordingMetadata?.width, height: state.recordingMetadata?.height, framerate: state.recordingMetadata?.framerate }, '*');
                   state.sinkWin?.postMessage({ type: 'meta', metadata: state.recordingMetadata }, '*');
                 } catch {}
               }); } catch {}
