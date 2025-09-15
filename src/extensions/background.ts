@@ -193,6 +193,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         handleElementRecordingComplete(message, sendResponse);
         return true;
 
+      case 'OPFS_RECORDING_READY': {
+        try {
+          const targetUrl = chrome.runtime.getURL(`studio.html?id=${encodeURIComponent(message.id)}`)
+          chrome.tabs.create({ url: targetUrl }, () => {
+            const err = chrome.runtime.lastError
+            if (err) console.error('[Background] Failed to open Studio tab:', err.message)
+          })
+          try { sendResponse({ ok: true }) } catch (e) {}
+        } catch (e) {
+          console.warn('[Background] OPFS_RECORDING_READY handling error', e)
+          try { sendResponse({ ok: false, error: (e && e.message) || String(e) }) } catch (_) {}
+        }
+        return true;
+      }
+
       default:
         break;
     }

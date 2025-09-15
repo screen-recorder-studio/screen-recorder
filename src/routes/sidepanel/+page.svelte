@@ -615,7 +615,11 @@
       handoffInProgress = true
       const totalSize = workerEncodedChunks.reduce((s, c) => s + (c.size || 0), 0)
       const first = workerEncodedChunks[0] || {}
-      const id = `rec_${Date.now()}`
+      // Use OPFS session ID when available to keep Studio URL consistent with OPFS directory
+      let id = `rec_${Date.now()}`
+      if (OPFS_WRITER_ENABLED && opfsSessionId) {
+        id = `rec_${opfsSessionId}`
+      }
       const meta = {
         width: first.codedWidth || 1920,
         height: first.codedHeight || 1080,

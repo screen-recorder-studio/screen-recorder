@@ -463,7 +463,6 @@
 
         const workerUrl = chrome.runtime.getURL('encoder-worker.js');
 
-	        //    
 	        state.port?.postMessage({ type: 'meta', metadata: state.recordingMetadata });
 
         console.log('[Stream][Content] meta posted to background', { startTime: state.recordingMetadata?.startTime });

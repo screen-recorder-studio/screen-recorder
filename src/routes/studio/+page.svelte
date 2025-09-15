@@ -406,12 +406,12 @@
         />
       </div>
 
-      {#if workerEncodedChunks.length > 0}
+      <!-- {#if workerEncodedChunks.length > 0}
         <div class="absolute bottom-6 left-6 flex items-center gap-2 px-3 py-2 bg-blue-500/20 border border-blue-400/30 rounded-lg text-sm text-blue-200 backdrop-blur-sm">
           <Activity class="w-4 h-4" />
           <span>已收集 {workerEncodedChunks.length} 个编码块</span>
         </div>
-      {/if}
+      {/if} -->
     </div>
   </div>
 

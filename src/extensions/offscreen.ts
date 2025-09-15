@@ -52,6 +52,12 @@ function initOpfsWriter(meta?: any) {
         if (chunksWritten % 200 === 0) console.log('[Offscreen][OPFS] progress', { bytesWrittenTotal, chunksWritten });
       } else if (d.type === 'finalized') {
         console.log('[Offscreen][OPFS] writer finalized for', id);
+        try {
+          const recId = (d && d.id != null) ? `rec_${d.id}` : `rec_${ensureSessionId()}`
+          chrome.runtime?.sendMessage({ type: 'OPFS_RECORDING_READY', id: recId, meta: lastMeta })
+        } catch (e) {
+          console.warn('[Offscreen] failed to notify background of OPFS recording', e)
+        }
       } else if (d.type === 'error') {
         console.warn('[Offscreen][OPFS] writer error', d);
       }
