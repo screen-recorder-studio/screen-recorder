@@ -939,66 +939,30 @@
 	          }
 	        })
 	        // 监听转发过来的 start/meta/chunk/end
-	        elementStreamPort.onMessage.addListener(async (msg: any) => {
-	          switch (msg?.type) {
-	            case 'start':
-	              streamingChunks = []
-                elementUIStatus = 'recording'
-	              console.log('[Stream][Sidepanel] start received; reset chunks')
-	              break
-	            case 'meta':
-	              streamingMeta = msg.metadata
-	              console.log('[Stream][Sidepanel] meta received', { width: streamingMeta?.width, height: streamingMeta?.height, codec: streamingMeta?.codec, startTime: streamingMeta?.startTime })
-	              break
-	            case 'chunk': {
-	              // try {
-	              //   const buf: ArrayBuffer | undefined = msg.data
-	              //   const view = buf
-	              //   streamingChunks.push({
-	              //     data: view,
-	              //     timestamp: Number(msg.ts) || 0,
-	              //     type: msg.kind === 'key' ? 'key' : 'delta',
-	              //     size: (typeof msg.size === 'number' && msg.size > 0) ? msg.size : view.byteLength,
-	              //     codedWidth: streamingMeta?.width || 1920,
-	              //     codedHeight: streamingMeta?.height || 1080,
-	              //     codec: streamingMeta?.codec || 'vp8'
-	              //   })
+	        // elementStreamPort.onMessage.addListener(async (msg: any) => {
+	        //   switch (msg?.type) {
+	        //     case 'start':
+	        //       streamingChunks = []
+          //       elementUIStatus = 'recording'
+	        //       console.log('[Stream][Sidepanel] start received; reset chunks')
+	        //       break
+	        //     case 'meta':
+	        //       streamingMeta = msg.metadata
+	        //       console.log('[Stream][Sidepanel] meta received', { width: streamingMeta?.width, height: streamingMeta?.height, codec: streamingMeta?.codec, startTime: streamingMeta?.startTime })
+	        //       break
+	        //     case 'chunk': {
+	        //       break
+	        //     }
+	        //     case 'end':
+	        //       console.log('[Stream][Sidepanel] end received', { chunks: streamingChunks.length, hasMeta: !!streamingMeta })
 
-	              // } catch (e) {
-	              //   console.warn('[Sidepanel] failed to accumulate chunk', e)
-	              // }
-	              //   const n = streamingChunks.length
-	              //   if (n <= 3 || n % 100 === 0) {
-	              //     console.log('[Stream][Sidepanel] chunk received', { count: n, kind: msg.kind, size: msg.size })
-	              //   }
-
-	              break
-	            }
-	            case 'end':
-	              console.log('[Stream][Sidepanel] end received', { chunks: streamingChunks.length, hasMeta: !!streamingMeta })
-
-                elementUIStatus = 'completed';
-                openInStudio();
-
-	              // // 使用与“大包”一致的数据结构进行处理
-	              // if (streamingChunks.length > 0) {
-
-		            //   // finalize OPFS for element/region stream
-		            //   // try { await finalizeOpfsWriter() } catch (e) { console.warn('[OPFS] finalize (element-stream) failed', e) }
-
-	              //   handleElementRecordingData({ encodedChunks: streamingChunks, metadata: streamingMeta })
-                //   elementUIStatus = 'completed'
-
-	              // }
-	              // streamingChunks = []
-
-
-	              // streamingMeta = null
-	              // break
-	            default:
-	              break
-	          }
-	        })
+          //       elementUIStatus = 'completed';
+          //       openInStudio();
+	        //       break
+	        //     default:
+	        //       break
+	        //   }
+	        // })
 	      } catch (e) {
 	        console.warn('element-stream-consumer connect failed', e)
 	      }
