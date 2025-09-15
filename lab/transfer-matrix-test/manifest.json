@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Transfer Matrix Test (CS → Extension Iframe)",
+  "version": "0.1.0",
+  "description": "Verify which types can be transferred from a content script to an extension iframe page via window.postMessage.",
+  "permissions": ["scripting"],
+  "host_permissions": ["<all_urls>"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["viewer.html", "viewer.js"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "action": { "default_title": "Transfer Matrix Test" }
+}
+

@@ -13,6 +13,9 @@ let sessionId: string | null = null;
 let lastMeta: any = null; // carries codec/width/height/fps
 const pendingChunks: Array<{ data: any; timestamp?: number; type?: string; codedWidth?: number; codedHeight?: number; codec?: string }> = [];
 let endPending = false;
+const __mode = (() => { try { return new URL(self.location.href).searchParams.get('mode') || ''; } catch { return ''; } })();
+const __isProbe = (__mode === 'probe');
+const __isIframeSink = (__mode === 'iframe');
 
 function ensureSessionId() {
   if (!sessionId) sessionId = `${Date.now()}`;
@@ -172,31 +175,33 @@ async function finalizeOpfsWriter() {
   }
 }
 
-// Connect to background and receive forwarded encoded-stream messages
-(function connectToBackground() {
-  try {
-    const port = chrome.runtime.connect({ name: 'opfs-writer-sink' });
-    console.log('[Offscreen] connected to background as opfs-writer-sink');
-
-    port.onMessage.addListener(async (msg: any) => {
-      try {
-        switch (msg?.type) {
+// Iframe sink mode: receive messages from content and write directly to OPFS (no background)
+if (__isIframeSink) {
+  (function iframeSink() {
+    try {
+      let started = false;
+      window.addEventListener('message', (ev) => {
+        const d: any = ev.data || {};
+        switch (d.type) {
+          case 'ping':
+            try { (ev.source as WindowProxy | null)?.postMessage({ type: 'sink-ready' }, '*'); } catch {}
+            break;
           case 'start':
-            lastMeta = normalizeMeta({ codec: msg.codec, width: msg.width, height: msg.height, framerate: msg.framerate });
+            lastMeta = normalizeMeta({ codec: d.codec, width: d.width, height: d.height, framerate: d.framerate });
             initOpfsWriter(lastMeta);
+            started = true;
+            console.log('[IframeSink] start', lastMeta);
             break;
           case 'meta':
-            lastMeta = normalizeMeta(msg.metadata);
+            lastMeta = normalizeMeta(d.metadata);
             if (!writer) initOpfsWriter(lastMeta);
             break;
           case 'chunk': {
             if (!writer) initOpfsWriter(lastMeta);
-
-            console.log('chunk received', msg.data);
             appendToOpfsChunk({
-              data: msg.data,
-              timestamp: Number(msg.ts) || 0,
-              type: msg.kind === 'key' ? 'key' : 'delta',
+              data: d.data,
+              timestamp: Number(d.ts) || 0,
+              type: d.kind === 'key' ? 'key' : 'delta',
               codedWidth: lastMeta?.width,
               codedHeight: lastMeta?.height,
               codec: lastMeta?.codec
@@ -205,28 +210,127 @@ async function finalizeOpfsWriter() {
           }
           case 'end':
           case 'end-request':
-            console.log('[Offscreen] end received; finalizing OPFS writer');
+            console.log('[IframeSink] end received');
             if (!writerReady || pendingChunks.length > 0) {
               endPending = true;
             } else {
-              await finalizeOpfsWriter();
+              void finalizeOpfsWriter();
             }
             break;
-          case 'error':
-            console.warn('[Offscreen] upstream error:', msg?.message);
-            break;
-          default:
-            break;
         }
-      } catch (e) {
-        console.warn('[Offscreen] handler error', e);
+      });
+      console.log('[Offscreen] iframe sink mode active');
+    } catch (e) {
+      console.warn('[Offscreen] iframe sink error', e);
+    }
+  })();
+
+// Connect to background and receive forwarded encoded-stream messages (disabled in probe or iframe mode)
+} else if (!__isProbe) {
+  (function connectToBackground() {
+    try {
+      const port = chrome.runtime.connect({ name: 'opfs-writer-sink' });
+      console.log('[Offscreen] connected to background as opfs-writer-sink');
+
+      port.onMessage.addListener(async (msg: any) => {
+        try {
+          switch (msg?.type) {
+            case 'start':
+              lastMeta = normalizeMeta({ codec: msg.codec, width: msg.width, height: msg.height, framerate: msg.framerate });
+              initOpfsWriter(lastMeta);
+              break;
+            case 'meta':
+              lastMeta = normalizeMeta(msg.metadata);
+              if (!writer) initOpfsWriter(lastMeta);
+              break;
+            case 'chunk': {
+              if (!writer) initOpfsWriter(lastMeta);
+              appendToOpfsChunk({
+                data: msg.data,
+                timestamp: Number(msg.ts) || 0,
+                type: msg.kind === 'key' ? 'key' : 'delta',
+                codedWidth: lastMeta?.width,
+                codedHeight: lastMeta?.height,
+                codec: lastMeta?.codec
+              });
+              break;
+            }
+            case 'end':
+            case 'end-request':
+              console.log('[Offscreen] end received; finalizing OPFS writer');
+              if (!writerReady || pendingChunks.length > 0) {
+                endPending = true;
+              } else {
+                await finalizeOpfsWriter();
+              }
+              break;
+            case 'error':
+              console.warn('[Offscreen] upstream error:', msg?.message);
+              break;
+            default:
+              break;
+          }
+        } catch (e) {
+          console.warn('[Offscreen] handler error', e);
+        }
+      });
+
+      // Optional: notify background this sink is ready (not strictly needed)
+      try { port.postMessage({ type: 'sink-ready' }); } catch {}
+    } catch (e) {
+      console.warn('[Offscreen] failed to connect to background', e);
+    }
+  })();
+} else {
+  // Probe mode: accept direct messages from content via window.postMessage, log only
+  try {
+    let __probe_log_count = 0;
+    function __headHex(u8: Uint8Array, n = 16) {
+      const len = Math.min(n, u8.length); const out = new Array(len);
+      for (let i = 0; i < len; i++) out[i] = u8[i].toString(16).padStart(2, '0');
+      return out.join(' ');
+    }
+    function __tailHex(u8: Uint8Array, n = 8) {
+      const len = Math.min(n, u8.length); const out = new Array(len);
+      for (let i = 0; i < len; i++) { const idx = u8.length - len + i; out[i] = u8[idx].toString(16).padStart(2, '0'); }
+      return out.join(' ');
+    }
+    function __sum32(u8: Uint8Array) {
+      let s = 0 >>> 0; for (let i = 0; i < u8.length; i++) { s = (s + u8[i]) >>> 0; } return s >>> 0;
+    }
+
+    window.addEventListener('message', (ev) => {
+      const d: any = ev.data || {};
+      if (d.type === 'ping') {
+        try { (ev.source as WindowProxy | null)?.postMessage({ type: 'sink-ready' }, '*'); } catch {}
+        return;
+      }
+      if (d.type === 'start' || d.type === 'meta' || d.type === 'end') {
+        if (__probe_log_count < 10) { console.log('[Probe]', d.type, d); __probe_log_count++; }
+        return;
+      }
+      if (d.type === 'chunk') {
+        if (__probe_log_count < 10) {
+          const raw = d.data;
+          const size = (raw && ((raw as any).byteLength ?? (raw as any).length)) || 0;
+          let u8: Uint8Array | null = null;
+          if (raw instanceof ArrayBuffer) u8 = new Uint8Array(raw);
+          else if (raw && ArrayBuffer.isView(raw) && typeof raw.byteLength === 'number') {
+            const view = raw as ArrayBufferView & { byteOffset?: number };
+            u8 = new Uint8Array(view.buffer, (view as any).byteOffset || 0, view.byteLength);
+          } else if (Array.isArray(raw)) u8 = new Uint8Array(raw as number[]);
+          const head16 = u8 ? __headHex(u8, 16) : undefined;
+          const tail8 = u8 ? __tailHex(u8, 8) : undefined;
+          const sum32 = u8 ? ('0x' + __sum32(u8).toString(16).padStart(8, '0')) : undefined;
+          console.log('[Probe] chunk', { ts: d.ts, kind: d.kind, size, head16, tail8, sum32 });
+          __probe_log_count++;
+        }
+        return;
       }
     });
-
-    // Optional: notify background this sink is ready (not strictly needed)
-    try { port.postMessage({ type: 'sink-ready' }); } catch {}
+    console.log('[Offscreen] probe mode active');
   } catch (e) {
-    console.warn('[Offscreen] failed to connect to background', e);
+    console.warn('[Offscreen] probe mode error', e);
   }
-})();
+}
 

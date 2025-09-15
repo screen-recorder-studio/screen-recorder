@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Transfer Matrix Viewer</title>
+    <script src="viewer.js" defer></script>
+    <style>
+      body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+      header { background: #222; color: #fff; padding: 8px 12px; font-size: 14px; }
+      main { padding: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      section { border: 1px solid #ddd; border-radius: 6px; padding: 8px; }
+      h3 { margin: 0 0 8px; font-size: 14px; }
+      canvas, img { max-width: 100%; height: auto; border: 1px solid #eee; }
+      pre { font-size: 12px; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <header>Transfer Matrix Viewer</header>
+    <main>
+      <section>
+        <h3>Summary</h3>
+        <table id="summary" style="width:100%; border-collapse:collapse;">
+          <thead>
+            <tr>
+              <th style="text-align:left; border-bottom:1px solid #ddd; padding:4px 6px;">Type</th>
+              <th style="border-bottom:1px solid #ddd; padding:4px 6px;">Received</th>
+              <th style="border-bottom:1px solid #ddd; padding:4px 6px;">OK</th>
+              <th style="text-align:left; border-bottom:1px solid #ddd; padding:4px 6px;">Details</th>
+            </tr>
+          </thead>
+          <tbody id="summary-body"></tbody>
+        </table>
+      </section>
+
+      <section>
+        <h3>Image (ArrayBuffer/Blob)</h3>
+        <img id="img" alt="Image via ArrayBuffer/Blob" />
+        <pre id="img-meta">Waiting...</pre>
+      </section>
+      <section>
+        <h3>Bitmap/VideoFrame/OffscreenCanvas</h3>
+        <canvas id="canvas"></canvas>
+        <pre id="canvas-meta">Waiting...</pre>
+      </section>
+      <section>
+        <h3>MessagePort</h3>
+        <pre id="port-meta">Waiting...</pre>
+      </section>
+      <section>
+        <h3>Log</h3>
+        <pre id="log">Viewer initializing...</pre>
+      </section>
+    </main>
+  </body>
+</html>
+

@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Iframe Ownership Transfer Test",
+  "version": "0.1.0",
+  "description": "Test transferring ownership (ArrayBuffer) from content script to the page via window.postMessage with transfer list, with an injected iframe present.",
+  "permissions": ["scripting"],
+  "host_permissions": ["<all_urls>"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "page-recv.js",
+        "viewer.html",
+        "viewer.js"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "action": { "default_title": "Iframe Ownership Transfer Test" }
+}
+

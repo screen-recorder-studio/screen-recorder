@@ -37,6 +37,8 @@
     byteCount: 0,
     worker: null,
     workerBlobUrl: null,
+    // iframe sink (probe) window for direct ArrayBuffer transfer logging
+    sinkWin: null,
     // 编码数据收集
     encodedChunks: [],
     recordingMetadata: null
@@ -64,6 +66,36 @@
 
   function report(partial) {
     chrome.runtime.sendMessage({ type: 'CONTENT_REPORT', partial });
+  }
+
+  // Ensure extension iframe sink (offscreen.html?mode=iframe) is present and handshaked
+  async function ensureSinkIframe() {
+    try {
+      if (state.sinkWin && typeof state.sinkWin.postMessage === 'function') return state.sinkWin;
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed; right:0; bottom:0; width:1px; height:1px; opacity:0; border:0; z-index:2147483647;';
+      iframe.src = chrome.runtime.getURL('offscreen.html?mode=iframe');
+      document.documentElement.appendChild(iframe);
+      await new Promise((r) => iframe.onload = r);
+      const win = iframe.contentWindow;
+      if (!win) return null;
+      const ok = await new Promise((resolve) => {
+        const timer = setTimeout(() => { window.removeEventListener('message', onMsg); resolve(false); }, 1000);
+        function onMsg(ev) {
+          if (ev.source === win && ev.data && ev.data.type === 'sink-ready') {
+            clearTimeout(timer);
+            window.removeEventListener('message', onMsg);
+            resolve(true);
+          }
+        }
+        window.addEventListener('message', onMsg);
+        try { win.postMessage({ type: 'ping' }, '*'); } catch {}
+      });
+      if (ok) state.sinkWin = win;
+      return ok ? win : null;
+    } catch (e) {
+      return null;
+    }
   }
 
   // 创建元素容器和录制目标
@@ -472,6 +504,13 @@
           switch (msg.type) {
             case 'configured':
               console.log('[encoder-worker] configured', { codec: 'vp8', width, height, framerate });
+              // Initialize probe iframe sink for logging (no pipeline changes)
+              try { ensureSinkIframe().then(() => {
+                try {
+                  state.sinkWin?.postMessage({ type: 'start', codec: 'vp8', width, height, framerate }, '*');
+                  state.sinkWin?.postMessage({ type: 'meta', metadata: state.recordingMetadata }, '*');
+                } catch {}
+              }); } catch {}
               break;
             case 'chunk':
               try {
@@ -495,16 +534,20 @@
                   });
                 }
 
-                state.port?.postMessage({
-                  type: 'chunk', ts: msg.ts, kind: msg.kind,
-                  size: msg.size, head: msg.head, data: new Uint8Array(msg.data)
-                }, msg.data ? [msg.data] : undefined);
+                // Transfer to iframe sink via zero-copy (new pipeline; no background forwarding of chunk)
+                try {
+                  const sink = state.sinkWin || null;
+                  if (sink && msg.data) {
+                    sink.postMessage({ type: 'chunk', ts: msg.ts, kind: msg.kind, data: msg.data }, '*', [msg.data]);
+                  }
+                } catch (_) {}
               } catch (err) {
                 console.error('forward chunk failed', err);
               }
               break;
             case 'end':
               state.port?.postMessage({ type: 'end', chunks: state.chunkCount, bytes: state.byteCount });
+              try { state.sinkWin?.postMessage({ type: 'end', chunks: state.chunkCount, bytes: state.byteCount }, '*'); } catch {}
               console.log(`🎬 [Element Recording] Collected ${state.encodedChunks.length} encoded chunks for editing`);
               // worker 已完成，执行清理
               finalizeStop();
