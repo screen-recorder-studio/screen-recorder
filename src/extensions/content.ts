@@ -39,6 +39,7 @@
     workerBlobUrl: null,
     // iframe sink (probe) window for direct ArrayBuffer transfer logging
     sinkWin: null,
+    sinkStarted: false,
     // 编码数据收集
     encodedChunks: [],
     recordingMetadata: null
@@ -80,7 +81,7 @@
       const win = iframe.contentWindow;
       if (!win) return null;
       const ok = await new Promise((resolve) => {
-        const timer = setTimeout(() => { window.removeEventListener('message', onMsg); resolve(false); }, 1000);
+        const timer = setTimeout(() => { window.removeEventListener('message', onMsg); resolve(false); }, 4000);
         function onMsg(ev) {
           if (ev.source === win && ev.data && ev.data.type === 'sink-ready') {
             clearTimeout(timer);
@@ -484,6 +485,18 @@
 
 	        state.port?.postMessage({ type: 'meta', metadata: state.recordingMetadata });
 
+        // Ensure iframe sink is ready BEFORE starting encoder/frames to avoid dropping initial chunks
+        try {
+          const ok = await ensureSinkIframe();
+          if (ok && state.sinkWin && !state.sinkStarted) {
+            try {
+              state.sinkWin.postMessage({ type: 'start', codec: 'vp8', width, height, framerate }, '*');
+              state.sinkWin.postMessage({ type: 'meta', metadata: state.recordingMetadata }, '*');
+              state.sinkStarted = true;
+              console.log('[Stream][Content] sink pre-started with meta');
+            } catch (e) { console.warn('[Stream][Content] sink pre-start failed', e); }
+          }
+        } catch (e) { console.warn('[Stream][Content] ensureSinkIframe failed (pre-start)', e); }
         console.log('[Stream][Content] meta posted to background', { startTime: state.recordingMetadata?.startTime });
 
 
@@ -530,11 +543,14 @@
                 }
               } catch {}
               console.log('[encoder-worker] configured', { codec: state.recordingMetadata?.codec, width: state.recordingMetadata?.width, height: state.recordingMetadata?.height, framerate: state.recordingMetadata?.framerate });
-              // Initialize probe iframe sink for logging (no pipeline changes)
+              // Ensure sink has been started once; if not, start now with current metadata
               try { ensureSinkIframe().then(() => {
                 try {
-                  state.sinkWin?.postMessage({ type: 'start', codec: state.recordingMetadata?.codec || 'vp8', width: state.recordingMetadata?.width, height: state.recordingMetadata?.height, framerate: state.recordingMetadata?.framerate }, '*');
-                  state.sinkWin?.postMessage({ type: 'meta', metadata: state.recordingMetadata }, '*');
+                  if (state.sinkWin && !state.sinkStarted) {
+                    state.sinkWin.postMessage({ type: 'start', codec: state.recordingMetadata?.codec || 'vp8', width: state.recordingMetadata?.width, height: state.recordingMetadata?.height, framerate: state.recordingMetadata?.framerate }, '*');
+                    state.sinkWin.postMessage({ type: 'meta', metadata: state.recordingMetadata }, '*');
+                    state.sinkStarted = true;
+                  }
                 } catch {}
               }); } catch {}
               break;
