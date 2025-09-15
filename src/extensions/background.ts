@@ -207,6 +207,40 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
         return true;
       }
+      // Stream signaling from content via sendMessage (no Port)
+      case 'STREAM_START': {
+        // Update tab state and fan-out to sidepanel
+        state.recording = true;
+        broadcastToTab(tabId, { ...message, tabId });
+        void broadcastStateWithCapabilities(tabId);
+        try { sendResponse({ ok: true }); } catch (e) {}
+        return true;
+      }
+      case 'STREAM_META': {
+        broadcastToTab(tabId, { ...message, tabId });
+        try { sendResponse({ ok: true }); } catch (e) {}
+        return true;
+      }
+      case 'STREAM_END_REQUEST': {
+        broadcastToTab(tabId, { ...message, tabId });
+        try { sendResponse({ ok: true }); } catch (e) {}
+        return true;
+      }
+      case 'STREAM_END': {
+        state.recording = false;
+        broadcastToTab(tabId, { ...message, tabId });
+        void broadcastStateWithCapabilities(tabId);
+        try { sendResponse({ ok: true }); } catch (e) {}
+        return true;
+      }
+      case 'STREAM_ERROR': {
+        state.recording = false;
+        broadcastToTab(tabId, { ...message, tabId });
+        void broadcastStateWithCapabilities(tabId);
+        try { sendResponse({ ok: true }); } catch (e) {}
+        return true;
+      }
+
 
       default:
         break;
@@ -257,108 +291,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ error: 'Unknown action' })
   }
 })
-// Sidepanel 流消费者：tabId -> sidepanel Port
-const sidepanelConsumers = new Map();
-
-
-// 接收内容脚本的 WebCodecs 编码数据流，或接收 sidepanel 的注册
-chrome.runtime.onConnect.addListener((port) => {
-  if (port.name === 'element-stream-consumer') {
-    // Sidepanel 端注册成为流消费者，需提供 tabId
-    const onMsg = (msg) => {
-      if (msg && msg.type === 'register' && typeof msg.tabId === 'number') {
-        sidepanelConsumers.set(msg.tabId, port);
-        console.log('[Stream][BG] sidepanel consumer registered', { tabId: msg.tabId });
-        try { chrome.tabs.sendMessage(msg.tabId, { type: 'STREAMING_READY' }); console.log('[Stream][BG] STREAMING_READY sent to content', { tabId: msg.tabId }); } catch (e) { console.warn('[Stream][BG] STREAMING_READY send failed', e); }
-      }
-    };
-    port.onMessage.addListener(onMsg);
-    port.onDisconnect.addListener(() => {
-      // 清理所有相同 port 的注册项
-      for (const [tid, p] of sidepanelConsumers.entries()) {
-        if (p === port) {
-          sidepanelConsumers.delete(tid);
-          console.log('[Stream][BG] sidepanel consumer disconnected', { tabId: tid });
-        }
-      }
-    });
-    return;
-  }
-
-  if (port.name !== 'encoded-stream') return;
-
-  const tabId = port.sender?.tab?.id;
-  const sess = { started: false, chunks: 0, bytes: 0, codec: '', width: 0, height: 0, framerate: 0, logTimer: null };
-  console.log('[encoded-stream] port connected');
-  const logProgress = () => {
-    console.log('[encoded-stream] stats', { chunks: sess.chunks, mb: +(sess.bytes / 1024 / 1024).toFixed(2) });
-  };
-  port.onMessage.addListener((msg) => {
-    switch (msg.type) {
-      case 'start':
-        sess.started = true;
-        sess.codec = msg.codec;
-        sess.width = msg.width;
-        sess.height = msg.height;
-        sess.framerate = msg.framerate;
-        if (!sess.logTimer) sess.logTimer = setInterval(logProgress, 1000);
-        console.log('[encoded-stream] start', { codec: sess.codec, width: sess.width, height: sess.height, framerate: sess.framerate });
-        break;
-      case 'meta':
-        // 仅转发给 sidepanel
-        break;
-      case 'chunk':
-        sess.chunks += 1;
-        const inc = (typeof msg.size === 'number' && msg.size >= 0)
-          ? msg.size
-          : (msg.data?.byteLength || msg.data?.buffer?.byteLength || 0);
-        sess.bytes += inc;
-        if (sess.chunks <= 3) {
-          console.log('[encoded-stream] chunk#' + sess.chunks, {
-            ts: msg.ts,
-            kind: msg.kind,
-            size: inc,
-            head: Array.isArray(msg.head) ? msg.head : undefined,
-            dataType: msg.data ? Object.prototype.toString.call(msg.data) : 'none'
-          });
-        }
-        break;
-      case 'end':
-      case 'end-request':
-        if (sess.logTimer) { clearInterval(sess.logTimer); sess.logTimer = null; }
-        console.log('[encoded-stream] end', { chunks: sess.chunks, bytes: sess.bytes });
-        break;
-      case 'error':
-        console.warn('[encoded-stream] error', msg.message);
-        break;
-      default:
-        break;
-    }
-
-    // 转发给已注册的 sidepanel（按 tabId 匹配）
-    const consumer = (typeof tabId === 'number') ? sidepanelConsumers.get(tabId) : null;
-    if (consumer) {
-      try {
-        consumer.postMessage({ ...msg, tabId });
-
-        if (msg?.type === 'start' || msg?.type === 'meta' || msg?.type === 'end' || msg?.type === 'end-request') {
-          console.log('[Stream][BG] forwarded to sidepanel', { tabId, type: msg.type });
-        }
-      } catch (e) {
-        console.warn('[Stream][BG] forward to sidepanel failed', { tabId, type: msg?.type, error: e?.message });
-      }
-    } else {
-      if (msg?.type === 'start' || msg?.type === 'end' || msg?.type === 'end-request') {
-        console.log('[Stream][BG] no sidepanel consumer for tab', { tabId, type: msg?.type });
-      }
-    }
-
-  });
-  port.onDisconnect.addListener(() => {
-    if (sess.logTimer) { clearInterval(sess.logTimer); sess.logTimer = null; }
-    console.log('[encoded-stream] port disconnected', { chunks: sess.chunks, bytes: sess.bytes });
-  });
-});
+// Legacy Port-based streaming removed; using sendMessage (STREAM_*) instead.
 
 
 // lab 功能：广播消息到标签页

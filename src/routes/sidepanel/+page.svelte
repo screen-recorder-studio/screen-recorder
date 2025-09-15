@@ -32,11 +32,6 @@
   let workerEncodedChunks = $state<any[]>([])
   let workerCurrentWorker: Worker | null = null
 
-  // 元素/区域录制：通过后台转发的流式收集（最小改动）
-  let elementStreamPort: chrome.runtime.Port | null = null
-  let streamingChunks: any[] = []
-  let streamingMeta: any = null
-
 
 
   // ========= OPFS Writer (feature-flagged) =========
@@ -631,7 +626,7 @@
       }
       console.log('💾 [Sidepanel] Saving recording to IndexedDB...', { id, meta })
 
-      await recordingCache.save(id, workerEncodedChunks, meta)
+      // await recordingCache.save(id, workerEncodedChunks, meta)
 
       // 打开扩展根目录下的 studio.html（按需加载 id）
       const targetUrl = (typeof chrome !== 'undefined' && chrome.runtime)
@@ -930,18 +925,16 @@
 
     // 检查扩展环境
 
+/* LEGACY PORT BLOCK REMOVED START */
 	    // 注册成为元素/区域编码流的消费者（通过 background 转发）
 	    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.tabs) {
 	      try {
-	        elementStreamPort = chrome.runtime.connect({ name: 'element-stream-consumer' })
-          console.log('[Stream][Sidepanel] connect element-stream-consumer port')
+	        /* legacy element-stream-consumer removed */
 
 	        // 绑定当前活动标签页 id
 	        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
 	          const tabId = tabs?.[0]?.id
 	          if (typeof tabId === 'number') {
-	            try { elementStreamPort?.postMessage({ type: 'register', tabId }) } catch {}
-            console.log('[Stream][Sidepanel] register sent', { tabId })
 
 	          }
 	        })
@@ -958,47 +951,50 @@
 	              console.log('[Stream][Sidepanel] meta received', { width: streamingMeta?.width, height: streamingMeta?.height, codec: streamingMeta?.codec, startTime: streamingMeta?.startTime })
 	              break
 	            case 'chunk': {
-	              try {
-	                const buf: ArrayBuffer | undefined = msg.data
-	                const view = buf
-	                streamingChunks.push({
-	                  data: view,
-	                  timestamp: Number(msg.ts) || 0,
-	                  type: msg.kind === 'key' ? 'key' : 'delta',
-	                  size: (typeof msg.size === 'number' && msg.size > 0) ? msg.size : view.byteLength,
-	                  codedWidth: streamingMeta?.width || 1920,
-	                  codedHeight: streamingMeta?.height || 1080,
-	                  codec: streamingMeta?.codec || 'vp8'
-	                })
+	              // try {
+	              //   const buf: ArrayBuffer | undefined = msg.data
+	              //   const view = buf
+	              //   streamingChunks.push({
+	              //     data: view,
+	              //     timestamp: Number(msg.ts) || 0,
+	              //     type: msg.kind === 'key' ? 'key' : 'delta',
+	              //     size: (typeof msg.size === 'number' && msg.size > 0) ? msg.size : view.byteLength,
+	              //     codedWidth: streamingMeta?.width || 1920,
+	              //     codedHeight: streamingMeta?.height || 1080,
+	              //     codec: streamingMeta?.codec || 'vp8'
+	              //   })
 
-	              } catch (e) {
-	                console.warn('[Sidepanel] failed to accumulate chunk', e)
-	              }
-	                const n = streamingChunks.length
-	                if (n <= 3 || n % 100 === 0) {
-	                  console.log('[Stream][Sidepanel] chunk received', { count: n, kind: msg.kind, size: msg.size })
-	                }
+	              // } catch (e) {
+	              //   console.warn('[Sidepanel] failed to accumulate chunk', e)
+	              // }
+	              //   const n = streamingChunks.length
+	              //   if (n <= 3 || n % 100 === 0) {
+	              //     console.log('[Stream][Sidepanel] chunk received', { count: n, kind: msg.kind, size: msg.size })
+	              //   }
 
 	              break
 	            }
 	            case 'end':
 	              console.log('[Stream][Sidepanel] end received', { chunks: streamingChunks.length, hasMeta: !!streamingMeta })
 
-	              // 使用与“大包”一致的数据结构进行处理
-	              if (streamingChunks.length > 0) {
+                elementUIStatus = 'completed';
+                openInStudio();
 
-		              // finalize OPFS for element/region stream
-		              // try { await finalizeOpfsWriter() } catch (e) { console.warn('[OPFS] finalize (element-stream) failed', e) }
+	              // // 使用与“大包”一致的数据结构进行处理
+	              // if (streamingChunks.length > 0) {
 
-	                handleElementRecordingData({ encodedChunks: streamingChunks, metadata: streamingMeta })
-                  elementUIStatus = 'completed'
-                  
-	              }
-	              streamingChunks = []
+		            //   // finalize OPFS for element/region stream
+		            //   // try { await finalizeOpfsWriter() } catch (e) { console.warn('[OPFS] finalize (element-stream) failed', e) }
+
+	              //   handleElementRecordingData({ encodedChunks: streamingChunks, metadata: streamingMeta })
+                //   elementUIStatus = 'completed'
+
+	              // }
+	              // streamingChunks = []
 
 
-	              streamingMeta = null
-	              break
+	              // streamingMeta = null
+	              // break
 	            default:
 	              break
 	          }
@@ -1006,6 +1002,7 @@
 	      } catch (e) {
 	        console.warn('element-stream-consumer connect failed', e)
 	      }
+/* LEGACY PORT BLOCK REMOVED END */
 	    }
 
     checkExtensionEnvironment()
@@ -1032,7 +1029,7 @@
 
     elementRecordingIntegration.onDataReceived(elementRecordingListener)
 
-    // 监听来自background的消息
+    // 监听来自background/contentscript的消息
     const messageListener = (message: any) => {
       if (message.action === 'downloadComplete') {
         console.log('✅ Download completed:', message.downloadId)
@@ -1042,6 +1039,22 @@
       } else if (message.type === 'ELEMENT_RECORDING_READY') {
         // 处理元素录制就绪通知
         handleElementRecordingReady(message.data)
+      } else if (message.type === 'CAPTURE_FAILED') {
+        console.warn('❌ [Sidepanel] Capture failed:', message.error)
+        // 如果 UI 正处于请求中，回退到 idle
+        if (elementUIStatus === 'requesting') elementUIStatus = 'idle'
+      } else if (message.type === 'STATE_UPDATE') {
+        // 仅在“请求中”时使用它来解除卡死
+        if (elementUIStatus === 'requesting') {
+          const rec = !!message.state?.recording
+          // 如果后台未进入 recording，则回退到 idle
+          if (!rec) elementUIStatus = 'idle'
+        }
+      } else if (message.type === 'STREAM_START') {
+        elementUIStatus = 'recording'
+      } else if (message.type === 'STREAM_END') {
+        // 由 background 在 OPFS_RECORDING_READY 时打开 Studio；这里仅复位按钮
+        elementUIStatus = 'idle'
       }
     }
 
@@ -1054,9 +1067,6 @@
       if (typeof chrome !== 'undefined' && chrome.runtime) {
         chrome.runtime.onMessage.removeListener(messageListener)
       }
-      // 断开流式端口
-      try { elementStreamPort?.disconnect?.() } catch {}
-      elementStreamPort = null
       // 清理元素录制监听器
       elementRecordingIntegration.removeListener(elementRecordingListener)
     }

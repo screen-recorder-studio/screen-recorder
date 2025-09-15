@@ -32,7 +32,6 @@
     encoder: null,
     processor: null,
     reader: null,
-    port: null,
     chunkCount: 0,
     byteCount: 0,
     worker: null,
@@ -68,6 +67,18 @@
   function report(partial) {
     chrome.runtime.sendMessage({ type: 'CONTENT_REPORT', partial });
   }
+  // Safe messaging helpers: background via sendMessage; sink via window.postMessage
+  function safePortPost(msg: any) {
+    try { chrome.runtime.sendMessage(msg); }
+    catch (e) { console.warn('[Stream][Content] sendMessage failed', e); }
+  }
+  function safeSinkPost(msg: any, transfer?: Transferable[]) {
+    try {
+      if (transfer && transfer.length) { state.sinkWin?.postMessage(msg, '*', transfer); }
+      else { state.sinkWin?.postMessage(msg, '*'); }
+    } catch (e) { console.warn('[Stream][Content] sink post failed', e); }
+  }
+
 
   // Ensure extension iframe sink (offscreen.html?mode=iframe) is present and handshaked
   async function ensureSinkIframe() {
@@ -283,6 +294,8 @@
         state.selecting = false;
         if (dragOverlay) { try { dragOverlay.remove(); } catch(_){} dragOverlay = null; }
         report({ selecting: false });
+        // 预热通信 iframe，降低 startCapture 阶段等待
+        ensureSinkIframe().catch(() => {});
       }
     }, true);
 
@@ -354,6 +367,8 @@
     document.removeEventListener('mouseout', onOut, true);
     document.removeEventListener('click', onClick, true);
     report({ selecting: false });
+    // 预热通信 iframe，降低 startCapture 阶段等待
+    ensureSinkIframe().catch(() => {});
   }
 
   function clearHighlight() {
@@ -391,6 +406,10 @@
     if (state.recording) return;
     try {
       state.recording = true;
+      // reset per-session counters and sink session flag for repeat recording
+      state.chunkCount = 0;
+      state.byteCount = 0;
+      state.sinkStarted = false;
       const displayMediaOptions = { video: { displaySurface: 'window' }, audio: false, preferCurrentTab: true };
       state.stream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions);
       state.track = state.stream.getVideoTracks()[0];
@@ -473,9 +492,8 @@
           selection: state.recordingMetadata.selection
         });
 
-        // 建立与 background 的 Port
-        state.port = chrome.runtime.connect({ name: 'encoded-stream' });
-        state.port.postMessage({ type: 'start', codec: 'vp8', width, height, framerate });
+        // 使用一次性消息向 background 报告会话开始
+        safePortPost({ type: 'STREAM_START', codec: 'vp8', width, height, framerate, startTime: state.recordingMetadata?.startTime || Date.now() });
 
         // 初始化 Dedicated Worker 承担编码职责
         // 通过 fetch -> Blob URL 创建 Worker，避免跨源构造限制
@@ -483,7 +501,7 @@
 
         const workerUrl = chrome.runtime.getURL('encoder-worker.js');
 
-	        state.port?.postMessage({ type: 'meta', metadata: state.recordingMetadata });
+	        safePortPost({ type: 'STREAM_META', metadata: state.recordingMetadata });
 
         // Ensure iframe sink is ready BEFORE starting encoder/frames to avoid dropping initial chunks
         try {
@@ -521,9 +539,13 @@
           if (state.workerBlobUrl) { try { URL.revokeObjectURL(state.workerBlobUrl); } catch {} }
           state.worker = null;
           state.workerBlobUrl = null;
-          state.port = null;
           state.usingWebCodecs = false;
           state.recording = false;
+          // reset sink session and counters for next recording
+          state.sinkStarted = false;
+          state.chunkCount = 0;
+          state.byteCount = 0;
+          state.recordingMetadata = null;
           hidePreview();
           report({ recording: false });
         };
@@ -531,7 +553,6 @@
         state.worker.onmessage = (ev) => {
           const msg = ev.data || {};
 
-          console.log('worker message bbb', msg.data);
           switch (msg.type) {
             case 'configured':
               try {
@@ -573,15 +594,17 @@
               }
               break;
             case 'end':
-              state.port?.postMessage({ type: 'end', chunks: state.chunkCount, bytes: state.byteCount });
-              try { state.sinkWin?.postMessage({ type: 'end', chunks: state.chunkCount, bytes: state.byteCount }, '*'); } catch {}
+              // Notify sink first to ensure OPFS finalization even if background is asleep
+              safeSinkPost({ type: 'end', chunks: state.chunkCount, bytes: state.byteCount });
+              // Then notify background (non-fatal)
+              safePortPost({ type: 'STREAM_END', chunks: state.chunkCount, bytes: state.byteCount });
               console.log(`🎬 [Element Recording] Collected ${state.encodedChunks.length} encoded chunks for editing`);
               // worker 已完成，执行清理
               finalizeStop();
               break;
             case 'error':
               console.error('[encoder-worker] error', msg.message);
-              state.port?.postMessage({ type: 'error', message: msg.message });
+              safePortPost({ type: 'STREAM_ERROR', message: msg.message });
               // 出错也进行清理，避免悬挂
               finalizeStop();
               break;
@@ -636,6 +659,8 @@
     } catch (e) {
       console.error('startCapture error', e);
       state.recording = false;
+      // 通知 sidepanel 失败，避免 UI 卡在“正在请求权限”
+      try { chrome.runtime.sendMessage({ type: 'CAPTURE_FAILED', error: (e && (e.name||e.message)) || String(e) }); } catch {}
       report({ recording: false });
     }
   }
@@ -648,7 +673,10 @@
         Promise.resolve(state.encoder?.flush?.()).catch(() => {}).finally(() => {
           try { state.encoder?.close?.(); } catch {}
         });
-        state.port?.postMessage({ type: 'end-request' });
+        // Proactively notify sink even before worker 'end' to avoid missing finalization
+        safeSinkPost({ type: 'end-request' });
+        // And notify background (non-fatal)
+        safePortPost({ type: 'STREAM_END_REQUEST' });
 
         // 传递编码数据给主系统进行编辑（仅在未建立流式通道时兜底一次性传递）
         console.log('[Stream][Content] end-request posted', { streamingReady, encodedChunks: state.encodedChunks.length });
@@ -678,9 +706,13 @@
         if (state.workerBlobUrl) { try { URL.revokeObjectURL(state.workerBlobUrl); } catch {} }
         state.worker = null;
         state.workerBlobUrl = null;
-        state.port = null;
         state.usingWebCodecs = false;
         state.recording = false;
+        // reset sink session and counters for next recording
+        state.sinkStarted = false;
+        state.chunkCount = 0;
+        state.byteCount = 0;
+        state.recordingMetadata = null;
         hidePreview();
         // WebCodecs 路径：主动报告
         report({ recording: false });
