@@ -517,22 +517,7 @@
                 state.chunkCount += 1;
                 state.byteCount += (msg.size || 0);
 
-                // 收集编码数据块用于后续编辑
-                if (msg.data && msg.ts !== undefined) {
-                  // 将数据转换为数组格式以便通过 Chrome 消息系统传递
-                  const uint8Data = new Uint8Array(msg.data);
-                  const dataArray = Array.from(uint8Data); // 转换为普通数组
-
-                  state.encodedChunks.push({
-                    data: dataArray, // 使用数组而不是 ArrayBuffer/Uint8Array
-                    timestamp: msg.ts,
-                    type: msg.kind === 'key' ? 'key' : 'delta',
-                    size: msg.size || 0,
-                    codedWidth: width,
-                    codedHeight: height,
-                    codec: 'vp8'
-                  });
-                }
+                // 不再累计 encodedChunks；仅通过 iframe sink 零拷贝写入 OPFS
 
                 // Transfer to iframe sink via zero-copy (new pipeline; no background forwarding of chunk)
                 try {
