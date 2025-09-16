@@ -85,14 +85,14 @@ export class ExportManager {
   private async exportWebM(
     exportData: { chunks: EncodedChunk[], options: ExportOptions },
     options: ExportOptions
-  ): Promise<Blob> {
+  ): Promise<any> {
 
     console.log('🎬 [ExportManager] Starting WebM export process')
 
     return new Promise((resolve, reject) => {
-      // 创建 WebM 导出 Worker
+      // 创建 WebM 导出 Worker（统一入口）
       this.currentExportWorker = new Worker(
-        new URL('../workers/webm-export-worker.ts', import.meta.url),
+        new URL('../workers/export-worker/index.ts', import.meta.url),
         { type: 'module' }
       )
 
@@ -115,7 +115,11 @@ export class ExportManager {
 
           case 'complete':
             console.log('✅ [ExportManager] WebM export completed')
-            resolve(data.blob)
+            if (data && data.savedToOpfs) {
+              resolve({ savedToOpfs: data.savedToOpfs })
+            } else {
+              resolve(data.blob)
+            }
             break
 
           case 'error':
@@ -154,7 +158,7 @@ export class ExportManager {
     return new Promise((resolve, reject) => {
       // 创建 MP4 导出 Worker
       this.currentExportWorker = new Worker(
-        new URL('../workers/mp4-export-worker.ts', import.meta.url),
+        new URL('../workers/export-worker/index.ts', import.meta.url),
         { type: 'module' }
       )
 

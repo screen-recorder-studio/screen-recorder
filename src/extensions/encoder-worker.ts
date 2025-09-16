@@ -64,7 +64,12 @@ onmessage = async (ev) => {
         enc.configure({ codec: cfg.codec, width: cfg.width, height: cfg.height, bitrate: cfg.bitrate, framerate: cfg.framerate });
         configured = true;
         stats = { chunks: 0, bytes: 0 };
-        postMessage({ type: 'configured' });
+        // Return the final encoder configuration so callers can update metadata accurately
+        try {
+          postMessage({ type: 'configured', config: { ...cfg } });
+        } catch (_) {
+          postMessage({ type: 'configured' });
+        }
         break;
       }
       case 'frame': {

@@ -32,11 +32,13 @@
     encoder: null,
     processor: null,
     reader: null,
-    port: null,
     chunkCount: 0,
     byteCount: 0,
     worker: null,
     workerBlobUrl: null,
+    // iframe sink (probe) window for direct ArrayBuffer transfer logging
+    sinkWin: null,
+    sinkStarted: false,
     // 编码数据收集
     encodedChunks: [],
     recordingMetadata: null
@@ -64,6 +66,48 @@
 
   function report(partial) {
     chrome.runtime.sendMessage({ type: 'CONTENT_REPORT', partial });
+  }
+  // Safe messaging helpers: background via sendMessage; sink via window.postMessage
+  function safePortPost(msg: any) {
+    try { chrome.runtime.sendMessage(msg); }
+    catch (e) { console.warn('[Stream][Content] sendMessage failed', e); }
+  }
+  function safeSinkPost(msg: any, transfer?: Transferable[]) {
+    try {
+      if (transfer && transfer.length) { state.sinkWin?.postMessage(msg, '*', transfer); }
+      else { state.sinkWin?.postMessage(msg, '*'); }
+    } catch (e) { console.warn('[Stream][Content] sink post failed', e); }
+  }
+
+
+  // Ensure extension iframe sink (offscreen.html?mode=iframe) is present and handshaked
+  async function ensureSinkIframe() {
+    try {
+      if (state.sinkWin && typeof state.sinkWin.postMessage === 'function') return state.sinkWin;
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed; right:0; bottom:0; width:1px; height:1px; opacity:0; border:0; z-index:2147483647;';
+      iframe.src = chrome.runtime.getURL('offscreen.html?mode=iframe');
+      document.documentElement.appendChild(iframe);
+      await new Promise((r) => iframe.onload = r);
+      const win = iframe.contentWindow;
+      if (!win) return null;
+      const ok = await new Promise((resolve) => {
+        const timer = setTimeout(() => { window.removeEventListener('message', onMsg); resolve(false); }, 4000);
+        function onMsg(ev) {
+          if (ev.source === win && ev.data && ev.data.type === 'sink-ready') {
+            clearTimeout(timer);
+            window.removeEventListener('message', onMsg);
+            resolve(true);
+          }
+        }
+        window.addEventListener('message', onMsg);
+        try { win.postMessage({ type: 'ping' }, '*'); } catch {}
+      });
+      if (ok) state.sinkWin = win;
+      return ok ? win : null;
+    } catch (e) {
+      return null;
+    }
   }
 
   // 创建元素容器和录制目标
@@ -250,6 +294,8 @@
         state.selecting = false;
         if (dragOverlay) { try { dragOverlay.remove(); } catch(_){} dragOverlay = null; }
         report({ selecting: false });
+        // 预热通信 iframe，降低 startCapture 阶段等待
+        ensureSinkIframe().catch(() => {});
       }
     }, true);
 
@@ -321,6 +367,8 @@
     document.removeEventListener('mouseout', onOut, true);
     document.removeEventListener('click', onClick, true);
     report({ selecting: false });
+    // 预热通信 iframe，降低 startCapture 阶段等待
+    ensureSinkIframe().catch(() => {});
   }
 
   function clearHighlight() {
@@ -358,6 +406,10 @@
     if (state.recording) return;
     try {
       state.recording = true;
+      // reset per-session counters and sink session flag for repeat recording
+      state.chunkCount = 0;
+      state.byteCount = 0;
+      state.sinkStarted = false;
       const displayMediaOptions = { video: { displaySurface: 'window' }, audio: false, preferCurrentTab: true };
       state.stream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions);
       state.track = state.stream.getVideoTracks()[0];
@@ -392,8 +444,27 @@
       if (canWebCodecs) {
         state.usingWebCodecs = true;
         const settings = state.track.getSettings ? state.track.getSettings() : {};
-        const width = settings.width || 1920;
-        const height = settings.height || 1080;
+        // Prefer the selected region/element size in device pixels (even-aligned), fallback to track settings
+        const dpr = (window.devicePixelRatio || 1);
+        let cssW = 0, cssH = 0;
+        try {
+          const rt = state.mode === 'element' ? state.elementRecordingTarget : (state.mode === 'region' ? state.regionRecordingTarget : null);
+          if (rt && typeof rt.getBoundingClientRect === 'function') {
+            const r = rt.getBoundingClientRect(); cssW = r.width || 0; cssH = r.height || 0;
+          } else if (state.mode === 'region' && state.selectionBox) {
+            cssW = parseFloat(state.selectionBox.style.width || '0') || 0;
+            cssH = parseFloat(state.selectionBox.style.height || '0') || 0;
+          }
+        } catch {}
+        let width = Math.max(2, Math.floor(cssW * dpr));
+        let height = Math.max(2, Math.floor(cssH * dpr));
+        if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 2 || height <= 2) {
+          width = settings.width || 1920;
+          height = settings.height || 1080;
+        }
+        // enforce even dimensions for better encoder compatibility
+        if (width % 2) width -= 1;
+        if (height % 2) height -= 1;
         const framerate = Math.round((settings.frameRate || 30));
 
         // 保存录制元数据
@@ -421,9 +492,8 @@
           selection: state.recordingMetadata.selection
         });
 
-        // 建立与 background 的 Port
-        state.port = chrome.runtime.connect({ name: 'encoded-stream' });
-        state.port.postMessage({ type: 'start', codec: 'vp8', width, height, framerate });
+        // 使用一次性消息向 background 报告会话开始
+        safePortPost({ type: 'STREAM_START', codec: 'vp8', width, height, framerate, startTime: state.recordingMetadata?.startTime || Date.now() });
 
         // 初始化 Dedicated Worker 承担编码职责
         // 通过 fetch -> Blob URL 创建 Worker，避免跨源构造限制
@@ -431,9 +501,20 @@
 
         const workerUrl = chrome.runtime.getURL('encoder-worker.js');
 
-	        //    
-	        state.port?.postMessage({ type: 'meta', metadata: state.recordingMetadata });
+	        safePortPost({ type: 'STREAM_META', metadata: state.recordingMetadata });
 
+        // Ensure iframe sink is ready BEFORE starting encoder/frames to avoid dropping initial chunks
+        try {
+          const ok = await ensureSinkIframe();
+          if (ok && state.sinkWin && !state.sinkStarted) {
+            try {
+              state.sinkWin.postMessage({ type: 'start', codec: 'vp8', width, height, framerate }, '*');
+              state.sinkWin.postMessage({ type: 'meta', metadata: state.recordingMetadata }, '*');
+              state.sinkStarted = true;
+              console.log('[Stream][Content] sink pre-started with meta');
+            } catch (e) { console.warn('[Stream][Content] sink pre-start failed', e); }
+          }
+        } catch (e) { console.warn('[Stream][Content] ensureSinkIframe failed (pre-start)', e); }
         console.log('[Stream][Content] meta posted to background', { startTime: state.recordingMetadata?.startTime });
 
 
@@ -458,9 +539,13 @@
           if (state.workerBlobUrl) { try { URL.revokeObjectURL(state.workerBlobUrl); } catch {} }
           state.worker = null;
           state.workerBlobUrl = null;
-          state.port = null;
           state.usingWebCodecs = false;
           state.recording = false;
+          // reset sink session and counters for next recording
+          state.sinkStarted = false;
+          state.chunkCount = 0;
+          state.byteCount = 0;
+          state.recordingMetadata = null;
           hidePreview();
           report({ recording: false });
         };
@@ -468,50 +553,58 @@
         state.worker.onmessage = (ev) => {
           const msg = ev.data || {};
 
-          console.log('worker message bbb', msg.data);
           switch (msg.type) {
             case 'configured':
-              console.log('[encoder-worker] configured', { codec: 'vp8', width, height, framerate });
+              try {
+                const cfg = msg.config || {};
+                if (cfg && (cfg.width || cfg.height || cfg.framerate)) {
+                  if (typeof cfg.width === 'number') state.recordingMetadata.width = cfg.width;
+                  if (typeof cfg.height === 'number') state.recordingMetadata.height = cfg.height;
+                  if (typeof cfg.framerate === 'number') state.recordingMetadata.framerate = cfg.framerate;
+                }
+              } catch {}
+              console.log('[encoder-worker] configured', { codec: state.recordingMetadata?.codec, width: state.recordingMetadata?.width, height: state.recordingMetadata?.height, framerate: state.recordingMetadata?.framerate });
+              // Ensure sink has been started once; if not, start now with current metadata
+              try { ensureSinkIframe().then(() => {
+                try {
+                  if (state.sinkWin && !state.sinkStarted) {
+                    state.sinkWin.postMessage({ type: 'start', codec: state.recordingMetadata?.codec || 'vp8', width: state.recordingMetadata?.width, height: state.recordingMetadata?.height, framerate: state.recordingMetadata?.framerate }, '*');
+                    state.sinkWin.postMessage({ type: 'meta', metadata: state.recordingMetadata }, '*');
+                    state.sinkStarted = true;
+                  }
+                } catch {}
+              }); } catch {}
               break;
             case 'chunk':
               try {
                 state.chunkCount += 1;
                 state.byteCount += (msg.size || 0);
 
-                // 收集编码数据块用于后续编辑
-                if (msg.data && msg.ts !== undefined) {
-                  // 将数据转换为数组格式以便通过 Chrome 消息系统传递
-                  const uint8Data = new Uint8Array(msg.data);
-                  const dataArray = Array.from(uint8Data); // 转换为普通数组
+                // 不再累计 encodedChunks；仅通过 iframe sink 零拷贝写入 OPFS
 
-                  state.encodedChunks.push({
-                    data: dataArray, // 使用数组而不是 ArrayBuffer/Uint8Array
-                    timestamp: msg.ts,
-                    type: msg.kind === 'key' ? 'key' : 'delta',
-                    size: msg.size || 0,
-                    codedWidth: width,
-                    codedHeight: height,
-                    codec: 'vp8'
-                  });
-                }
-
-                state.port?.postMessage({
-                  type: 'chunk', ts: msg.ts, kind: msg.kind,
-                  size: msg.size, head: msg.head, data: new Uint8Array(msg.data)
-                }, msg.data ? [msg.data] : undefined);
+                // Transfer to iframe sink via zero-copy (new pipeline; no background forwarding of chunk)
+                try {
+                  const sink = state.sinkWin || null;
+                  if (sink && msg.data) {
+                    sink.postMessage({ type: 'chunk', ts: msg.ts, kind: msg.kind, data: msg.data }, '*', [msg.data]);
+                  }
+                } catch (_) {}
               } catch (err) {
                 console.error('forward chunk failed', err);
               }
               break;
             case 'end':
-              state.port?.postMessage({ type: 'end', chunks: state.chunkCount, bytes: state.byteCount });
+              // Notify sink first to ensure OPFS finalization even if background is asleep
+              safeSinkPost({ type: 'end', chunks: state.chunkCount, bytes: state.byteCount });
+              // Then notify background (non-fatal)
+              safePortPost({ type: 'STREAM_END', chunks: state.chunkCount, bytes: state.byteCount });
               console.log(`🎬 [Element Recording] Collected ${state.encodedChunks.length} encoded chunks for editing`);
               // worker 已完成，执行清理
               finalizeStop();
               break;
             case 'error':
               console.error('[encoder-worker] error', msg.message);
-              state.port?.postMessage({ type: 'error', message: msg.message });
+              safePortPost({ type: 'STREAM_ERROR', message: msg.message });
               // 出错也进行清理，避免悬挂
               finalizeStop();
               break;
@@ -566,6 +659,8 @@
     } catch (e) {
       console.error('startCapture error', e);
       state.recording = false;
+      // 通知 sidepanel 失败，避免 UI 卡在“正在请求权限”
+      try { chrome.runtime.sendMessage({ type: 'CAPTURE_FAILED', error: (e && (e.name||e.message)) || String(e) }); } catch {}
       report({ recording: false });
     }
   }
@@ -578,7 +673,10 @@
         Promise.resolve(state.encoder?.flush?.()).catch(() => {}).finally(() => {
           try { state.encoder?.close?.(); } catch {}
         });
-        state.port?.postMessage({ type: 'end-request' });
+        // Proactively notify sink even before worker 'end' to avoid missing finalization
+        safeSinkPost({ type: 'end-request' });
+        // And notify background (non-fatal)
+        safePortPost({ type: 'STREAM_END_REQUEST' });
 
         // 传递编码数据给主系统进行编辑（仅在未建立流式通道时兜底一次性传递）
         console.log('[Stream][Content] end-request posted', { streamingReady, encodedChunks: state.encodedChunks.length });
@@ -608,9 +706,13 @@
         if (state.workerBlobUrl) { try { URL.revokeObjectURL(state.workerBlobUrl); } catch {} }
         state.worker = null;
         state.workerBlobUrl = null;
-        state.port = null;
         state.usingWebCodecs = false;
         state.recording = false;
+        // reset sink session and counters for next recording
+        state.sinkStarted = false;
+        state.chunkCount = 0;
+        state.byteCount = 0;
+        state.recordingMetadata = null;
         hidePreview();
         // WebCodecs 路径：主动报告
         report({ recording: false });
