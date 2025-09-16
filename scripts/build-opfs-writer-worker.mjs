@@ -1,6 +1,6 @@
 import { build } from 'vite'
 
-// Build src/extensions/offscreen.ts into build/offscreen.js as an ES module (for offscreen.html)
+// Build src/lib/workers/opfs-writer-worker.ts into build/opfs-writer-worker.js as a module worker
 async function main() {
   await build({
     configFile: false,
@@ -12,10 +12,10 @@ async function main() {
       minify: false,
       sourcemap: false,
       rollupOptions: {
-        input: 'src/extensions/offscreen.ts',
+        input: 'src/lib/workers/opfs-writer-worker.ts',
         output: {
           format: 'es',
-          entryFileNames: 'offscreen.js',
+          entryFileNames: 'opfs-writer-worker.js',
           inlineDynamicImports: true,
         }
       }
@@ -24,7 +24,7 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('[build-offscreen] failed:', err)
+  console.error('[build-opfs-writer] failed:', err)
   process.exit(1)
 })
 

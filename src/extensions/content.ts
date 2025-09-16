@@ -86,7 +86,7 @@
       if (state.sinkWin && typeof state.sinkWin.postMessage === 'function') return state.sinkWin;
       const iframe = document.createElement('iframe');
       iframe.style.cssText = 'position:fixed; right:0; bottom:0; width:1px; height:1px; opacity:0; border:0; z-index:2147483647;';
-      iframe.src = chrome.runtime.getURL('offscreen.html?mode=iframe');
+      iframe.src = chrome.runtime.getURL('opfs-writer.html?mode=iframe');
       document.documentElement.appendChild(iframe);
       await new Promise((r) => iframe.onload = r);
       const win = iframe.contentWindow;
