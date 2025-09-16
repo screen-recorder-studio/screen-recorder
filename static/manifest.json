@@ -26,7 +26,8 @@
     "type": "module"
   },
   "action": {
-    "default_title": "打开录制面板"
+    "default_title": "打开录制面板",
+    "default_popup": "popup.html"
   },
   "icons": {
     "16": "assets/icon16.svg",

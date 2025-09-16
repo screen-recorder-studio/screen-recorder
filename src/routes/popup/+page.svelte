@@ -1,41 +1,178 @@
 <script lang="ts">
-  import { ChromeAPIWrapper } from '$lib/utils/chrome-api'
-  import { Monitor, AlertCircle, Loader2 } from '@lucide/svelte'
-  
-  let isLoading = false
-  let error = ''
+  import {
+    Monitor,
+    MousePointer,
+    Camera,
+    FileText,
+    AppWindow,
+    ScreenShare,
+    Play,
+    Pause,
+    Square,
+    Loader2,
+    AlertCircle
+  } from '@lucide/svelte'
+  import { onMount } from 'svelte'
 
-  async function openSidePanel() {
+  // 录制状态管理
+  let isRecording = $state(false)
+  let isPaused = $state(false)
+  let selectedMode = $state<'area' | 'element' | 'camera' | 'tab' | 'window' | 'screen'>('area')
+  let isLoading = $state(false)
+
+  // 初始化：同步后台状态
+  onMount(async () => {
     try {
-      isLoading = true
-      error = ''
-      
-      await ChromeAPIWrapper.openSidePanel()
-      
-      // 关闭 popup
-      window.close()
-    } catch (err) {
-      error = err instanceof Error ? err.message : '打开面板失败'
-      console.error('Failed to open sidepanel:', err)
+      const resp = await chrome.runtime.sendMessage({ type: 'REQUEST_RECORDING_STATE' })
+      isRecording = !!resp?.state?.isRecording
+      isPaused = !!resp?.state?.isPaused
+    } catch (e) {
+      console.warn('初始化录制状态失败', e)
+    }
+  })
+
+  // 监听后台/离屏发来的流状态，确保浏览器“Stop sharing”时能同步停止
+  onMount(() => {
+    const handler = (msg: any) => {
+      try {
+        if (msg?.type === 'STREAM_META' && msg?.meta && typeof msg.meta.paused === 'boolean') {
+          console.log('[stop-share] popup: STREAM_META', msg.meta)
+          isPaused = !!msg.meta.paused
+        }
+        if (msg?.type === 'STREAM_END' || msg?.type === 'STREAM_ERROR' || msg?.type === 'RECORDING_COMPLETE' || msg?.type === 'OPFS_RECORDING_READY') {
+          console.log('[stop-share] popup: received', msg?.type)
+          isRecording = false
+          isPaused = false
+          isLoading = false
+        }
+        if (msg?.type === 'STATE_UPDATE' && msg?.state) {
+          console.log('[stop-share] popup: STATE_UPDATE', msg.state)
+          if (typeof msg.state.recording === 'boolean') {
+            isRecording = !!msg.state.recording
+            if (!isRecording) isPaused = false
+          }
+        }
+      } catch (e) {
+        // ignore handler errors
+      }
+    }
+    chrome.runtime.onMessage.addListener(handler)
+    return () => chrome.runtime.onMessage.removeListener(handler)
+  })
+
+
+
+  // 录制模式配置
+  const recordingModes = [
+    {
+      id: 'area' as const,
+      name: '区域',
+      icon: MousePointer,
+      description: '选择屏幕区域录制'
+    },
+    {
+      id: 'element' as const,
+      name: '元素',
+      icon: Monitor,
+      description: '选择页面元素录制'
+    },
+    {
+      id: 'camera' as const,
+      name: '摄像头',
+      icon: Camera,
+      description: '录制摄像头画面'
+    },
+    {
+      id: 'tab' as const,
+      name: 'Tab',
+      icon: FileText,
+      description: '录制当前标签页'
+    },
+    {
+      id: 'window' as const,
+      name: 'Window',
+      icon: AppWindow,
+      description: '录制整个窗口'
+    },
+    {
+      id: 'screen' as const,
+      name: 'Screen',
+      icon: ScreenShare,
+      description: '录制整个屏幕'
+    }
+  ]
+
+  // 处理模式选择
+  function selectMode(mode: typeof selectedMode) {
+    if (!isRecording) {
+      selectedMode = mode
+    }
+  }
+
+  // 开始录制
+  async function startRecording() {
+    if (isLoading) return
+    isLoading = true
+    try {
+      const mode = (['tab','window','screen'] as const).includes(selectedMode as any) ? (selectedMode as 'tab'|'window'|'screen') : 'screen'
+      await chrome.runtime.sendMessage({
+        type: 'REQUEST_START_RECORDING',
+        payload: { options: { mode, video: true, audio: false } }
+      })
+      isRecording = true
+      isPaused = false
+    } catch (error) {
+      console.error('开始录制失败:', error)
     } finally {
       isLoading = false
     }
   }
 
-  async function checkPermissions() {
+  // 暂停/恢复录制
+  async function togglePause() {
+    if (!isRecording || isLoading) return
+    isLoading = true
     try {
-      const permissions = await ChromeAPIWrapper.checkPermissions()
-      console.log('Permissions:', permissions)
-    } catch (err) {
-      console.error('Failed to check permissions:', err)
+      const resp = await chrome.runtime.sendMessage({ type: 'REQUEST_TOGGLE_PAUSE' })
+      if (resp && typeof resp.paused === 'boolean') {
+        isPaused = resp.paused
+      } else {
+        isPaused = !isPaused
+      }
+    } catch (e) {
+      console.warn('切换暂停失败', e)
+    } finally {
+      isLoading = false
     }
   }
 
-  // 页面加载时检查权限（仅在浏览器环境中）
-  import { browser } from '$app/environment'
-  
-  if (browser) {
-    checkPermissions()
+  // 停止录制
+  async function stopRecording() {
+    try {
+      await chrome.runtime.sendMessage({ type: 'REQUEST_STOP_RECORDING' })
+    } catch (e) {
+      console.warn('发送停止录制消息失败', e)
+    }
+    isRecording = false
+    isPaused = false
+  }
+
+  // 获取按钮文本
+  function getButtonText() {
+    if (isLoading) return '准备中...'
+    if (isRecording) {
+      return isPaused ? '恢复录制' : '暂停录制'
+    }
+    return '开始录制'
+  }
+
+  // 获取按钮图标
+  function getButtonIcon() {
+    if (isLoading) return Loader2
+    if (isRecording) {
+      return isPaused ? Play : Pause
+    }
+    return Play
   }
 </script>
 
@@ -43,37 +180,142 @@
   <title>屏幕录制扩展</title>
 </svelte:head>
 
-<div class="w-[300px] p-5 font-sans">
-  <div class="flex items-center gap-2 mb-3">
-    <Monitor class="w-5 h-5 text-blue-600" />
-    <h2 class="text-base font-semibold text-gray-900">屏幕录制扩展</h2>
+<div class="w-[320px] bg-white font-sans">
+  <!-- 头部 -->
+  <div class="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+    <h1 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+      <Monitor class="w-5 h-5 text-blue-600" />
+      屏幕录制
+    </h1>
+    <p class="text-sm text-gray-600 mt-1">选择录制模式并开始录制</p>
   </div>
-  <p class="text-sm text-gray-600 leading-relaxed mb-4">点击下方按钮打开录制面板</p>
 
-  {#if error}
-    <div class="flex items-center gap-2 bg-red-50 text-red-600 px-3 py-2 rounded border border-red-200 text-xs mb-3">
-      <AlertCircle class="w-4 h-4 flex-shrink-0" />
-      {error}
+  <!-- 录制模式选择 -->
+  <div class="p-4">
+    <h2 class="text-sm font-medium text-gray-700 mb-3">录制模式</h2>
+    <div class="grid grid-cols-3 gap-2">
+      {#each recordingModes as mode}
+        {@const IconComponent = mode.icon}
+        <button
+          class="group relative flex flex-col items-center p-3 rounded-lg border-2 transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+          class:border-blue-500={selectedMode === mode.id}
+          class:bg-blue-50={selectedMode === mode.id}
+          class:border-gray-200={selectedMode !== mode.id}
+          class:bg-white={selectedMode !== mode.id}
+          class:hover:border-gray-300={selectedMode !== mode.id && !isRecording}
+          class:opacity-50={isRecording && selectedMode !== mode.id}
+          class:cursor-not-allowed={isRecording && selectedMode !== mode.id}
+          onclick={() => selectMode(mode.id)}
+          disabled={isRecording && selectedMode !== mode.id}
+          title={mode.description}
+        >
+          <!-- 选中指示器 -->
+          {#if selectedMode === mode.id}
+            <div class="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white"></div>
+          {/if}
+
+          <!-- 图标 -->
+          <IconComponent
+            class={`w-6 h-6 mb-2 transition-colors duration-200 ${
+              selectedMode === mode.id ? 'text-blue-600' : 'text-gray-600'
+            }`}
+          />
+
+          <!-- 标签 -->
+          <span
+            class="text-xs font-medium transition-colors duration-200"
+            class:text-blue-700={selectedMode === mode.id}
+            class:text-gray-700={selectedMode !== mode.id}
+          >
+            {mode.name}
+          </span>
+        </button>
+      {/each}
+    </div>
+  </div>
+
+  <!-- 录制状态显示 -->
+  {#if isRecording}
+    <div class="px-4 py-3 bg-red-50 border-t border-red-100">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+          <span class="text-sm font-medium text-red-700">
+            {isPaused ? '录制已暂停' : '正在录制'}
+          </span>
+        </div>
+        <div class="text-xs text-red-600">
+          {recordingModes.find(m => m.id === selectedMode)?.name}
+        </div>
+      </div>
     </div>
   {/if}
 
-  <button
-    on:click={openSidePanel}
-    class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-    disabled={isLoading}
-  >
-    {#if isLoading}
-      <Loader2 class="w-4 h-4 animate-spin" />
-      正在打开...
-    {:else}
-      <Monitor class="w-4 h-4" />
-      打开录制面板
-    {/if}
-  </button>
+  <!-- 控制按钮 -->
+  <div class="p-4 border-t border-gray-200 bg-gray-50">
+    <div class="space-y-2">
+      <!-- 主要控制按钮 -->
+      <button
+        class="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        class:bg-gradient-to-r={!isRecording}
+        class:from-blue-500={!isRecording}
+        class:to-blue-600={!isRecording}
+        class:text-white={!isRecording}
+        class:hover:from-blue-600={!isRecording && !isLoading}
+        class:hover:to-blue-700={!isRecording && !isLoading}
+        class:focus:ring-blue-500={!isRecording}
+        class:bg-orange-500={isRecording && !isPaused}
+        class:hover:bg-orange-600={isRecording && !isPaused && !isLoading}
+        class:focus:ring-orange-500={isRecording && !isPaused}
+        class:bg-green-500={isRecording && isPaused}
+        class:hover:bg-green-600={isRecording && isPaused && !isLoading}
+        class:focus:ring-green-500={isRecording && isPaused}
+        onclick={isRecording ? togglePause : startRecording}
+        disabled={isLoading}
+      >
+        <!-- 按钮图标 -->
+        <div class="flex items-center justify-center w-5 h-5">
+          {#if isLoading}
+            <Loader2 class="w-5 h-5 animate-spin" />
+          {:else}
+            {@const ButtonIcon = getButtonIcon()}
+            <ButtonIcon class="w-5 h-5" />
+          {/if}
+        </div>
 
-  <div class="mt-4 pt-3 border-t border-gray-200">
-    <p class="text-xs text-gray-500 font-medium mb-1">版本 1.0.0</p>
-    <p class="text-xs text-gray-500">支持高质量屏幕录制</p>
+        <!-- 按钮文本 -->
+        <span class="font-semibold">
+          {getButtonText()}
+        </span>
+      </button>
+
+      <!-- 停止录制按钮 -->
+      {#if isRecording}
+        <button
+          class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+          onclick={stopRecording}
+        >
+          <Square class="w-4 h-4" />
+          <span>停止录制</span>
+        </button>
+      {/if}
+    </div>
+
+    <!-- 提示信息 -->
+    <div class="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+      <div class="flex items-start gap-2">
+        <AlertCircle class="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+        <div class="text-xs text-blue-700">
+          {#if !isRecording}
+            <p class="font-medium mb-1">录制提示：</p>
+            <p>选择 <strong>{recordingModes.find(m => m.id === selectedMode)?.name}</strong> 模式，点击开始录制按钮开始录制。</p>
+          {:else if isPaused}
+            <p class="font-medium">录制已暂停，点击恢复录制继续。</p>
+          {:else}
+            <p class="font-medium">正在录制中，点击暂停可暂停录制。</p>
+          {/if}
+        </div>
+      </div>
+    </div>
   </div>
 </div>
-

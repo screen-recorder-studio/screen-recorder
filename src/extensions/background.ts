@@ -3,6 +3,10 @@
 // Chrome 扩展 Service Worker
 console.log('Screen Recorder Extension Service Worker loaded')
 
+// 引入 offscreen 管理工具
+import { ensureOffscreenDocument, sendToOffscreen } from '../lib/utils/offscreen-manager'
+
+
 // 添加 lab 功能：每个标签页的状态管理
 const tabStates = new Map(); // tabId -> { mode: 'element'|'region', selecting: boolean, recording: boolean }
 
@@ -90,41 +94,183 @@ chrome.runtime.onInstalled.addListener((details) => {
     }
   })
 
-  // 自动在点击扩展图标时打开 Side Panel（Chrome 116+）
+  // 明确关闭“点击图标自动打开 Side Panel”的行为（Chrome 116+）
   try {
     if (chrome.sidePanel?.setPanelBehavior) {
-      chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+      chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
     }
   } catch (e) {
-    console.warn('setPanelBehavior failed', e);
+    console.warn('setPanelBehavior(false) failed', e);
   }
 })
 
-// 扩展图标点击事件 - 打开 sidepanel
-chrome.action.onClicked.addListener(async (tab) => {
-  try {
-    if (tab.id) {
-      await chrome.sidePanel.open({ tabId: tab.id })
-      console.log('Sidepanel opened for tab:', tab.id)
-    }
-  } catch (error) {
-    console.error('Failed to open sidepanel:', error)
-  }
-})
+// 扩展图标点击事件：开发期便捷切换
+// - 若未在录制：弹出桌面捕获授权 → 将 streamId 下发给 Offscreen 启动录制
+// - 若已在录制：直接通知 Offscreen 停止录制
+// chrome.action.onClicked.addListener(async (tab) => {
+//   const timestamp = new Date().toISOString()
+//   console.log(`🎬 [${timestamp}] Action clicked - Tab:`, { id: tab?.id, url: tab?.url })
+
+//   try {
+//     // 检查当前录制状态
+//     if (currentRecording?.isRecording) {
+//       console.log(`🛑 [${timestamp}] Stopping current recording...`, {
+//         streamId: currentRecording.streamId,
+//         duration: Date.now() - (currentRecording.startTime || 0)
+//       })
+
+//       // 更新扩展图标状态（可选）
+//       try {
+//         await chrome.action.setBadgeText({ text: '⏹️' })
+//         await chrome.action.setBadgeBackgroundColor({ color: '#ff4444' })
+//       } catch (e) {
+//         console.warn('Failed to update action badge:', e)
+//       }
+
+//       await ensureOffscreenDocument({
+//         url: 'offscreen.html',
+//         reasons: ['DISPLAY_MEDIA', 'WORKERS', 'BLOBS'],
+//         justification: 'Stop screen recording in offscreen document'
+//       })
+//       await sendToOffscreen({
+//         type: 'OFFSCREEN_STOP_RECORDING',
+//         trigger: 'action.onClicked',
+//         timestamp
+//       }, { reasons: ['BLOBS'] })
+
+//       currentRecording = { isRecording: false, streamId: null, startTime: null }
+
+//       // 清除图标状态
+//       setTimeout(async () => {
+//         try {
+//           await chrome.action.setBadgeText({ text: '' })
+//         } catch (e) {
+//           console.warn('Failed to clear action badge:', e)
+//         }
+//       }, 2000)
+
+//       console.log(`✅ [${timestamp}] Recording stop request sent`)
+//       return
+//     }
+
+//     console.log(`🎥 [${timestamp}] Starting new recording...`)
+
+//     // 更新扩展图标状态
+//     try {
+//       await chrome.action.setBadgeText({ text: '🎬' })
+//       await chrome.action.setBadgeBackgroundColor({ color: '#4CAF50' })
+//     } catch (e) {
+//       console.warn('Failed to update action badge:', e)
+//     }
+
+//     // 确保 offscreen document 存在
+//     console.log(`⚡ [${timestamp}] Ensuring offscreen document...`)
+//     try {
+//       await ensureOffscreenDocument({
+//         url: 'offscreen.html',
+//         reasons: ['USER_MEDIA', 'BLOBS'],
+//         justification: 'Screen recording with user authorization in offscreen document'
+//       })
+//       console.log(`✅ [${timestamp}] Offscreen document ready`)
+//     } catch (e) {
+//       console.error(`❌ [${timestamp}] Failed to ensure offscreen document:`, e)
+//       throw e
+//     }
+
+//     // 直接发送开始录制命令到 offscreen（用户授权将在 offscreen 中进行）
+//     try {
+//       await sendToOffscreen({
+//         type: 'OFFSCREEN_START_RECORDING',
+//         payload: {
+//           options: {
+//             video: true,
+//             audio: true
+//           }
+//         },
+//         trigger: 'action.onClicked',
+//         timestamp
+//       }, { reasons: ['USER_MEDIA', 'BLOBS'] })
+
+//       // 更新录制状态（临时，实际状态将由 offscreen 确认）
+//       currentRecording = { isRecording: true, streamId: 'pending', startTime: Date.now() }
+
+//       console.log(`✅ [${timestamp}] Recording start request sent to offscreen`)
+
+//       // 更新图标为录制状态
+//       try {
+//         await chrome.action.setBadgeText({ text: '🔴' })
+//         await chrome.action.setBadgeBackgroundColor({ color: '#ff0000' })
+//       } catch (e) {
+//         console.warn('Failed to update recording badge:', e)
+//       }
+
+//     } catch (e) {
+//       console.error(`❌ [${timestamp}] Failed to start recording via offscreen:`, e)
+//       // 重置状态
+//       currentRecording = { isRecording: false, streamId: null, startTime: null }
+//       try {
+//         await chrome.action.setBadgeText({ text: '❌' })
+//         await chrome.action.setBadgeBackgroundColor({ color: '#ff4444' })
+//         setTimeout(async () => {
+//           try {
+//             await chrome.action.setBadgeText({ text: '' })
+//           } catch (e) {
+//             console.warn('Failed to clear error badge:', e)
+//           }
+//         }, 3000)
+//       } catch (e) {
+//         console.warn('Failed to update error badge:', e)
+//       }
+//       throw e
+//     }
+
+//   } catch (error) {
+//     console.error(`💥 [${timestamp}] Critical error in action.onClicked:`, {
+//       error: error.message,
+//       stack: error.stack,
+//       currentRecording
+//     })
+
+//     // 重置状态
+//     currentRecording = { isRecording: false, streamId: null, startTime: null }
+
+//     // 显示错误状态
+//     try {
+//       await chrome.action.setBadgeText({ text: '💥' })
+//       await chrome.action.setBadgeBackgroundColor({ color: '#ff0000' })
+//       setTimeout(async () => {
+//         try {
+//           await chrome.action.setBadgeText({ text: '' })
+//         } catch (e) {
+//           console.warn('Failed to clear error badge:', e)
+//         }
+//       }, 5000)
+//     } catch (e) {
+//       console.warn('Failed to update error badge:', e)
+//     }
+//   }
+// })
 
 // 处理来自 sidepanel 的消息
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('Received message:', message.action || message.type, message)
+  // Ignore messages explicitly targeted to the offscreen document to avoid echo/loops
+  if (message?.target === 'offscreen-doc') {
+    return false;
+  }
+
 
   // 处理 lab 功能的消息类型
   if (message.type) {
     const tabId = sender.tab?.id ?? message.tabId;
-    if (!tabId) return;
-
-    // Ensure state
-    if (!tabStates.has(tabId)) tabStates.set(tabId, { mode: 'element', selecting: false, recording: false });
-    const state = tabStates.get(tabId);
-
+    const globalTypes = new Set(['REQUEST_START_RECORDING','REQUEST_STOP_RECORDING','REQUEST_RECORDING_STATE','REQUEST_TOGGLE_PAUSE','OFFSCREEN_START_RECORDING','OFFSCREEN_STOP_RECORDING','REQUEST_OFFSCREEN_PING','GET_RECORDING_STATE','RECORDING_COMPLETE','OPFS_RECORDING_READY']);
+    let state: any;
+    if (!globalTypes.has(message.type)) {
+      if (!tabId) return;
+      // Ensure state for tab-scoped features
+      if (!tabStates.has(tabId)) tabStates.set(tabId, { mode: 'element', selecting: false, recording: false });
+      state = tabStates.get(tabId);
+    }
     switch (message.type) {
       case 'GET_STATE':
         (async () => {
@@ -193,8 +339,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         handleElementRecordingComplete(message, sendResponse);
         return true;
 
+      case 'RECORDING_COMPLETE': {
+        // Treat as a stop event when it originates from offscreen
+        console.log('[stop-share] background: RECORDING_COMPLETE → mark stopped')
+        try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
+        try {
+          chrome.runtime.sendMessage({ type: 'STATE_UPDATE', state: { recording: false } })
+        } catch (e) {
+          console.warn('[stop-share] background: failed to broadcast STATE_UPDATE for RECORDING_COMPLETE', e)
+        }
+        try { sendResponse({ ok: true }) } catch (e) {}
+        return true;
+      }
+
       case 'OPFS_RECORDING_READY': {
         try {
+          console.log('[stop-share] background: OPFS_RECORDING_READY → mark stopped')
+          try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
+          try { chrome.runtime.sendMessage({ type: 'STATE_UPDATE', state: { recording: false } }) } catch {}
           const targetUrl = chrome.runtime.getURL(`studio.html?id=${encodeURIComponent(message.id)}`)
           chrome.tabs.create({ url: targetUrl }, () => {
             const err = chrome.runtime.lastError
@@ -211,12 +373,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'STREAM_START': {
         // Update tab state and fan-out to sidepanel
         state.recording = true;
+        try { currentRecording.isRecording = true; currentRecording.isPaused = false } catch {}
+        console.log('[stop-share] background: STREAM_START', { tabId })
         broadcastToTab(tabId, { ...message, tabId });
         void broadcastStateWithCapabilities(tabId);
         try { sendResponse({ ok: true }); } catch (e) {}
         return true;
       }
       case 'STREAM_META': {
+        if (message?.meta && typeof message.meta.paused === 'boolean') {
+          try { currentRecording.isPaused = !!message.meta.paused } catch {}
+        }
         broadcastToTab(tabId, { ...message, tabId });
         try { sendResponse({ ok: true }); } catch (e) {}
         return true;
@@ -228,6 +395,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
       case 'STREAM_END': {
         state.recording = false;
+        try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
+        console.log('[stop-share] background: STREAM_END', { tabId })
         broadcastToTab(tabId, { ...message, tabId });
         void broadcastStateWithCapabilities(tabId);
         try { sendResponse({ ok: true }); } catch (e) {}
@@ -235,12 +404,60 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
       case 'STREAM_ERROR': {
         state.recording = false;
+        try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
+        console.log('[stop-share] background: STREAM_ERROR', { tabId })
         broadcastToTab(tabId, { ...message, tabId });
         void broadcastStateWithCapabilities(tabId);
         try { sendResponse({ ok: true }); } catch (e) {}
         return true;
       }
+      case 'REQUEST_START_RECORDING':
+      case 'OFFSCREEN_START_RECORDING': {
+        (async () => {
+          console.log('OFFSCREEN_START_RECORDING received:', message?.payload?.options ?? message?.payload)
+          await startRecordingViaOffscreen(message?.payload?.options ?? message?.payload)
+          try { sendResponse({ ok: true }) } catch (e) {}
+        })()
+        return true;
+      }
+      case 'REQUEST_STOP_RECORDING':
+      case 'OFFSCREEN_STOP_RECORDING': {
+        (async () => {
+          console.log('[stop-share] background: REQUEST_STOP_RECORDING received')
+          await stopRecordingViaOffscreen()
+          try { sendResponse({ ok: true }) } catch (e) {}
+        })()
+        return true;
+      }
+      case 'REQUEST_OFFSCREEN_PING': {
+        (async () => {
+          await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
+          sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_PING', when: Date.now() })
+          try { sendResponse({ ok: true }) } catch (e) {}
+        })()
+        return true;
+      }
 
+      case 'REQUEST_RECORDING_STATE':
+      case 'GET_RECORDING_STATE': {
+        try { sendResponse({ ok: true, state: currentRecording }) } catch (e) {}
+        return true;
+      }
+
+      case 'REQUEST_TOGGLE_PAUSE': {
+        (async () => {
+          try {
+            const newPaused = !currentRecording.isPaused
+            await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
+            await sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_TOGGLE_PAUSE', payload: { paused: newPaused } })
+            currentRecording.isPaused = newPaused
+            try { sendResponse({ ok: true, paused: newPaused }) } catch (e) {}
+          } catch (e) {
+            try { sendResponse({ ok: false, error: String(e) }) } catch (_) {}
+          }
+        })()
+        return true;
+      }
 
       default:
         break;
@@ -564,16 +781,61 @@ chrome.downloads.onChanged.addListener((downloadDelta) => {
 
 
 // 处理扩展启动
-chrome.runtime.onStartup.addListener(() => {
+chrome.runtime.onStartup.addListener(async () => {
   console.log('Extension startup')
+  try {
+    if (chrome.sidePanel?.setPanelBehavior) {
+      chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
+    }
+  } catch (e) {
+    console.warn('setPanelBehavior(false) onStartup failed', e);
+  }
 })
 
 
 // 全局录制状态
 let currentRecording = {
   isRecording: false,
+  isPaused: false,
   streamId: null,
   startTime: null
+}
+
+// Unified start/stop helpers for Offscreen recording
+async function startRecordingViaOffscreen(options) {
+  try {
+    const mode = (options?.mode === 'tab' || options?.mode === 'window' || options?.mode === 'screen') ? options.mode : 'screen'
+    const normalizedOptions = {
+      mode,
+      video: options?.video ?? true,
+      audio: options?.audio ?? false
+    }
+
+    await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
+    await sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_START_RECORDING', payload: { options: normalizedOptions } })
+    currentRecording = { isRecording: true, isPaused: false, streamId: 'offscreen', startTime: Date.now() }
+
+    try {
+      await chrome.action.setBadgeText({ text: '🔴' })
+      await chrome.action.setBadgeBackgroundColor({ color: '#ff0000' })
+    } catch (e) { /* optional badge update failure */ }
+  } catch (e) {
+    // keep state unchanged on failure
+    throw e
+  }
+}
+
+async function stopRecordingViaOffscreen() {
+  try {
+    console.log('[stop-share] background: forwarding OFFSCREEN_STOP_RECORDING to offscreen')
+    await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
+    sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_STOP_RECORDING' })
+  } finally {
+    currentRecording = { isRecording: false, isPaused: false, streamId: null, startTime: null }
+    try {
+      await chrome.action.setBadgeText({ text: '' })
+    } catch (e) { /* optional badge clear failure */ }
+  }
 }
 
 // 处理录制开始 - 简化版本，直接返回streamId
@@ -584,13 +846,22 @@ async function handleStartRecording(message, sendResponse) {
     // 保存录制状态
     currentRecording = {
       isRecording: true,
+      isPaused: false,
       streamId: message.streamId,
       startTime: Date.now()
     }
 
     console.log('Recording state saved:', currentRecording)
 
-    // 直接返回成功，让sidepanel处理实际的录制
+    // 确保 Offscreen 存在并通知开始录制（骨架版）
+    try {
+      await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
+      sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_START_RECORDING', payload: { streamId: message.streamId } })
+    } catch (e) {
+      console.warn('Failed to ensure offscreen or send START to offscreen', e)
+    }
+
+    // 返回成功（骨架版由 offscreen 侧处理实际录制）
     sendResponse({
       success: true,
       message: 'Recording started',
@@ -614,13 +885,22 @@ async function handleStopRecording(message, sendResponse) {
     // 重置录制状态
     currentRecording = {
       isRecording: false,
+      isPaused: false,
       streamId: null,
       startTime: null
     }
 
     console.log('Recording state reset')
 
-    // 返回成功，让sidepanel处理实际的停止逻辑
+    // 通知 Offscreen 停止录制（骨架版）
+    try {
+      await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
+      sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_STOP_RECORDING' })
+    } catch (e) {
+      console.warn('Failed to ensure offscreen or send STOP to offscreen', e)
+    }
+
+    // 返回成功（骨架版由 offscreen 侧处理实际停止）
     sendResponse({
       success: true,
       message: 'Recording stopped'
@@ -664,19 +944,6 @@ chrome.tabs.onUpdated.addListener((tabId, info) => {
   }
 });
 
-// 兼容：如果浏览器版本不支持 setPanelBehavior，则手动在点击图标时打开 Side Panel
-if (chrome.action && chrome.sidePanel) {
-  chrome.action.onClicked.addListener(async (tab) => {
-    try {
-      if (chrome.sidePanel.setOptions && tab?.id) {
-        await chrome.sidePanel.setOptions({ tabId: tab.id, path: 'sidepanel.html', enabled: true });
-      }
-      if (tab?.id) await chrome.sidePanel.open({ tabId: tab.id });
-    } catch (e) {
-      console.warn('Open sidepanel failed', e);
-    }
-  });
-}
 
 // 错误处理
 self.addEventListener('error', (event) => {
