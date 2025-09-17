@@ -172,6 +172,106 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'nature',
     tags: ['水', '夏日', '清新']
+  },
+  // 预设：pre 目录
+  {
+    id: 'abstract-2426502',
+    name: '抽象色彩 2426502',
+    description: '抽象色彩与形状的现代设计',
+    imageUrl: '/wallpapers/abstract-2426502.webp',
+    config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
+    category: 'abstract',
+    tags: ['抽象', '色彩', '形状']
+  },
+  {
+    id: 'camera-1248682',
+    name: '相机特写 1248682',
+    description: '相机与镜头特写，具有质感的科技风',
+    imageUrl: '/wallpapers/camera-1248682.webp',
+    config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
+    category: 'tech',
+    tags: ['相机', '摄影', '科技']
+  },
+  {
+    id: 'circle-5090539',
+    name: '圆形几何 5090539',
+    description: '简约的圆形几何图案，适合视觉统一的版面',
+    imageUrl: '/wallpapers/circle-5090539.webp',
+    config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
+    category: 'minimal',
+    tags: ['圆形', '几何', '简约']
+  },
+  {
+    id: 'feather-7009025',
+    name: '羽毛纹理 7009025',
+    description: '轻柔的羽毛质感，细腻的自然纹理',
+    imageUrl: '/wallpapers/feather-7009025.webp',
+    config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
+    category: 'nature',
+    tags: ['羽毛', '自然', '纹理']
+  },
+  {
+    id: 'fiber-4814456',
+    name: '光纤线条 4814456',
+    description: '光纤与线条的抽象科技感',
+    imageUrl: '/wallpapers/fiber-4814456.webp',
+    config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
+    category: 'tech',
+    tags: ['光纤', '线条', '科技']
+  },
+  {
+    id: 'frost-6702335',
+    name: '霜冻纹理 6702335',
+    description: '寒冷质感的冰霜纹理背景',
+    imageUrl: '/wallpapers/frost-6702335.webp',
+    config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
+    category: 'nature',
+    tags: ['霜', '冰', '冷色']
+  },
+  {
+    id: 'leaves-4291098',
+    name: '绿叶 4291098',
+    description: '绿色叶片的自然纹理，清新治愈',
+    imageUrl: '/wallpapers/leaves-4291098.webp',
+    config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
+    category: 'nature',
+    tags: ['叶子', '绿色', '自然']
+  },
+  {
+    id: 'light-1834289',
+    name: '光影散景 1834289',
+    description: '光影散景效果，氛围感十足的抽象背景',
+    imageUrl: '/wallpapers/light-1834289.webp',
+    config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
+    category: 'abstract',
+    tags: ['光影', '散景', '抽象']
+  },
+  {
+    id: 'light-942231',
+    name: '灯光线条 942231',
+    description: '流动的灯光线条，充满动感的抽象背景',
+    imageUrl: '/wallpapers/light-942231.webp',
+    config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
+    category: 'abstract',
+    tags: ['光', '线条', '抽象']
+  },
+  {
+    id: 'luck-4397584',
+    name: '四叶草 4397584',
+    description: '幸运的四叶草，清新自然的绿色调',
+    imageUrl: '/wallpapers/luck-4397584.webp',
+    config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
+    category: 'nature',
+    tags: ['四叶草', '绿色', '自然']
+  },
+  {
+    id: 'waterdrop-2256201',
+    name: '水滴特写 2256201',
+    description: '水滴与表面张力的微距质感',
+    imageUrl: '/wallpapers/waterdrop-2256201.webp',
+    config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
+    category: 'nature',
+    tags: ['水滴', '宏观', '自然']
   }
 ]
 
