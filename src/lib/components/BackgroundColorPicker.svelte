@@ -1,6 +1,6 @@
 <!-- 背景色选择器 - 支持纯色和渐变色切换 -->
 <script lang="ts">
-  import { Palette, Layers, Image, Mountain, Upload, Check, CircleAlert } from '@lucide/svelte'
+  import { Palette, Layers, Image, Mountain, Upload, CircleAlert } from '@lucide/svelte'
   import {
     backgroundConfigStore,
     PRESET_COLORS,
@@ -24,7 +24,7 @@
   const currentColor = $derived(currentConfig.color)
 
   // 当前激活的Tab
-  let activeTab = $state<BackgroundType>('solid-color')
+  let activeTab = $state<BackgroundType>('wallpaper')
 
   // Wallpaper相关状态
   let selectedWallpaper = $state<string>('')
@@ -36,7 +36,10 @@
 
   // 初始化时同步当前配置的类型和选择状态
   $effect(() => {
-    activeTab = currentType
+    // 如果当前配置不是wallpaper类型，则同步activeTab
+    if (currentType !== 'wallpaper') {
+      activeTab = currentType
+    }
 
     // 根据当前配置设置选择状态
     if (currentType === 'wallpaper') {
@@ -53,10 +56,10 @@
 
   // Tab选项配置
   const tabOptions = [
+    { value: 'wallpaper' as const, label: '壁纸', icon: Mountain },
+    { value: 'gradient' as const, label: '渐变', icon: Layers },
     { value: 'solid-color' as const, label: '纯色', icon: Palette },
-    { value: 'gradient' as const, label: '渐变色', icon: Layers },
     { value: 'image' as const, label: '图片', icon: Image },
-    { value: 'wallpaper' as const, label: '壁纸', icon: Mountain }
   ] as const
 
   // 切换Tab
@@ -111,17 +114,21 @@
     }
   }
 
-  // 颜色分类
+  // 颜色分类 - 每个分类16种颜色
   const colorCategories = [
-    { key: 'basic', name: '基础色', colors: PRESET_SOLID_COLORS.filter(c => c.category === 'basic') },
-    { key: 'light', name: '浅色系', colors: PRESET_SOLID_COLORS.filter(c => c.category === 'light') },
-    { key: 'dark', name: '深色系', colors: PRESET_SOLID_COLORS.filter(c => c.category === 'dark') },
-    { key: 'business', name: '商务色', colors: PRESET_SOLID_COLORS.filter(c => c.category === 'business') },
-    { key: 'creative', name: '创意色', colors: PRESET_SOLID_COLORS.filter(c => c.category === 'creative') }
+    { key: 'basic', name: '基础色系', colors: PRESET_SOLID_COLORS.filter(c => c.category === 'basic'), icon: '⚫' },
+    { key: 'light', name: '浅色系', colors: PRESET_SOLID_COLORS.filter(c => c.category === 'light'), icon: '🌸' },
+    { key: 'dark', name: '深色系', colors: PRESET_SOLID_COLORS.filter(c => c.category === 'dark'), icon: '🌙' },
+    { key: 'business', name: '商务色系', colors: PRESET_SOLID_COLORS.filter(c => c.category === 'business'), icon: '💼' },
+    { key: 'creative', name: '创意色系', colors: PRESET_SOLID_COLORS.filter(c => c.category === 'creative'), icon: '🎨' }
   ]
 
   // 自定义颜色输入值
   let customColorValue = $state('')
+
+  // 颜色搜索功能
+  let colorSearchQuery = $state('')
+  let showColorSearch = $state(false)
 
   // 同步自定义颜色输入值
   $effect(() => {
@@ -129,6 +136,20 @@
       customColorValue = currentColor
     }
   })
+
+  // 过滤颜色分类
+  const filteredColorCategories = $derived(
+    !colorSearchQuery.trim()
+      ? colorCategories
+      : colorCategories.map(category => ({
+          ...category,
+          colors: category.colors.filter(color =>
+            color.name.toLowerCase().includes(colorSearchQuery.toLowerCase()) ||
+            color.color.toLowerCase().includes(colorSearchQuery.toLowerCase()) ||
+            color.id.toLowerCase().includes(colorSearchQuery.toLowerCase())
+          )
+        })).filter(category => category.colors.length > 0)
+  )
 
   // 处理预设纯色选择
   function handlePresetSolidColorSelect(preset: SolidColorPreset) {
@@ -183,22 +204,35 @@
 
   // === 渐变色相关功能 ===
 
-  // 渐变分类
+  // 渐变分类 - 4种类别，每种8个
   const gradientCategories = [
     {
       key: 'linear',
       name: '线性渐变',
-      gradients: PRESET_GRADIENTS.filter(g => g.config.type === 'linear')
+      icon: '📐',
+      description: '直线方向的颜色过渡',
+      gradients: PRESET_GRADIENTS.filter(g => g.category === 'linear')
     },
     {
       key: 'radial',
       name: '径向渐变',
-      gradients: PRESET_GRADIENTS.filter(g => g.config.type === 'radial')
+      icon: '🎯',
+      description: '从中心向外辐射的颜色过渡',
+      gradients: PRESET_GRADIENTS.filter(g => g.category === 'radial')
     },
     {
       key: 'conic',
       name: '圆锥渐变',
-      gradients: PRESET_GRADIENTS.filter(g => g.config.type === 'conic')
+      icon: '🌀',
+      description: '围绕中心旋转的颜色过渡',
+      gradients: PRESET_GRADIENTS.filter(g => g.category === 'conic')
+    },
+    {
+      key: 'multicolor',
+      name: '多色渐变',
+      icon: '🌈',
+      description: '丰富多彩的复杂颜色过渡',
+      gradients: PRESET_GRADIENTS.filter(g => g.category === 'multicolor')
     }
   ]
 
@@ -367,17 +401,56 @@
     {#if activeTab === 'solid-color'}
       <!-- 纯色选择器 -->
       <div class="space-y-4">
+        <!-- 颜色搜索 -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <h4 class="text-sm font-medium text-gray-700 m-0">颜色搜索</h4>
+              <span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                共{PRESET_SOLID_COLORS.length}种颜色
+              </span>
+            </div>
+            {#if colorSearchQuery.trim()}
+              <button
+                class="text-xs text-blue-600 hover:text-blue-800 underline"
+                onclick={() => colorSearchQuery = ''}
+                type="button"
+              >
+                清除搜索
+              </button>
+            {/if}
+          </div>
+          <input
+            type="text"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="搜索颜色名称或颜色值..."
+            bind:value={colorSearchQuery}
+          />
+          {#if colorSearchQuery.trim()}
+            <div class="text-xs text-gray-600">
+              找到 {filteredColorCategories.reduce((total, cat) => total + cat.colors.length, 0)} 种匹配的颜色
+            </div>
+          {/if}
+        </div>
+
         <!-- 预设颜色分类 -->
-        {#each colorCategories as category}
+        {#each filteredColorCategories as category}
           {#if category.colors.length > 0}
-            <div class="space-y-2">
-              <h4 class="text-sm font-medium text-gray-700 m-0">{category.name}</h4>
-              <div class="grid grid-cols-8 gap-2">
+            <div class="space-y-3">
+              <h4 class="text-sm font-medium text-gray-700 m-0 flex items-center gap-2">
+                <span class="text-base">{category.icon}</span>
+                {category.name}
+                <span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                  {category.colors.length}种
+                </span>
+              </h4>
+              <!-- 16种颜色使用8x2网格布局 -->
+              <div class="grid grid-cols-8 gap-2 mb-4">
                 {#each category.colors as preset}
                   <button
-                    class="w-8 h-8 rounded-md border-2 cursor-pointer transition-all duration-200 relative {isPresetSolidColorSelected(preset) ? 'border-blue-500 border-3 shadow-md' : 'border-gray-300 hover:border-gray-400'}"
+                    class="w-9 h-9 rounded-lg border-3 cursor-pointer transition-all duration-200 relative group {isPresetSolidColorSelected(preset) ? 'border-blue-500 shadow-lg ring-2 ring-blue-200' : 'border-gray-300 hover:border-gray-400 hover:scale-105'}"
                     style="background-color: {preset.color}"
-                    title="{preset.name} - 双击复制颜色值"
+                    title="{preset.name} ({preset.color}) - 点击选择，双击复制颜色值"
                     onclick={() => handlePresetSolidColorSelect(preset)}
                     ondblclick={() => copyColorToClipboard(preset.color)}
                     onkeydown={(e) => handleColorKeydown(e, () => handlePresetSolidColorSelect(preset))}
@@ -385,11 +458,10 @@
                     aria-label="{preset.name}，颜色值：{preset.color}"
                     tabindex="0"
                   >
-                    {#if isPresetSolidColorSelected(preset)}
-                      <div class="absolute top-0.5 right-0.5 bg-blue-500 text-white w-4 h-4 rounded-full flex items-center justify-center text-xs" aria-hidden="true">
-                        <Check class="w-2.5 h-2.5" />
-                      </div>
-                    {/if}
+                    <!-- 悬停时显示颜色名称 - 移到上方避免被遮挡 -->
+                    <div class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-20">
+                      {preset.name}
+                    </div>
                   </button>
                 {/each}
               </div>
@@ -510,18 +582,39 @@
     {:else if activeTab === 'wallpaper'}
       <!-- 壁纸背景选择器 -->
       <div class="space-y-4">
+        <!-- 壁纸统计 -->
+        <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-medium text-blue-700">壁纸库</span>
+              <span class="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">
+                共{Object.values(WALLPAPER_CATEGORIES).reduce((total, cat) => total + cat.wallpapers.length, 0)}张
+              </span>
+            </div>
+            <div class="text-xs text-blue-600">
+              {Object.keys(WALLPAPER_CATEGORIES).length}个分类
+            </div>
+          </div>
+        </div>
+
         <!-- 壁纸分类 -->
         {#each Object.entries(WALLPAPER_CATEGORIES) as [, category]}
           {#if category.wallpapers.length > 0}
-            <div class="space-y-2">
-              <h4 class="text-sm font-medium text-gray-700 m-0 flex items-center gap-1.5">
+            <div class="space-y-3">
+              <h4 class="text-sm font-medium text-gray-700 m-0 flex items-center gap-2">
                 <span class="text-base">{category.icon}</span>
                 {category.name}
+                <span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                  {category.wallpapers.length}张
+                </span>
               </h4>
+              {#if category.description}
+                <p class="text-xs text-gray-500 m-0">{category.description}</p>
+              {/if}
               <div class="grid grid-cols-2 gap-3">
                 {#each category.wallpapers as wallpaper}
                   <button
-                    class="relative group border-2 rounded-lg overflow-hidden cursor-pointer transition-all duration-200 {selectedWallpaper === wallpaper.id ? 'border-blue-500 shadow-md' : 'border-gray-300 hover:border-gray-400'}"
+                    class="relative group border-3 rounded-lg overflow-hidden cursor-pointer transition-all duration-200 {selectedWallpaper === wallpaper.id ? 'border-blue-500 shadow-lg ring-2 ring-blue-200' : 'border-gray-300 hover:border-gray-400'}"
                     onclick={() => selectWallpaper(wallpaper)}
                     type="button"
                     title={wallpaper.description}
@@ -542,11 +635,6 @@
                         </div>
                       {/if}
                     </div>
-                    {#if selectedWallpaper === wallpaper.id}
-                      <div class="absolute top-1 right-1 bg-blue-500 text-white w-5 h-5 rounded-full flex items-center justify-center">
-                        <Check class="w-3 h-3" />
-                      </div>
-                    {/if}
                   </button>
                 {/each}
               </div>
@@ -575,32 +663,55 @@
     {:else if activeTab === 'gradient'}
       <!-- 渐变色选择器 -->
       <div class="space-y-4">
+        <!-- 渐变统计 -->
+        <div class="mb-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-medium text-purple-700">渐变库</span>
+              <span class="text-xs text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">
+                共{PRESET_GRADIENTS.length}个
+              </span>
+            </div>
+            <div class="text-xs text-purple-600">
+              {gradientCategories.length}个分类
+            </div>
+          </div>
+        </div>
+
         <!-- 预设渐变分类 -->
         {#each gradientCategories as category}
           {#if category.gradients.length > 0}
-            <div class="space-y-2">
-              <h4 class="text-sm font-medium text-gray-700 m-0">{category.name}</h4>
-              <div class="grid grid-cols-4 gap-2">
+            <div class="space-y-3">
+              <h4 class="text-sm font-medium text-gray-700 m-0 flex items-center gap-2">
+                <span class="text-base">{category.icon}</span>
+                {category.name}
+                <span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                  {category.gradients.length}个
+                </span>
+              </h4>
+              {#if category.description}
+                <p class="text-xs text-gray-500 m-0">{category.description}</p>
+              {/if}
+              <!-- 8个渐变使用4x2网格布局 -->
+              <div class="grid grid-cols-4 gap-2 mb-4">
                 {#each category.gradients as preset}
-                  <button
-                    class="relative h-12 rounded-md border-2 cursor-pointer transition-all duration-200 overflow-hidden {isPresetGradientSelected(preset) ? 'border-blue-500 shadow-md' : 'border-gray-300 hover:border-gray-400'}"
-                    style="background: {preset.preview || 'linear-gradient(45deg, #f3f4f6, #e5e7eb)'}"
-                    title="{preset.name} - {preset.description || ''}"
-                    onclick={() => handlePresetGradientSelect(preset)}
-                    onkeydown={(e) => handleColorKeydown(e, () => handlePresetGradientSelect(preset))}
-                    type="button"
-                    aria-label="{preset.name}渐变，{preset.description || ''}"
-                    tabindex="0"
-                  >
-                    {#if isPresetGradientSelected(preset)}
-                      <div class="absolute top-1 right-1 bg-blue-500 text-white w-4 h-4 rounded-full flex items-center justify-center" aria-hidden="true">
-                        <Check class="w-2.5 h-2.5" />
-                      </div>
-                    {/if}
-                    <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs px-1 py-0.5 truncate">
+                  <div class="relative group">
+                    <button
+                      class="w-full h-12 rounded-md border-3 cursor-pointer transition-all duration-200 overflow-hidden {isPresetGradientSelected(preset) ? 'border-blue-500 shadow-lg ring-2 ring-blue-200' : 'border-gray-300 hover:border-gray-400 hover:scale-105'}"
+                      style="background: {preset.preview || 'linear-gradient(45deg, #f3f4f6, #e5e7eb)'}"
+                      title="{preset.name} - {preset.description || ''}"
+                      onclick={() => handlePresetGradientSelect(preset)}
+                      onkeydown={(e) => handleColorKeydown(e, () => handlePresetGradientSelect(preset))}
+                      type="button"
+                      aria-label="{preset.name}渐变，{preset.description || ''}"
+                      tabindex="0"
+                    >
+                    </button>
+                    <!-- 悬停时显示渐变名称 - 移到上方避免被遮挡 -->
+                    <div class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-20">
                       {preset.name}
                     </div>
-                  </button>
+                  </div>
                 {/each}
               </div>
             </div>
