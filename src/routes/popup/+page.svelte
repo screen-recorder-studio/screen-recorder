@@ -51,9 +51,21 @@
           contentScriptAvailable = !!caps.contentScriptAvailable
           capabilityReason = caps.reason
         }
+        // 恢复上次选择的模式
+        const uiMode = st?.state?.uiSelectedMode
+        const legacyMode = st?.state?.mode
+        if (uiMode === 'element' || uiMode === 'area' || uiMode === 'camera' || uiMode === 'tab' || uiMode === 'window' || uiMode === 'screen') {
+          selectedMode = uiMode
+        } else if (legacyMode === 'region' || legacyMode === 'element') {
+          selectedMode = legacyMode === 'region' ? 'area' : 'element'
+        }
+        // 若全局未在录制，但 tab 层记录为录制中（元素/区域链路），也同步为录制中
+        if (!isRecording && typeof st?.state?.recording === 'boolean' && st.state.recording) {
+          isRecording = true
+        }
       }
     } catch (e) {
-      // ignore caps init errors
+      // ignore init errors
     }
   })
 
@@ -64,6 +76,12 @@
         if (msg?.type === 'STREAM_META' && msg?.meta && typeof msg.meta.paused === 'boolean') {
           console.log('[stop-share] popup: STREAM_META', msg.meta)
           isPaused = !!msg.meta.paused
+        }
+        if (msg?.type === 'STREAM_START') {
+          console.log('[stop-share] popup: STREAM_START', msg)
+          isRecording = true
+          isPaused = false
+          isLoading = false
         }
         if (msg?.type === 'STREAM_END' || msg?.type === 'STREAM_ERROR' || msg?.type === 'RECORDING_COMPLETE' || msg?.type === 'OPFS_RECORDING_READY') {
           console.log('[stop-share] popup: received', msg?.type)
@@ -80,6 +98,14 @@
           if (msg.state.capabilities) {
             contentScriptAvailable = !!msg.state.capabilities.contentScriptAvailable
             capabilityReason = msg.state.capabilities.reason
+          }
+          // 同步选择的模式（优先使用 uiSelectedMode）
+          const uiMode = msg.state.uiSelectedMode
+          const legacyMode = msg.state.mode
+          if (uiMode === 'element' || uiMode === 'area' || uiMode === 'camera' || uiMode === 'tab' || uiMode === 'window' || uiMode === 'screen') {
+            selectedMode = uiMode
+          } else if (legacyMode === 'region' || legacyMode === 'element') {
+            selectedMode = legacyMode === 'region' ? 'area' : 'element'
           }
         }
       } catch (e) {
@@ -148,6 +174,10 @@
         }
       } catch {}
 
+
+      // 记录 UI 选择的模式到后台，便于下次打开恢复
+      try { await chrome.runtime.sendMessage({ type: 'SET_SELECTED_MODE', uiMode: selectedMode, tabId }) } catch {}
+
       // 若从 元素/区域 切到 其它类型（tab/window/screen），清除页面上的选区并退出选择态
       const isElemOrArea = (m: typeof selectedMode) => m === 'element' || m === 'area'
       if (isElemOrArea(prev) && !isElemOrArea(mode) && tabId != null) {
@@ -183,8 +213,7 @@
         } catch {}
         if (tabId != null) {
           await chrome.runtime.sendMessage({ type: 'START_CAPTURE', tabId })
-          isRecording = true
-          isPaused = false
+          // 等待 STREAM_START/STATE_UPDATE 确认后再更新 isRecording/isPaused
         } else {
           throw new Error('未获取到活动标签页，无法开始录制')
         }
@@ -195,8 +224,7 @@
           type: 'REQUEST_START_RECORDING',
           payload: { options: { mode, video: true, audio: false } }
         })
-        isRecording = true
-        isPaused = false
+        // 等待 STREAM_START/STATE_UPDATE 确认后再更新 isRecording/isPaused
       }
     } catch (error) {
       console.error('开始录制失败:', error)
@@ -210,12 +238,23 @@
     if (!isRecording || isLoading) return
     isLoading = true
     try {
-      const resp = await chrome.runtime.sendMessage({ type: 'REQUEST_TOGGLE_PAUSE' })
-      if (resp && typeof resp.paused === 'boolean') {
-        isPaused = resp.paused
-      } else {
-        isPaused = !isPaused
+      const payload: any = { type: 'REQUEST_TOGGLE_PAUSE' }
+      if (selectedMode === 'element' || selectedMode === 'area') {
+        let tabId = currentTabId
+        try {
+          if (tabId == null) {
+            const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
+            tabId = (tabs && tabs[0] && typeof tabs[0].id === 'number') ? tabs[0].id : null
+          }
+        } catch {}
+        if (tabId != null) payload.tabId = tabId
       }
+      const resp = await chrome.runtime.sendMessage(payload)
+      if (resp && typeof resp.paused === 'boolean') {
+        // offscreen 路径会返回 paused，直接采用返回值
+        isPaused = resp.paused
+      }
+      // 元素/区域路径不做乐观更新，等待 STREAM_META 同步
     } catch (e) {
       console.warn('切换暂停失败', e)
     } finally {

@@ -9,6 +9,7 @@
     mode: 'element',
     selecting: false,
     recording: false,
+    paused: false,
     selectedElement: null,
     selectionBox: null,
     isDragging: false,
@@ -104,6 +105,27 @@
       else { state.sinkWin?.postMessage(msg, '*'); }
     } catch (e) { console.warn('[Stream][Content] sink post failed', e); }
   }
+  // Pause/Resume helper for element/region recording
+  function setPaused(p) {
+    try {
+      if (!state.recording) return;
+      state.paused = !!p;
+      // Control MediaRecorder path if used
+      if (!state.usingWebCodecs && state.mediaRecorder) {
+        try {
+          if (state.paused && state.mediaRecorder.state === 'recording') {
+            state.mediaRecorder.pause();
+          } else if (!state.paused && state.mediaRecorder.state === 'paused') {
+            state.mediaRecorder.resume();
+          }
+        } catch {}
+      }
+      // Notify background/popup about pause state
+      safePortPost({ type: 'STREAM_META', meta: { paused: state.paused } });
+    } catch {}
+  }
+
+
 
 
   // Ensure extension iframe sink (offscreen.html?mode=iframe) is present and handshaked
@@ -658,6 +680,7 @@
             for (;;) {
               const { done, value: frame } = await state.reader.read();
               if (done) break;
+              if (state.paused) { try { frame?.close?.() } catch {} await new Promise((r) => setTimeout(r, 60)); continue; }
               const keyFrame = frameIndex === 0 || (frameIndex % (framerate * 2) === 0);
               state.worker?.postMessage({ type: 'frame', frame, keyFrame, i: frameIndex }, [frame]);
               frameIndex++;
@@ -1014,6 +1037,9 @@
         clearSelection(); break;
       case 'DOWNLOAD_VIDEO':
         downloadVideo(); break;
+      case 'TOGGLE_PAUSE':
+        if (state.recording) setPaused(!state.paused);
+        break;
       case 'STATE_UPDATE':
         // no-op for now
         break;

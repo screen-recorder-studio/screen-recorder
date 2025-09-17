@@ -8,7 +8,7 @@ import { ensureOffscreenDocument, sendToOffscreen } from '../lib/utils/offscreen
 
 
 // 添加 lab 功能：每个标签页的状态管理
-const tabStates = new Map(); // tabId -> { mode: 'element'|'region', selecting: boolean, recording: boolean }
+const tabStates = new Map(); // tabId -> { mode: 'element'|'region', selecting: boolean, recording: boolean, uiSelectedMode?: 'area'|'element'|'camera'|'tab'|'window'|'screen' }
 
 // 能力探测：计算某个标签页是否允许内容脚本（用于隐藏元素/区域录制）
 async function computeCapabilities(tabId) {
@@ -72,7 +72,7 @@ async function computeCapabilities(tabId) {
 // 辅助：带能力信息广播当前 tab 状态
 async function broadcastStateWithCapabilities(tabId) {
   // Ensure state exists
-  if (!tabStates.has(tabId)) tabStates.set(tabId, { mode: 'element', selecting: false, recording: false })
+  if (!tabStates.has(tabId)) tabStates.set(tabId, { mode: 'element', selecting: false, recording: false, uiSelectedMode: 'area' })
   const state = tabStates.get(tabId)
   const capabilities = await computeCapabilities(tabId)
   broadcastToTab(tabId, { type: 'STATE_UPDATE', state: { ...state, capabilities } })
@@ -268,7 +268,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (!globalTypes.has(message.type)) {
       if (!tabId) return;
       // Ensure state for tab-scoped features
-      if (!tabStates.has(tabId)) tabStates.set(tabId, { mode: 'element', selecting: false, recording: false });
+      if (!tabStates.has(tabId)) tabStates.set(tabId, { mode: 'element', selecting: false, recording: false, uiSelectedMode: 'area' });
       state = tabStates.get(tabId);
     }
     switch (message.type) {
@@ -284,6 +284,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         broadcastStateWithCapabilities(tabId);
         try { sendResponse({ ok: true, state }); } catch (e) {}
         return true;
+
+      case 'SET_SELECTED_MODE': {
+        // Persist popup's selected mode for this tab (used to restore UI on reopen)
+        state.uiSelectedMode = (message.uiMode === 'element' || message.uiMode === 'area' || message.uiMode === 'camera' || message.uiMode === 'tab' || message.uiMode === 'window' || message.uiMode === 'screen')
+          ? message.uiMode
+          : (state.uiSelectedMode || 'area');
+        // If switching to element/area, keep legacy state.mode in sync (region vs element)
+        if (message.uiMode === 'area') state.mode = 'region';
+        if (message.uiMode === 'element') state.mode = 'element';
+        broadcastStateWithCapabilities(tabId);
+        try { sendResponse({ ok: true, state }); } catch (e) {}
+        return true;
+      }
+
 
       case 'ENTER_SELECTION':
         state.selecting = true;
@@ -358,6 +372,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Treat as a stop event when it originates from offscreen
         console.log('[stop-share] background: RECORDING_COMPLETE → mark stopped')
         try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
+        try { void stopBadgeTimer() } catch {}
         try {
           chrome.runtime.sendMessage({ type: 'STATE_UPDATE', state: { recording: false } })
         } catch (e) {
@@ -371,6 +386,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         try {
           console.log('[stop-share] background: OPFS_RECORDING_READY → mark stopped')
           try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
+          try { void stopBadgeTimer() } catch {}
           try { chrome.runtime.sendMessage({ type: 'STATE_UPDATE', state: { recording: false } }) } catch {}
           const targetUrl = chrome.runtime.getURL(`studio.html?id=${encodeURIComponent(message.id)}`)
           chrome.tabs.create({ url: targetUrl }, () => {
@@ -389,6 +405,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Update tab state and fan-out to sidepanel
         state.recording = true;
         try { currentRecording.isRecording = true; currentRecording.isPaused = false } catch {}
+        try { if (!badgeInterval) { void startBadgeTimer() } else { void resumeBadgeTimer() } } catch {}
         console.log('[stop-share] background: STREAM_START', { tabId })
         broadcastToTab(tabId, { ...message, tabId });
         void broadcastStateWithCapabilities(tabId);
@@ -398,6 +415,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'STREAM_META': {
         if (message?.meta && typeof message.meta.paused === 'boolean') {
           try { currentRecording.isPaused = !!message.meta.paused } catch {}
+          try { message.meta.paused ? void pauseBadgeTimer() : void resumeBadgeTimer() } catch {}
         }
         broadcastToTab(tabId, { ...message, tabId });
         try { sendResponse({ ok: true }); } catch (e) {}
@@ -411,6 +429,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'STREAM_END': {
         state.recording = false;
         try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
+        try { void stopBadgeTimer() } catch {}
         console.log('[stop-share] background: STREAM_END', { tabId })
         broadcastToTab(tabId, { ...message, tabId });
         void broadcastStateWithCapabilities(tabId);
@@ -420,6 +439,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'STREAM_ERROR': {
         state.recording = false;
         try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
+        try { void stopBadgeTimer() } catch {}
         console.log('[stop-share] background: STREAM_ERROR', { tabId })
         broadcastToTab(tabId, { ...message, tabId });
         void broadcastStateWithCapabilities(tabId);
@@ -462,10 +482,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'REQUEST_TOGGLE_PAUSE': {
         (async () => {
           try {
+            const tgtTabId = sender.tab?.id ?? message.tabId;
+            const tabState = tgtTabId != null ? tabStates.get(tgtTabId) : undefined;
+            const isElementOrRegion = !!tabState && (tabState.mode === 'element' || tabState.mode === 'region');
+            if (tgtTabId != null && isElementOrRegion) {
+              // Route pause toggle to content script for element/region pipeline
+              try { chrome.tabs.sendMessage(tgtTabId, { type: 'TOGGLE_PAUSE' }); } catch {}
+              try { sendResponse({ ok: true }) } catch {}
+              return;
+            }
+            // Default: control offscreen recording pause
             const newPaused = !currentRecording.isPaused
             await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
             await sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_TOGGLE_PAUSE', payload: { paused: newPaused } })
             currentRecording.isPaused = newPaused
+            try { newPaused ? await pauseBadgeTimer() : await resumeBadgeTimer() } catch {}
             try { sendResponse({ ok: true, paused: newPaused }) } catch (e) {}
           } catch (e) {
             try { sendResponse({ ok: false, error: String(e) }) } catch (_) {}
@@ -816,8 +847,64 @@ let currentRecording = {
   startTime: null
 }
 
+// --- Badge timer for recording duration on action button ---
+let badgeInterval: any = null
+let badgeAccumMs = 0
+let badgeLastStart: number | null = null
+
+function formatElapsed(ms: number): string {
+  const totalSec = Math.max(0, Math.floor(ms / 1000))
+  const h = Math.floor(totalSec / 3600)
+  const m = Math.floor((totalSec % 3600) / 60)
+  const s = totalSec % 60
+  // Keep text short for badge: prefer m:ss under 10m, else mm or h+
+  if (h >= 1) return `${h}h`
+  if (m >= 10) return `${m}m`
+  return `${m}:${s.toString().padStart(2,'0')}`
+}
+
+async function updateBadgeText() {
+  try {
+    const extra = (currentRecording.isRecording && !currentRecording.isPaused && badgeLastStart != null)
+      ? Date.now() - badgeLastStart
+      : 0
+    const text = formatElapsed(badgeAccumMs + extra)
+    await chrome.action.setBadgeText({ text })
+  } catch {}
+}
+
+async function startBadgeTimer() {
+  try { await chrome.action.setBadgeBackgroundColor({ color: '#d32f2f' }) } catch {}
+  badgeAccumMs = 0
+  badgeLastStart = Date.now()
+  if (badgeInterval) clearInterval(badgeInterval)
+  badgeInterval = setInterval(updateBadgeText, 1000)
+  await updateBadgeText()
+}
+
+async function pauseBadgeTimer() {
+  if (badgeLastStart != null) {
+    badgeAccumMs += Date.now() - badgeLastStart
+    badgeLastStart = null
+  }
+  await updateBadgeText()
+}
+
+async function resumeBadgeTimer() {
+  if (badgeLastStart == null) badgeLastStart = Date.now()
+  await updateBadgeText()
+}
+
+async function stopBadgeTimer() {
+  if (badgeInterval) { try { clearInterval(badgeInterval) } catch {} badgeInterval = null }
+  badgeAccumMs = 0
+  badgeLastStart = null
+  try { await chrome.action.setBadgeText({ text: '' }) } catch {}
+}
+
 // Unified start/stop helpers for Offscreen recording
 async function startRecordingViaOffscreen(options) {
+
   try {
     const mode = (options?.mode === 'tab' || options?.mode === 'window' || options?.mode === 'screen') ? options.mode : 'screen'
     const normalizedOptions = {
@@ -830,10 +917,7 @@ async function startRecordingViaOffscreen(options) {
     await sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_START_RECORDING', payload: { options: normalizedOptions } })
     currentRecording = { isRecording: true, isPaused: false, streamId: 'offscreen', startTime: Date.now() }
 
-    try {
-      await chrome.action.setBadgeText({ text: '🔴' })
-      await chrome.action.setBadgeBackgroundColor({ color: '#ff0000' })
-    } catch (e) { /* optional badge update failure */ }
+    try { await startBadgeTimer() } catch (e) { /* optional badge update failure */ }
   } catch (e) {
     // keep state unchanged on failure
     throw e
@@ -847,9 +931,7 @@ async function stopRecordingViaOffscreen() {
     sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_STOP_RECORDING' })
   } finally {
     currentRecording = { isRecording: false, isPaused: false, streamId: null, startTime: null }
-    try {
-      await chrome.action.setBadgeText({ text: '' })
-    } catch (e) { /* optional badge clear failure */ }
+    try { await stopBadgeTimer() } catch (e) { /* optional badge clear failure */ }
   }
 }
 
