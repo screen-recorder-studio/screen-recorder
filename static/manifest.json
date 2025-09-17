@@ -11,7 +11,8 @@
     "sidePanel",
     "activeTab",
     "scripting",
-    "tabs"
+    "tabs",
+    "offscreen"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -25,7 +26,8 @@
     "type": "module"
   },
   "action": {
-    "default_title": "打开录制面板"
+    "default_title": "打开录制面板",
+    "default_popup": "popup.html"
   },
   "icons": {
     "16": "assets/icon16.svg",
@@ -37,8 +39,8 @@
     {
       "resources": [
         "encoder-worker.js",
-        "offscreen.html",
-        "offscreen.js"
+        "opfs-writer.html",
+        "opfs-writer.js"
       ],
       "matches": ["<all_urls>"]
     }

@@ -1,6 +1,7 @@
 import { build } from 'vite'
 
-// Build src/extensions/offscreen.ts into build/offscreen.js as an ES module (for offscreen.html)
+// Build src/extensions/offscreen.ts into build/offscreen.js for the offscreen.html page
+// Use IIFE so offscreen.html can include it without type="module"
 async function main() {
   await build({
     configFile: false,
@@ -12,9 +13,9 @@ async function main() {
       minify: false,
       sourcemap: false,
       rollupOptions: {
-        input: 'src/extensions/offscreen.ts',
+        input: 'src/extensions/offscreen-main.ts',
         output: {
-          format: 'es',
+          format: 'iife',
           entryFileNames: 'offscreen.js',
           inlineDynamicImports: true,
         }

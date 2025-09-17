@@ -9,6 +9,7 @@
     mode: 'element',
     selecting: false,
     recording: false,
+    paused: false,
     selectedElement: null,
     selectionBox: null,
     isDragging: false,
@@ -44,6 +45,32 @@
     recordingMetadata: null
   };
 
+  // --- Selection Tips (popup triggers ENTER_SELECTION) ---
+  let selectionTipEl = null as HTMLElement | null
+  let selectionTipTimer: any = null
+  function showSelectionTip(mode: 'element' | 'region') {
+    try { hideSelectionTip() } catch {}
+    const el = document.createElement('div')
+    el.className = 'mcp-selection-tip'
+    el.textContent = mode === 'element'
+      ? '提示：点击页面中的一个元素完成选择，然后回到扩展弹窗点击“开始录制”。'
+      : '提示：按住鼠标拖拽选择一个区域，然后回到扩展弹窗点击“开始录制”。'
+    el.style.cssText = [
+      'position:fixed', 'top:16px', 'left:50%', 'transform:translateX(-50%)',
+      'z-index:2147483647', 'background:rgba(17,24,39,0.9)', 'color:#fff',
+      'padding:8px 12px', 'border-radius:8px', 'font-size:12px', 'box-shadow:0 8px 24px rgba(0,0,0,.25)'
+    ].join(';')
+    document.documentElement.appendChild(el)
+    selectionTipEl = el
+    try { if (selectionTipTimer) clearTimeout(selectionTipTimer) } catch {}
+    selectionTipTimer = setTimeout(() => { try { hideSelectionTip() } catch {} }, 3500)
+  }
+  function hideSelectionTip() {
+    try { if (selectionTipTimer) clearTimeout(selectionTipTimer); selectionTipTimer = null } catch {}
+    if (selectionTipEl) { try { selectionTipEl.remove() } catch {}; selectionTipEl = null }
+  }
+
+
 	  // 流式累积是否就绪（sidepanel注册后由 background 通知）
 	  let streamingReady = false;
 
@@ -78,6 +105,27 @@
       else { state.sinkWin?.postMessage(msg, '*'); }
     } catch (e) { console.warn('[Stream][Content] sink post failed', e); }
   }
+  // Pause/Resume helper for element/region recording
+  function setPaused(p) {
+    try {
+      if (!state.recording) return;
+      state.paused = !!p;
+      // Control MediaRecorder path if used
+      if (!state.usingWebCodecs && state.mediaRecorder) {
+        try {
+          if (state.paused && state.mediaRecorder.state === 'recording') {
+            state.mediaRecorder.pause();
+          } else if (!state.paused && state.mediaRecorder.state === 'paused') {
+            state.mediaRecorder.resume();
+          }
+        } catch {}
+      }
+      // Notify background/popup about pause state
+      safePortPost({ type: 'STREAM_META', meta: { paused: state.paused } });
+    } catch {}
+  }
+
+
 
 
   // Ensure extension iframe sink (offscreen.html?mode=iframe) is present and handshaked
@@ -86,7 +134,7 @@
       if (state.sinkWin && typeof state.sinkWin.postMessage === 'function') return state.sinkWin;
       const iframe = document.createElement('iframe');
       iframe.style.cssText = 'position:fixed; right:0; bottom:0; width:1px; height:1px; opacity:0; border:0; z-index:2147483647;';
-      iframe.src = chrome.runtime.getURL('offscreen.html?mode=iframe');
+      iframe.src = chrome.runtime.getURL('opfs-writer.html?mode=iframe');
       document.documentElement.appendChild(iframe);
       await new Promise((r) => iframe.onload = r);
       const win = iframe.contentWindow;
@@ -294,6 +342,7 @@
         state.selecting = false;
         if (dragOverlay) { try { dragOverlay.remove(); } catch(_){} dragOverlay = null; }
         report({ selecting: false });
+        hideSelectionTip();
         // 预热通信 iframe，降低 startCapture 阶段等待
         ensureSinkIframe().catch(() => {});
       }
@@ -305,6 +354,11 @@
   let dragOverlay = null;
 
   function enterSelection() {
+    // 清理可能重复的监听，避免切换模式时重复绑定
+    document.removeEventListener('mouseover', onHover, true);
+    document.removeEventListener('mouseout', onOut, true);
+    document.removeEventListener('click', onClick, true);
+
     state.selecting = true;
     if (state.mode === 'region') {
       dragOverlay = dragOverlay || addDragOverlay();
@@ -314,6 +368,7 @@
       document.addEventListener('mouseout', onOut, true);
       document.addEventListener('click', onClick, true);
     }
+    showSelectionTip(state.mode === 'region' ? 'region' : 'element');
     report({});
   }
 
@@ -332,6 +387,7 @@
     document.removeEventListener('mouseover', onHover, true);
     document.removeEventListener('mouseout', onOut, true);
     document.removeEventListener('click', onClick, true);
+    hideSelectionTip();
   }
 
   function isOwnNode(node) {
@@ -367,6 +423,7 @@
     document.removeEventListener('mouseout', onOut, true);
     document.removeEventListener('click', onClick, true);
     report({ selecting: false });
+    hideSelectionTip();
     // 预热通信 iframe，降低 startCapture 阶段等待
     ensureSinkIframe().catch(() => {});
   }
@@ -623,6 +680,7 @@
             for (;;) {
               const { done, value: frame } = await state.reader.read();
               if (done) break;
+              if (state.paused) { try { frame?.close?.() } catch {} await new Promise((r) => setTimeout(r, 60)); continue; }
               const keyFrame = frameIndex === 0 || (frameIndex % (framerate * 2) === 0);
               state.worker?.postMessage({ type: 'frame', frame, keyFrame, i: frameIndex }, [frame]);
               frameIndex++;
@@ -734,6 +792,7 @@
       state.selectionBox.style.height = '0px';
     }
 
+    hideSelectionTip();
     report({ selectedDesc: undefined });
   }
 
@@ -978,6 +1037,9 @@
         clearSelection(); break;
       case 'DOWNLOAD_VIDEO':
         downloadVideo(); break;
+      case 'TOGGLE_PAUSE':
+        if (state.recording) setPaused(!state.paused);
+        break;
       case 'STATE_UPDATE':
         // no-op for now
         break;

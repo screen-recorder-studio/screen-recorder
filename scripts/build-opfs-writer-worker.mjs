@@ -1,6 +1,6 @@
 import { build } from 'vite'
 
-// Build src/extensions/opfs-writer.ts into build/opfs-writer.js as an ES module (for opfs-writer.html)
+// Build src/lib/workers/opfs-writer-worker.ts into build/opfs-writer-worker.js as a module worker
 async function main() {
   await build({
     configFile: false,
@@ -12,10 +12,10 @@ async function main() {
       minify: false,
       sourcemap: false,
       rollupOptions: {
-        input: 'src/extensions/opfs-writer.ts',
+        input: 'src/lib/workers/opfs-writer-worker.ts',
         output: {
           format: 'es',
-          entryFileNames: 'opfs-writer.js',
+          entryFileNames: 'opfs-writer-worker.js',
           inlineDynamicImports: true,
         }
       }
