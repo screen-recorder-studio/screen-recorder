@@ -20,6 +20,17 @@
   let selectedMode = $state<'area' | 'element' | 'camera' | 'tab' | 'window' | 'screen'>('area')
   let isLoading = $state(false)
 
+  // 能力状态：当前页面是否允许注入内容脚本（影响元素/区域模式是否可用）
+  let contentScriptAvailable = $state<boolean | null>(null)
+  let capabilityReason = $state<string | undefined>(undefined)
+  let currentTabId = $state<number | null>(null)
+
+  function isModeDisabledLocal(modeId: typeof selectedMode) {
+    const restricted = (modeId === 'element' || modeId === 'area') && contentScriptAvailable === false
+    const blockedByRecording = isRecording && selectedMode !== modeId
+    return restricted || blockedByRecording
+  }
+
   // 初始化：同步后台状态
   onMount(async () => {
     try {
@@ -28,6 +39,21 @@
       isPaused = !!resp?.state?.isPaused
     } catch (e) {
       console.warn('初始化录制状态失败', e)
+    }
+    // 初始化获取当前标签页能力
+    try {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
+      currentTabId = (tabs && tabs[0] && typeof tabs[0].id === 'number') ? tabs[0].id : null
+      if (currentTabId != null) {
+        const st = await chrome.runtime.sendMessage({ type: 'GET_STATE', tabId: currentTabId })
+        const caps = st?.state?.capabilities
+        if (caps) {
+          contentScriptAvailable = !!caps.contentScriptAvailable
+          capabilityReason = caps.reason
+        }
+      }
+    } catch (e) {
+      // ignore caps init errors
     }
   })
 
@@ -50,6 +76,10 @@
           if (typeof msg.state.recording === 'boolean') {
             isRecording = !!msg.state.recording
             if (!isRecording) isPaused = false
+          }
+          if (msg.state.capabilities) {
+            contentScriptAvailable = !!msg.state.capabilities.contentScriptAvailable
+            capabilityReason = msg.state.capabilities.reason
           }
         }
       } catch (e) {
@@ -103,9 +133,37 @@
   ]
 
   // 处理模式选择
-  function selectMode(mode: typeof selectedMode) {
+  async function selectMode(mode: typeof selectedMode) {
+    if (isModeDisabledLocal(mode)) return
     if (!isRecording) {
+      const prev = selectedMode
       selectedMode = mode
+
+      // 拿到当前活动 tabId
+      let tabId = currentTabId
+      try {
+        if (tabId == null) {
+          const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
+          tabId = (tabs && tabs[0] && typeof tabs[0].id === 'number') ? tabs[0].id : null
+        }
+      } catch {}
+
+      // 若从 元素/区域 切到 其它类型（tab/window/screen），清除页面上的选区并退出选择态
+      const isElemOrArea = (m: typeof selectedMode) => m === 'element' || m === 'area'
+      if (isElemOrArea(prev) && !isElemOrArea(mode) && tabId != null) {
+        try {
+          await chrome.runtime.sendMessage({ type: 'CLEAR_SELECTION', tabId })
+          await chrome.runtime.sendMessage({ type: 'EXIT_SELECTION', tabId })
+        } catch {}
+      }
+
+      // 若切换到 元素/区域：先清除旧选区（避免跨模式残留），再进入新模式选择
+      if (isElemOrArea(mode) && tabId != null) {
+        try { await chrome.runtime.sendMessage({ type: 'CLEAR_SELECTION', tabId }) } catch {}
+        const mapped = mode === 'area' ? 'region' : 'element'
+        await chrome.runtime.sendMessage({ type: 'SET_MODE', mode: mapped, tabId }).catch(() => {})
+        await chrome.runtime.sendMessage({ type: 'ENTER_SELECTION', tabId }).catch(() => {})
+      }
     }
   }
 
@@ -114,13 +172,32 @@
     if (isLoading) return
     isLoading = true
     try {
-      const mode = (['tab','window','screen'] as const).includes(selectedMode as any) ? (selectedMode as 'tab'|'window'|'screen') : 'screen'
-      await chrome.runtime.sendMessage({
-        type: 'REQUEST_START_RECORDING',
-        payload: { options: { mode, video: true, audio: false } }
-      })
-      isRecording = true
-      isPaused = false
+      if (selectedMode === 'element' || selectedMode === 'area') {
+        // 元素/区域走内容脚本 START_CAPTURE
+        let tabId = currentTabId
+        try {
+          if (tabId == null) {
+            const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
+            tabId = (tabs && tabs[0] && typeof tabs[0].id === 'number') ? tabs[0].id : null
+          }
+        } catch {}
+        if (tabId != null) {
+          await chrome.runtime.sendMessage({ type: 'START_CAPTURE', tabId })
+          isRecording = true
+          isPaused = false
+        } else {
+          throw new Error('未获取到活动标签页，无法开始录制')
+        }
+      } else {
+        // 其它模式沿用 offscreen 管线
+        const mode = (['tab','window','screen'] as const).includes(selectedMode as any) ? (selectedMode as 'tab'|'window'|'screen') : 'screen'
+        await chrome.runtime.sendMessage({
+          type: 'REQUEST_START_RECORDING',
+          payload: { options: { mode, video: true, audio: false } }
+        })
+        isRecording = true
+        isPaused = false
+      }
     } catch (error) {
       console.error('开始录制失败:', error)
     } finally {
@@ -149,7 +226,22 @@
   // 停止录制
   async function stopRecording() {
     try {
-      await chrome.runtime.sendMessage({ type: 'REQUEST_STOP_RECORDING' })
+      if (selectedMode === 'element' || selectedMode === 'area') {
+        let tabId = currentTabId
+        try {
+          if (tabId == null) {
+            const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
+            tabId = (tabs && tabs[0] && typeof tabs[0].id === 'number') ? tabs[0].id : null
+          }
+        } catch {}
+        if (tabId != null) {
+          await chrome.runtime.sendMessage({ type: 'STOP_CAPTURE', tabId })
+        } else {
+          console.warn('未获取到活动标签页，无法停止录制');
+        }
+      } else {
+        await chrome.runtime.sendMessage({ type: 'REQUEST_STOP_RECORDING' })
+      }
     } catch (e) {
       console.warn('发送停止录制消息失败', e)
     }
@@ -202,12 +294,12 @@
           class:bg-blue-50={selectedMode === mode.id}
           class:border-gray-200={selectedMode !== mode.id}
           class:bg-white={selectedMode !== mode.id}
-          class:hover:border-gray-300={selectedMode !== mode.id && !isRecording}
-          class:opacity-50={isRecording && selectedMode !== mode.id}
-          class:cursor-not-allowed={isRecording && selectedMode !== mode.id}
+          class:hover:border-gray-300={selectedMode !== mode.id && !isModeDisabledLocal(mode.id)}
+          class:opacity-50={isModeDisabledLocal(mode.id)}
+          class:cursor-not-allowed={isModeDisabledLocal(mode.id)}
           onclick={() => selectMode(mode.id)}
-          disabled={isRecording && selectedMode !== mode.id}
-          title={mode.description}
+          disabled={isModeDisabledLocal(mode.id)}
+          title={(mode.id==='element'||mode.id==='area') && contentScriptAvailable===false ? '此页面受限制，无法使用该模式' : mode.description}
         >
           <!-- 选中指示器 -->
           {#if selectedMode === mode.id}

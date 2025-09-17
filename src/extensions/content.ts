@@ -44,6 +44,32 @@
     recordingMetadata: null
   };
 
+  // --- Selection Tips (popup triggers ENTER_SELECTION) ---
+  let selectionTipEl = null as HTMLElement | null
+  let selectionTipTimer: any = null
+  function showSelectionTip(mode: 'element' | 'region') {
+    try { hideSelectionTip() } catch {}
+    const el = document.createElement('div')
+    el.className = 'mcp-selection-tip'
+    el.textContent = mode === 'element'
+      ? '提示：点击页面中的一个元素完成选择，然后回到扩展弹窗点击“开始录制”。'
+      : '提示：按住鼠标拖拽选择一个区域，然后回到扩展弹窗点击“开始录制”。'
+    el.style.cssText = [
+      'position:fixed', 'top:16px', 'left:50%', 'transform:translateX(-50%)',
+      'z-index:2147483647', 'background:rgba(17,24,39,0.9)', 'color:#fff',
+      'padding:8px 12px', 'border-radius:8px', 'font-size:12px', 'box-shadow:0 8px 24px rgba(0,0,0,.25)'
+    ].join(';')
+    document.documentElement.appendChild(el)
+    selectionTipEl = el
+    try { if (selectionTipTimer) clearTimeout(selectionTipTimer) } catch {}
+    selectionTipTimer = setTimeout(() => { try { hideSelectionTip() } catch {} }, 3500)
+  }
+  function hideSelectionTip() {
+    try { if (selectionTipTimer) clearTimeout(selectionTipTimer); selectionTipTimer = null } catch {}
+    if (selectionTipEl) { try { selectionTipEl.remove() } catch {}; selectionTipEl = null }
+  }
+
+
 	  // 流式累积是否就绪（sidepanel注册后由 background 通知）
 	  let streamingReady = false;
 
@@ -294,6 +320,7 @@
         state.selecting = false;
         if (dragOverlay) { try { dragOverlay.remove(); } catch(_){} dragOverlay = null; }
         report({ selecting: false });
+        hideSelectionTip();
         // 预热通信 iframe，降低 startCapture 阶段等待
         ensureSinkIframe().catch(() => {});
       }
@@ -305,6 +332,11 @@
   let dragOverlay = null;
 
   function enterSelection() {
+    // 清理可能重复的监听，避免切换模式时重复绑定
+    document.removeEventListener('mouseover', onHover, true);
+    document.removeEventListener('mouseout', onOut, true);
+    document.removeEventListener('click', onClick, true);
+
     state.selecting = true;
     if (state.mode === 'region') {
       dragOverlay = dragOverlay || addDragOverlay();
@@ -314,6 +346,7 @@
       document.addEventListener('mouseout', onOut, true);
       document.addEventListener('click', onClick, true);
     }
+    showSelectionTip(state.mode === 'region' ? 'region' : 'element');
     report({});
   }
 
@@ -332,6 +365,7 @@
     document.removeEventListener('mouseover', onHover, true);
     document.removeEventListener('mouseout', onOut, true);
     document.removeEventListener('click', onClick, true);
+    hideSelectionTip();
   }
 
   function isOwnNode(node) {
@@ -367,6 +401,7 @@
     document.removeEventListener('mouseout', onOut, true);
     document.removeEventListener('click', onClick, true);
     report({ selecting: false });
+    hideSelectionTip();
     // 预热通信 iframe，降低 startCapture 阶段等待
     ensureSinkIframe().catch(() => {});
   }
@@ -734,6 +769,7 @@
       state.selectionBox.style.height = '0px';
     }
 
+    hideSelectionTip();
     report({ selectedDesc: undefined });
   }
 

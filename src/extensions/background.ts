@@ -328,11 +328,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         try { sendResponse({ ok: true }); } catch (e) {}
         return true;
 
-      case 'CONTENT_REPORT':
-        // pass-through updates to side panel
-        broadcastToTab(tabId, { type: 'STATE_UPDATE', state: { ...state, ...message.partial } });
-        try { sendResponse({ ok: true }); } catch (e) {}
+      case 'CONTENT_REPORT': {
+        // 合并 Capabilities：保留 computeCapabilities 的结果（含 contentScriptAvailable），再叠加内容脚本上报的能力位
+        (async () => {
+          try {
+            const partial = message.partial || {}
+            let mergedCaps = undefined
+            if (partial.capabilities) {
+              const base = await computeCapabilities(tabId)
+              mergedCaps = { ...base, ...partial.capabilities }
+            }
+            const nextState = mergedCaps ? { ...state, ...partial, capabilities: mergedCaps } : { ...state, ...partial }
+            broadcastToTab(tabId, { type: 'STATE_UPDATE', state: nextState })
+            try { sendResponse({ ok: true }) } catch {}
+          } catch (e) {
+            console.warn('[Background] CONTENT_REPORT handling error', e)
+            try { sendResponse({ ok: false }) } catch {}
+          }
+        })();
         return true;
+      }
 
       case 'ELEMENT_RECORDING_COMPLETE':
         // 处理元素录制完成，传递数据给主系统
