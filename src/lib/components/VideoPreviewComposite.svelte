@@ -1,7 +1,7 @@
 <!-- 视频预览组件 - 使用 VideoComposite Worker 进行背景合成 -->
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { Play, Pause, Square, LoaderCircle, Monitor, Info } from '@lucide/svelte'
+  import { Play, Pause, LoaderCircle, Monitor, Info } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import { DataFormatValidator } from '$lib/utils/data-format-validator'
   import { imageBackgroundManager } from '$lib/services/image-background-manager'
@@ -80,8 +80,22 @@
   let isProcessing = $state(false)
   let hasEverProcessed = $state(false)
   let compositeWorker: Worker | null = null
-  // UI 显示用时长（优先使用外部传入的真实时长）
-  const uiDurationSec = $derived(durationMs > 0 ? durationMs / 1000 : duration)
+  // 播放控制状态
+  let currentFrameIndex = $state(0)
+  let totalFrames = $state(0)
+  let currentTime = $state(0)
+  let duration = $state(0)
+  let frameRate = 30
+  let isPlaying = $state(false)
+  let shouldContinuePlayback = $state(false) // 🔧 连续播放标志
+  let continueFromGlobalFrame = $state(0) // 🔧 记录应该从哪个全局帧继续播放
+
+  // UI 显示用时长：优先使用全局帧数/帧率（与时间轴一致），其次 durationMs，最后回退内部 duration
+  const uiDurationSec = $derived.by(() => {
+    if (totalFramesAll > 0 && frameRate > 0) return totalFramesAll / frameRate
+    if (durationMs > 0) return durationMs / 1000
+    return duration
+  })
 
   // 🔧 时间轴最大值（毫秒）：视频编辑器优化版本
   const timelineMaxMs = $derived.by(() => {
@@ -128,15 +142,6 @@
   })
 
 
-  // 播放控制状态
-  let currentFrameIndex = $state(0)
-  let totalFrames = $state(0)
-  let currentTime = $state(0)
-  let duration = $state(0)
-  let frameRate = 30
-  let isPlaying = $state(false)
-  let shouldContinuePlayback = $state(false) // 🔧 连续播放标志
-  let continueFromGlobalFrame = $state(0) // 🔧 记录应该从哪个全局帧继续播放
 
   // 输出尺寸信息
   let outputWidth = $state(1920)
@@ -163,12 +168,12 @@
     let calculatedWidth, calculatedHeight
 
     if (aspectRatio > availableWidth / availableHeight) {
-      // 宽度受限
-      calculatedWidth = Math.min(availableWidth, displayWidth * 0.9) // 最大不超过90%宽度
+      // 宽度受限：使用全部可用宽度
+      calculatedWidth = availableWidth
       calculatedHeight = Math.round(calculatedWidth / aspectRatio)
     } else {
-      // 高度受限
-      calculatedHeight = Math.min(availableHeight, displayHeight * 0.7) // 最大不超过70%高度
+      // 高度受限：使用全部可用高度
+      calculatedHeight = availableHeight
       calculatedWidth = Math.round(calculatedHeight * aspectRatio)
     }
 
@@ -480,15 +485,23 @@
       return
     }
 
+    // consume unused param to satisfy TS/linters
+    void timestamp
+
+
     try {
       // 高效显示 ImageBitmap
       bitmapCtx.transferFromImageBitmap(bitmap)
 
       // 更新播放状态
       currentFrameIndex = frameIndex
-      currentTime = timestamp / 1000000 // 微秒转秒
+      // 使用全局帧索引计算相对视频开始的时间，避免绝对时间戳（如epoch/us）导致显示超大值
+      currentTime = (windowStartIndex + frameIndex) / frameRate
 
-      console.log(`🎬 [VideoPreview] Frame displayed: ${frameIndex}/${totalFrames}, global: ${windowStartIndex + frameIndex + 1}/${totalFramesAll}`)
+      // 调试：降低逐帧日志开销，仅开发环境且每60帧输出一次
+      // if (import.meta.env.DEV && frameIndex % 60 === 0) {
+      //   console.debug(`[VideoPreview] frame ${frameIndex}/${totalFrames} global ${windowStartIndex + frameIndex + 1}/${totalFramesAll}`)
+      // }
     } catch (error) {
       console.error('❌ [VideoPreview] Display error:', error)
     }
@@ -767,6 +780,15 @@
     seekToFrame(frameIndex)
   }
 
+  // 格式化秒为 00:00（mm:ss），供时间轴底部显示
+  function formatTimeSec(sec: number): string {
+    const total = Math.max(0, Math.floor(sec))
+    const mm = Math.floor(total / 60)
+    const ss = total % 60
+    return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
+  }
+
+
   // 更新背景配置
   async function updateBackgroundConfig(newConfig: typeof backgroundConfig) {
     if (!compositeWorker) return
@@ -1043,6 +1065,8 @@
       // 需要切换窗口
       console.log('[progress] Frame outside current window, requesting new window')
       const targetTimeMs = (globalFrameIndex / frameRate) * 1000
+
+
       onRequestWindow?.({
         centerMs: targetTimeMs,
         beforeMs: 1500,
@@ -1193,43 +1217,6 @@
     </div>
   </div>
 
-  <!-- 播放控制 - 固定高度 -->
-  {#if showControls && totalFrames > 0}
-    <div class="flex-shrink-0 flex items-center justify-between p-3 bg-gray-800 text-white text-sm">
-      <div class="flex items-center gap-2">
-        <button
-          class="flex items-center justify-center w-8 h-8 border border-gray-600 text-white rounded cursor-pointer transition-all duration-200 hover:bg-gray-700 hover:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          onclick={isPlaying ? pause : play}
-          disabled={isProcessing}
-        >
-          {#if isPlaying}
-            <Pause class="w-4 h-4" />
-          {:else}
-            <Play class="w-4 h-4" />
-          {/if}
-        </button>
-
-        <button
-          class="flex items-center justify-center w-8 h-8 border border-gray-600 text-white rounded cursor-pointer transition-all duration-200 hover:bg-gray-700 hover:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          onclick={stop}
-          disabled={isProcessing}
-        >
-          <Square class="w-4 h-4" />
-        </button>
-
-        <span class="font-mono text-sm text-gray-300 ml-2">
-          {Math.floor(currentTime)}s / {Math.floor(uiDurationSec)}s
-        </span>
-      </div>
-
-      <div class="flex gap-4 text-xs text-gray-400">
-        <span>帧: {windowStartIndex + currentFrameIndex + 1}/{totalFramesAll > 0 ? totalFramesAll : (totalFrames > 0 ? totalFrames : encodedChunks.length)}</span>
-        <span>窗口: {windowStartIndex + 1}-{windowStartIndex + totalFrames}/{totalFramesAll}</span>
-        <span>分辨率: {outputWidth}×{outputHeight}</span>
-        <span>时长: {(timelineMaxMs / 1000).toFixed(1)}s</span>
-      </div>
-    </div>
-  {/if}
 
   <!-- 时间轴 - 固定高度（基于真实时长，毫秒） -->
   {#if showTimeline && timelineMaxMs > 0}
@@ -1243,10 +1230,29 @@
         oninput={(e) => handleTimelineInput(parseInt((e.target as HTMLInputElement).value))}
         disabled={isProcessing}
       />
-      <div class="flex justify-between text-xs text-gray-400 mt-1">
-        <span>0:00</span>
-        <span>当前: {Math.floor((windowStartIndex + currentFrameIndex) / frameRate * 1000)}ms</span>
-        <span>{Math.floor(timelineMaxMs / 1000)}s</span>
+      <div class="flex justify-between items-center mt-1">
+        <div class="flex items-center gap-2 text-white text-sm">
+          <button
+            class="flex items-center justify-center w-8 h-8 border border-gray-600 text-white rounded cursor-pointer transition-all duration-200 hover:bg-gray-700 hover:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            onclick={isPlaying ? pause : play}
+            disabled={isProcessing}
+          >
+            {#if isPlaying}
+              <Pause class="w-4 h-4" />
+            {:else}
+              <Play class="w-4 h-4" />
+            {/if}
+          </button>
+          <span class="font-mono text-sm text-gray-300 ml-2">
+            {formatTimeSec((windowStartIndex + currentFrameIndex) / frameRate)} / {formatTimeSec(uiDurationSec)}
+          </span>
+        </div>
+        <div class="flex items-center gap-4 text-xs text-gray-400">
+          <span>帧: {windowStartIndex + currentFrameIndex + 1}/{totalFramesAll > 0 ? totalFramesAll : (totalFrames > 0 ? totalFrames : encodedChunks.length)}</span>
+          <span>窗口: {windowStartIndex + 1}-{windowStartIndex + totalFrames}/{totalFramesAll}</span>
+          <span>分辨率: {outputWidth}×{outputHeight}</span>
+          <span>时长: {Math.floor(timelineMaxMs / 1000)}s</span>
+        </div>
       </div>
     </div>
   {/if}
