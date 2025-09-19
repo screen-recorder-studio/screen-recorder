@@ -278,28 +278,33 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
 // 按分类组织的壁纸
 export const WALLPAPER_CATEGORIES = {
   abstract: {
-    name: '抽象',
+    name: '抽象艺术',
     icon: '🎨',
+    description: '抽象图案、艺术创作和现代设计',
     wallpapers: WALLPAPER_PRESETS.filter(w => w.category === 'abstract')
   },
   minimal: {
-    name: '简约',
+    name: '简约风格',
     icon: '⚪',
+    description: '简洁几何、极简设计和纯净美学',
     wallpapers: WALLPAPER_PRESETS.filter(w => w.category === 'minimal')
   },
   nature: {
-    name: '自然',
+    name: '自然风光',
     icon: '🌿',
+    description: '自然景观、植物纹理和有机形态',
     wallpapers: WALLPAPER_PRESETS.filter(w => w.category === 'nature')
   },
   business: {
-    name: '商务',
+    name: '商务专业',
     icon: '💼',
+    description: '商务场景、专业氛围和企业风格',
     wallpapers: WALLPAPER_PRESETS.filter(w => w.category === 'business')
   },
   tech: {
-    name: '科技',
+    name: '科技未来',
     icon: '🔬',
+    description: '科技元素、未来感和数字艺术',
     wallpapers: WALLPAPER_PRESETS.filter(w => w.category === 'tech')
   }
 }
@@ -322,9 +327,72 @@ export function getWallpaperById(id: string): ImagePreset | undefined {
 // 搜索壁纸
 export function searchWallpapers(query: string): ImagePreset[] {
   const lowerQuery = query.toLowerCase()
-  return WALLPAPER_PRESETS.filter(w => 
+  return WALLPAPER_PRESETS.filter(w =>
     w.name.toLowerCase().includes(lowerQuery) ||
     w.description?.toLowerCase().includes(lowerQuery) ||
     w.tags?.some(tag => tag.toLowerCase().includes(lowerQuery))
   )
+}
+
+// 获取随机壁纸
+export function getRandomWallpaper(): ImagePreset {
+  const randomIndex = Math.floor(Math.random() * WALLPAPER_PRESETS.length)
+  return WALLPAPER_PRESETS[randomIndex]
+}
+
+// 根据分类获取随机壁纸
+export function getRandomWallpaperByCategory(category: string): ImagePreset | undefined {
+  const categoryWallpapers = getWallpapersByCategory(category)
+  if (categoryWallpapers.length === 0) return undefined
+  const randomIndex = Math.floor(Math.random() * categoryWallpapers.length)
+  return categoryWallpapers[randomIndex]
+}
+
+// 获取壁纸统计信息
+export function getWallpaperStats() {
+  const stats = {
+    total: WALLPAPER_PRESETS.length,
+    byCategory: {} as Record<string, number>,
+    categories: Object.keys(WALLPAPER_CATEGORIES).length
+  }
+
+  Object.entries(WALLPAPER_CATEGORIES).forEach(([key, category]) => {
+    stats.byCategory[key] = category.wallpapers.length
+  })
+
+  return stats
+}
+
+// 验证壁纸配置
+export function validateWallpaperPreset(preset: ImagePreset): { isValid: boolean; errors: string[] } {
+  const errors: string[] = []
+
+  if (!preset.id || preset.id.trim() === '') {
+    errors.push('壁纸ID不能为空')
+  }
+
+  if (!preset.name || preset.name.trim() === '') {
+    errors.push('壁纸名称不能为空')
+  }
+
+  if (!preset.imageUrl || preset.imageUrl.trim() === '') {
+    errors.push('壁纸图片URL不能为空')
+  }
+
+  if (!preset.config) {
+    errors.push('壁纸配置不能为空')
+  } else {
+    if (!['cover', 'contain', 'fill', 'stretch'].includes(preset.config.fit)) {
+      errors.push('无效的适应模式')
+    }
+
+    if (!['center', 'top', 'bottom', 'left', 'right', 'top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(preset.config.position)) {
+      errors.push('无效的位置设置')
+    }
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors
+  }
 }

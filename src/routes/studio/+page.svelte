@@ -1,10 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte'
-  import { ChromeAPIWrapper } from '$lib/utils/chrome-api'
-  import { TriangleAlert, Activity } from '@lucide/svelte'
 
-  // 引入 Worker 系统
-  import { recordingService } from '$lib/services/recording-service'
   import { recordingStore } from '$lib/stores/recording.svelte'
   import VideoPreviewComposite from '$lib/components/VideoPreviewComposite.svelte'
   import VideoExportPanel from '$lib/components/VideoExportPanel.svelte'
@@ -13,24 +9,7 @@
   import PaddingControl from '$lib/components/PaddingControl.svelte'
   import AspectRatioControl from '$lib/components/AspectRatioControl.svelte'
   import ShadowControl from '$lib/components/ShadowControl.svelte'
-  import RecordButton from '$lib/components/RecordButton.svelte'
-  import ElementRegionSelector from '$lib/components/ElementRegionSelector.svelte'
-  import { elementRecordingIntegration, type ElementRecordingData } from '$lib/utils/element-recording-integration'
-
-  // 录制状态
-  let isRecording = $state(false)
-  let status = $state<'idle' | 'requesting' | 'recording' | 'stopping' | 'error'>('idle')
-  let errorMessage = $state('')
-
-  // 录制相关变量
-  let mediaRecorder: MediaRecorder | null = null
-  let recordedChunks: Blob[] = []
-  let stream: MediaStream | null = null
-
-
-  // Worker 系统状态
-  let workerSystemReady = $state(false)
-  let workerEnvironmentIssues = $state<string[]>([])
+  
   // 当前会话的 OPFS 目录 id（用于导出时触发只读日志）
   let opfsDirId = $state('')
 
@@ -62,32 +41,14 @@
 
 
 
-  // 处理录制完成后的视频预览
-  async function handleVideoPreview(chunks: any[]): Promise<void> {
-    try {
-      console.log('🎨 [VideoPreview] Preparing video preview with', chunks.length, 'chunks')
-
-      // VideoPreview 组件会自动处理解码和渲染
-      // 这里只需要设置状态，组件会响应 encodedChunks 的变化
-
-    } catch (error) {
-      console.error('❌ [VideoPreview] Error preparing video preview:', error)
-    }
-  }
+  // 预览容器尺寸测量（确保时间轴可见、画布自适应）
+  let previewContainerEl: HTMLDivElement | null = null
+  let previewDisplayW = $state(0)
+  let previewDisplayH = $state(0)
+  let resizeObserver: ResizeObserver | null = null
 
 
-  // Worker 系统的计算属性
-  const workerIsRecording = $derived(recordingStore.isRecording)
   const workerStatus = $derived(recordingStore.state.status)
-  const workerErrorMessage = $derived(recordingStore.state.error)
-
-  // 界面模式判断
-  const isMinimalMode = $derived(
-    workerStatus !== 'completed' || workerEncodedChunks.length === 0
-  )
-  const isEditingMode = $derived(
-    workerStatus === 'completed' && workerEncodedChunks.length > 0
-  )
 
   // 组件挂载时的初始化
   onMount(() => {
@@ -197,6 +158,26 @@
 
 
 
+
+    // 测量预览容器实际尺寸，驱动自适应布局（确保时间轴始终可见）
+    try {
+      if (previewContainerEl) {
+        const rect = previewContainerEl.getBoundingClientRect()
+        previewDisplayW = Math.floor(rect.width)
+        previewDisplayH = Math.floor(rect.height)
+        resizeObserver = new ResizeObserver((entries) => {
+          const cr = entries[0]?.contentRect
+          if (cr) {
+            previewDisplayW = Math.floor(cr.width)
+            previewDisplayH = Math.floor(cr.height)
+          }
+        })
+        resizeObserver.observe(previewContainerEl)
+      }
+    } catch (e) {
+      console.warn('[layout] ResizeObserver setup failed:', e)
+    }
+
     return () => {
       // if (typeof chrome !== 'undefined' && chrome.runtime) {
       //   chrome.runtime.onMessage.removeListener(messageListener)
@@ -208,6 +189,8 @@
       } catch {}
       workerCurrentWorker?.terminate?.()
       workerCurrentWorker = null
+      try { resizeObserver?.disconnect?.() } catch {}
+      resizeObserver = null
     }
   })
 
@@ -292,29 +275,23 @@
   <title>屏幕录制</title>
 </svelte:head>
 
-<!-- 完整编辑模式 -->
-{#if isEditingMode}
-
-<!-- new layout -->
 <div class="flex h-screen bg-gray-50">
   <!-- 左侧主预览播放器 - 不允许滚动，高度占满 100vh -->
-  <div class="flex-1 flex flex-col h-full overflow-hidden">
+  <div class="flex-1 min-h-0 flex flex-col h-full overflow-hidden">
     <!-- 预览区域标题 -->
     <div class="flex-shrink-0 p-6 border-b border-gray-200 bg-white">
-      <!-- <h1 class="text-2xl font-bold text-gray-800">视频预览播放器</h1>
-      <p class="text-sm text-gray-600 mt-1">主预览区域 - 固定高度，不滚动</p> -->
       <AspectRatioControl />
     </div>
 
     <!-- 预览播放器内容区域 -->
-    <div class="flex-1 flex flex-col p-6 relative">
+    <div class="flex-1 min-h-0 flex flex-col p-6 relative">
       <!-- 使用新的 VideoPreviewComposite 组件 -->
-      <div class="flex-1 flex items-stretch justify-center">
+      <div class="flex-1 min-h-0 flex items-stretch justify-center" bind:this={previewContainerEl}>
         <VideoPreviewComposite
           encodedChunks={workerEncodedChunks}
           isRecordingComplete={workerStatus === 'completed' || workerStatus === 'idle'}
-          displayWidth={1200}
-          displayHeight={800}
+          displayWidth={previewDisplayW}
+          displayHeight={previewDisplayH}
           showControls={true}
           showTimeline={true}
           durationMs={durationMs}
@@ -405,13 +382,6 @@
           className="worker-video-preview w-full h-full"
         />
       </div>
-
-      <!-- {#if workerEncodedChunks.length > 0}
-        <div class="absolute bottom-6 left-6 flex items-center gap-2 px-3 py-2 bg-blue-500/20 border border-blue-400/30 rounded-lg text-sm text-blue-200 backdrop-blur-sm">
-          <Activity class="w-4 h-4" />
-          <span>已收集 {workerEncodedChunks.length} 个编码块</span>
-        </div>
-      {/if} -->
     </div>
   </div>
 
@@ -419,8 +389,6 @@
   <div class="w-100 bg-white border-l border-gray-200 flex flex-col h-full">
     <!-- 编辑面板标题 -->
     <div class="flex-shrink-0 p-6 border-b border-gray-200">
-      <!-- <h2 class="text-lg font-semibold text-gray-800">编辑面板</h2>
-      <p class="text-sm text-gray-600 mt-1">配置和导出选项</p> -->
       <VideoExportPanel
           encodedChunks={workerEncodedChunks}
           isRecordingComplete={workerStatus === 'completed' || workerStatus === 'idle'}
@@ -459,81 +427,10 @@
           <div class="col-span-2 lg:col-span-1">
             <ShadowControl />
           </div>
-
-        <!-- <div class="bg-gray-50 rounded-lg p-4">
-          <h3 class="font-medium text-gray-800 mb-3">视频配置</h3>
-          <div class="space-y-3">
-            <div class="h-10 bg-white rounded border border-gray-200 flex items-center px-3">
-              <span class="text-sm text-gray-500">背景颜色选择器</span>
-            </div>
-            <div class="h-10 bg-white rounded border border-gray-200 flex items-center px-3">
-              <span class="text-sm text-gray-500">圆角控制</span>
-            </div>
-            <div class="h-10 bg-white rounded border border-gray-200 flex items-center px-3">
-              <span class="text-sm text-gray-500">边距控制</span>
-            </div>
-            <div class="h-10 bg-white rounded border border-gray-200 flex items-center px-3">
-              <span class="text-sm text-gray-500">宽高比控制</span>
-            </div>
-            <div class="h-10 bg-white rounded border border-gray-200 flex items-center px-3">
-              <span class="text-sm text-gray-500">阴影控制</span>
-            </div>
-          </div>
-        </div> -->
-
-        <!-- 导出配置区块 -->
-        <!-- <div class="bg-gray-50 rounded-lg p-4">
-          <h3 class="font-medium text-gray-800 mb-3">导出设置</h3>
-          <div class="space-y-3">
-            <div class="h-12 bg-blue-500 rounded text-white flex items-center justify-center">
-              <span class="text-sm font-medium">导出 WebM</span>
-            </div>
-            <div class="h-12 bg-green-500 rounded text-white flex items-center justify-center">
-              <span class="text-sm font-medium">导出 MP4</span>
-            </div>
-          </div>
-        </div> -->
-
-        <!-- 额外配置区块 - 用于测试滚动 -->
-        <!-- <div class="bg-gray-50 rounded-lg p-4">
-          <h3 class="font-medium text-gray-800 mb-3">高级设置</h3>
-          <div class="space-y-3">
-            <div class="h-10 bg-white rounded border border-gray-200 flex items-center px-3">
-              <span class="text-sm text-gray-500">质量设置</span>
-            </div>
-            <div class="h-10 bg-white rounded border border-gray-200 flex items-center px-3">
-              <span class="text-sm text-gray-500">编码选项</span>
-            </div>
-            <div class="h-10 bg-white rounded border border-gray-200 flex items-center px-3">
-              <span class="text-sm text-gray-500">水印设置</span>
-            </div>
-          </div>
-        </div> -->
-
-        <!-- 更多配置区块 - 确保有足够内容测试滚动 -->
-        <!-- <div class="bg-gray-50 rounded-lg p-4">
-          <h3 class="font-medium text-gray-800 mb-3">其他选项</h3>
-          <div class="space-y-3">
-            <div class="h-10 bg-white rounded border border-gray-200 flex items-center px-3">
-              <span class="text-sm text-gray-500">帧率设置</span>
-            </div>
-            <div class="h-10 bg-white rounded border border-gray-200 flex items-center px-3">
-              <span class="text-sm text-gray-500">分辨率选择</span>
-            </div>
-            <div class="h-10 bg-white rounded border border-gray-200 flex items-center px-3">
-              <span class="text-sm text-gray-500">音频设置</span>
-            </div>
-            <div class="h-10 bg-white rounded border border-gray-200 flex items-center px-3">
-              <span class="text-sm text-gray-500">元数据编辑</span>
-            </div>
-          </div>
-        </div> -->
       </div>
     </div>
   </div>
 </div>
-<!-- end layout -->
-{/if}
 
 <style>
   /* 自定义动画类 */

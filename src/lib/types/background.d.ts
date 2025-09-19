@@ -94,6 +94,7 @@ export interface GradientPreset {
   description?: string
   config: GradientConfig
   preview?: string  // CSS渐变字符串用于预览
+  category?: 'linear' | 'radial' | 'conic' | 'multicolor'  // 渐变分类
 }
 
 // 预设纯色配置类型
