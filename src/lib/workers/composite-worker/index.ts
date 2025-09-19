@@ -3,7 +3,7 @@
 // 支持预览显示和 MP4 导出
 
 // 导入类型定义
-import type { BackgroundConfig, GradientConfig, GradientStop, ImageBackgroundConfig } from '../types/background'
+import type { BackgroundConfig, GradientConfig, GradientStop, ImageBackgroundConfig } from '../../types/background'
 
 interface CompositeMessage {
   type: 'init' | 'process' | 'play' | 'pause' | 'seek' | 'config' | 'appendWindow';

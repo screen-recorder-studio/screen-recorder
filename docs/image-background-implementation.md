@@ -72,7 +72,7 @@ Worker渲染 ← transfer传输 ← BackgroundConfig ← Store
 - 响应式状态管理
 - CSS样式生成支持
 
-### 4. Worker渲染 (`src/lib/workers/video-composite-worker.ts`)
+### 4. Worker渲染 (`src/lib/workers/composite-worker/index.ts`)
 
 **新增函数**：
 - `renderImageBackground()` - 图片背景渲染

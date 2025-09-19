@@ -237,7 +237,7 @@
     console.log('👷 [VideoPreview] Creating VideoComposite Worker...')
 
     compositeWorker = new Worker(
-      new URL('../workers/video-composite-worker.ts', import.meta.url),
+      new URL('../workers/composite-worker/index.ts', import.meta.url),
       { type: 'module' }
     )
 
