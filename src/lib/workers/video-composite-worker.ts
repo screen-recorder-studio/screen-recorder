@@ -1163,7 +1163,6 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         const sourceWidth = firstChunk.codedWidth || 1920;
         const sourceHeight = firstChunk.codedHeight || 1080;
 
-        // C-2   a复用判断：若 append  a a a a a目标起点匹配且编解码器一致，则直接切入 nextDecoded  a
         const requestedStart = (data.startGlobalFrame ?? null) as number | null
         const incomingCodec = (firstChunk.codec || 'vp8') as string
         const canReuse = !!(nextMeta && requestedStart !== null && nextMeta.start === requestedStart && videoDecoder && videoDecoderCodec === incomingCodec && nextDecoded.length > 0)
@@ -1176,7 +1175,6 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
           decodedFrames = nextDecoded
           nextDecoded = []
 
-          //        a a a a a a a a a a a a a a a a a a a a a a a a a correctedVideoSize  a a videoInfo
           correctedVideoSize = { width: sourceWidth, height: sourceHeight };
           videoInfo = { width: sourceWidth, height: sourceHeight };
 
@@ -1190,7 +1188,6 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
           initializeCanvas(outputWidth, outputHeight);
           calculateAndCacheLayout();
 
-          // 发送 ready（totalFrames  a a以复用帧数 a a a a a a为准）
           self.postMessage({
             type: 'ready',
             data: {
