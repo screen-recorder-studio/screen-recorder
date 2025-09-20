@@ -9,7 +9,7 @@
   import PaddingControl from '$lib/components/PaddingControl.svelte'
   import AspectRatioControl from '$lib/components/AspectRatioControl.svelte'
   import ShadowControl from '$lib/components/ShadowControl.svelte'
-  
+
   // 当前会话的 OPFS 目录 id（用于导出时触发只读日志）
   let opfsDirId = $state('')
 
@@ -215,22 +215,21 @@
         resolve({ chunks: chunks || [], windowStartIndex: start ?? 0 })
       }
 
-      // 计算期望的帧范围：尽量与 onRequestWindow 的关键帧对齐策略一致
+      // 计算期望的帧范围：与 onRequestWindow 保持一致的“前关键帧对齐”（保证连续播放不漏帧）
       const estimatedFps = 30
       const targetFrameIndex = Math.floor((centerMs / 1000) * estimatedFps)
       let startFrame: number
       let frameCount: number
 
       if (keyframeInfo && keyframeInfo.indices.length > 0) {
-        // 预取面向“下一窗口”：选择第一个 >= target 的关键帧，避免回落到当前窗口
-        let forwardKeyframeIndex = keyframeInfo.indices[keyframeInfo.indices.length - 1]
+        // 连续播放/预取：选择最后一个 <= target 的关键帧，确保不会跳过 target 之前的帧
+        let prevKeyframeIndex = keyframeInfo.indices[0]
         for (let i = 0; i < keyframeInfo.indices.length; i++) {
-          if (keyframeInfo.indices[i] >= targetFrameIndex) {
-            forwardKeyframeIndex = keyframeInfo.indices[i]
-            break
-          }
+          const k = keyframeInfo.indices[i]
+          if (k <= targetFrameIndex) prevKeyframeIndex = k
+          else break
         }
-        startFrame = Math.max(0, forwardKeyframeIndex)
+        startFrame = Math.max(0, prevKeyframeIndex)
       } else {
         // 无关键帧信息：直接从 target 开始（不再回退 beforeMs）
         startFrame = Math.max(0, targetFrameIndex)
@@ -315,25 +314,24 @@
             let frameCount: number
 
             if (keyframeInfo && keyframeInfo.indices.length > 0) {
-              // 🔧 使用关键帧信息进行智能窗口切换（前瞻对齐）：选择第一个 >= target 的关键帧
-              let forwardKeyframeIndex = keyframeInfo.indices[keyframeInfo.indices.length - 1]
+              // 🔧 使用关键帧信息进行连续播放窗口切换（前关键帧对齐）：选择最后一个 <= target 的关键帧，确保不漏帧
+              let prevKeyframeIndex = keyframeInfo.indices[0]
               for (let i = 0; i < keyframeInfo.indices.length; i++) {
-                if (keyframeInfo.indices[i] >= targetFrameIndex) {
-                  forwardKeyframeIndex = keyframeInfo.indices[i]
-                  break
-                }
+                const k = keyframeInfo.indices[i]
+                if (k <= targetFrameIndex) prevKeyframeIndex = k
+                else break
               }
 
               // 基于关键帧间隔计算合适的窗口大小
               const avgKeyframeInterval = keyframeInfo.avgInterval || 30
               const windowSize = Math.min(120, Math.max(60, avgKeyframeInterval * 2)) // 2-4个关键帧间隔
 
-              startFrame = Math.max(0, forwardKeyframeIndex)
+              startFrame = Math.max(0, prevKeyframeIndex)
               frameCount = Math.min(windowSize, globalTotalFrames - startFrame)
 
-              console.log('[progress] Parent component - keyframe-based window (forward):', {
+              console.log('[progress] Parent component - keyframe-based window (prev):', {
                 targetFrameIndex,
-                forwardKeyframeIndex,
+                prevKeyframeIndex,
                 avgKeyframeInterval,
                 windowSize,
                 startFrame,
@@ -358,6 +356,12 @@
                 startFrame,
                 frameCount
               })
+            }
+
+            // Guard: 在连续播放路径（beforeMs === 0）下，若起点不比当前窗口更靠后，则忽略请求，避免尾端自我重复
+            if (beforeMs === 0 && startFrame <= windowStartIndex) {
+              console.log('[progress] Ignoring non-forward window request (startFrame<=current):', { startFrame, windowStartIndex, beforeMs })
+              return
             }
 
             // 🔧 使用帧范围请求

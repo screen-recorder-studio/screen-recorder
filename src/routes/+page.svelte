@@ -23,6 +23,10 @@
       <MousePointer class="w-5 h-5" />
       Popup 页面
     </a>
+    <a href="/lab/editor" class="inline-flex items-center gap-2 px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors">
+      Lab Editor（自动播放）
+    </a>
+
   </div>
 </div>
 
