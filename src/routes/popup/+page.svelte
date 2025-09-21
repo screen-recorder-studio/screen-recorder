@@ -10,7 +10,9 @@
     Pause,
     Square,
     Loader2,
-    AlertCircle
+    AlertCircle,
+    HardDrive,
+    Clock
   } from '@lucide/svelte'
   import { onMount } from 'svelte'
 
@@ -28,7 +30,8 @@
   function isModeDisabledLocal(modeId: typeof selectedMode) {
     const restricted = (modeId === 'element' || modeId === 'area') && contentScriptAvailable === false
     const blockedByRecording = isRecording && selectedMode !== modeId
-    return restricted || blockedByRecording
+    const comingSoon = modeId === 'camera' // 禁用摄像头模式
+    return restricted || blockedByRecording || comingSoon
   }
 
   // 初始化：同步后台状态
@@ -58,6 +61,15 @@
           selectedMode = uiMode
         } else if (legacyMode === 'region' || legacyMode === 'element') {
           selectedMode = legacyMode === 'region' ? 'area' : 'element'
+        }
+        
+        // 检查当前选择的模式是否被禁用，如果是则切换到可用的tab模式
+        if (isModeDisabledLocal(selectedMode)) {
+          selectedMode = 'tab'
+          // 同步更新到后台
+          try { 
+            await chrome.runtime.sendMessage({ type: 'SET_SELECTED_MODE', uiMode: 'tab', tabId: currentTabId }) 
+          } catch {}
         }
         // 若全局未在录制，但 tab 层记录为录制中（元素/区域链路），也同步为录制中
         if (!isRecording && typeof st?.state?.recording === 'boolean' && st.state.recording) {
@@ -314,11 +326,22 @@
 <div class="w-[320px] bg-white font-sans">
   <!-- 头部 -->
   <div class="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-    <h1 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-      <Monitor class="w-5 h-5 text-blue-600" />
-      屏幕录制
-    </h1>
-    <p class="text-sm text-gray-600 mt-1">选择录制模式并开始录制</p>
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+          <Monitor class="w-5 h-5 text-blue-600" />
+          屏幕录制
+        </h1>
+        <p class="text-sm text-gray-600 mt-1">选择录制模式并开始录制</p>
+      </div>
+      <button
+        class="p-2 rounded-lg border border-gray-300 hover:border-blue-400 hover:bg-white/70 hover:shadow-sm transition-all duration-200 group"
+        onclick={() => window.open('/drive.html', '_blank')}
+        title="打开录制文件管理"
+      >
+        <HardDrive class="w-5 h-5 text-gray-600 group-hover:text-blue-600 transition-colors duration-200" />
+      </button>
+    </div>
   </div>
 
   <!-- 录制模式选择 -->
@@ -338,11 +361,18 @@
           class:cursor-not-allowed={isModeDisabledLocal(mode.id)}
           onclick={() => selectMode(mode.id)}
           disabled={isModeDisabledLocal(mode.id)}
-          title={(mode.id==='element'||mode.id==='area') && contentScriptAvailable===false ? '此页面受限制，无法使用该模式' : mode.description}
+          title={mode.id === 'camera' ? '即将推出' : (mode.id==='element'||mode.id==='area') && contentScriptAvailable===false ? '此页面受限制，无法使用该模式' : mode.description}
         >
           <!-- 选中指示器 -->
           {#if selectedMode === mode.id}
             <div class="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white"></div>
+          {/if}
+
+          <!-- Coming Soon 标签 -->
+          {#if mode.id === 'camera'}
+            <div class="absolute -top-1 -right-1 bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium">
+              Coming Soon
+            </div>
           {/if}
 
           <!-- 图标 -->

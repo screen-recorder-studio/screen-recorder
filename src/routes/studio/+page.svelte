@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte'
+  import { HardDrive, Video } from '@lucide/svelte'
 
   import { recordingStore } from '$lib/stores/recording.svelte'
   import VideoPreviewComposite from '$lib/components/VideoPreviewComposite.svelte'
@@ -279,7 +280,32 @@
   <div class="flex-1 min-h-0 flex flex-col h-full overflow-hidden">
     <!-- 预览区域标题 -->
     <div class="flex-shrink-0 p-6 border-b border-gray-200 bg-white">
-      <AspectRatioControl />
+      <div class="flex items-center justify-between relative">
+        <!-- 左侧标题 -->
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2">
+            <Video class="w-6 h-6 text-blue-600" />
+            <h1 class="text-xl font-bold text-gray-800">Screen Recorder Studio</h1>
+          </div>
+          <span class="px-2 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-sm">
+            PRO TRIAL
+          </span>
+        </div>
+        
+        <!-- 中间的视频比例控制 -->
+        <div class="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
+          <AspectRatioControl />
+        </div>
+        
+        <!-- 右侧 Drive 按钮 -->
+        <button
+          class="p-2 rounded-lg border border-gray-300 hover:border-blue-400 hover:bg-white/70 hover:shadow-sm transition-all duration-200 group"
+          onclick={() => window.open('/drive.html', '_blank')}
+          title="打开录制文件管理"
+        >
+          <HardDrive class="w-5 h-5 text-gray-600 group-hover:text-blue-600 transition-colors duration-200" />
+        </button>
+      </div>
     </div>
 
     <!-- 预览播放器内容区域 -->

@@ -214,7 +214,6 @@
   .kmarker { position: absolute; top: 2px; width: 2px; height: 10px; background: #ef4444; opacity: 0.7; }
   .preview { width: 100%; max-width: 960px; background: #111; border-radius: 8px; display: grid; place-items: center; }
   canvas { width: 100%; height: auto; background: #000; border-radius: 6px; }
-  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 12px; }
   .seekbar { margin-top: 10px; }
   .seekbar input[type="range"] { width: 100%; }
 </style>
@@ -251,7 +250,6 @@
       <div class="row" style="justify-content: space-between; margin-top: 8px;">
         <button on:click={togglePlay}>{isPlaying ? '暂停' : '播放'}</button>
         <div>
-          <label>倍速：</label>
           <select bind:value={playbackRate} on:change={onRateChange}>
             <option value={0.5}>0.5x</option>
             <option value={1}>1x</option>
