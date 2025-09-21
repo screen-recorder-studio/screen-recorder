@@ -3,7 +3,7 @@
 // 支持预览显示和 MP4 导出
 
 // 导入类型定义
-import type { BackgroundConfig, GradientConfig, GradientStop, ImageBackgroundConfig } from '../types/background'
+import type { BackgroundConfig, GradientConfig, GradientStop, ImageBackgroundConfig } from '../../types/background'
 
 interface CompositeMessage {
   type: 'init' | 'process' | 'play' | 'pause' | 'seek' | 'config' | 'appendWindow';
@@ -706,7 +706,7 @@ function startStreamingDecode(chunks: any[]) {
   });
 }
 
-// 追加解码：在现有解码器与帧缓冲基础上追加下一窗口的编码块（小步C）
+// 追加解码：在现有解码器与帧缓冲基础上追加下一窗口的编码块
 function appendStreamingDecode(chunks: any[]) {
   if (!chunks || chunks.length === 0) {
     console.warn('[COMPOSITE-WORKER] appendStreamingDecode: no chunks');
@@ -756,180 +756,6 @@ function appendStreamingDecode(chunks: any[]) {
   });
 }
 
-
-
-// 初始化视频解码器（以解码后帧的 displayWidth/displayHeight 为准，避免拉伸变形）
-async function initializeDecoder(chunks: any[]) {
-  if (!chunks || chunks.length === 0) {
-    throw new Error('No video chunks provided');
-  }
-
-  // 🔧 清理旧的解码帧（但尽量复用解码器）
-  console.log('[progress] VideoComposite - cleaning old decoded frames:', decodedFrames.length)
-  for (const frame of decodedFrames) {
-    frame.close();
-  }
-  decodedFrames = [];
-
-  const firstChunk = chunks[0];
-  const codec = firstChunk.codec || 'vp8';
-
-  // 仅当解码器不存在或编解码器变化时才重建
-  const needRecreate = !videoDecoder || videoDecoderCodec !== codec;
-  if (needRecreate) {
-    console.log('🎬 [COMPOSITE-WORKER] (Re)initializing VideoDecoder with codec:', codec);
-
-    videoDecoder = new VideoDecoder({
-    output: (frame: VideoFrame) => {
-      const targetBuf = (outputTarget === 'next') ? nextDecoded : decodedFrames;
-      targetBuf.push(frame);
-      if (outputTarget !== 'next') {
-        if (decodedFrames.length % 60 === 0) {
-          console.log(`📽️ [COMPOSITE-WORKER] Frames decoded: ${decodedFrames.length}/${chunks.length}`);
-        }
-      }
-    },
-    error: (error: Error) => {
-      console.error('❌ [COMPOSITE-WORKER] Decoder error:', error);
-      self.postMessage({
-        type: 'error',
-        data: error.message
-      });
-    }
-  });
-
-  // 仅使用 codec 配置，让解码器自行确定帧尺寸/显示比例
-  const decoderConfig: VideoDecoderConfig = { codec } as VideoDecoderConfig;
-  console.log('[progress] VideoComposite - configuring decoder with:', decoderConfig)
-
-  try {
-    videoDecoder.configure(decoderConfig);
-    videoDecoderCodec = codec;
-    console.log('✅ [COMPOSITE-WORKER] VideoDecoder configured:', decoderConfig);
-
-    // 🔧 给解码器一点时间来完全初始化
-    await new Promise(resolve => setTimeout(resolve, 10));
-    console.log('[progress] VideoComposite - decoder ready for decoding');
-  } catch (error) {
-    console.error('[progress] VideoComposite - decoder configuration error:', error);
-    throw new Error(`Failed to configure decoder: ${error}`);
-  }
-} else {
-  console.log('[progress] VideoComposite - reusing existing VideoDecoder with codec:', codec)
-}
-
-  // 解码所有块
-  console.log('[progress] VideoComposite - starting to decode chunks:', chunks.length)
-  try {
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
-      const data = chunk.data instanceof ArrayBuffer ? new Uint8Array(chunk.data) : chunk.data;
-      const encodedChunk = new EncodedVideoChunk({
-        type: chunk.type === 'key' ? 'key' : 'delta',
-        timestamp: chunk.timestamp,
-        data
-      });
-      videoDecoder!.decode(encodedChunk);
-
-      // 每10帧输出一次进度
-      if ((i + 1) % 10 === 0) {
-        console.log(`[progress] VideoComposite - decoded ${i + 1}/${chunks.length} chunks`)
-      }
-    }
-    console.log('[progress] VideoComposite - all chunks submitted for decoding')
-  } catch (error) {
-    console.error('[progress] VideoComposite - error during chunk decoding:', error);
-    throw error;
-  }
-
-  console.log('[progress] VideoComposite - flushing decoder')
-  try {
-    await videoDecoder!.flush();
-    console.log(`✅ [COMPOSITE-WORKER] All frames decoded: ${decodedFrames.length} frames`);
-  } catch (error) {
-    console.error('[progress] VideoComposite - decoder flush error:', error)
-    throw error;
-  }
-
-  if (decodedFrames.length === 0) {
-    throw new Error('No frames decoded');
-  }
-
-  // 使用首帧的显示尺寸作为视频自然尺寸（考虑非方像素/可见区域）
-  const firstFrame = decodedFrames[0];
-
-  // 更可靠的尺寸获取策略
-  let displayWidth = 1920;
-  let displayHeight = 1080;
-
-  console.log('🔍 [COMPOSITE-WORKER] Analyzing first frame properties:', {
-    displayWidth: firstFrame.displayWidth,
-    displayHeight: firstFrame.displayHeight,
-    codedWidth: firstFrame.codedWidth,
-    codedHeight: firstFrame.codedHeight,
-    visibleRect: firstFrame.visibleRect
-  });
-
-  // 🔧 策略1: 优先使用修正后的 chunk 尺寸（对于元素/区域录制最准确）
-  if (firstChunk.codedWidth && firstChunk.codedHeight) {
-    displayWidth = firstChunk.codedWidth;
-    displayHeight = firstChunk.codedHeight;
-    console.log('✅ [COMPOSITE-WORKER] Using corrected chunk dimensions (highest priority):', {
-      displayWidth,
-      displayHeight,
-      aspectRatio: (displayWidth / displayHeight).toFixed(3)
-    });
-  }
-  // 策略2: 使用 displayWidth/Height (考虑像素纵横比)
-  else if (firstFrame.displayWidth && firstFrame.displayHeight) {
-    displayWidth = firstFrame.displayWidth;
-    displayHeight = firstFrame.displayHeight;
-    console.log('✅ [COMPOSITE-WORKER] Using displayWidth/Height:', { displayWidth, displayHeight });
-  }
-  // 策略3: 使用 visibleRect (考虑裁剪区域)
-  else if (firstFrame.visibleRect && firstFrame.visibleRect.width && firstFrame.visibleRect.height) {
-    displayWidth = firstFrame.visibleRect.width;
-    displayHeight = firstFrame.visibleRect.height;
-    console.log('✅ [COMPOSITE-WORKER] Using visibleRect dimensions:', { displayWidth, displayHeight });
-  }
-  // 策略4: 使用 codedWidth/Height
-  else if (firstFrame.codedWidth && firstFrame.codedHeight) {
-    displayWidth = firstFrame.codedWidth;
-    displayHeight = firstFrame.codedHeight;
-    console.log('✅ [COMPOSITE-WORKER] Using codedWidth/Height:', { displayWidth, displayHeight });
-  }
-  else {
-    console.warn('⚠️ [COMPOSITE-WORKER] No reliable dimensions found, using defaults:', { displayWidth, displayHeight });
-  }
-
-  // 验证尺寸合理性
-  if (displayWidth < 100 || displayHeight < 100 || displayWidth > 7680 || displayHeight > 4320) {
-    console.warn('⚠️ [COMPOSITE-WORKER] Invalid dimensions detected, using safe defaults');
-    displayWidth = 1920;
-    displayHeight = 1080;
-  }
-
-  videoInfo = { width: displayWidth, height: displayHeight };
-  console.log('📐 [COMPOSITE-WORKER] Final video info:', videoInfo);
-
-  // 🔧 确保 correctedVideoSize 与 videoInfo 一致
-  correctedVideoSize = { width: displayWidth, height: displayHeight };
-  console.log('✅ [COMPOSITE-WORKER] Corrected video size synchronized:', correctedVideoSize);
-
-  // 可选：内联首帧维度日志（避免外部依赖导致构建失败）
-  if (decodedFrames.length > 0) {
-    try {
-      const f = decodedFrames[0];
-      console.log('🔍 [COMPOSITE-WORKER] Inline frame dimension log:', {
-        displayWidth: f.displayWidth,
-        displayHeight: f.displayHeight,
-        codedWidth: f.codedWidth,
-        codedHeight: f.codedHeight,
-        visibleRect: f.visibleRect
-      });
-    } catch {}
-  }
-}
 
 // 计算并缓存固定的视频布局
 function calculateAndCacheLayout() {
@@ -1163,7 +989,6 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         const sourceWidth = firstChunk.codedWidth || 1920;
         const sourceHeight = firstChunk.codedHeight || 1080;
 
-        // C-2   a复用判断：若 append  a a a a a目标起点匹配且编解码器一致，则直接切入 nextDecoded  a
         const requestedStart = (data.startGlobalFrame ?? null) as number | null
         const incomingCodec = (firstChunk.codec || 'vp8') as string
         const canReuse = !!(nextMeta && requestedStart !== null && nextMeta.start === requestedStart && videoDecoder && videoDecoderCodec === incomingCodec && nextDecoded.length > 0)
@@ -1176,7 +1001,6 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
           decodedFrames = nextDecoded
           nextDecoded = []
 
-          //        a a a a a a a a a a a a a a a a a a a a a a a a a correctedVideoSize  a a videoInfo
           correctedVideoSize = { width: sourceWidth, height: sourceHeight };
           videoInfo = { width: sourceWidth, height: sourceHeight };
 
@@ -1190,7 +1014,6 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
           initializeCanvas(outputWidth, outputHeight);
           calculateAndCacheLayout();
 
-          // 发送 ready（totalFrames  a a以复用帧数 a a a a a a为准）
           self.postMessage({
             type: 'ready',
             data: {

@@ -350,53 +350,31 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
         throw new Error('NOT_OPEN')
       }
 
-      const requestedStart = Math.max(0, Math.min(indexEntries.length, Math.floor(msg.start)))
+      const requestedStart = Math.max(0, Math.min(indexEntries.length - 1, Math.floor(msg.start)))
       const count = Math.max(0, Math.floor(msg.count))
 
-      // 🔧 智能关键帧对齐 - 基于index.jsonl的精确关键帧信息
-      let start = requestedStart
-      let end = Math.min(indexEntries.length, requestedStart + count)
+      // 编辑器语义：无论如何，从“请求位置之前的最近关键帧”开始
+      const prevKey = keyframeBefore(requestedStart)
+      let start = prevKey
+      // 需要保证覆盖从 prevKey 到 requestedStart 的GOP，再加上用户期望的 count
+      const distance = requestedStart - prevKey
+      let end = Math.min(indexEntries.length, start + count + Math.max(0, distance))
 
-      // 检查请求范围内是否有关键帧（优先使用isKeyframe字段）
-      let hasKeyframeInRange = false
-      let firstKeyframeInRange = -1
+      console.log('[progress] OPFS Reader - aligned to previous keyframe for seek:', {
+        requestedStart,
+        prevKey,
+        distance,
+        finalStart: start,
+        finalEnd: end,
+        finalCount: end - start
+      })
 
-      for (let i = requestedStart; i < end; i++) {
-        const ent = indexEntries[i]
-        if (ent?.isKeyframe === true || ent?.type === 'key') {
-          hasKeyframeInRange = true
-          firstKeyframeInRange = i
-          break
-        }
-      }
-
-      if (hasKeyframeInRange) {
-        // 从范围内的第一个关键帧开始
-        start = firstKeyframeInRange
-        console.log('[progress] OPFS Reader - using keyframe in range:', firstKeyframeInRange)
-      } else {
-        // 查找最近的前置关键帧
-        const nearestKeyframe = keyframeBefore(requestedStart)
-        const keyframeDistance = requestedStart - nearestKeyframe
-
-        // 🔧 更智能的回退策略：基于关键帧间隔
-        if (keyframeDistance <= 60) { // 最多回退60帧（2秒@30fps）
-          start = nearestKeyframe
-          end = Math.min(indexEntries.length, start + count + keyframeDistance)
-          console.log('[progress] OPFS Reader - using previous keyframe:', nearestKeyframe, 'distance:', keyframeDistance)
-        } else {
-          // 距离太远，保持原始范围，让解码器处理
-          console.log('[progress] OPFS Reader - keyframe too far, using original range')
-        }
-      }
-
-      console.log('[progress] OPFS Reader - getRange request (smart keyframe alignment):', {
+      console.log('[progress] OPFS Reader - getRange request (prev-keyframe alignment):', {
         requestedStart: msg.start,
         requestedCount: msg.count,
         finalStart: start,
         finalEnd: end,
         finalCount: end - start,
-        hasKeyframeInRange,
         keyframeAdjustment: requestedStart - start,
         totalEntries: indexEntries.length
       })

@@ -89,6 +89,8 @@
   let isPlaying = $state(false)
   let shouldContinuePlayback = $state(false) // 🔧 连续播放标志
   let continueFromGlobalFrame = $state(0) // 🔧 记录应该从哪个全局帧继续播放
+  // 渲染帧所对应的窗口起点（用于稳定计时显示/日志，避免 props 先变导致的假跳）
+  let lastFrameWindowStartIndex = $state(windowStartIndex)
 
   // UI 显示用时长：优先使用全局帧数/帧率（与时间轴一致），其次 durationMs，最后回退内部 duration
   const uiDurationSec = $derived.by(() => {
@@ -237,7 +239,7 @@
     console.log('👷 [VideoPreview] Creating VideoComposite Worker...')
 
     compositeWorker = new Worker(
-      new URL('../workers/video-composite-worker.ts', import.meta.url),
+      new URL('../workers/composite-worker/index.ts', import.meta.url),
       { type: 'module' }
     )
 
@@ -276,8 +278,10 @@
             cutoverTimerLabel = null
           }
 
-          // 默认预览首帧（不自动播放）
-          seekToFrame(0)
+          // 默认预览首帧（不自动播放）；连续播放切窗时跳过，避免双重 seek 造成回跳
+          if (!shouldContinuePlayback) {
+            seekToFrame(0)
+          }
 
           // 🔧 检查是否需要在新窗口准备后继续播放
           if (shouldContinuePlayback) {
@@ -349,7 +353,8 @@
           if (totalFramesAll > 0) {
             // 固定指向当前窗口末尾的下一窗口起点，避免随帧抖动
             const boundaryNext = windowStartIndex + Math.max(0, totalFrames)
-            const nextGlobal = Math.min(boundaryNext, Math.max(0, totalFramesAll - 1))
+            // 作为“起点索引”，允许等于 totalFramesAll（表示没有下一窗口）
+            const nextGlobal = Math.min(boundaryNext, Math.max(0, totalFramesAll))
             const remainingAll = Math.max(0, totalFramesAll - nextGlobal)
             const plannedSize = Math.min(90, remainingAll)
             if (plannedSize > 0) {
@@ -495,8 +500,10 @@
 
       // 更新播放状态
       currentFrameIndex = frameIndex
+      // 绑定该帧所对应的窗口起点，稳定显示/日志中的全局帧
+      lastFrameWindowStartIndex = windowStartIndex
       // 使用全局帧索引计算相对视频开始的时间，避免绝对时间戳（如epoch/us）导致显示超大值
-      currentTime = (windowStartIndex + frameIndex) / frameRate
+      currentTime = (lastFrameWindowStartIndex + frameIndex) / frameRate
 
       // 调试：降低逐帧日志开销，仅开发环境且每60帧输出一次
       // if (import.meta.env.DEV && frameIndex % 60 === 0) {
@@ -788,6 +795,26 @@
     return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
   }
 
+  // ===== Debug logging for timer and frame jumps =====
+  // Print timer under progress bar and detect frame skips
+  let lastLoggedGlobalFrame: number = -1
+  $effect(() => {
+    const globalFrame = lastFrameWindowStartIndex + currentFrameIndex
+    const totalSec = uiDurationSec
+    // Only log when frame changes to avoid excessive spam on unrelated updates
+    if (globalFrame !== lastLoggedGlobalFrame) {
+      if (lastLoggedGlobalFrame >= 0) {
+        const delta = globalFrame - lastLoggedGlobalFrame
+        if (Math.abs(delta) !== 1) {
+          console.warn(`[video-timer] frame jump ${lastLoggedGlobalFrame} -> ${globalFrame} (Δ=${delta})`)
+        }
+      }
+      lastLoggedGlobalFrame = globalFrame
+      console.log(`[video-timer] ${formatTimeSec(globalFrame / frameRate)} / ${formatTimeSec(totalSec)}`)
+    }
+  })
+
+
 
   // 更新背景配置
   async function updateBackgroundConfig(newConfig: typeof backgroundConfig) {
@@ -962,9 +989,13 @@
       if (isRecordingComplete && encodedChunks.length > 0 && isInitialized && compositeWorker) {
         console.log('[progress] Immediately processing new window data')
 
-        // 重置当前帧索引，准备新窗口
-        currentFrameIndex = 0
-        console.log('[progress] Reset currentFrameIndex to 0 for new window')
+        // 重置当前帧索引：仅在非连续播放/非继续播放场景下复位
+        if (!shouldContinuePlayback) {
+          currentFrameIndex = 0
+          console.log('[progress] Reset currentFrameIndex to 0 for new window (no resume)')
+        } else {
+          console.log('[progress] Keep currentFrameIndex for resume playback')
+        }
 
         hasProcessed = true
         processVideo().catch(error => {
@@ -999,14 +1030,22 @@
       // 选择下一窗口起点：优先消费已构建的预取缓存，其次才使用计划，避免跳过缓存导致丢弃
       let plannedNext = nextGlobalFrame
       let windowSize = Math.min(90, totalFramesAll - nextGlobalFrame)
-      if (prefetchCache && prefetchCache.targetGlobalFrame >= nextGlobalFrame) {
+      if (prefetchCache && prefetchCache.targetGlobalFrame >= nextGlobalFrame && prefetchCache.targetGlobalFrame > windowStartIndex) {
         plannedNext = prefetchCache.targetGlobalFrame
         windowSize = Math.min(prefetchCache.windowSize, totalFramesAll - plannedNext)
         console.log('[prefetch] Using cached plan for next window:', { plannedNext, windowSize })
-      } else if (prefetchPlan && prefetchPlan.nextGlobalFrame >= nextGlobalFrame) {
+      } else if (prefetchPlan && prefetchPlan.nextGlobalFrame >= nextGlobalFrame && prefetchPlan.nextGlobalFrame > windowStartIndex) {
         plannedNext = prefetchPlan.nextGlobalFrame
         windowSize = Math.min(prefetchPlan.windowSize, totalFramesAll - plannedNext)
         console.log('[prefetch] Using planned next window:', { plannedNext, windowSize })
+      }
+
+      // Guard: avoid requesting non-forward or out-of-range window at tail
+      if (plannedNext <= windowStartIndex || plannedNext >= totalFramesAll) {
+        console.log('[progress] No forward progress available (plannedNext=', plannedNext, '), stopping playback')
+        isPlaying = false
+        shouldContinuePlayback = false
+        return
       }
 
       console.log('[progress] Requesting next window for continuous playback:', {

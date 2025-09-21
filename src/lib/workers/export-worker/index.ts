@@ -529,7 +529,7 @@ async function createCompositeWorker(): Promise<void> {
     try {
       // 创建 composite worker
       compositeWorker = new Worker(
-        new URL('../video-composite-worker.ts', import.meta.url),
+        new URL('../composite-worker/index.ts', import.meta.url),
         { type: 'module' }
       )
 
