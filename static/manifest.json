@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "屏幕录制扩展",
+  "name": "Screen Recorder Studio for SAAS",
   "version": "1.0.0",
   "description": "通过 sidepanel 进行屏幕录制的 Chrome 扩展",
   "permissions": [

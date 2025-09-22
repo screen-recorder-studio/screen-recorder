@@ -374,7 +374,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
         try { void stopBadgeTimer() } catch {}
         try {
-          chrome.runtime.sendMessage({ type: 'STATE_UPDATE', state: { recording: false } })
+          const p = chrome.runtime.sendMessage({ type: 'STATE_UPDATE', state: { recording: false } })
+          if (p && typeof p.catch === 'function') p.catch(() => {})
         } catch (e) {
           console.warn('[stop-share] background: failed to broadcast STATE_UPDATE for RECORDING_COMPLETE', e)
         }
@@ -387,7 +388,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           console.log('[stop-share] background: OPFS_RECORDING_READY → mark stopped')
           try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
           try { void stopBadgeTimer() } catch {}
-          try { chrome.runtime.sendMessage({ type: 'STATE_UPDATE', state: { recording: false } }) } catch {}
+          try {
+            const p = chrome.runtime.sendMessage({ type: 'STATE_UPDATE', state: { recording: false } })
+            if (p && typeof p.catch === 'function') p.catch(() => {})
+          } catch {}
           const targetUrl = chrome.runtime.getURL(`studio.html?id=${encodeURIComponent(message.id)}`)
           chrome.tabs.create({ url: targetUrl }, () => {
             const err = chrome.runtime.lastError
@@ -559,8 +563,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // lab 功能：广播消息到标签页
 function broadcastToTab(tabId, payload) {
-  chrome.runtime.sendMessage({ ...payload, tabId });
+  try {
+    const p = chrome.runtime.sendMessage({ ...payload, tabId })
+    if (p && typeof p.catch === 'function') p.catch(() => {})
+  } catch (_) {}
 }
+
+
 
 // 处理元素录制完成，传递数据给主系统
 function handleElementRecordingComplete(message, sendResponse) {
@@ -1048,5 +1057,14 @@ self.addEventListener('error', (event) => {
 })
 
 self.addEventListener('unhandledrejection', (event) => {
+  try {
+    const reason = event?.reason as any;
+    const msg = (reason && (reason.message || String(reason))) || '';
+    if (typeof msg === 'string' && msg.includes('Could not establish connection. Receiving end does not exist.')) {
+      // During page refresh or when no receiver is present, ignore benign sendMessage errors
+      try { if (typeof event.preventDefault === 'function') event.preventDefault(); } catch {}
+      return;
+    }
+  } catch {}
   console.error('Service Worker unhandled rejection:', event.reason)
 })

@@ -468,8 +468,13 @@
       state.byteCount = 0;
       state.sinkStarted = false;
       const displayMediaOptions = { video: { displaySurface: 'window' }, audio: false, preferCurrentTab: true };
+      console.log('[Stream][Content] getDisplayMedia request', displayMediaOptions);
       state.stream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions);
+      console.log('[Stream][Content] getDisplayMedia success', {
+        tracks: state.stream ? state.stream.getTracks().map(t => ({ kind: t.kind, label: t.label, readyState: t.readyState })) : null
+      });
       state.track = state.stream.getVideoTracks()[0];
+      try { console.log('[Stream][Content] video track settings', state.track?.getSettings?.()); } catch {}
 
       // Try Element Capture first if element mode (使用原始元素)
       if (state.mode === 'element' && state.selectedElement && typeof window.RestrictionTarget !== 'undefined') {
@@ -712,18 +717,23 @@
       }
 
       showPreview();
-      state.track.onended = stopCapture;
+      state.track.onended = () => { console.log('[Stream][Content] track.onended fired'); try { stopCapture(); } catch (err) { console.warn('[Stream][Content] stopCapture error from onended', err); } };
       report({ recording: true });
     } catch (e) {
-      console.error('startCapture error', e);
+      const name = e?.name || '';
+      const message = e?.message || '';
+      const stack = e?.stack || '';
+      console.error('startCapture error', e, { name, message, stack, usingWebCodecs: state.usingWebCodecs, recording: state.recording, chunkCount: state.chunkCount, byteCount: state.byteCount });
+
       state.recording = false;
       // 通知 sidepanel 失败，避免 UI 卡在“正在请求权限”
-      try { chrome.runtime.sendMessage({ type: 'CAPTURE_FAILED', error: (e && (e.name||e.message)) || String(e) }); } catch {}
+      try { chrome.runtime.sendMessage({ type: 'CAPTURE_FAILED', error: name || message || String(e) }); } catch {}
       report({ recording: false });
     }
   }
 
   function stopCapture() {
+    console.log('[Stream][Content] stopCapture called', { usingWebCodecs: state.usingWebCodecs, recording: state.recording, chunkCount: state.chunkCount, byteCount: state.byteCount });
     try {
       if (state.usingWebCodecs) {
         try { state.reader?.cancel(); } catch {}
