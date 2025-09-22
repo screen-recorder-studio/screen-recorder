@@ -12,6 +12,7 @@
     paused: false,
     selectedElement: null,
     selectionBox: null,
+    maskOverlay: null,
     isDragging: false,
     startX: 0,
     startY: 0,
@@ -437,6 +438,7 @@
     state.elementContainer.style.top = rect.top + 'px';
     state.elementContainer.style.width = rect.width + 'px';
     state.elementContainer.style.height = rect.height + 'px';
+    try { updateMaskRect(rect.left, rect.top, rect.width, rect.height); } catch {}
   }
 
   // 清理元素选择
@@ -479,6 +481,58 @@
     return state.selectionBox;
   }
 
+
+  // --- Mask overlay (visual background dim with a rectangular hole) ---
+  function ensureMaskOverlay() {
+    try {
+      if (state.maskOverlay && document.documentElement.contains(state.maskOverlay)) return state.maskOverlay;
+      const el = document.createElement('div');
+      el.className = 'mcp-mask-overlay';
+      el.style.cssText = [
+        'position:fixed', 'inset:0',
+        // Visual dim
+        'background:rgba(0,0,0,0.35)',
+        // Keep it below selection containers and control bar
+        'z-index:2147482998',
+        // Visual-only by default; avoid interfering with existing handlers
+        'pointer-events:none',
+        // -webkit-mask: full-screen minus hole at (--mcp-mask-x, --mcp-mask-y) sized (--mcp-mask-w x --mcp-mask-h)
+        '-webkit-mask-image:linear-gradient(#fff 0 0),linear-gradient(#fff 0 0)',
+        '-webkit-mask-size:cover,var(--mcp-mask-w,0px) var(--mcp-mask-h,0px)',
+        '-webkit-mask-position:0 0,var(--mcp-mask-x,-99999px) var(--mcp-mask-y,-99999px)',
+        '-webkit-mask-repeat:no-repeat',
+        // Subtract second mask from the first (Chromium)
+        '-webkit-mask-composite:xor'
+      ].join(';');
+      state.root.appendChild(el);
+      state.maskOverlay = el;
+      return el;
+    } catch (_) { return null; }
+  }
+  function showMask() {
+    try { const el = ensureMaskOverlay(); if (el) el.style.display = 'block'; } catch {}
+  }
+  function hideMask() {
+    try { if (state.maskOverlay) { state.maskOverlay.style.display = 'none'; } } catch {}
+  }
+  function updateMaskRect(x, y, w, h) {
+    try {
+      const el = ensureMaskOverlay(); if (!el) return;
+      el.style.setProperty('--mcp-mask-x', `${Math.max(0, Math.round(x))}px`);
+      el.style.setProperty('--mcp-mask-y', `${Math.max(0, Math.round(y))}px`);
+      el.style.setProperty('--mcp-mask-w', `${Math.max(0, Math.round(w))}px`);
+      el.style.setProperty('--mcp-mask-h', `${Math.max(0, Math.round(h))}px`);
+      showMask();
+    } catch {}
+  }
+  function updateMaskForElement(el) {
+    try {
+      if (!el || !(el instanceof Element)) return;
+      const r = el.getBoundingClientRect();
+      updateMaskRect(r.left, r.top, r.width, r.height);
+    } catch {}
+  }
+
   function addDragOverlay() {
     const overlay = document.createElement('div');
     overlay.className = 'mcp-drag-overlay';
@@ -493,6 +547,7 @@
       sb.style.left = `${state.startX}px`;
       sb.style.top = `${state.startY}px`;
       sb.style.width = '0px'; sb.style.height = '0px';
+      try { updateMaskRect(state.startX, state.startY, 0, 0); } catch {}
       e.preventDefault();
       e.stopPropagation();
     }, true);
@@ -505,6 +560,7 @@
       const w = Math.abs(e.clientX - state.startX);
       const h = Math.abs(e.clientY - state.startY);
       sb.style.left = `${x}px`; sb.style.top = `${y}px`; sb.style.width = `${w}px`; sb.style.height = `${h}px`;
+      try { updateMaskRect(x, y, w, h); } catch {}
     }, true);
 
     window.addEventListener('mouseup', () => {
@@ -533,6 +589,8 @@
         // 隐藏原来的选择框
         sb.style.display = 'none';
 
+        // 固定遮罩洞到选区
+        try { updateMaskRect(x, y, w, h); showMask(); } catch {}
         report({ selectedDesc: `区域 ${Math.round(w)}×${Math.round(h)}` });
         // 区域选择完成后，自动退出选择态，并移除拖拽遮罩，防止继续选中内部
         state.selecting = false;
@@ -559,6 +617,7 @@
     document.removeEventListener('click', onClick, true);
 
     state.selecting = true;
+    try { ensureMaskOverlay(); showMask(); updateMaskRect(-99999, -99999, 0, 0); } catch {}
     if (state.mode === 'region') {
       dragOverlay = dragOverlay || addDragOverlay();
     } else {
@@ -573,6 +632,7 @@
 
   function exitSelection() {
     state.selecting = false;
+    try { hideMask(); } catch {}
     // remove overlays/listeners
     if (dragOverlay) {
       dragOverlay.remove();
@@ -600,6 +660,7 @@
     if (isOwnNode(el)) return;
     clearHighlight();
     el.classList.add('mcp-highlight');
+    try { updateMaskForElement(el); } catch {}
   }
 
   function onOut(e) {
@@ -616,6 +677,7 @@
     if (isOwnNode(el)) return;
     e.preventDefault(); e.stopPropagation();
     selectElement(el);
+    try { updateMaskForElement(el); showMask(); } catch {}
     // 选择完成后自动退出选择态，避免继续在内部再次选择
     state.selecting = false;
     document.removeEventListener('mouseover', onHover, true);
@@ -1083,6 +1145,7 @@
       state.selectionBox.style.height = '0px';
     }
 
+    try { hideMask(); } catch {}
     hideSelectionTip();
     // 隐藏底部控制条（无选区时不需要显示）
     try { hideControlBar(true); } catch {}
