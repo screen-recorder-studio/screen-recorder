@@ -385,18 +385,41 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       case 'OPFS_RECORDING_READY': {
         try {
-          console.log('[stop-share] background: OPFS_RECORDING_READY → mark stopped')
-          try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
-          try { void stopBadgeTimer() } catch {}
-          try {
-            const p = chrome.runtime.sendMessage({ type: 'STATE_UPDATE', state: { recording: false } })
-            if (p && typeof p.catch === 'function') p.catch(() => {})
-          } catch {}
-          const targetUrl = chrome.runtime.getURL(`studio.html?id=${encodeURIComponent(message.id)}`)
-          chrome.tabs.create({ url: targetUrl }, () => {
-            const err = chrome.runtime.lastError
-            if (err) console.error('[Background] Failed to open Studio tab:', err.message)
-          })
+          const id = message?.id
+          const doOpen = () => {
+            console.log('[stop-share] background: OPFS_RECORDING_READY → mark stopped')
+            try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
+            try { void stopBadgeTimer() } catch {}
+            try {
+              const p = chrome.runtime.sendMessage({ type: 'STATE_UPDATE', state: { recording: false } })
+              if (p && typeof p.catch === 'function') p.catch(() => {})
+            } catch {}
+            const targetUrl = chrome.runtime.getURL(`studio.html?id=${encodeURIComponent(id)}`)
+            chrome.tabs.create({ url: targetUrl }, () => {
+              const err = chrome.runtime.lastError
+              if (err) console.error('[Background] Failed to open Studio tab:', err.message)
+            })
+          }
+
+          if (currentRecording && currentRecording.isRecording) {
+            setTimeout(() => {
+              try {
+                if (currentRecording && currentRecording.isRecording) {
+                  console.log('[Background] OPFS_RECORDING_READY delayed but recording still active; skipping Studio open', { id })
+                  try { sendResponse({ ok: true, skipped: true, reason: 'active_recording' }) } catch {}
+                } else {
+                  doOpen();
+                  try { sendResponse({ ok: true, delayed: true }) } catch {}
+                }
+              } catch (e) {
+                console.warn('[Background] delayed OPFS_RECORDING_READY handling error', e)
+                try { sendResponse({ ok: false, error: (e && e.message) || String(e) }) } catch {}
+              }
+            }, 600)
+            return true;
+          }
+
+          doOpen();
           try { sendResponse({ ok: true }) } catch (e) {}
         } catch (e) {
           console.warn('[Background] OPFS_RECORDING_READY handling error', e)
