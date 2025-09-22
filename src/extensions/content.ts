@@ -265,6 +265,11 @@
   window.addEventListener('mousemove', onMouseMoveReveal, { passive: true });
   window.addEventListener('keydown', onHotkeys, true);
 
+	  // keep element container synced on scroll/resize while selected
+	  window.addEventListener('scroll', () => { try { syncElementContainer(); } catch {} }, true);
+	  window.addEventListener('resize', () => { try { syncElementContainer(); } catch {} });
+
+
 
 	  // 流式累积是否就绪（sidepanel注册后由 background 通知）
 	  let streamingReady = false;
@@ -722,6 +727,61 @@
     report({ selectedDesc: `元素 ${getElDesc(el)}` });
   }
 
+
+	  // ===== Countdown helpers (global) to ensure stopCapture can cancel during pre-start =====
+	  ;(state as any).countdownRaf = 0;
+	  function cancelStartCountdownGlobal() {
+	    try { state.countdownPending = false; } catch {}
+	    try { if (state.countdownTimer) { clearTimeout(state.countdownTimer); state.countdownTimer = null } } catch {}
+	    try { if (state.countdownOverlay) { state.countdownOverlay.remove(); state.countdownOverlay = null } } catch {}
+	    try { if ((state as any).countdownRaf) { cancelAnimationFrame((state as any).countdownRaf); (state as any).countdownRaf = 0 } } catch {}
+	  }
+	  async function showStartCountdownGlobal(seconds = 5) {
+	    try {
+	      const host = state.elementContainer || state.regionContainer;
+	      if (!host || seconds <= 0) return;
+	      // Align container before overlay appears
+	      try { syncElementContainer(); } catch {}
+	      const overlay = document.createElement('div');
+	      overlay.className = 'mcp-countdown-overlay';
+	      overlay.style.cssText = [
+	        'position:absolute', 'inset:0', 'display:flex', 'align-items:center', 'justify-content:center',
+	        'background:rgba(0,0,0,0.25)', 'color:#fff', 'font-size:96px', 'font-weight:700', 'letter-spacing:.02em',
+	        'text-shadow:0 2px 8px rgba(0,0,0,.35)', 'z-index:2147483646', 'pointer-events:none',
+	        'backdrop-filter:saturate(120%) blur(0px)'
+	      ].join(';') + ';';
+	      const label = document.createElement('div');
+	      label.style.cssText = 'padding:.25em .5em; border-radius:.2em; background:rgba(0,0,0,.35)';
+	      overlay.appendChild(label);
+	      state.countdownOverlay = overlay;
+	      state.countdownPending = true;
+	      host.appendChild(overlay);
+	      let n = Math.max(1, Math.floor(seconds));
+	      label.textContent = String(n);
+	      // During countdown, keep container synced (handles scroll/layout changes)
+	      const raf = () => {
+	        if (!state.countdownPending) return;
+	        try { syncElementContainer(); } catch {}
+	        (state as any).countdownRaf = requestAnimationFrame(raf);
+	      };
+	      (state as any).countdownRaf = requestAnimationFrame(raf);
+	      await new Promise<void>((resolve) => {
+	        const tick = () => {
+	          if (!state.countdownPending) { cancelStartCountdownGlobal(); resolve(); return; }
+	          n -= 1;
+	          if (n <= 0) { cancelStartCountdownGlobal(); resolve(); return; }
+	          label.textContent = String(n);
+	          state.countdownTimer = setTimeout(tick, 1000);
+	        };
+	        state.countdownTimer = setTimeout(tick, 1000);
+	      });
+	    } catch (_) {
+	      cancelStartCountdownGlobal();
+	    }
+	  }
+	  ;(state as any)._cancelStartCountdown = cancelStartCountdownGlobal;
+	  ;(state as any)._showStartCountdown = showStartCountdownGlobal;
+
   async function startCapture() {
     if (state.recording) return;
     try {
@@ -741,7 +801,7 @@
       });
 
       // Fixed 5s countdown inside selection area to avoid share banner layout shift
-      await showStartCountdown(5);
+      if ((state as any)._showStartCountdown) await (state as any)._showStartCountdown(5);
 
       state.track = state.stream.getVideoTracks()[0];
       try { console.log('[Stream][Content] video track settings', state.track?.getSettings?.()); } catch {}
@@ -1054,6 +1114,36 @@
       const stack = e?.stack || '';
       console.error('startCapture error', e, { name, message, stack, usingWebCodecs: state.usingWebCodecs, recording: state.recording, chunkCount: state.chunkCount, byteCount: state.byteCount });
 
+      // Try fallback to MediaRecorder if we already obtained a stream but WebCodecs setup failed
+      try {
+        if (state.stream && !state.mediaRecorder) {
+          console.warn('[Stream][Content] Falling back to MediaRecorder...');
+          state.recordedChunks = [];
+          state.mediaRecorder = new MediaRecorder(state.stream, { mimeType: 'video/webm;codecs=vp9' });
+          state.mediaRecorder.ondataavailable = (event) => { if (event?.data?.size > 0) state.recordedChunks.push(event.data); };
+          state.mediaRecorder.onstop = () => {
+            try {
+              state.videoBlob = new Blob(state.recordedChunks, { type: 'video/webm' });
+              const videoUrl = URL.createObjectURL(state.videoBlob);
+              try { clearSelection(); } catch {}
+              report({ recording: false, hasVideo: true, videoSize: state.videoBlob.size, videoUrl });
+              try { showControlBar(true); updateControlBar(); } catch {}
+            } catch (err) {
+              console.error('[Stream][Content] MediaRecorder onstop error', err);
+            }
+          };
+          state.mediaRecorder.start(1000);
+          state.recording = true;
+          try { showPreview(); } catch {}
+          report({ recording: true });
+          try { showControlBar(true); updateControlBar(); } catch {}
+          return; // fallback succeeded, exit startCapture
+        }
+      } catch (fallbackErr) {
+        console.warn('[Stream][Content] MediaRecorder fallback failed', fallbackErr);
+      }
+
+
       state.recording = false;
       // 通知 sidepanel 失败，避免 UI 卡在“正在请求权限”
       try { chrome.runtime.sendMessage({ type: 'CAPTURE_FAILED', error: name || message || String(e) }); } catch {}
@@ -1082,7 +1172,7 @@
     // If user stops during countdown/pre-start (no worker/mediaRecorder yet)
     if (!state.worker && !state.mediaRecorder) {
       console.log('[Stream][Content] stopCapture during countdown/pre-start');
-      try { cancelStartCountdown(); } catch {}
+      try { (state as any)._cancelStartCountdown?.(); } catch {}
       try { state.stream && state.stream.getTracks().forEach(t => t.stop()); } catch {}
       state.stream = null; state.track = null; state.usingWebCodecs = false;
       state.recording = false;
