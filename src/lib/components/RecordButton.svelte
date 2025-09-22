@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Play, Square, TriangleAlert, CircleCheck, Clock, Activity, Cpu } from '@lucide/svelte'
 
-  // Props - 使用 Svelte 5 的类型化 props
+  // Props - using Svelte 5 typed props
   interface Props {
     isRecording: boolean
     status: 'idle' | 'requesting' | 'recording' | 'stopping' | 'error' | 'completed'
@@ -18,24 +18,24 @@
     class: className = ''
   }: Props = $props()
 
-  // 计算属性 - 使用 $derived，正确的 Svelte 5 语法
+  // Computed properties - using $derived, correct Svelte 5 syntax
   let buttonText = $derived(() => {
     switch (status) {
       case 'requesting':
-        return '正在请求权限...'
+        return 'Requesting permissions...'
       case 'stopping':
-        return '正在停止录制...'
+        return 'Stopping recording...'
       case 'recording':
-        return '停止录制'
+        return 'Stop Recording'
       default:
-        return '开始录制'
+        return 'Start Recording'
     }
   })
 
   let isLoading = $derived(status === 'requesting' || status === 'stopping')
   let isDisabled = $derived(disabled || isLoading)
 
-  // 事件处理
+  // Event handling
   function handleClick() {
     if (!isDisabled && onclick) {
       onclick()
@@ -43,9 +43,9 @@
   }
 </script>
 
-<!-- 录制控制区域 -->
+<!-- Recording control area -->
 <div class="flex flex-col gap-4 {className}">
-  <!-- 主录制按钮 -->
+  <!-- Main recording button -->
   <button
     class="group relative flex items-center justify-center gap-4 px-8 py-5 rounded-2xl font-semibold text-base text-white transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-xl hover:shadow-2xl disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none focus:outline-none focus:ring-4 focus:ring-opacity-50"
     class:bg-gradient-to-r={true}
@@ -64,7 +64,7 @@
     type="button"
     aria-label={buttonText()}
   >
-    <!-- 录制状态图标 -->
+    <!-- Recording status icon -->
     <div class="flex items-center justify-center w-6 h-6">
       {#if isLoading}
         <div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -75,48 +75,48 @@
       {/if}
     </div>
 
-    <!-- 按钮文字 -->
+    <!-- Button text -->
     <span class="font-bold tracking-wide">
       {buttonText()}
     </span>
 
-    <!-- 录制指示器 -->
+    <!-- Recording indicator -->
     {#if isRecording}
       <div class="absolute -top-2 -right-2 w-4 h-4 bg-red-400 border-2 border-white rounded-full animate-pulse shadow-lg"></div>
     {/if}
   </button>
 
-  <!-- 录制状态指示器 -->
+  <!-- Recording status indicator -->
   <div class="flex items-center justify-center">
     {#if status === 'idle'}
       <div class="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-full text-sm text-green-700">
         <CircleCheck class="w-4 h-4" />
-        <span class="font-medium">系统就绪</span>
+        <span class="font-medium">System Ready</span>
       </div>
     {:else if status === 'requesting'}
       <div class="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-full text-sm text-blue-700">
         <Clock class="w-4 h-4 animate-pulse" />
-        <span class="font-medium">请求权限中</span>
+        <span class="font-medium">Requesting Permission</span>
       </div>
     {:else if status === 'recording'}
       <div class="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-full text-sm text-red-700">
         <Activity class="w-4 h-4 animate-pulse" />
-        <span class="font-medium">正在录制</span>
+        <span class="font-medium">Recording</span>
       </div>
     {:else if status === 'stopping'}
       <div class="flex items-center gap-2 px-3 py-2 bg-orange-50 border border-orange-200 rounded-full text-sm text-orange-700">
         <Cpu class="w-4 h-4 animate-spin" />
-        <span class="font-medium">处理中</span>
+        <span class="font-medium">Processing</span>
       </div>
     {:else if status === 'completed'}
       <div class="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-full text-sm text-green-700">
         <CircleCheck class="w-4 h-4" />
-        <span class="font-medium">录制完成</span>
+        <span class="font-medium">Recording Complete</span>
       </div>
     {:else if status === 'error'}
       <div class="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-full text-sm text-red-700">
         <TriangleAlert class="w-4 h-4" />
-        <span class="font-medium">录制错误</span>
+        <span class="font-medium">Recording Error</span>
       </div>
     {/if}
   </div>

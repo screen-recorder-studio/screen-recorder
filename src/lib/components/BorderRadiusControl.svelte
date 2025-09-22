@@ -1,47 +1,48 @@
-<!-- 圆角配置控件 -->
+<!-- Border radius configuration control -->
+
 <script lang="ts">
   import { Square, Circle, Eye, SlidersHorizontal } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
 
-  // 当前圆角值
+  // Current border radius value
   const currentRadius = $derived(backgroundConfigStore.config.borderRadius || 0)
 
-  // 预设圆角值 - 增大范围使效果更明显
+  // Preset border radius values - increased range for more visible effects
   const PRESET_RADIUS = [
-    { name: '无圆角', value: 0, icon: Square },
-    { name: '小圆角', value: 20, icon: Circle },
-    { name: '中圆角', value: 40, icon: Circle },
-    { name: '大圆角', value: 60, icon: Circle },
-    { name: '超大圆角', value: 80, icon: Circle }
+    { name: 'No Radius', value: 0, icon: Square },
+    { name: 'Small Radius', value: 20, icon: Circle },
+    { name: 'Medium Radius', value: 40, icon: Circle },
+    { name: 'Large Radius', value: 60, icon: Circle },
+    { name: 'Extra Large Radius', value: 80, icon: Circle }
   ] as const
 
-  // 处理滑块变化
+  // Handle slider changes
   function handleSliderChange(event: Event) {
     const target = event.target as HTMLInputElement
     const value = parseInt(target.value)
     backgroundConfigStore.updateBorderRadius(value)
   }
 
-  // 处理预设值选择
+  // Handle preset value selection
   function handlePresetSelect(preset: typeof PRESET_RADIUS[number]) {
     console.log('🎨 [BorderRadiusControl] Preset selected:', preset)
     backgroundConfigStore.updateBorderRadius(preset.value)
   }
 
-  // 检查是否为当前选中的预设
+  // Check if current preset is selected
   function isPresetSelected(value: number) {
     return currentRadius === value
   }
 </script>
 
-<!-- 圆角配置控件 -->
+<!-- Video border radius configuration control -->
 <div class="p-4 border border-gray-200 rounded-lg bg-white">
   <div class="flex items-center gap-2 mb-4">
     <SlidersHorizontal class="w-4 h-4 text-gray-600" />
-    <h3 class="text-sm font-semibold text-gray-700">视频圆角</h3>
+    <h3 class="text-sm font-semibold text-gray-700">Video Border Radius</h3>
   </div>
 
-  <!-- 滑块控制 -->
+  <!-- Slider control -->
   <div class="flex items-center gap-3 mb-4">
     <input
       type="range"
@@ -57,7 +58,7 @@
     </div>
   </div>
 
-  <!-- 预设值快速选择 -->
+  <!-- Preset value quick selection -->
   <div class="flex gap-2 mb-4 flex-wrap">
     {#each PRESET_RADIUS as preset}
       {@const IconComponent = preset.icon}
@@ -80,11 +81,11 @@
     {/each}
   </div>
 
-  <!-- 视觉预览 -->
+  <!-- Visual preview -->
   <div class="mt-4">
     <div class="flex items-center gap-2 mb-2">
       <Eye class="w-3 h-3 text-gray-600" />
-      <div class="text-xs text-gray-600 font-medium">预览效果:</div>
+      <div class="text-xs text-gray-600 font-medium">Preview Effect:</div>
     </div>
     <div class="flex items-center justify-center p-6 bg-gray-50 rounded-md">
       <div
@@ -92,8 +93,8 @@
         style="border-radius: {currentRadius}px"
       >
         <div class="text-sm text-gray-700 text-center font-medium">
-          视频区域<br>
-          <span class="text-xs text-gray-500">{currentRadius}px 圆角</span>
+          Video Area<br>
+          <span class="text-xs text-gray-500">{currentRadius}px radius</span>
         </div>
       </div>
     </div>
@@ -101,7 +102,7 @@
 </div>
 
 <style>
-  /* 自定义滑块样式 */
+  /* Custom slider styles */
   .slider-thumb::-webkit-slider-thumb {
     appearance: none;
     width: 20px;

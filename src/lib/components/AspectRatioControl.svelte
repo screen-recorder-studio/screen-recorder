@@ -1,39 +1,39 @@
-<!-- 视频比例配置控件 -->
+<!-- Video aspect ratio configuration control -->
 <script lang="ts">
   import { Monitor, Square, Smartphone, BookOpen } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import type { BackgroundConfig } from '$lib/types/background'
 
-  // 当前比例配置
+  // Current ratio configuration
   const currentRatio = $derived(backgroundConfigStore.config.outputRatio)
 
-  // 热门平台标准比例
+  // Popular platform standard ratios
   const PLATFORM_RATIOS = [
     {
-      name: 'YouTube 横屏',
+      name: 'YouTube Landscape',
       ratio: '16:9' as const,
-      description: 'YouTube、B站、爱奇艺等',
+      description: 'YouTube, Bilibili, iQiyi, etc.',
       icon: Monitor,
       dimensions: '1920×1080'
     },
     {
-      name: 'Instagram 方形',
+      name: 'Instagram Square',
       ratio: '1:1' as const,
-      description: 'Instagram 帖子、微信朋友圈',
+      description: 'Instagram posts, WeChat Moments',
       icon: Square,
       dimensions: '1080×1080'
     },
     {
-      name: 'TikTok 竖屏',
+      name: 'TikTok Portrait',
       ratio: '9:16' as const,
-      description: 'TikTok、抖音、快手',
+      description: 'TikTok, Douyin, Kuaishou',
       icon: Smartphone,
       dimensions: '1080×1920'
     },
     {
       name: 'Instagram Story',
       ratio: '4:5' as const,
-      description: 'Instagram 故事、小红书',
+      description: 'Instagram Stories, Xiaohongshu',
       icon: BookOpen,
       dimensions: '1080×1350'
     }
@@ -41,19 +41,19 @@
 
 
 
-  // 处理比例选择
+  // Handle ratio selection
   function handleRatioSelect(ratio: typeof PLATFORM_RATIOS[number]) {
     console.log('📐 [AspectRatioControl] Ratio selected:', ratio)
     backgroundConfigStore.updateOutputRatio(ratio.ratio)
   }
 
-  // 检查是否为当前选中的比例
+  // Check if it's the currently selected ratio
   function isRatioSelected(ratio: BackgroundConfig['outputRatio']) {
     return currentRatio === ratio
   }
 </script>
 
-<!-- 视频比例配置控件 - 四个小卡片居中布局 -->
+<!-- Video aspect ratio configuration control - Four small cards centered layout -->
 <div class="flex justify-center">
   <div class="flex gap-3">
     {#each PLATFORM_RATIOS as platform}
@@ -73,11 +73,11 @@
         onclick={() => handleRatioSelect(platform)}
         title="{platform.description}"
       >
-        <!-- 左侧图标 -->
+        <!-- Left icon -->
         <div class="flex-shrink-0">
           <IconComponent class="w-5 h-5" />
         </div>
-        <!-- 右侧文字信息 -->
+        <!-- Right text information -->
         <div class="flex-1 text-left">
           <div class="text-xs font-semibold leading-tight">{platform.name}</div>
           <div class="text-xs opacity-80 font-medium leading-tight">{platform.ratio}</div>

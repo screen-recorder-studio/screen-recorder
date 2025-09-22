@@ -1,4 +1,4 @@
-<!-- 视频预览组件 - 使用 VideoComposite Worker 进行背景合成 -->
+<!-- Video preview component - using VideoComposite Worker for background composition -->
 <script lang="ts">
   import { onMount } from 'svelte'
   import { Play, Pause, LoaderCircle, Monitor, Info } from '@lucide/svelte'
@@ -20,7 +20,7 @@
     totalFramesAll?: number
     windowStartIndex?: number
     onRequestWindow?: (args: { centerMs: number; beforeMs: number; afterMs: number }) => void
-    // 可选：只拉数据，不切窗，用于预取缓存
+    // Optional: only fetch data, don't switch window, used for prefetch cache
     fetchWindowData?: (args: { centerMs: number; beforeMs: number; afterMs: number }) => Promise<{ chunks: any[]; windowStartIndex: number }>
     className?: string
   }
@@ -42,10 +42,10 @@
     className = ''
   }: Props = $props()
 
-  // 预取缓存与计划（阶段2B-小步）：仅记录计划参数，后续填充数据
+  // Prefetch cache and planning (Phase 2B-small step): only record planning parameters, fill data later
   type PrefetchPlan = { nextGlobalFrame: number; windowSize: number } | null
   let prefetchPlan: PrefetchPlan = null
-  // 预留：未来可缓存已切片的 transferableChunks 与 transferObjects
+  // Reserved: future can cache sliced transferableChunks and transferObjects
   type PrefetchCache = {
     targetGlobalFrame: number
     windowSize: number
@@ -56,13 +56,13 @@
   // building flag to avoid duplicate prefetch
   let isBuildingPrefetch = false
 
-  // 记录已发送到 worker 的 appendWindow 起点，避免重复追加解码
+  // Record appendWindow start point sent to worker, avoid duplicate append decoding
   let lastAppendedStartFrame: number | null = null
 
-  // 最近一次 worker 上报的缓冲水位状态
+  // Latest worker reported buffer level status
   let lastBufferLevel: 'healthy' | 'low' | 'critical' | null = null
 
-  // 观测：预取命中统计与切窗耗时
+  // Observation: prefetch hit statistics and window switching time
   let prefetchHits = 0
   let prefetchMisses = 0
   let cutoverTimerLabel: string | null = null
@@ -70,60 +70,60 @@
 
 
 
-  // 使用全局背景配置
+  // Use global background configuration
   const backgroundConfig = $derived(backgroundConfigStore.config)
 
-  // 状态变量 - 仅显示相关
+  // State variables - display related only
   let canvas: HTMLCanvasElement
   let bitmapCtx: ImageBitmapRenderingContext | null = null
   let isInitialized = $state(false)
   let isProcessing = $state(false)
   let hasEverProcessed = $state(false)
   let compositeWorker: Worker | null = null
-  // 播放控制状态
+  // Playback control state
   let currentFrameIndex = $state(0)
   let totalFrames = $state(0)
   let currentTime = $state(0)
   let duration = $state(0)
   let frameRate = 30
   let isPlaying = $state(false)
-  let shouldContinuePlayback = $state(false) // 🔧 连续播放标志
-  let continueFromGlobalFrame = $state(0) // 🔧 记录应该从哪个全局帧继续播放
-  // 渲染帧所对应的窗口起点（用于稳定计时显示/日志，避免 props 先变导致的假跳）
+  let shouldContinuePlayback = $state(false) // 🔧 Continuous playback flag
+  let continueFromGlobalFrame = $state(0) // 🔧 Record which global frame to continue playback from
+  // Rendered frame corresponding window start point (for stable timing display/log, avoid false jumps caused by props changing first)
   let lastFrameWindowStartIndex = $state(windowStartIndex)
 
-  // UI 显示用时长：优先使用全局帧数/帧率（与时间轴一致），其次 durationMs，最后回退内部 duration
+  // UI display duration: prioritize using global frame count/frame rate (consistent with timeline), then durationMs, finally fallback to internal duration
   const uiDurationSec = $derived.by(() => {
     if (totalFramesAll > 0 && frameRate > 0) return totalFramesAll / frameRate
     if (durationMs > 0) return durationMs / 1000
     return duration
   })
 
-  // 🔧 时间轴最大值（毫秒）：视频编辑器优化版本
+  // 🔧 Timeline maximum value (milliseconds): Video editor optimized version
   const timelineMaxMs = $derived.by(() => {
     let result: number
 
-    // 优先级1：使用全局时长（基于全局帧数）
+    // Priority 1: Use global duration (based on global frame count)
     if (totalFramesAll > 0 && frameRate > 0) {
       result = Math.max(1, Math.floor((totalFramesAll / frameRate) * 1000))
       console.log('[progress] timelineMaxMs: using global frames:', { totalFramesAll, frameRate, result })
     }
-    // 优先级2：使用传入的真实时长
+    // Priority 2: Use passed real duration
     else if (durationMs > 0) {
       result = Math.max(1, Math.floor(durationMs))
       console.log('[progress] timelineMaxMs: using durationMs:', { durationMs, result })
     }
-    // 优先级3：使用当前窗口帧数推算
+    // Priority 3: Use current window frame count calculation
     else if (totalFrames > 0 && frameRate > 0) {
       result = Math.max(1, Math.floor((totalFrames / frameRate) * 1000))
       console.log('[progress] timelineMaxMs: using window frames:', { totalFrames, frameRate, result })
     }
-    // 优先级4：使用窗口时长
+    // Priority 4: Use window duration
     else if (windowEndMs > windowStartMs) {
       result = Math.max(1, windowEndMs - windowStartMs)
       console.log('[progress] timelineMaxMs: using window duration:', { windowStartMs, windowEndMs, result })
     }
-    // 保底值
+    // Fallback value
     else {
       result = 1000
       console.log('[progress] timelineMaxMs: using fallback:', { result })
@@ -145,49 +145,49 @@
 
 
 
-  // 输出尺寸信息
+  // Output size information
   let outputWidth = $state(1920)
   let outputHeight = $state(1080)
 
-  // 预览尺寸 - 根据输出比例动态调整
+  // Preview size - based on output ratio dynamic adjustment
   let previewWidth = $state(displayWidth)
   let previewHeight = $state(displayHeight)
 
-  // 更新预览尺寸 - 智能适应全高度布局
+  // Update preview size - intelligent adaptive full height layout
   function updatePreviewSize() {
     const aspectRatio = outputWidth / outputHeight
 
-    // 计算可用空间 - 考虑控制栏和时间轴的高度
-    const headerHeight = 60  // 预览信息栏高度
-    const controlsHeight = showControls && totalFrames > 0 ? 56 : 0  // 播放控制栏高度
-    const timelineHeight = showTimeline && totalFrames > 0 ? 48 : 0  // 时间轴高度
-    const padding = 32  // Canvas 区域的内边距 (p-4 = 16px * 2)
+    // Calculate available space - consider control bar and timeline height
+    const headerHeight = 60  // Preview info bar height
+    const controlsHeight = showControls && totalFrames > 0 ? 56 : 0  // Play control bar height
+    const timelineHeight = showTimeline && totalFrames > 0 ? 48 : 0  // Timeline height
+    const padding = 32  // Canvas area padding (p-4 = 16px * 2)
 
     const availableWidth = displayWidth - padding
     const availableHeight = displayHeight - headerHeight - controlsHeight - timelineHeight - padding
 
-    // 计算适合的预览尺寸，保持纵横比，充分利用可用空间
+    // Calculate suitable preview size, maintain aspect ratio, fully utilize available space
     let calculatedWidth, calculatedHeight
 
     if (aspectRatio > availableWidth / availableHeight) {
-      // 宽度受限：使用全部可用宽度
+      // Width limited: use all available width
       calculatedWidth = availableWidth
       calculatedHeight = Math.round(calculatedWidth / aspectRatio)
     } else {
-      // 高度受限：使用全部可用高度
+      // Height limited: use all available height
       calculatedHeight = availableHeight
       calculatedWidth = Math.round(calculatedHeight * aspectRatio)
     }
 
-    // 确保最小尺寸，避免过小的预览
+    // Ensure minimum size, avoid too small preview
     const minSize = 300
     if (calculatedWidth < minSize || calculatedHeight < minSize) {
       if (aspectRatio > 1) {
-        // 横屏视频
+        // Landscape video
         previewWidth = Math.max(minSize, calculatedWidth)
         previewHeight = Math.round(previewWidth / aspectRatio)
       } else {
-        // 竖屏视频
+        // Portrait video
         previewHeight = Math.max(minSize, calculatedHeight)
         previewWidth = Math.round(previewHeight * aspectRatio)
       }
@@ -196,7 +196,7 @@
       previewHeight = calculatedHeight
     }
 
-    // 确保不超过容器限制
+    // Ensure not exceeding container limits
     previewWidth = Math.min(previewWidth, availableWidth)
     previewHeight = Math.min(previewHeight, availableHeight)
 
@@ -209,11 +209,11 @@
     })
   }
 
-  // 初始化 Canvas（仅用于显示）
+  // Initialize Canvas (only used for display)
   function initializeCanvas() {
     if (!canvas) return
 
-    // 使用 ImageBitmapRenderingContext 进行高效显示
+    // Use ImageBitmapRenderingContext for efficient display
     bitmapCtx = canvas.getContext('bitmaprenderer')
 
     if (!bitmapCtx) {
@@ -221,8 +221,8 @@
       return
     }
 
-    // 不设置固定尺寸，让 CSS 控制显示尺寸
-    // Canvas 会自动适应容器大小
+    // Don't set fixed size, let CSS control display size
+    // Canvas will automatically adjust to container size
     console.log('🎨 [VideoPreview] Canvas container size:', {
       containerWidth: canvas.parentElement?.clientWidth,
       containerHeight: canvas.parentElement?.clientHeight
@@ -232,7 +232,7 @@
     console.log('🎨 [VideoPreview] Canvas initialized for bitmap rendering')
   }
 
-  // 初始化 VideoComposite Worker
+  // Initialize VideoComposite Worker
   function initializeWorker() {
     if (compositeWorker) return
 
@@ -243,7 +243,7 @@
       { type: 'module' }
     )
 
-    // Worker 消息处理
+    // Worker message handling
     compositeWorker.onmessage = (event) => {
       const { type, data } = event.data
 
@@ -267,25 +267,25 @@
             windowStartIndex
           })
 
-          // 更新 Canvas 内部分辨率
+          // Update Canvas internal resolution
           canvas.width = outputWidth
           canvas.height = outputHeight
 
           isProcessing = false
-          // 观测：切窗耗时终点
+          // Observation: cutover time endpoint
           if (cutoverTimerLabel) {
             try { console.timeEnd(cutoverTimerLabel) } catch {}
             cutoverTimerLabel = null
           }
 
-          // 默认预览首帧（不自动播放）；连续播放切窗时跳过，避免双重 seek 造成回跳
+          // Default preview first frame (not automatically play); continuous playback cut window skip, avoid double seek cause re-skip
           if (!shouldContinuePlayback) {
             seekToFrame(0)
           }
 
-          // 🔧 检查是否需要在新窗口准备后继续播放
+          // 🔧 Check if new window is prepared to continue playback
           if (shouldContinuePlayback) {
-            // 计算在新窗口中应该从哪一帧开始播放
+            // Calculate in new window which frame should be played
             const targetWindowFrame = continueFromGlobalFrame - windowStartIndex
             const startFrame = Math.max(0, Math.min(targetWindowFrame, data.totalFrames - 1))
 
@@ -298,14 +298,14 @@
               totalFrames: data.totalFrames
             })
 
-            // 🔧 立即重置标志，避免重复触发
+            // 🔧 Immediately reset flag, avoid repeat trigger
             shouldContinuePlayback = false
 
-            // 🔧 使用更可靠的异步调度
+            // 🔧 Use more reliable async scheduling
             requestAnimationFrame(() => {
               console.log('[progress] Starting playback in new window from frame', startFrame)
               seekToFrame(startFrame)
-              // 确保seek完成后再开始播放
+              // Ensure seek complete before start playback
               requestAnimationFrame(() => {
                 console.log('[progress] Resuming playback after seek')
                 play()
@@ -315,17 +315,17 @@
           break
 
         case 'frame':
-          // 显示合成后的帧
+          // Display composite after frame
           displayFrame(data.bitmap, data.frameIndex, data.timestamp)
           break
 
         case 'bufferStatus':
-          // 阶段2B小步验证：记录水位状态，并生成预取计划（不改变现有行为）
+          // Phase2B small step validation: record buffer status, and generate prefetch plan (does not change existing behavior)
           console.log(`🧯 [VideoPreview] Buffer status: ${data.level}`, data)
-          // 记录最新水位
+          // Record latest buffer level
           lastBufferLevel = data.level as any
 
-          // 若已有预取缓存且当前水位为 low/critical，则优先追加后台解码（避免健康期浪费）
+          // If already prefetch cache and current level is low/critical, then priority append background decode (avoid health period waste)
           if (
             (data.level === 'low' || data.level === 'critical') &&
             compositeWorker &&
@@ -351,9 +351,9 @@
           }
 
           if (totalFramesAll > 0) {
-            // 固定指向当前窗口末尾的下一窗口起点，避免随帧抖动
+            // Fixed point current window end of next window start point, avoid with frame shake
             const boundaryNext = windowStartIndex + Math.max(0, totalFrames)
-            // 作为“起点索引”，允许等于 totalFramesAll（表示没有下一窗口）
+            // As "start index", allow equals totalFramesAll (indicate no next window)
             const nextGlobal = Math.min(boundaryNext, Math.max(0, totalFramesAll))
             const remainingAll = Math.max(0, totalFramesAll - nextGlobal)
             const plannedSize = Math.min(90, remainingAll)
@@ -365,7 +365,7 @@
               }
 
 
-                // 丢弃过期的预取缓存：若缓存起点<=当前窗口起点，说明无效（可能是自我预取）
+                // Discard expired prefetch cache: if cache start<=current window start, invalidate (possibly self prefetch)
                 if (prefetchCache && prefetchCache.targetGlobalFrame <= windowStartIndex) {
                   console.log('[prefetch] Discard stale cache for start:', prefetchCache.targetGlobalFrame, 'current windowStartIndex:', windowStartIndex)
                   prefetchCache = null
@@ -404,7 +404,7 @@
                     console.timeEnd('[prefetch] build')
                     console.log('[prefetch] Cache ready for start:', prefetchCache?.targetGlobalFrame, 'size:', prefetchCache?.windowSize)
 
-                    // 小步C：在缓存就绪后，提前把下一窗口编码块复制并下发给 worker 进行后台解码（不切窗）
+                    // Small stepC: in cache ready, ahead of next window encoding block copy and issue to worker for background decode (no cut window)
                     try {
                       if (
                         (lastBufferLevel === 'low' || lastBufferLevel === 'critical') &&
@@ -414,7 +414,7 @@
                         lastAppendedStartFrame !== prefetchCache.targetGlobalFrame
                       ) {
                         const appendedChunks = prefetchCache.transferableChunks.map((c: any) => {
-                          const buf: ArrayBuffer = (c.data as ArrayBuffer).slice(0) // 复制一份，避免影响主线程缓存
+                          const buf: ArrayBuffer = (c.data as ArrayBuffer).slice(0) // Copy one, avoid affecting main thread cache
                           return { ...c, data: buf }
                         })
                         const appendedTransfers = appendedChunks.map((c: any) => c.data as ArrayBuffer)
@@ -441,15 +441,15 @@
 
 
         case 'sizeChanged':
-          // 处理输出尺寸变化
+          // Handle output size change
           console.log('📐 [VideoPreview] Output size changed:', data)
           outputWidth = data.outputSize.width
           outputHeight = data.outputSize.height
 
-          // 更新预览尺寸
+          // Update preview size
           updatePreviewSize()
 
-          // 更新 Canvas 内部分辨率
+          // Update Canvas internal resolution
           canvas.width = outputWidth
           canvas.height = outputHeight
           break
@@ -479,11 +479,11 @@
       isProcessing = false
     }
 
-    // 初始化 Worker
+    // Initialize Worker
     compositeWorker.postMessage({ type: 'init' })
   }
 
-  // 显示帧（核心显示逻辑）
+  // Display frame (core display logic)
   function displayFrame(bitmap: ImageBitmap, frameIndex: number, timestamp: number) {
     if (!bitmapCtx) {
       console.error('❌ [VideoPreview] Bitmap context not available')
@@ -495,17 +495,17 @@
 
 
     try {
-      // 高效显示 ImageBitmap
+      // Efficiently display ImageBitmap
       bitmapCtx.transferFromImageBitmap(bitmap)
 
-      // 更新播放状态
+      // Update playback state
       currentFrameIndex = frameIndex
-      // 绑定该帧所对应的窗口起点，稳定显示/日志中的全局帧
+      // Bind this frame to corresponding window start point, stable display/log of global frame
       lastFrameWindowStartIndex = windowStartIndex
-      // 使用全局帧索引计算相对视频开始的时间，避免绝对时间戳（如epoch/us）导致显示超大值
+      // Use global frame index calculation relative video start time, avoid absolute timestamp (like epoch/us) causing huge value
       currentTime = (lastFrameWindowStartIndex + frameIndex) / frameRate
 
-      // 调试：降低逐帧日志开销，仅开发环境且每60帧输出一次
+      // Debug: reduce per-frame log cost, only development environment and every 60 frames output once
       // if (import.meta.env.DEV && frameIndex % 60 === 0) {
       //   console.debug(`[VideoPreview] frame ${frameIndex}/${totalFrames} global ${windowStartIndex + frameIndex + 1}/${totalFramesAll}`)
       // }
@@ -514,7 +514,7 @@
     }
   }
 
-  // 处理视频数据
+  // Handle video data
   async function processVideo() {
     if (!compositeWorker || !encodedChunks.length) {
       console.warn('⚠️ [VideoPreview] Cannot process: missing worker or chunks')
@@ -523,7 +523,7 @@
 
     console.log('🎬 [VideoPreview] Processing video with', encodedChunks.length, 'chunks')
 
-    // 验证并修复数据格式
+    // Validate and fix data format
     const validation = DataFormatValidator.validateChunks(encodedChunks)
     if (!validation.isValid) {
       console.warn('⚠️ [VideoPreview] Invalid chunk data detected, attempting to fix...')
@@ -539,15 +539,15 @@
       }
     }
 
-    // 仅首次加载时显示处理遮罩；连续播放切换时不遮挡
+    // Only first load show processing mask; continuous playback switch doesn't cover
     isProcessing = !hasEverProcessed
 
-    // 准备可传输的数据块：优先命中预取缓存，否则现算
+    // Prepare can transfer data chunks: priority hit prefetch cache, or calculate
     let transferableChunks: any[]
     let usingPrefetchCache = false
 
     if (prefetchCache && prefetchCache.targetGlobalFrame === windowStartIndex) {
-      // 命中缓存
+      // Hit cache
       transferableChunks = prefetchCache.transferableChunks
       usingPrefetchCache = true
       console.log('⚡ [prefetch] Using cached transferableChunks:', {
@@ -555,10 +555,10 @@
         windowSize: prefetchCache.windowSize,
         chunks: transferableChunks.length
       })
-      // 命中后立即清空，避免重复使用过期缓存
+      // Hit after immediately clear, avoid repeat use of expired cache
       prefetchCache = null
     } else {
-      // 回退：按需转换当前 props.encodedChunks
+      // Rollback: convert current props.encodedChunks
       transferableChunks = encodedChunks.map((chunk) => {
         let dataBuffer
         try {
@@ -590,7 +590,7 @@
 
     console.log('📤 [VideoPreview] Prepared', transferableChunks.length, 'transferable chunks', usingPrefetchCache ? '(from cache)' : '')
 
-    // 调试：检查第一个数据块的尺寸信息
+    // Debug: check first data chunk size information
     if (transferableChunks.length > 0) {
       const firstChunk = transferableChunks[0]
       console.log('🔍 [VideoPreview] First chunk dimensions:', {
@@ -606,15 +606,15 @@
       })
     }
 
-    // 收集所有 ArrayBuffer 用于转移
+    // Collect all ArrayBuffers for transfer
     const transferList = transferableChunks.map((chunk: any) => chunk.data)
 
-    // 将 Svelte 5 的 Proxy 对象转换为普通对象
+    // Convert Svelte 5 Proxy objects to plain objects
     const plainBackgroundConfig = {
       type: backgroundConfig.type,
 
-    //     
-    // : 
+    //    
+    // : 
 
       color: backgroundConfig.color,
       padding: backgroundConfig.padding,
@@ -622,7 +622,7 @@
       videoPosition: backgroundConfig.videoPosition,
       borderRadius: backgroundConfig.borderRadius,
       inset: backgroundConfig.inset,
-      // 深度转换 gradient 对象
+      // Deep convert gradient object
       gradient: backgroundConfig.gradient ? {
         type: backgroundConfig.gradient.type,
         ...(backgroundConfig.gradient.type === 'linear' && 'angle' in backgroundConfig.gradient ? { angle: backgroundConfig.gradient.angle } : {}),
@@ -641,17 +641,17 @@
           position: stop.position
         }))
       } : undefined,
-      // 深度转换 shadow 对象
+      // Deep convert shadow object
       shadow: backgroundConfig.shadow ? {
         offsetX: backgroundConfig.shadow.offsetX,
         offsetY: backgroundConfig.shadow.offsetY,
         blur: backgroundConfig.shadow.blur,
         color: backgroundConfig.shadow.color
       } : undefined,
-      // 深度转换 image 对象 - 获取新的ImageBitmap避免detached问题
+      // Deep convert image object - get new ImageBitmap to avoid detached issue
       image: backgroundConfig.image ? {
         imageId: backgroundConfig.image.imageId,
-        imageBitmap: null as any, // 先设为null，稍后获取新的ImageBitmap
+        imageBitmap: null as any, // Set to null first, get new ImageBitmap later
         fit: backgroundConfig.image.fit,
         position: backgroundConfig.image.position,
         opacity: backgroundConfig.image.opacity,
@@ -660,10 +660,10 @@
         offsetX: backgroundConfig.image.offsetX,
         offsetY: backgroundConfig.image.offsetY
       } : undefined,
-      // 深度转换 wallpaper 对象 - 获取新的ImageBitmap避免detached问题
+      // Deep convert wallpaper object - get new ImageBitmap to avoid detached issue
       wallpaper: backgroundConfig.wallpaper ? {
         imageId: backgroundConfig.wallpaper.imageId,
-        imageBitmap: null as any, // 先设为null，稍后获取新的ImageBitmap
+        imageBitmap: null as any, // Set to null first, get new ImageBitmap later
         fit: backgroundConfig.wallpaper.fit,
         position: backgroundConfig.wallpaper.position,
         opacity: backgroundConfig.wallpaper.opacity,
@@ -674,21 +674,21 @@
       } : undefined
     }
 
-    // 如果是图片背景，获取新的ImageBitmap
+    // If image background, get new ImageBitmap
     const transferObjects: Transferable[] = [...transferList]
     if (plainBackgroundConfig.image && backgroundConfig.image) {
       try {
-        // 从ImageBackgroundManager获取新的ImageBitmap
+        // Get new ImageBitmap from ImageBackgroundManager
         const freshImageBitmap = imageBackgroundManager.getImageBitmap(backgroundConfig.image.imageId)
 
         if (freshImageBitmap) {
-          // 创建ImageBitmap的副本用于传输
+          // Create ImageBitmap copy for transfer
           const imageBitmapCopy = await createImageBitmap(freshImageBitmap)
           plainBackgroundConfig.image.imageBitmap = imageBitmapCopy
           transferObjects.push(imageBitmapCopy as any)
         } else {
           console.warn('⚠️ [VideoPreview] ImageBitmap not found for imageId:', backgroundConfig.image.imageId)
-          plainBackgroundConfig.image = undefined // 如果找不到ImageBitmap，移除image配置
+          plainBackgroundConfig.image = undefined // Remove image config if ImageBitmap not found
         }
       } catch (error) {
         console.error('❌ [VideoPreview] Failed to get ImageBitmap:', error)
@@ -696,20 +696,20 @@
       }
     }
 
-    // 如果是壁纸背景，获取新的ImageBitmap
+    // If wallpaper background, get new ImageBitmap
     if (plainBackgroundConfig.wallpaper && backgroundConfig.wallpaper) {
       try {
-        // 从ImageBackgroundManager获取新的ImageBitmap
+        // Get new ImageBitmap from ImageBackgroundManager
         const freshImageBitmap = imageBackgroundManager.getImageBitmap(backgroundConfig.wallpaper.imageId)
 
         if (freshImageBitmap) {
-          // 创建ImageBitmap的副本用于传输
+          // Create ImageBitmap copy for transfer
           const imageBitmapCopy = await createImageBitmap(freshImageBitmap)
           plainBackgroundConfig.wallpaper.imageBitmap = imageBitmapCopy
           transferObjects.push(imageBitmapCopy as any)
         } else {
           console.warn('⚠️ [VideoPreview] ImageBitmap not found for wallpaper imageId:', backgroundConfig.wallpaper.imageId)
-          plainBackgroundConfig.wallpaper = undefined // 如果找不到ImageBitmap，移除wallpaper配置
+          plainBackgroundConfig.wallpaper = undefined // Remove wallpaper config if ImageBitmap not found
         }
       } catch (error) {
         console.error('❌ [VideoPreview] Failed to get wallpaper ImageBitmap:', error)
@@ -736,7 +736,7 @@
 
     console.log('[progress] VideoPreview - process message sent')
 
-    // 观测：预取命中率统计（发送后就位时记录一次）
+    // Observation: prefetch hit statistics (send after window end)
     if (usingPrefetchCache) { prefetchHits++; } else { prefetchMisses++; }
     {
       const total = prefetchHits + prefetchMisses
@@ -746,7 +746,7 @@
 
   }
 
-  // 播放控制
+  // Playback control
   function play() {
     if (!compositeWorker || totalFrames === 0) return
 
@@ -787,7 +787,7 @@
     seekToFrame(frameIndex)
   }
 
-  // 格式化秒为 00:00（mm:ss），供时间轴底部显示
+  // Format seconds as 00:00（mm:ss），supply time to bottom of timeline
   function formatTimeSec(sec: number): string {
     const total = Math.max(0, Math.floor(sec))
     const mm = Math.floor(total / 60)
@@ -816,11 +816,11 @@
 
 
 
-  // 更新背景配置
+  // Update background configuration
   async function updateBackgroundConfig(newConfig: typeof backgroundConfig) {
     if (!compositeWorker) return
 
-    // 将 Svelte 5 的 Proxy 对象转换为普通对象
+    // Convert Svelte 5's Proxy object to common object
     const plainConfig = {
       type: newConfig.type,
       color: newConfig.color,
@@ -830,7 +830,7 @@
 
       borderRadius: newConfig.borderRadius,
       inset: newConfig.inset,
-      // 深度转换 gradient 对象
+      // Deep convert gradient object
       gradient: newConfig.gradient ? {
         type: newConfig.gradient.type,
         ...(newConfig.gradient.type === 'linear' && 'angle' in newConfig.gradient ? { angle: newConfig.gradient.angle } : {}),
@@ -849,17 +849,17 @@
           position: stop.position
         }))
       } : undefined,
-      // 深度转换 shadow 对象
+      // Deep convert shadow object
       shadow: newConfig.shadow ? {
         offsetX: newConfig.shadow.offsetX,
         offsetY: newConfig.shadow.offsetY,
         blur: newConfig.shadow.blur,
         color: newConfig.shadow.color
       } : undefined,
-      // 深度转换 image 对象 - 获取新的ImageBitmap避免detached问题
+      // Deep convert image object - get new ImageBitmap to avoid detached issue
       image: newConfig.image ? {
         imageId: newConfig.image.imageId,
-        imageBitmap: null as any, // 先设为null，稍后获取新的ImageBitmap
+        imageBitmap: null as any, // Set to null first, get new ImageBitmap later
         fit: newConfig.image.fit,
         position: newConfig.image.position,
         opacity: newConfig.image.opacity,
@@ -868,10 +868,10 @@
         offsetX: newConfig.image.offsetX,
         offsetY: newConfig.image.offsetY
       } : undefined,
-      // 深度转换 wallpaper 对象 - 获取新的ImageBitmap避免detached问题
+      // Deep convert wallpaper object - get new ImageBitmap to avoid detached issue
       wallpaper: newConfig.wallpaper ? {
         imageId: newConfig.wallpaper.imageId,
-        imageBitmap: null as any, // 先设为null，稍后获取新的ImageBitmap
+        imageBitmap: null as any, // Set to null first, get new ImageBitmap later
         fit: newConfig.wallpaper.fit,
         position: newConfig.wallpaper.position,
         opacity: newConfig.wallpaper.opacity,
@@ -884,21 +884,21 @@
 
     console.log('⚙️ [VideoPreview] Updating background config:', plainConfig)
 
-    // 如果是图片背景，获取新的ImageBitmap
+    // If image background, get new ImageBitmap
     const transferObjects: Transferable[] = []
     if (plainConfig.image && newConfig.image) {
       try {
-        // 从ImageBackgroundManager获取新的ImageBitmap
+        // Get new ImageBitmap from ImageBackgroundManager
         const freshImageBitmap = imageBackgroundManager.getImageBitmap(newConfig.image.imageId)
 
         if (freshImageBitmap) {
-          // 创建ImageBitmap的副本用于传输
+          // Create ImageBitmap copy for transfer
           const imageBitmapCopy = await createImageBitmap(freshImageBitmap)
           plainConfig.image.imageBitmap = imageBitmapCopy
           transferObjects.push(imageBitmapCopy as any)
         } else {
           console.warn('⚠️ [VideoPreview] ImageBitmap not found for imageId:', newConfig.image.imageId)
-          plainConfig.image = undefined // 如果找不到ImageBitmap，移除image配置
+          plainConfig.image = undefined // Remove image config if ImageBitmap not found
         }
       } catch (error) {
         console.error('❌ [VideoPreview] Failed to get ImageBitmap:', error)
@@ -906,20 +906,20 @@
       }
     }
 
-    // 如果是壁纸背景，获取新的ImageBitmap
+    // If wallpaper background, get new ImageBitmap
     if (plainConfig.wallpaper && newConfig.wallpaper) {
       try {
-        // 从ImageBackgroundManager获取新的ImageBitmap
+        // Get new ImageBitmap from ImageBackgroundManager
         const freshImageBitmap = imageBackgroundManager.getImageBitmap(newConfig.wallpaper.imageId)
 
         if (freshImageBitmap) {
-          // 创建ImageBitmap的副本用于传输
+          // Create ImageBitmap copy for transfer
           const imageBitmapCopy = await createImageBitmap(freshImageBitmap)
           plainConfig.wallpaper.imageBitmap = imageBitmapCopy
           transferObjects.push(imageBitmapCopy as any)
         } else {
           console.warn('⚠️ [VideoPreview] ImageBitmap not found for wallpaper imageId:', newConfig.wallpaper.imageId)
-          plainConfig.wallpaper = undefined // 如果找不到ImageBitmap，移除wallpaper配置
+          plainConfig.wallpaper = undefined // Remove wallpaper config if ImageBitmap not found
         }
       } catch (error) {
         console.error('❌ [VideoPreview] Failed to get wallpaper ImageBitmap:', error)
@@ -933,7 +933,7 @@
     }, transferObjects.length > 0 ? { transfer: transferObjects } : undefined)
   }
 
-  // 响应式处理 - 只在录制完成后处理一次
+  // Reactive processing - only process once after recording is complete
   let hasProcessed = false
 
   $effect(() => {
@@ -959,7 +959,7 @@
       timelineCondition: showTimeline && timelineMaxMs > 0
     })
 
-    // 只有当录制完成且有编码块时才处理
+    // Only process when recording is complete and has encoded chunks
     if (isRecordingComplete &&
         encodedChunks.length > 0 &&
         !hasProcessed &&
@@ -973,7 +973,7 @@
     }
   })
 
-  // 当外部窗口数据（encodedChunks）引用变化时，允许重新处理
+  // When external window data (encodedChunks) reference changes, allow reprocessing
   let lastChunksRef: any[] | null = null
   $effect(() => {
     if (encodedChunks && encodedChunks !== lastChunksRef) {
@@ -985,11 +985,11 @@
       lastChunksRef = encodedChunks
       hasProcessed = false
 
-      // 🔧 立即处理新窗口数据
+      // 🔧 Immediately process new window data
       if (isRecordingComplete && encodedChunks.length > 0 && isInitialized && compositeWorker) {
         console.log('[progress] Immediately processing new window data')
 
-        // 重置当前帧索引：仅在非连续播放/非继续播放场景下复位
+        // Reset current frame index: only reset in non-continuous playback/non-resume scenarios
         if (!shouldContinuePlayback) {
           currentFrameIndex = 0
           console.log('[progress] Reset currentFrameIndex to 0 for new window (no resume)')
@@ -1005,7 +1005,7 @@
     }
   })
 
-  // 🔧 处理窗口播放完成 - 连续播放核心功能
+  // 🔧 Handle window playback complete - continuous playback core functionality
   function handleWindowComplete(data: { totalFrames: number, lastFrameIndex: number }) {
     console.log('[progress] Handling window complete:', {
       windowStartIndex,
@@ -1016,7 +1016,7 @@
       isPlaying
     })
 
-    // 🔧 只有在播放状态下才处理窗口完成
+    // 🔧 Only handle window complete when in playing state
     if (!isPlaying) {
       console.log('[progress] Not playing, ignoring window complete')
       return
@@ -1025,9 +1025,9 @@
     const currentGlobalFrame = windowStartIndex + data.lastFrameIndex
     const nextGlobalFrame = currentGlobalFrame + 1
 
-    // 检查是否还有更多帧
+    // Check if there are more frames
     if (nextGlobalFrame < totalFramesAll) {
-      // 选择下一窗口起点：优先消费已构建的预取缓存，其次才使用计划，避免跳过缓存导致丢弃
+      // Choose next window start point: prioritize consuming built prefetch cache, then use plan, avoid skipping cache causing discard
       let plannedNext = nextGlobalFrame
       let windowSize = Math.min(90, totalFramesAll - nextGlobalFrame)
       if (prefetchCache && prefetchCache.targetGlobalFrame >= nextGlobalFrame && prefetchCache.targetGlobalFrame > windowStartIndex) {
@@ -1054,9 +1054,9 @@
         remainingFrames: totalFramesAll - plannedNext
       })
 
-      // 标记需要在新窗口加载后继续播放（在请求之前设置）
+      // Mark need to continue playback after new window loads (set before request)
 
-      // 观测：切窗耗时起点
+      // Observation: cutover time start point
       cutoverPlannedNext = plannedNext
       cutoverTimerLabel = `[cutover] to ${plannedNext}`
       try { console.time(cutoverTimerLabel) } catch {}
@@ -1065,18 +1065,18 @@
       continueFromGlobalFrame = plannedNext
       console.log('[progress] Set shouldContinuePlayback = true, continueFromGlobalFrame =', plannedNext)
 
-      // 🔧 直接使用帧范围请求，避免时间转换误差
+      // 🔧 Directly use frame range request, avoid time conversion error
       if (onRequestWindow) {
-        // 先尝试时间方式（保持兼容性）
+        // First try time method (maintain compatibility)
         const nextTimeMs = (plannedNext / frameRate) * 1000
         onRequestWindow({
           centerMs: nextTimeMs,
-          beforeMs: 0,      // 从目标帧开始
-          afterMs: (windowSize / frameRate) * 1000  // 基于窗口大小计算
+          beforeMs: 0,      // Start from target frame
+          afterMs: (windowSize / frameRate) * 1000  // Based on window size calculation
         })
       }
 
-      // 本次请求后清理一次计划（避免重复使用过期计划）
+      // Clear plan once after this request (avoid reusing expired plan)
       prefetchPlan = null
     } else {
       console.log('[progress] Reached end of video, stopping playback')
@@ -1085,7 +1085,7 @@
     }
   }
 
-  // 🔧 全局帧定位系统 - 视频编辑器核心功能
+  // 🔧 Global frame positioning system - video editor core functionality
   function seekToGlobalFrame(globalFrameIndex: number) {
     console.log('[progress] Seeking to global frame:', {
       globalFrameIndex,
@@ -1097,11 +1097,11 @@
     const windowFrameIndex = globalFrameIndex - windowStartIndex
 
     if (windowFrameIndex >= 0 && windowFrameIndex < totalFrames) {
-      // 在当前窗口内，直接seek
+      // Within current window, seek directly
       console.log('[progress] Frame in current window, seeking locally:', windowFrameIndex)
       seekToFrame(windowFrameIndex)
     } else {
-      // 需要切换窗口
+      // Need to switch window
       console.log('[progress] Frame outside current window, requesting new window')
       const targetTimeMs = (globalFrameIndex / frameRate) * 1000
 
@@ -1119,7 +1119,7 @@
     seekToGlobalFrame(globalFrameIndex)
   }
 
-  // 时间轴输入处理（基于毫秒）
+  // Timeline input handling (based on milliseconds)
   function handleTimelineInput(timeMs: number) {
     const clampedMs = Math.max(0, Math.min(timeMs, timelineMaxMs))
     console.log('[progress] Timeline input:', {
@@ -1130,7 +1130,7 @@
       timelineMaxMs
     })
 
-    // 🔧 使用全局时间定位
+    // 🔧 Use global time positioning
     seekToGlobalTime(clampedMs)
   }
 
@@ -1140,14 +1140,14 @@
     }
   })
 
-  // 响应输出尺寸变化，更新预览尺寸
+  // Respond to output size changes, update preview size
   $effect(() => {
     if (outputWidth > 0 && outputHeight > 0) {
       updatePreviewSize()
     }
   })
 
-  // 组件挂载
+  // Component mount
   onMount(() => {
     console.log('[progress] Component mounted with props:', {
       encodedChunks: encodedChunks.length,
@@ -1162,7 +1162,7 @@
     initializeCanvas()
     initializeWorker()
 
-  // 监听关键 props 变化
+  // Listen for key props changes
   $effect(() => {
     console.log('[progress] Props changed:', {
       durationMs,
@@ -1176,13 +1176,13 @@
       shouldContinuePlayback
     })
 
-    // 注意：继续播放的逻辑已移至worker ready事件中处理
+    // Note: continue playback logic has been moved to worker ready event handling
   })
 
-  // 当 totalFrames/showTimeline/showControls 或容器尺寸变动时，重新计算预览尺寸，
-  // 以便为时间轴/控制栏预留空间，避免被 overflow-hidden 裁剪
+  // When totalFrames/showTimeline/showControls or container size changes, recalculate preview size,
+  // to reserve space for timeline/control bar, avoid being clipped by overflow-hidden
   $effect(() => {
-    // 触发依赖追踪
+    // Trigger dependency tracking
     const _tf = totalFrames
     const _st = showTimeline
     const _sc = showControls
@@ -1194,7 +1194,7 @@
   })
 
 
-    // 清理函数
+    // Cleanup function
     return () => {
       if (compositeWorker) {
         compositeWorker.terminate()
@@ -1203,7 +1203,7 @@
     }
   })
 
-  // 导出控制方法
+  // Export control methods
   export function getControls() {
     return {
       play,
@@ -1224,20 +1224,20 @@
   }
 </script>
 
-<!-- 视频预览容器 - 优化为全高度布局 -->
+<!-- Video preview container - optimized for full height layout -->
 <div class="flex flex-col h-full bg-gray-900 rounded-lg overflow-hidden {className}">
-  <!-- 预览信息栏 - 固定高度 -->
+  <!-- Preview info bar - fixed height -->
   <div class="flex-shrink-0 flex justify-between items-center p-3 border-b border-gray-700">
     <div class="flex items-center gap-2">
       <Monitor class="w-4 h-4 text-gray-400" />
-      <span class="text-sm font-semibold text-gray-100">视频预览</span>
+      <span class="text-sm font-semibold text-gray-100">Video Preview</span>
     </div>
     <span class="text-xs font-medium text-purple-400 bg-purple-500/10 px-2 py-1 rounded border border-purple-500/20">
       {backgroundConfig.outputRatio === 'custom' ? `${outputWidth}×${outputHeight}` : backgroundConfig.outputRatio}
     </span>
   </div>
 
-  <!-- Canvas 显示区域 - 占据剩余空间 -->
+  <!-- Canvas display area - takes remaining space -->
   <div class="flex-1 flex items-center justify-center p-4 min-h-0">
     <div class="relative bg-black flex items-center justify-center rounded overflow-hidden" style="width: {previewWidth}px; height: {previewHeight}px;">
       <canvas
@@ -1250,14 +1250,14 @@
       {#if isProcessing}
         <div class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white">
           <LoaderCircle class="w-8 h-8 text-blue-500 animate-spin mb-2" />
-          <span class="text-sm">正在处理视频...</span>
+          <span class="text-sm">Processing video...</span>
         </div>
       {/if}
     </div>
   </div>
 
 
-  <!-- 时间轴 - 固定高度（基于真实时长，毫秒） -->
+  <!-- Time axis - fixed height (based on real duration, milliseconds) -->
   {#if showTimeline && timelineMaxMs > 0}
     <div class="flex-shrink-0 p-3 bg-gray-800">
       <input
@@ -1287,10 +1287,10 @@
           </span>
         </div>
         <div class="flex items-center gap-4 text-xs text-gray-400">
-          <span>帧: {windowStartIndex + currentFrameIndex + 1}/{totalFramesAll > 0 ? totalFramesAll : (totalFrames > 0 ? totalFrames : encodedChunks.length)}</span>
-          <span>窗口: {windowStartIndex + 1}-{windowStartIndex + totalFrames}/{totalFramesAll}</span>
-          <span>分辨率: {outputWidth}×{outputHeight}</span>
-          <span>时长: {Math.floor(timelineMaxMs / 1000)}s</span>
+          <span>Frame: {windowStartIndex + currentFrameIndex + 1}/{totalFramesAll > 0 ? totalFramesAll : (totalFrames > 0 ? totalFrames : encodedChunks.length)}</span>
+          <span>Window: {windowStartIndex + 1}-{windowStartIndex + totalFrames}/{totalFramesAll}</span>
+          <span>Resolution: {outputWidth}×{outputHeight}</span>
+          <span>Duration: {Math.floor(timelineMaxMs / 1000)}s</span>
         </div>
       </div>
     </div>
@@ -1298,7 +1298,7 @@
 </div>
 
 <style>
-  /* 自定义时间轴滑块样式 - 使用蓝色主题 */
+  /* Custom timeline slider styles - using blue theme */
   .timeline-slider::-webkit-slider-thumb {
     appearance: none;
     width: 16px;

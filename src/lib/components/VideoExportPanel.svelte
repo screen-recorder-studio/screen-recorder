@@ -1,4 +1,4 @@
-<!-- 视频导出面板组件 -->
+<!-- Video export panel component -->
 <script lang="ts">
   import { Download, Video, Film, LoaderCircle, Info, TriangleAlert, CircleCheck, Clock } from '@lucide/svelte'
   import { ExportManager } from '$lib/services/export-manager'
@@ -21,13 +21,13 @@
     className = ''
   }: Props = $props()
 
-  // 显示用总帧数：优先使用全量(totalFramesAll)，否则退回当前窗口(encodedChunks.length)
+  // Display total frames: prioritize using total frames (totalFramesAll), otherwise fallback to current window (encodedChunks.length)
   const displayTotalFrames = $derived(totalFramesAll > 0 ? totalFramesAll : encodedChunks.length)
 
-  // 使用全局背景配置
+  // Use global background configuration
   const backgroundConfig = $derived(backgroundConfigStore.config)
 
-  // 导出状态
+  // Export status
   let isExportingWebM = $state(false)
   let isExportingMP4 = $state(false)
   let exportProgress = $state<{
@@ -40,7 +40,7 @@
   } | null>(null)
 
 
-  // 平滑显示的导出进度，避免高频率更新导致 UI 闪动
+  // Smooth display export progress, avoid UI flicker caused by high-frequency updates
   let displayedProgress = $state(0)
   let targetProgress = $state(0)
   let rafId: number | null = null
@@ -63,7 +63,7 @@
         rafId = null
         return
       }
-      // 缓动到目标，降低重绘频率，减少闪动
+      // Ease to target, reduce redraw frequency, reduce flicker
       displayedProgress += diff * 0.25
       rafId = requestAnimationFrame(step)
     }
@@ -71,7 +71,7 @@
   }
 
   function setProgressTarget(p: number) {
-    // 防止进度回退造成的视觉跳变
+    // Prevent visual jumps caused by progress rollback
     const clamped = Math.max(0, Math.min(100, p))
     if (clamped >= targetProgress) {
       targetProgress = clamped
@@ -79,7 +79,7 @@
     }
   }
 
-  // 节流导出进度字段更新，降低模板重渲染频率
+  // Throttle export progress field updates, reduce template re-render frequency
   let pendingProgress: {
     stage: 'preparing' | 'compositing' | 'encoding' | 'muxing' | 'finalizing'
     currentFrame: number
@@ -88,7 +88,7 @@
   } | null = null
   let scheduled = false
   let lastUIUpdate = 0
-  const MIN_UPDATE_INTERVAL = 80 // 毫秒
+  const MIN_UPDATE_INTERVAL = 80 // milliseconds
 
   function scheduleProgressFieldsUpdate() {
     if (scheduled) return
@@ -108,10 +108,10 @@
   }
 
 
-  // 导出管理器
+  // Export manager
   const exportManager = new ExportManager()
 
-  // 检查是否可以导出
+  // Check if export is possible
   const canExport = $derived(
     isRecordingComplete &&
     encodedChunks.length > 0 &&
@@ -119,7 +119,7 @@
     !isExportingMP4
   )
 
-  // 导出 WebM
+  // Export WebM
   async function exportWebM() {
     if (!canExport) return
 
@@ -136,7 +136,7 @@
 
       console.log('🎬 [Export] Starting WebM export with', encodedChunks.length, 'chunks')
 
-      // 将 Svelte 5 的 Proxy 对象转换为普通对象
+      // Convert Svelte 5 Proxy objects to plain objects
       const plainBackgroundConfig = backgroundConfig ? {
         type: backgroundConfig.type,
         color: backgroundConfig.color,
@@ -145,7 +145,7 @@
         videoPosition: backgroundConfig.videoPosition,
         borderRadius: backgroundConfig.borderRadius,
         inset: backgroundConfig.inset,
-        // 深度转换 gradient 对象
+        // Deep convert gradient object
         gradient: backgroundConfig.gradient ? {
           type: backgroundConfig.gradient.type,
           ...(backgroundConfig.gradient.type === 'linear' && 'angle' in backgroundConfig.gradient ? { angle: backgroundConfig.gradient.angle } : {}),
@@ -164,14 +164,14 @@
             position: stop.position
           }))
         } : undefined,
-        // 深度转换 shadow 对象
+        // Deep convert shadow object
         shadow: backgroundConfig.shadow ? {
           offsetX: backgroundConfig.shadow.offsetX,
           offsetY: backgroundConfig.shadow.offsetY,
           blur: backgroundConfig.shadow.blur,
           color: backgroundConfig.shadow.color
         } : undefined,
-        // 深度转换 image 对象
+        // Deep convert image object
         image: backgroundConfig.image ? {
           imageId: backgroundConfig.image.imageId,
           imageBitmap: backgroundConfig.image.imageBitmap,
@@ -183,7 +183,7 @@
           offsetX: backgroundConfig.image.offsetX,
           offsetY: backgroundConfig.image.offsetY
         } : undefined,
-        // 深度转换 wallpaper 对象
+        // Deep convert wallpaper object
         wallpaper: backgroundConfig.wallpaper ? {
           imageId: backgroundConfig.wallpaper.imageId,
           imageBitmap: backgroundConfig.wallpaper.imageBitmap,
@@ -214,14 +214,14 @@
           })()
         },
         (progress) => {
-          // 缓存并节流更新非关键字段，避免整块区域高频重渲染
+          // Cache and throttle update non-critical fields, avoid high-frequency re-rendering of entire block area
           pendingProgress = {
             stage: progress.stage,
             currentFrame: progress.currentFrame,
             totalFrames: progress.totalFrames,
             estimatedTimeRemaining: progress.estimatedTimeRemaining || 0
           }
-          // 使用“当前帧 / 显示用总帧数”计算百分比，保证与 136 / 1020 帧 一致
+          // Use "current frame / display total frames" to calculate percentage, ensure consistency with 136 / 1020 frames
           const denomWebm = displayTotalFrames || progress.totalFrames || 0
           const frameBasedPctWebm = denomWebm > 0 ? (progress.currentFrame / denomWebm) * 100 : progress.progress
           setProgressTarget(frameBasedPctWebm)
@@ -229,10 +229,10 @@
         }
       )
 
-      // 确保显示进度达 100%
+      // Ensure display progress reaches 100%
       setProgressTarget(100)
 
-      // 完成处理：OPFS 或 Blob 下载
+      // Completion handling: OPFS or Blob download
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
       const fallbackFilename = `edited-video-${timestamp}.webm`
 
@@ -257,7 +257,7 @@
 
     } catch (error) {
       console.error('❌ [Export] WebM export failed:', error)
-      // TODO: 显示错误提示
+      // TODO: Show error message
     } finally {
       isExportingWebM = false
       resetProgressAnimation()
@@ -265,7 +265,7 @@
     }
   }
 
-  // 导出 MP4
+  // Export MP4
   async function exportMP4() {
     if (!canExport) return
 
@@ -282,7 +282,7 @@
 
       console.log('🎬 [Export] Starting MP4 export with', encodedChunks.length, 'chunks')
 
-      // 将 Svelte 5 的 Proxy 对象转换为普通对象
+      // Convert Svelte 5 Proxy objects to plain objects
       const plainBackgroundConfig = backgroundConfig ? {
         type: backgroundConfig.type,
         color: backgroundConfig.color,
@@ -291,7 +291,7 @@
         videoPosition: backgroundConfig.videoPosition,
         borderRadius: backgroundConfig.borderRadius,
         inset: backgroundConfig.inset,
-        // 深度转换 gradient 对象
+        // Deep convert gradient object
         gradient: backgroundConfig.gradient ? {
           type: backgroundConfig.gradient.type,
           ...(backgroundConfig.gradient.type === 'linear' && 'angle' in backgroundConfig.gradient ? { angle: backgroundConfig.gradient.angle } : {}),
@@ -310,14 +310,14 @@
             position: stop.position
           }))
         } : undefined,
-        // 深度转换 shadow 对象
+        // Deep convert shadow object
         shadow: backgroundConfig.shadow ? {
           offsetX: backgroundConfig.shadow.offsetX,
           offsetY: backgroundConfig.shadow.offsetY,
           blur: backgroundConfig.shadow.blur,
           color: backgroundConfig.shadow.color
         } : undefined,
-        // 深度转换 image 对象
+        // Deep convert image object
         image: backgroundConfig.image ? {
           imageId: backgroundConfig.image.imageId,
           imageBitmap: backgroundConfig.image.imageBitmap,
@@ -329,7 +329,7 @@
           offsetX: backgroundConfig.image.offsetX,
           offsetY: backgroundConfig.image.offsetY
         } : undefined,
-        // 深度转换 wallpaper 对象
+        // Deep convert wallpaper object
         wallpaper: backgroundConfig.wallpaper ? {
           imageId: backgroundConfig.wallpaper.imageId,
           imageBitmap: backgroundConfig.wallpaper.imageBitmap,
@@ -354,7 +354,7 @@
           opfsDirId: opfsDirId || undefined
         },
         (progress) => {
-          // 缓存并节流更新非关键字段，避免整块区域高频重渲染
+          // Cache and throttle update non-critical fields, avoid high-frequency re-rendering of entire block area
           pendingProgress = {
             stage: progress.stage,
             currentFrame: progress.currentFrame,
@@ -377,11 +377,11 @@
         }
       )
 
-      // 下载文件
+      // Download file
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
       const filename = `edited-video-${timestamp}.mp4`
 
-      // 确保显示进度达 100%
+      // Ensure display progress reaches 100%
       setProgressTarget(100)
 
       await downloadBlob(videoBlob, filename)
@@ -390,7 +390,7 @@
 
     } catch (error) {
       console.error('❌ [Export] MP4 export failed:', error)
-      // TODO: 显示错误提示
+      // TODO: Show error message
     } finally {
       isExportingMP4 = false
       resetProgressAnimation()
@@ -398,10 +398,10 @@
     }
   }
 
-  // 下载 Blob 文件
+  // Download Blob file
   async function downloadBlob(blob: Blob, filename: string) {
     try {
-      // 尝试使用 Chrome API
+      // Try using Chrome API
       if (typeof chrome !== 'undefined' && chrome.runtime) {
         const url = URL.createObjectURL(blob)
 
@@ -412,12 +412,12 @@
         }, (response) => {
           URL.revokeObjectURL(url)
           if (!response?.success) {
-            // 降级到直接下载
+            // Fallback to direct download
             directDownload(blob, filename)
           }
         })
       } else {
-        // 直接下载
+        // Direct download
         directDownload(blob, filename)
       }
     } catch (error) {
@@ -426,7 +426,7 @@
     }
   }
 
-  // 直接下载
+  // Direct download
   function directDownload(blob: Blob, filename: string) {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -441,60 +441,60 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
 
-  // 格式化进度阶段
+  // Format progress stage
   function formatStage(stage: string): string {
     const stageMap = {
-      'preparing': '准备中',
-      'compositing': '合成背景',
-      'encoding': '编码中',
-      'muxing': '封装容器',
-      'finalizing': '完成中'
+      'preparing': 'Preparing',
+      'compositing': 'Compositing Background',
+      'encoding': 'Encoding',
+      'muxing': 'Muxing Container',
+      'finalizing': 'Finalizing'
     }
     return stageMap[stage as keyof typeof stageMap] || stage
   }
 
-  // 格式化时间
+  // Format time
   function formatTime(seconds: number): string {
-    if (seconds < 60) return `${Math.round(seconds)}秒`
+    if (seconds < 60) return `${Math.round(seconds)}s`
     const minutes = Math.floor(seconds / 60)
     const remainingSeconds = Math.round(seconds % 60)
-    return `${minutes}分${remainingSeconds}秒`
+    return `${minutes}m ${remainingSeconds}s`
   }
 </script>
 
-<!-- 导出面板 -->
+<!-- Video export panel component -->
 <div class="flex flex-col gap-4 p-4 bg-slate-50 border border-slate-200 rounded-lg {className}">
   <div class="flex justify-between items-center">
     <div class="flex items-center gap-2">
       <Download class="w-4 h-4 text-gray-600" />
-      <h3 class="text-base font-semibold text-slate-800 m-0">导出视频</h3>
+      <h3 class="text-base font-semibold text-slate-800 m-0">Export Video</h3>
     </div>
     <div class="flex gap-2 text-xs">
       {#if encodedChunks.length > 0}
-        <span class="bg-blue-500 text-white px-2 py-1 rounded">{displayTotalFrames} 帧</span>
+        <span class="bg-blue-500 text-white px-2 py-1 rounded">{displayTotalFrames} frames</span>
         {#if backgroundConfig}
-          <span class="bg-emerald-500 text-white px-2 py-1 rounded">包含背景</span>
+          <span class="bg-emerald-500 text-white px-2 py-1 rounded">With Background</span>
         {/if}
       {:else}
-        <span class="text-slate-500">暂无录制数据</span>
+        <span class="text-slate-500">No recording data</span>
       {/if}
     </div>
   </div>
 
-  <!-- 导出按钮 -->
+  <!-- Export button -->
   <div class="flex gap-3">
     <button
       class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-500 text-white text-sm font-medium rounded-md cursor-pointer transition-all duration-200 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
-      class:opacity-80={isExportingWebM}
+
       disabled={!canExport}
       onclick={() => { resetProgressAnimation(); exportWebM() }}
     >
       {#if isExportingWebM}
         <LoaderCircle class="w-4 h-4 animate-spin" />
-        导出 WebM...
+        Exporting WebM...
       {:else}
         <Video class="w-4 h-4" />
-        导出 WebM
+        Export WebM
       {/if}
     </button>
 
@@ -506,20 +506,20 @@
     >
       {#if isExportingMP4}
         <LoaderCircle class="w-4 h-4 animate-spin" />
-        导出 MP4...
+        Exporting MP4...
       {:else}
         <Film class="w-4 h-4" />
-        导出 MP4
+        Export MP4
       {/if}
     </button>
   </div>
 
-  <!-- 导出进度 -->
+  <!-- Export progress -->
   {#if exportProgress}
     <div class="bg-white border border-slate-200 rounded-md p-3">
       <div class="flex justify-between items-center mb-2">
         <span class="text-sm font-medium text-gray-700">
-          导出 {exportProgress.type.toUpperCase()} - {formatStage(exportProgress.stage)}
+          Exporting {exportProgress.type.toUpperCase()} - {formatStage(exportProgress.stage)}
         </span>
         <span class="text-sm font-semibold text-gray-900">
           {Math.round(displayedProgress)}%
@@ -538,30 +538,30 @@
       <div class="flex justify-between text-xs text-slate-600">
         <span class="flex items-center gap-1">
           <CircleCheck class="w-3 h-3" />
-          {exportProgress.currentFrame} / {displayTotalFrames} 帧
+          {exportProgress.currentFrame} / {displayTotalFrames} frames
         </span>
         {#if exportProgress.estimatedTimeRemaining > 0}
           <span class="flex items-center gap-1">
             <Clock class="w-3 h-3" />
-            剩余 {formatTime(exportProgress.estimatedTimeRemaining)}
+            Remaining {formatTime(exportProgress.estimatedTimeRemaining)}
           </span>
         {/if}
       </div>
     </div>
   {/if}
 
-  <!-- 提示信息 -->
+  <!-- Notification messages -->
   {#if !isRecordingComplete}
     <div class="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md text-sm text-amber-800">
       <Info class="w-4 h-4 text-amber-600" />
-      请先完成录制后再导出视频
+      Please complete recording before exporting video
     </div>
   {:else if encodedChunks.length === 0}
     <div class="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md text-sm text-amber-800">
       <TriangleAlert class="w-4 h-4 text-amber-600" />
-      没有可导出的视频数据
+      No video data available for export
     </div>
   {/if}
 </div>
 
-<!-- 所有样式已迁移到 Tailwind CSS -->
+<!-- All styles have been migrated to Tailwind CSS -->

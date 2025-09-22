@@ -1,24 +1,24 @@
-<!-- 阴影配置控件 -->
+<!-- Shadow configuration control -->
 <script lang="ts">
   import { Zap, Eye, Palette, Move, Focus, Sun, Moon, Sparkles, SlidersHorizontal } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import type { BackgroundConfig } from '$lib/types/background'
 
-  // 当前阴影配置
+  // Current shadow configuration
   const currentShadow = $derived(backgroundConfigStore.config.shadow)
   const isEnabled = $derived(!!currentShadow)
 
-  // 阴影参数状态
+  // Shadow parameter states
   let offsetX = $state(8)
   let offsetY = $state(8)
   let blur = $state(16)
   let color = $state('#000000')
   let opacity = $state(0.3)
 
-  // 预设阴影效果
+  // Preset shadow effects
   const SHADOW_PRESETS = [
     {
-      name: '轻微阴影',
+      name: 'Light Shadow',
       offsetX: 4,
       offsetY: 4,
       blur: 8,
@@ -27,7 +27,7 @@
       icon: Sun
     },
     {
-      name: '标准阴影',
+      name: 'Standard Shadow',
       offsetX: 8,
       offsetY: 8,
       blur: 16,
@@ -36,7 +36,7 @@
       icon: Moon
     },
     {
-      name: '深度阴影',
+      name: 'Deep Shadow',
       offsetX: 12,
       offsetY: 12,
       blur: 24,
@@ -45,7 +45,7 @@
       icon: Focus
     },
     {
-      name: '远距阴影',
+      name: 'Distant Shadow',
       offsetX: 16,
       offsetY: 16,
       blur: 32,
@@ -55,18 +55,18 @@
     }
   ] as const
 
-  // 切换阴影开关
+  // Toggle shadow switch
   function toggleShadow() {
     if (isEnabled) {
-      // 关闭阴影
+      // Turn off shadow
       backgroundConfigStore.updateShadow(undefined)
     } else {
-      // 开启阴影，使用当前参数
+      // Turn on shadow, use current parameters
       updateShadowConfig()
     }
   }
 
-  // 更新阴影配置
+  // Update shadow configuration
   function updateShadowConfig() {
     const shadowConfig: BackgroundConfig['shadow'] = {
       offsetX,
@@ -77,7 +77,7 @@
     backgroundConfigStore.updateShadow(shadowConfig)
   }
 
-  // 应用预设阴影
+  // Apply preset shadow
   function applyPreset(preset: typeof SHADOW_PRESETS[number]) {
     console.log('🎨 [ShadowControl] Applying preset:', preset.name)
     offsetX = preset.offsetX
@@ -91,7 +91,7 @@
     }
   }
 
-  // 颜色转换工具
+  // Color conversion utility
   function hexToRgba(hex: string, alpha: number): string {
     const r = parseInt(hex.slice(1, 3), 16)
     const g = parseInt(hex.slice(3, 5), 16)
@@ -99,22 +99,22 @@
     return `rgba(${r}, ${g}, ${b}, ${alpha})`
   }
 
-  // 处理参数变化
+  // Handle parameter changes
   function handleParameterChange() {
     if (isEnabled) {
       updateShadowConfig()
     }
   }
 
-  // 初始化时同步当前配置
+  // Sync current configuration on initialization
   $effect(() => {
     if (currentShadow) {
-      // 解析当前阴影配置
+      // Parse current shadow configuration
       offsetX = currentShadow.offsetX
       offsetY = currentShadow.offsetY
       blur = currentShadow.blur
       
-      // 解析颜色和透明度
+      // Parse color and opacity
       const colorMatch = currentShadow.color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/)
       if (colorMatch) {
         const [, r, g, b, a] = colorMatch
@@ -125,12 +125,12 @@
   })
 </script>
 
-<!-- 阴影配置控件 -->
+<!-- Video shadow configuration control -->
 <div class="p-4 border border-gray-200 rounded-lg bg-white">
   <div class="flex justify-between items-center mb-4">
     <div class="flex items-center gap-2">
       <Zap class="w-4 h-4 text-gray-600" />
-      <h3 class="text-sm font-semibold text-gray-700">视频阴影</h3>
+      <h3 class="text-sm font-semibold text-gray-700">Video Shadow</h3>
     </div>
     <label class="relative inline-block w-11 h-6">
       <input
@@ -146,9 +146,9 @@
   </div>
 
   {#if isEnabled}
-    <!-- 预设阴影选择 -->
+    <!-- Preset shadow selection -->
     <div class="mb-4">
-      <h4 class="text-xs font-semibold text-gray-600 mb-3">预设效果</h4>
+      <h4 class="text-xs font-semibold text-gray-600 mb-3">Preset Effects</h4>
       <div class="grid grid-cols-2 gap-2">
         {#each SHADOW_PRESETS as preset}
           {@const IconComponent = preset.icon}
@@ -174,15 +174,15 @@
       </div>
     </div>
 
-    <!-- 自定义参数 -->
+    <!-- Custom parameters -->
     <div class="mb-4">
-      <h4 class="text-xs font-semibold text-gray-600 mb-3">自定义参数</h4>
+      <h4 class="text-xs font-semibold text-gray-600 mb-3">Custom parameters</h4>
 
-      <!-- X偏移 -->
+      <!-- X offset -->
       <div class="mb-3">
         <div class="flex items-center gap-2 mb-1">
           <Move class="w-3 h-3 text-gray-600" />
-          <label class="text-xs text-gray-700 font-medium" for="shadow-offset-x">X偏移: {offsetX}px</label>
+          <label class="text-xs text-gray-700 font-medium" for="shadow-offset-x">X offset: {offsetX}px</label>
         </div>
         <input
           id="shadow-offset-x"
@@ -196,11 +196,11 @@
         />
       </div>
 
-      <!-- Y偏移 -->
+      <!-- Y offset -->
       <div class="mb-3">
         <div class="flex items-center gap-2 mb-1">
           <Move class="w-3 h-3 text-gray-600 rotate-90" />
-          <label class="text-xs text-gray-700 font-medium" for="shadow-offset-y">Y偏移: {offsetY}px</label>
+          <label class="text-xs text-gray-700 font-medium" for="shadow-offset-y">Y offset: {offsetY}px</label>
         </div>
         <input
           id="shadow-offset-y"
@@ -214,11 +214,11 @@
         />
       </div>
 
-      <!-- 模糊半径 -->
+      <!-- Blur radius -->
       <div class="mb-3">
         <div class="flex items-center gap-2 mb-1">
           <Focus class="w-3 h-3 text-gray-600" />
-          <label class="text-xs text-gray-700 font-medium" for="shadow-blur">模糊: {blur}px</label>
+          <label class="text-xs text-gray-700 font-medium" for="shadow-blur">Blur: {blur}px</label>
         </div>
         <input
           id="shadow-blur"
@@ -232,12 +232,12 @@
         />
       </div>
 
-      <!-- 颜色和透明度 -->
+      <!-- Color and opacity -->
       <div class="flex gap-3">
         <div class="flex-1">
           <div class="flex items-center gap-2 mb-1">
             <Palette class="w-3 h-3 text-gray-600" />
-            <label class="text-xs text-gray-700 font-medium" for="shadow-color">颜色</label>
+            <label class="text-xs text-gray-700 font-medium" for="shadow-color">Color</label>
           </div>
           <input
             id="shadow-color"
@@ -248,7 +248,7 @@
           />
         </div>
         <div class="flex-2">
-          <label class="text-xs text-gray-700 font-medium block mb-1" for="shadow-opacity">透明度: {Math.round(opacity * 100)}%</label>
+          <label class="text-xs text-gray-700 font-medium block mb-1" for="shadow-opacity">Opacity: {Math.round(opacity * 100)}%</label>
           <input
             id="shadow-opacity"
             type="range"
@@ -263,11 +263,11 @@
       </div>
     </div>
 
-    <!-- 实时预览 -->
+    <!-- Real-time preview -->
     <div class="mt-4">
       <div class="flex items-center gap-2 mb-2">
         <Eye class="w-3 h-3 text-gray-600" />
-        <h4 class="text-xs font-semibold text-gray-600">预览效果</h4>
+        <h4 class="text-xs font-semibold text-gray-600">Preview Effect</h4>
       </div>
       <div class="flex justify-center p-4 bg-gray-50 rounded-md">
         <div
@@ -276,19 +276,19 @@
             box-shadow: {offsetX}px {offsetY}px {blur}px {hexToRgba(color, opacity)};
           "
         >
-          视频区域
+          Video Area
         </div>
       </div>
     </div>
   {:else}
     <div class="text-center text-gray-600 text-xs p-6 bg-gray-50 rounded-md">
-      开启阴影开关以配置阴影效果
+      Turn on shadow switch to configure shadow effects
     </div>
   {/if}
 </div>
 
 <style>
-  /* 自定义滑块样式 - 使用橙色主题 */
+  /* Custom slider styles - using orange theme */
   .slider-thumb::-webkit-slider-thumb {
     appearance: none;
     width: 18px;
