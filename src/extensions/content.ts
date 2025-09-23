@@ -758,6 +758,8 @@
 	      host.appendChild(overlay);
 	      let n = Math.max(1, Math.floor(seconds));
 	      label.textContent = String(n);
+      // Broadcast initial badge countdown to background
+      try { chrome.runtime.sendMessage({ type: 'STREAM_META', meta: { preparing: true, countdown: n } }); } catch {}
 	      // During countdown, keep container synced (handles scroll/layout changes)
 	      const raf = () => {
 	        if (!state.countdownPending) return;
@@ -771,6 +773,7 @@
 	          n -= 1;
 	          if (n <= 0) { cancelStartCountdownGlobal(); resolve(); return; }
 	          label.textContent = String(n);
+          try { chrome.runtime.sendMessage({ type: 'STREAM_META', meta: { preparing: true, countdown: n } }); } catch {}
 	          state.countdownTimer = setTimeout(tick, 1000);
 	        };
 	        state.countdownTimer = setTimeout(tick, 1000);

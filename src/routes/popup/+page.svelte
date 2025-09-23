@@ -19,7 +19,7 @@
   // Recording state management
   let isRecording = $state(false)
   let isPaused = $state(false)
-  let selectedMode = $state<'area' | 'element' | 'camera' | 'tab' | 'window' | 'screen'>('area')
+  let selectedMode = $state<'area' | 'element' | 'camera' | 'tab' | 'window' | 'screen'>('tab')
   let isLoading = $state(false)
 
   // Capability state: whether the current page allows content script injection (affects element/area mode availability)

@@ -370,7 +370,14 @@
 
       // Wait until worker confirms configured to avoid unconfigured encode errors
       await waitForConfigured
-      log('🟢 Worker configured confirmed, starting frame loop')
+      // Global pre-start countdown for all modes to avoid early layout shifts and unify UX
+      log('🟠 Worker configured confirmed, starting pre-start countdown (5s)')
+      const COUNTDOWN_SECONDS = 5
+      for (let n = COUNTDOWN_SECONDS; n >= 1; n--) {
+        try { chrome.runtime.sendMessage({ type: 'STREAM_META', meta: { preparing: true, countdown: n } }) } catch {}
+        await new Promise((r) => setTimeout(r, 1000))
+        if (!currentStream) { log('⏹️ Pre-start aborted: stream missing'); return }
+      }
 
       // 6) Start frame processing loop
       isPaused = false
@@ -381,7 +388,7 @@
       try {
         chrome.runtime.sendMessage({
           type: 'STREAM_START',
-          mode: 'screen',
+          mode: mode,
           metadata: { engine: 'webcodecs', width, height, framerate, bitrate, startTime: recordingStartTime }
         })
       } catch {}
