@@ -81,7 +81,9 @@ async function broadcastStateWithCapabilities(tabId) {
 // 扩展安装时的初始化
 chrome.runtime.onInstalled.addListener((details) => {
   console.log('Extension installed:', details.reason)
-
+  if (details.reason === 'install') {
+    chrome.tabs.create({ url: '/welcome.html' });
+  }
   // 设置默认配置
   chrome.storage.local.set({
     settings: {
@@ -263,7 +265,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // 处理 lab 功能的消息类型
   if (message.type) {
     const tabId = sender.tab?.id ?? message.tabId;
-    const globalTypes = new Set(['REQUEST_START_RECORDING','REQUEST_STOP_RECORDING','REQUEST_RECORDING_STATE','REQUEST_TOGGLE_PAUSE','OFFSCREEN_START_RECORDING','OFFSCREEN_STOP_RECORDING','REQUEST_OFFSCREEN_PING','GET_RECORDING_STATE','RECORDING_COMPLETE','OPFS_RECORDING_READY']);
+    const globalTypes = new Set(['REQUEST_START_RECORDING','REQUEST_STOP_RECORDING','REQUEST_RECORDING_STATE','REQUEST_TOGGLE_PAUSE','OFFSCREEN_START_RECORDING','OFFSCREEN_STOP_RECORDING','REQUEST_OFFSCREEN_PING','GET_RECORDING_STATE','RECORDING_COMPLETE','OPFS_RECORDING_READY','STREAM_START','STREAM_META','STREAM_END','STREAM_ERROR']);
     let state: any;
     if (!globalTypes.has(message.type)) {
       if (!tabId) return;
@@ -374,7 +376,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
         try { void stopBadgeTimer() } catch {}
         try {
-          chrome.runtime.sendMessage({ type: 'STATE_UPDATE', state: { recording: false } })
+          const p = chrome.runtime.sendMessage({ type: 'STATE_UPDATE', state: { recording: false } })
+          if (p && typeof p.catch === 'function') p.catch(() => {})
         } catch (e) {
           console.warn('[stop-share] background: failed to broadcast STATE_UPDATE for RECORDING_COMPLETE', e)
         }
@@ -384,15 +387,41 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       case 'OPFS_RECORDING_READY': {
         try {
-          console.log('[stop-share] background: OPFS_RECORDING_READY → mark stopped')
-          try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
-          try { void stopBadgeTimer() } catch {}
-          try { chrome.runtime.sendMessage({ type: 'STATE_UPDATE', state: { recording: false } }) } catch {}
-          const targetUrl = chrome.runtime.getURL(`studio.html?id=${encodeURIComponent(message.id)}`)
-          chrome.tabs.create({ url: targetUrl }, () => {
-            const err = chrome.runtime.lastError
-            if (err) console.error('[Background] Failed to open Studio tab:', err.message)
-          })
+          const id = message?.id
+          const doOpen = () => {
+            console.log('[stop-share] background: OPFS_RECORDING_READY → mark stopped')
+            try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
+            try { void stopBadgeTimer() } catch {}
+            try {
+              const p = chrome.runtime.sendMessage({ type: 'STATE_UPDATE', state: { recording: false } })
+              if (p && typeof p.catch === 'function') p.catch(() => {})
+            } catch {}
+            const targetUrl = chrome.runtime.getURL(`studio.html?id=${encodeURIComponent(id)}`)
+            chrome.tabs.create({ url: targetUrl }, () => {
+              const err = chrome.runtime.lastError
+              if (err) console.error('[Background] Failed to open Studio tab:', err.message)
+            })
+          }
+
+          if (currentRecording && currentRecording.isRecording) {
+            setTimeout(() => {
+              try {
+                if (currentRecording && currentRecording.isRecording) {
+                  console.log('[Background] OPFS_RECORDING_READY delayed but recording still active; skipping Studio open', { id })
+                  try { sendResponse({ ok: true, skipped: true, reason: 'active_recording' }) } catch {}
+                } else {
+                  doOpen();
+                  try { sendResponse({ ok: true, delayed: true }) } catch {}
+                }
+              } catch (e) {
+                console.warn('[Background] delayed OPFS_RECORDING_READY handling error', e)
+                try { sendResponse({ ok: false, error: (e && e.message) || String(e) }) } catch {}
+              }
+            }, 600)
+            return true;
+          }
+
+          doOpen();
           try { sendResponse({ ok: true }) } catch (e) {}
         } catch (e) {
           console.warn('[Background] OPFS_RECORDING_READY handling error', e)
@@ -402,22 +431,39 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
       // Stream signaling from content via sendMessage (no Port)
       case 'STREAM_START': {
-        // Update tab state and fan-out to sidepanel
-        state.recording = true;
+        // Dual-path handling: tab-scoped (content pipeline) vs global (offscreen pipeline)
+        console.log('[stop-share] background: STREAM_START', { tabId, from: tabId ? 'tab' : 'offscreen' })
         try { currentRecording.isRecording = true; currentRecording.isPaused = false } catch {}
         try { if (!badgeInterval) { void startBadgeTimer() } else { void resumeBadgeTimer() } } catch {}
-        console.log('[stop-share] background: STREAM_START', { tabId })
-        broadcastToTab(tabId, { ...message, tabId });
-        void broadcastStateWithCapabilities(tabId);
+        if (tabId) {
+          try { state.recording = true } catch {}
+          broadcastToTab(tabId, { ...message, tabId });
+          void broadcastStateWithCapabilities(tabId);
+        } else {
+          // Fan-out a generic state update for popup listeners
+          try { chrome.runtime.sendMessage({ type: 'STATE_UPDATE', state: { recording: true } }).catch(() => {}) } catch {}
+        }
         try { sendResponse({ ok: true }); } catch (e) {}
         return true;
       }
       case 'STREAM_META': {
-        if (message?.meta && typeof message.meta.paused === 'boolean') {
-          try { currentRecording.isPaused = !!message.meta.paused } catch {}
-          try { message.meta.paused ? void pauseBadgeTimer() : void resumeBadgeTimer() } catch {}
+        // Handle preparing countdown for badge, and pause/resume meta
+        const meta = message?.meta || {}
+        if (meta && meta.preparing && typeof meta.countdown === 'number') {
+          try { chrome.action.setBadgeBackgroundColor({ color: '#fb8c00' }) } catch {}
+          try { chrome.action.setBadgeText({ text: String(Math.max(0, Math.floor(meta.countdown))) }) } catch {}
+          try { sendResponse({ ok: true }) } catch {}
+          return true;
         }
-        broadcastToTab(tabId, { ...message, tabId });
+        if (meta && typeof meta.paused === 'boolean') {
+          try { currentRecording.isPaused = !!meta.paused } catch {}
+          try { meta.paused ? void pauseBadgeTimer() : void resumeBadgeTimer() } catch {}
+        }
+        if (tabId) {
+          broadcastToTab(tabId, { ...message, tabId });
+        } else {
+          try { chrome.runtime.sendMessage({ ...message }).catch(() => {}) } catch {}
+        }
         try { sendResponse({ ok: true }); } catch (e) {}
         return true;
       }
@@ -427,22 +473,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
       }
       case 'STREAM_END': {
-        state.recording = false;
+        console.log('[stop-share] background: STREAM_END', { tabId, from: tabId ? 'tab' : 'offscreen' })
         try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
         try { void stopBadgeTimer() } catch {}
-        console.log('[stop-share] background: STREAM_END', { tabId })
-        broadcastToTab(tabId, { ...message, tabId });
-        void broadcastStateWithCapabilities(tabId);
+        if (tabId) {
+          try { state.recording = false } catch {}
+          broadcastToTab(tabId, { ...message, tabId });
+          void broadcastStateWithCapabilities(tabId);
+        } else {
+          try { chrome.runtime.sendMessage({ type: 'STATE_UPDATE', state: { recording: false } }).catch(() => {}) } catch {}
+        }
         try { sendResponse({ ok: true }); } catch (e) {}
         return true;
       }
       case 'STREAM_ERROR': {
-        state.recording = false;
+        console.log('[stop-share] background: STREAM_ERROR', { tabId, from: tabId ? 'tab' : 'offscreen' })
         try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
         try { void stopBadgeTimer() } catch {}
-        console.log('[stop-share] background: STREAM_ERROR', { tabId })
-        broadcastToTab(tabId, { ...message, tabId });
-        void broadcastStateWithCapabilities(tabId);
+        if (tabId) {
+          try { state.recording = false } catch {}
+          broadcastToTab(tabId, { ...message, tabId });
+          void broadcastStateWithCapabilities(tabId);
+        } else {
+          try { chrome.runtime.sendMessage({ type: 'STATE_UPDATE', state: { recording: false } }).catch(() => {}) } catch {}
+        }
         try { sendResponse({ ok: true }); } catch (e) {}
         return true;
       }
@@ -559,8 +613,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // lab 功能：广播消息到标签页
 function broadcastToTab(tabId, payload) {
-  chrome.runtime.sendMessage({ ...payload, tabId });
+  try {
+    const p = chrome.runtime.sendMessage({ ...payload, tabId })
+    if (p && typeof p.catch === 'function') p.catch(() => {})
+  } catch (_) {}
 }
+
+
 
 // 处理元素录制完成，传递数据给主系统
 function handleElementRecordingComplete(message, sendResponse) {
@@ -915,9 +974,10 @@ async function startRecordingViaOffscreen(options) {
 
     await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
     await sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_START_RECORDING', payload: { options: normalizedOptions } })
-    currentRecording = { isRecording: true, isPaused: false, streamId: 'offscreen', startTime: Date.now() }
-
-    try { await startBadgeTimer() } catch (e) { /* optional badge update failure */ }
+    // Enter preparing phase: do NOT start duration timer until STREAM_START
+    currentRecording = { isRecording: false, isPaused: false, streamId: 'offscreen', startTime: null }
+    try { await chrome.action.setBadgeBackgroundColor({ color: '#fb8c00' }) } catch {}
+    try { await chrome.action.setBadgeText({ text: '' }) } catch {}
   } catch (e) {
     // keep state unchanged on failure
     throw e
@@ -1048,5 +1108,14 @@ self.addEventListener('error', (event) => {
 })
 
 self.addEventListener('unhandledrejection', (event) => {
+  try {
+    const reason = event?.reason as any;
+    const msg = (reason && (reason.message || String(reason))) || '';
+    if (typeof msg === 'string' && msg.includes('Could not establish connection. Receiving end does not exist.')) {
+      // During page refresh or when no receiver is present, ignore benign sendMessage errors
+      try { if (typeof event.preventDefault === 'function') event.preventDefault(); } catch {}
+      return;
+    }
+  } catch {}
   console.error('Service Worker unhandled rejection:', event.reason)
 })

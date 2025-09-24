@@ -2,7 +2,7 @@
   import { RefreshCw, Trash2, AlertTriangle, Folder } from '@lucide/svelte'
   import RecordingCard from './RecordingCard.svelte'
 
-  // 录制记录类型定义
+  // Recording summary type definition
   interface RecordingSummary {
     id: string
     displayName: string
@@ -38,22 +38,22 @@
     onClearError 
   }: Props = $props()
 
-  // 本地状态管理
+  // Local state management
   let selectedRecordings = $state<Set<string>>(new Set())
   let showDeleteConfirm = $state(false)
   let deleteTarget = $state<string | 'selected'>('')
 
-  // 切换选择
+  // Toggle selection
   function toggleSelection(recordingId: string) {
     if (selectedRecordings.has(recordingId)) {
       selectedRecordings.delete(recordingId)
     } else {
       selectedRecordings.add(recordingId)
     }
-    selectedRecordings = new Set(selectedRecordings) // 触发响应式更新
+    selectedRecordings = new Set(selectedRecordings) // Trigger reactive update
   }
 
-  // 全选/取消全选
+  // Select all/deselect all
   function toggleSelectAll() {
     if (selectedRecordings.size === recordings.length) {
       selectedRecordings = new Set()
@@ -62,18 +62,18 @@
     }
   }
 
-  // 清空选择
+  // Clear selection
   function clearSelection() {
     selectedRecordings = new Set()
   }
 
-  // 确认删除
+  // Confirm delete
   function confirmDelete(target: string | 'selected') {
     deleteTarget = target
     showDeleteConfirm = true
   }
 
-  // 执行删除
+  // Execute delete
   async function executeDelete() {
     try {
       if (deleteTarget === 'selected') {
@@ -86,14 +86,14 @@
         selectedRecordings = new Set(selectedRecordings)
       }
     } catch (error) {
-      console.error('删除失败:', error)
+      console.error('Delete failed:', error)
     } finally {
       showDeleteConfirm = false
       deleteTarget = ''
     }
   }
 
-  // 当录制列表变化时，清理无效的选择
+  // Clean up invalid selections when recording list changes
   $effect(() => {
     const validIds = new Set(recordings.map(r => r.id))
     const filteredSelection = new Set([...selectedRecordings].filter(id => validIds.has(id)))
@@ -104,7 +104,7 @@
 </script>
 
 <div class="max-w-6xl mx-auto px-6 py-6">
-  <!-- 操作栏 -->
+  <!-- Action bar -->
   <div class="mb-6 flex items-center justify-between">
     <div class="flex items-center gap-3">
       {#if selectedRecordings.size > 0}
@@ -114,13 +114,13 @@
           class="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           <Trash2 class="w-4 h-4" />
-          删除选中 ({selectedRecordings.size})
+          Delete Selected ({selectedRecordings.size})
         </button>
         <button
           onclick={clearSelection}
           class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
         >
-          取消选择
+          Clear Selection
         </button>
       {/if}
     </div>
@@ -131,41 +131,41 @@
       class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
     >
       <RefreshCw class="w-4 h-4 {isLoading ? 'animate-spin' : ''}" />
-      刷新
+      Refresh
     </button>
   </div>
 
-  <!-- 错误提示 -->
+  <!-- Error message -->
   {#if errorMessage}
     <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
       <div class="flex items-center gap-2 text-red-800">
         <AlertTriangle class="w-5 h-5" />
-        <span class="font-medium">错误</span>
+        <span class="font-medium">Error</span>
       </div>
       <p class="mt-1 text-red-700">{errorMessage}</p>
-      <button onclick={onClearError} class="mt-2 text-sm text-red-600 hover:text-red-800">关闭</button>
+      <button onclick={onClearError} class="mt-2 text-sm text-red-600 hover:text-red-800">Close</button>
     </div>
   {/if}
 
-  <!-- 加载状态 -->
+  <!-- Loading state -->
   {#if isLoading}
     <div class="flex items-center justify-center py-12">
       <div class="flex items-center gap-3 text-gray-600">
         <RefreshCw class="w-5 h-5 animate-spin" />
-        <span>正在加载录制记录...</span>
+        <span>Loading recordings...</span>
       </div>
     </div>
   {:else if recordings.length === 0}
-    <!-- 空状态 -->
+    <!-- Empty state -->
     <div class="text-center py-12">
       <Folder class="w-16 h-16 text-gray-300 mx-auto mb-4" />
-      <h3 class="text-lg font-medium text-gray-900 mb-2">暂无录制记录</h3>
-      <p class="text-gray-500 mb-4">您还没有任何屏幕录制记录。</p>
-      <p class="text-gray-500 mb-6">开始录制屏幕后，录制文件将显示在这里。</p>
-      <a href="/sidepanel" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">开始录制</a>
+      <h3 class="text-lg font-medium text-gray-900 mb-2">No recordings yet</h3>
+      <p class="text-gray-500 mb-4">You don't have any screen recordings yet.</p>
+      <p class="text-gray-500 mb-6">Start recording your screen and your recordings will appear here.</p>
+      <a href="/sidepanel" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Start Recording</a>
     </div>
   {:else}
-    <!-- 录制列表 -->
+    <!-- Recording list -->
     <div class="mb-4 flex items-center justify-between">
       <div class="flex items-center gap-4">
         <label class="flex items-center gap-2 cursor-pointer">
@@ -176,16 +176,11 @@
             onchange={toggleSelectAll}
             class="w-4 h-4"
           />
-          <span class="text-gray-700">全选 ({recordings.length} 个录制)</span>
+          <span class="text-gray-700">Select All ({recordings.length} recordings)</span>
         </label>
-        {#if selectedRecordings.size > 0}
-          <button type="button" class="text-sm text-blue-600 hover:text-blue-800 transition-colors" onclick={clearSelection}>
-            清空选择
-          </button>
-        {/if}
       </div>
       <div class="text-sm text-gray-500">
-        按时间排序 (最新优先)
+        Sorted by time (newest first)
       </div>
     </div>
 
@@ -202,22 +197,22 @@
   {/if}
 </div>
 
-<!-- 删除确认对话框 -->
+<!-- Delete confirmation dialog -->
 {#if showDeleteConfirm}
   <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
     <div class="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
       <div class="flex items-center gap-3 mb-4">
         <AlertTriangle class="w-6 h-6 text-red-500" />
-        <h3 class="text-lg font-semibold text-gray-900">确认删除</h3>
+        <h3 class="text-lg font-semibold text-gray-900">Confirm Delete</h3>
       </div>
       
       <p class="text-gray-700 mb-6">
         {#if deleteTarget === 'selected'}
-          您确定要删除选中的 {selectedRecordings.size} 个录制记录吗？
+          Are you sure you want to delete the selected {selectedRecordings.size} recordings?
         {:else}
-          您确定要删除这个录制记录吗？
+          Are you sure you want to delete this recording?
         {/if}
-        此操作无法撤销。
+        This action cannot be undone.
       </p>
       
       <div class="flex justify-end gap-3">
@@ -225,13 +220,13 @@
           onclick={() => showDeleteConfirm = false}
           class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
         >
-          取消
+          Cancel
         </button>
         <button
           onclick={executeDelete}
           class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
         >
-          确认删除
+          Delete
         </button>
       </div>
     </div>

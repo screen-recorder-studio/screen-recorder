@@ -1,4 +1,4 @@
-<!-- 背景色选择器 - 支持纯色和渐变色切换 -->
+<!-- Background color picker - supports solid color and gradient switching -->
 <script lang="ts">
   import { Palette, Layers, Image, Mountain, Upload, CircleAlert } from '@lucide/svelte'
   import {
@@ -15,79 +15,78 @@
   } from '$lib/types/background'
   import { WALLPAPER_CATEGORIES } from '$lib/data/wallpaper-presets'
 
-  // 背景类型选项
+  // Background type options
   type BackgroundType = BackgroundConfig['type']
 
-  // 当前选中的背景类型和颜色 (使用 Svelte 5 $derived)
+  // Currently selected background type and color (using Svelte 5 $derived)
   const currentConfig = $derived(backgroundConfigStore.config)
   const currentType = $derived(currentConfig.type)
   const currentColor = $derived(currentConfig.color)
 
-  // 当前激活的Tab
+  // Currently active Tab
   let activeTab = $state<BackgroundType>('wallpaper')
 
-  // Wallpaper相关状态
+  // Wallpaper related state
   let selectedWallpaper = $state<string>('')
 
-  // 图片上传相关状态
+  // Image upload related state
   let fileInput = $state<HTMLInputElement>()
   let isUploading = $state(false)
   let uploadError = $state<string>('')
 
-  // 初始化时同步当前配置的类型和选择状态
+  // Initialize and sync current configuration type and selection state
   $effect(() => {
-    // 如果当前配置不是wallpaper类型，则同步activeTab
+    // If current configuration is not wallpaper type, sync activeTab
     if (currentType !== 'wallpaper') {
       activeTab = currentType
     }
 
-    // 根据当前配置设置选择状态
-    if (currentType === 'wallpaper') {
-      // 如果当前是壁纸类型，设置选中的壁纸ID
-      if (currentConfig.wallpaper) {
-        selectedWallpaper = currentConfig.wallpaper.imageId
-      }
-      // 如果当前没有壁纸但有保存的壁纸配置，也设置选择状态
-      else if (backgroundConfigStore.lastWallpaperConfig) {
-        selectedWallpaper = backgroundConfigStore.lastWallpaperConfig.imageId
-      }
-    }
+    // Set selection state based on current configuration
+     if (currentType === 'wallpaper') {
+       // If current is wallpaper type, set selected wallpaper ID
+       if (currentConfig.wallpaper) {
+         selectedWallpaper = currentConfig.wallpaper.imageId
+       }
+     }
+     // If there's no current wallpaper but saved wallpaper configuration exists, also set selection state
+     else if (backgroundConfigStore.lastWallpaperConfig) {
+       selectedWallpaper = backgroundConfigStore.lastWallpaperConfig.imageId
+     }
   })
 
-  // Tab选项配置
+  // Tab option configuration
   const tabOptions = [
-    { value: 'wallpaper' as const, label: '壁纸', icon: Mountain },
-    { value: 'gradient' as const, label: '渐变', icon: Layers },
-    { value: 'solid-color' as const, label: '纯色', icon: Palette },
-    { value: 'image' as const, label: '图片', icon: Image },
+    { value: 'wallpaper' as const, label: 'Wallpaper', icon: Mountain },
+    { value: 'gradient' as const, label: 'Gradient', icon: Layers },
+    { value: 'solid-color' as const, label: 'Solid Color', icon: Palette },
+    { value: 'image' as const, label: 'Image', icon: Image },
   ] as const
 
-  // 切换Tab
+  // Switch Tab
   function switchTab(type: BackgroundType) {
     activeTab = type
 
-    // 如果切换到不同类型，尝试恢复之前保存的配置
+    // If switching to different type, try to restore previously saved configuration
     if (type !== currentType) {
       let restored = false
 
       if (type === 'solid-color') {
-        // 切换到纯色，使用当前颜色
+        // Switch to solid color, use current color
         backgroundConfigStore.updateBackgroundType('solid-color')
         restored = true
       } else if (type === 'gradient') {
-        // 切换到渐变，尝试恢复之前的渐变配置
+        // Switch to gradient, try to restore previous gradient configuration
         restored = backgroundConfigStore.restoreGradientBackground()
         if (!restored) {
           backgroundConfigStore.updateBackgroundType('gradient')
         }
       } else if (type === 'image') {
-        // 切换到图片，尝试恢复之前的图片配置
-        restored = backgroundConfigStore.restoreImageBackground()
+        // Switch to image, try to restore previous image configuration
         if (!restored) {
           backgroundConfigStore.updateBackgroundType('image')
         }
       } else if (type === 'wallpaper') {
-        // 切换到壁纸，尝试恢复之前的壁纸配置
+        // Switch to wallpaper, try to restore previous wallpaper configuration
         restored = backgroundConfigStore.restoreWallpaperBackground()
         if (!restored) {
           backgroundConfigStore.updateBackgroundType('wallpaper')
@@ -98,46 +97,45 @@
     }
   }
 
-  // 选择壁纸
+  // Select wallpaper
   async function selectWallpaper(wallpaper: ImagePreset) {
     try {
       selectedWallpaper = wallpaper.id
 
-      // 使用专门的壁纸处理方法
+      // Use specialized wallpaper handling method
       await backgroundConfigStore.handleWallpaperSelection(wallpaper)
 
       console.log('🌄 [BackgroundPicker] Wallpaper selected:', wallpaper.name)
     } catch (error) {
       console.error('❌ [BackgroundPicker] Failed to load wallpaper:', error)
-      uploadError = '壁纸加载失败，请重试'
+      uploadError = 'Failed to load wallpaper, please try again'
       setTimeout(() => { uploadError = '' }, 3000)
     }
   }
 
-  // 颜色分类 - 每个分类16种颜色
+  // Color categories - 16 colors per category
   const colorCategories = [
-    { key: 'basic', name: '基础色系', colors: PRESET_SOLID_COLORS.filter(c => c.category === 'basic'), icon: '⚫' },
-    { key: 'light', name: '浅色系', colors: PRESET_SOLID_COLORS.filter(c => c.category === 'light'), icon: '🌸' },
-    { key: 'dark', name: '深色系', colors: PRESET_SOLID_COLORS.filter(c => c.category === 'dark'), icon: '🌙' },
-    { key: 'business', name: '商务色系', colors: PRESET_SOLID_COLORS.filter(c => c.category === 'business'), icon: '💼' },
-    { key: 'creative', name: '创意色系', colors: PRESET_SOLID_COLORS.filter(c => c.category === 'creative'), icon: '🎨' }
+    { key: 'basic', name: 'Basic Colors', colors: PRESET_SOLID_COLORS.filter(c => c.category === 'basic'), icon: '⚫' },
+    { key: 'light', name: 'Light Colors', colors: PRESET_SOLID_COLORS.filter(c => c.category === 'light'), icon: '🌸' },
+    { key: 'business', name: 'Business Colors', colors: PRESET_SOLID_COLORS.filter(c => c.category === 'business'), icon: '💼' },
+    { key: 'creative', name: 'Creative Colors', colors: PRESET_SOLID_COLORS.filter(c => c.category === 'creative'), icon: '🎨' }
   ]
 
-  // 自定义颜色输入值
+  // Custom color input value
   let customColorValue = $state('')
 
-  // 颜色搜索功能
+  // Color search functionality
   let colorSearchQuery = $state('')
   let showColorSearch = $state(false)
 
-  // 同步自定义颜色输入值
+  // Sync custom color input value
   $effect(() => {
     if (currentType === 'solid-color') {
       customColorValue = currentColor
     }
   })
 
-  // 过滤颜色分类
+  // Filter color categories
   const filteredColorCategories = $derived(
     !colorSearchQuery.trim()
       ? colorCategories
@@ -151,18 +149,18 @@
         })).filter(category => category.colors.length > 0)
   )
 
-  // 处理预设纯色选择
+  // Handle preset solid color selection
   function handlePresetSolidColorSelect(preset: SolidColorPreset) {
     console.log('🎨 [BackgroundColorPicker] Preset solid color selected:', preset)
     backgroundConfigStore.applyPresetSolidColor(preset)
   }
 
-  // 检查预设纯色是否被选中
+  // Check if preset solid color is selected
   function isPresetSolidColorSelected(preset: SolidColorPreset) {
     return currentType === 'solid-color' && currentColor === preset.color
   }
 
-  // 处理HTML5颜色选择器变化
+  // Handle HTML5 color picker change
   function handleColorPickerChange(event: Event) {
     const target = event.target as HTMLInputElement
     const color = target.value
@@ -171,21 +169,21 @@
     backgroundConfigStore.updateColor(color)
   }
 
-  // 处理文本输入颜色变化
+  // Handle text input color change
   function handleColorTextInput(event: Event) {
     const target = event.target as HTMLInputElement
     const color = target.value.trim()
 
-    // 验证颜色格式
+    // Validate color format
     if (isValidColor(color)) {
       console.log('🎨 [BackgroundColorPicker] Color text input:', color)
       backgroundConfigStore.updateColor(color)
     }
   }
 
-  // 验证颜色格式
+  // Validate color format
   function isValidColor(color: string): boolean {
-    // 简单的颜色格式验证
+    // Simple color format validation
     const hexPattern = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/
     const rgbPattern = /^rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)$/
     const rgbaPattern = /^rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*[\d.]+\s*\)$/
@@ -193,63 +191,63 @@
     return hexPattern.test(color) || rgbPattern.test(color) || rgbaPattern.test(color)
   }
 
-  // 处理文本输入的键盘事件
+  // Handle text input keyboard events
   function handleColorTextKeydown(event: KeyboardEvent) {
     if (event.key === 'Enter') {
       const target = event.target as HTMLInputElement
       handleColorTextInput(event)
-      target.blur() // 失去焦点
+      target.blur() // Lose focus
     }
   }
 
-  // === 渐变色相关功能 ===
+  // === Gradient related functionality ===
 
-  // 渐变分类 - 4种类别，每种8个
+  // Gradient categories - 4 types, 8 each
   const gradientCategories = [
     {
       key: 'linear',
-      name: '线性渐变',
+      name: 'Linear Gradient',
       icon: '📐',
-      description: '直线方向的颜色过渡',
+      description: 'Linear color transition',
       gradients: PRESET_GRADIENTS.filter(g => g.category === 'linear')
     },
     {
       key: 'radial',
-      name: '径向渐变',
+      name: 'Radial Gradient',
       icon: '🎯',
-      description: '从中心向外辐射的颜色过渡',
+      description: 'Color transition radiating from center',
       gradients: PRESET_GRADIENTS.filter(g => g.category === 'radial')
     },
     {
       key: 'conic',
-      name: '圆锥渐变',
+      name: 'Conic Gradient',
       icon: '🌀',
-      description: '围绕中心旋转的颜色过渡',
+      description: 'Color transition rotating around center',
       gradients: PRESET_GRADIENTS.filter(g => g.category === 'conic')
     },
     {
       key: 'multicolor',
-      name: '多色渐变',
+      name: 'Multi-color Gradient',
       icon: '🌈',
-      description: '丰富多彩的复杂颜色过渡',
+      description: 'Rich and complex color transitions',
       gradients: PRESET_GRADIENTS.filter(g => g.category === 'multicolor')
     }
   ]
 
-  // 处理预设渐变选择
+  // Handle preset gradient selection
   function handlePresetGradientSelect(preset: GradientPreset) {
     console.log('🌈 [BackgroundColorPicker] Preset gradient selected:', preset)
     backgroundConfigStore.applyPresetGradient(preset)
   }
 
-  // 检查预设渐变是否被选中
+  // Check if preset gradient is selected
   function isPresetGradientSelected(preset: GradientPreset) {
     if (currentType !== 'gradient' || !currentConfig.gradient) return false
 
     const current = currentConfig.gradient
     const target = preset.config
 
-    // 比较渐变配置是否相同
+    // Compare if gradient configurations are the same
     return (
       current.type === target.type &&
       JSON.stringify(current.stops) === JSON.stringify(target.stops) &&
@@ -266,7 +264,7 @@
     )
   }
 
-  // 获取当前渐变的CSS预览
+  // Get current gradient CSS preview
   function getCurrentGradientPreview(): string {
     if (currentType === 'gradient' && currentConfig.gradient) {
       return backgroundConfigStore.generateGradientCSS(currentConfig.gradient)
@@ -274,7 +272,7 @@
     return 'linear-gradient(45deg, #f3f4f6, #e5e7eb)'
   }
 
-  // 处理图片上传
+  // Handle image upload
   async function handleImageUpload(event: Event) {
     const input = event.target as HTMLInputElement
     const file = input.files?.[0]
@@ -289,40 +287,40 @@
       console.log('🖼️ [BackgroundColorPicker] Image uploaded successfully:', result.config.imageId)
     } catch (error) {
       console.error('🖼️ [BackgroundColorPicker] Image upload failed:', error)
-      uploadError = error instanceof Error ? error.message : '图片上传失败'
+      uploadError = error instanceof Error ? error.message : 'Image upload failed'
     } finally {
       isUploading = false
-      // 清空input以允许重复选择同一文件
+      // Clear input to allow selecting the same file again
       if (input) input.value = ''
     }
   }
 
-  // 处理拖拽上传
+  // Handle drag upload
   function handleDrop(event: DragEvent) {
     event.preventDefault()
     const files = event.dataTransfer?.files
     if (files && files.length > 0) {
       const file = files[0]
       if (file.type.startsWith('image/')) {
-        // 模拟input change事件
+        // Simulate input change event
         handleImageUpload({ target: { files: [file] } } as any)
       } else {
-        uploadError = '请选择图片文件'
+        uploadError = 'Please select an image file'
       }
     }
   }
 
-  // 处理拖拽悬停
+  // Handle drag hover
   function handleDragOver(event: DragEvent) {
     event.preventDefault()
   }
 
-  // 触发文件选择
+  // Trigger file selection
   function triggerFileSelect() {
     fileInput?.click()
   }
 
-  // 处理键盘事件
+  // Handle keyboard events
   function handleKeydown(event: KeyboardEvent) {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
@@ -330,9 +328,9 @@
     }
   }
 
-  // === 用户体验增强功能 ===
+  // === User experience enhancement features ===
 
-  // 键盘导航支持
+  // Keyboard navigation support
   function handleTabKeydown(event: KeyboardEvent) {
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       event.preventDefault()
@@ -345,7 +343,7 @@
     }
   }
 
-  // 颜色选项键盘导航
+  // Color option keyboard navigation
   function handleColorKeydown(event: KeyboardEvent, action: () => void) {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
@@ -353,12 +351,12 @@
     }
   }
 
-  // 复制颜色值到剪贴板
+  // Copy color value to clipboard
   async function copyColorToClipboard(color: string) {
     try {
       await navigator.clipboard.writeText(color)
       console.log('🎨 [BackgroundColorPicker] Color copied to clipboard:', color)
-      // 这里可以添加一个临时的成功提示
+      // Here you can add a temporary success notification
     } catch (error) {
       console.warn('🎨 [BackgroundColorPicker] Failed to copy color:', error)
     }
@@ -367,31 +365,34 @@
 
 </script>
 
-<!-- 背景色选择器 - 两行布局 -->
+<!-- Background color picker - two-row layout -->
 <div class="p-4 border border-gray-200 rounded-lg bg-white flex flex-col gap-4">
-  <!-- 第一行：Tab切换器 -->
+  <!-- First row: Tab switcher with horizontal scroll support -->
   <div class="flex flex-col gap-3">
-    <h3 class="text-sm font-semibold text-gray-700 m-0">背景设置</h3>
-    <div class="flex bg-gray-100 rounded-md p-0.5 gap-0.5" role="tablist" aria-label="背景类型选择">
-      {#each tabOptions as tab}
-        <button
-          class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 border-none rounded text-gray-600 text-xs font-medium cursor-pointer transition-all duration-200 {activeTab === tab.value ? 'bg-white text-blue-600 shadow-sm' : 'bg-transparent hover:bg-gray-200 hover:text-gray-700'}"
-          onclick={() => switchTab(tab.value)}
-          onkeydown={handleTabKeydown}
-          type="button"
-          role="tab"
-          aria-selected={activeTab === tab.value}
-          aria-controls="content-area"
-          tabindex={activeTab === tab.value ? 0 : -1}
-        >
-          <tab.icon class="w-3.5 h-3.5" aria-hidden="true" />
-          <span class="font-medium">{tab.label}</span>
-        </button>
-      {/each}
+    <h3 class="text-sm font-semibold text-gray-700 m-0">Background Settings</h3>
+    <!-- Tab container with horizontal scroll -->
+    <div class="tab-container">
+      <div class="tab-wrapper" role="tablist" aria-label="Background type selection">
+        {#each tabOptions as tab}
+          <button
+            class="tab-button {activeTab === tab.value ? 'tab-active' : 'tab-inactive'}"
+            onclick={() => switchTab(tab.value)}
+            onkeydown={handleTabKeydown}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab.value}
+            aria-controls="content-area"
+            tabindex={activeTab === tab.value ? 0 : -1}
+          >
+            <!-- <tab.icon class="w-3.5 h-3.5" aria-hidden="true" /> -->
+            <span class="font-medium">{tab.label}</span>
+          </button>
+        {/each}
+      </div>
     </div>
   </div>
 
-  <!-- 第二行：内容区域 -->
+  <!-- Second row: Content area -->
   <div
     class="min-h-0"
     id="content-area"
@@ -399,15 +400,15 @@
     aria-labelledby="tab-{activeTab}"
   >
     {#if activeTab === 'solid-color'}
-      <!-- 纯色选择器 -->
+      <!-- Solid color selector -->
       <div class="space-y-4">
-        <!-- 颜色搜索 -->
+        <!-- Color search -->
         <div class="space-y-2">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <h4 class="text-sm font-medium text-gray-700 m-0">颜色搜索</h4>
+              <h4 class="text-sm font-medium text-gray-700 m-0">Color Search</h4>
               <span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                共{PRESET_SOLID_COLORS.length}种颜色
+                {PRESET_SOLID_COLORS.length} colors total
               </span>
             </div>
             {#if colorSearchQuery.trim()}
@@ -416,24 +417,24 @@
                 onclick={() => colorSearchQuery = ''}
                 type="button"
               >
-                清除搜索
+                Clear Search
               </button>
             {/if}
           </div>
           <input
             type="text"
             class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="搜索颜色名称或颜色值..."
+            placeholder="Search color names or color values..."
             bind:value={colorSearchQuery}
           />
           {#if colorSearchQuery.trim()}
             <div class="text-xs text-gray-600">
-              找到 {filteredColorCategories.reduce((total, cat) => total + cat.colors.length, 0)} 种匹配的颜色
+              Found {filteredColorCategories.reduce((total, cat) => total + cat.colors.length, 0)} matching colors
             </div>
           {/if}
         </div>
 
-        <!-- 预设颜色分类 -->
+        <!-- Preset color categories -->
         {#each filteredColorCategories as category}
           {#if category.colors.length > 0}
             <div class="space-y-3">
@@ -441,24 +442,24 @@
                 <span class="text-base">{category.icon}</span>
                 {category.name}
                 <span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                  {category.colors.length}种
+                  {category.colors.length} colors
                 </span>
               </h4>
-              <!-- 16种颜色使用8x2网格布局 -->
+              <!-- 16 colors using 8x2 grid layout -->
               <div class="grid grid-cols-8 gap-2 mb-4">
                 {#each category.colors as preset}
                   <button
                     class="w-9 h-9 rounded-lg border-3 cursor-pointer transition-all duration-200 relative group {isPresetSolidColorSelected(preset) ? 'border-blue-500 shadow-lg ring-2 ring-blue-200' : 'border-gray-300 hover:border-gray-400 hover:scale-105'}"
                     style="background-color: {preset.color}"
-                    title="{preset.name} ({preset.color}) - 点击选择，双击复制颜色值"
+                    title="{preset.name} ({preset.color}) - Click to select, double-click to copy color value"
                     onclick={() => handlePresetSolidColorSelect(preset)}
                     ondblclick={() => copyColorToClipboard(preset.color)}
                     onkeydown={(e) => handleColorKeydown(e, () => handlePresetSolidColorSelect(preset))}
                     type="button"
-                    aria-label="{preset.name}，颜色值：{preset.color}"
+                    aria-label="{preset.name}, color value: {preset.color}"
                     tabindex="0"
                   >
-                    <!-- 悬停时显示颜色名称 - 移到上方避免被遮挡 -->
+                    <!-- Show color name on hover - moved to top to avoid being covered -->
                     <div class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-20">
                       {preset.name}
                     </div>
@@ -469,13 +470,13 @@
           {/if}
         {/each}
 
-        <!-- 自定义颜色选择器 -->
+        <!-- Custom color picker -->
         <div class="space-y-3">
-          <h4 class="text-sm font-medium text-gray-700 m-0">自定义颜色</h4>
+          <h4 class="text-sm font-medium text-gray-700 m-0">Custom Color</h4>
           <div class="flex gap-3">
-            <!-- HTML5颜色选择器 -->
+            <!-- HTML5 color picker -->
             <div class="flex flex-col gap-1">
-              <label class="text-xs text-gray-600" for="color-picker-input">颜色选择器</label>
+              <label class="text-xs text-gray-600" for="color-picker-input">Color Picker</label>
               <input
                 id="color-picker-input"
                 type="color"
@@ -485,9 +486,9 @@
               />
             </div>
 
-            <!-- 颜色值输入 -->
+            <!-- Color value input -->
             <div class="flex flex-col gap-1 flex-1">
-              <label class="text-xs text-gray-600" for="color-text-input">颜色值</label>
+              <label class="text-xs text-gray-600" for="color-text-input">Color Value</label>
               <input
                 id="color-text-input"
                 type="text"
@@ -500,9 +501,9 @@
             </div>
           </div>
 
-          <!-- 颜色预览 -->
+          <!-- Color preview -->
           <div class="flex items-center gap-2">
-            <div class="text-xs text-gray-600">预览</div>
+            <div class="text-xs text-gray-600">Preview</div>
             <div
               class="w-8 h-6 border border-gray-300 rounded"
               style="background-color: {customColorValue}"
@@ -511,9 +512,9 @@
         </div>
       </div>
     {:else if activeTab === 'image'}
-      <!-- 图片背景选择器 -->
+      <!-- Image background selector -->
       <div class="space-y-4">
-        <!-- 隐藏的文件输入 -->
+        <!-- Hidden file input -->
         <input
           type="file"
           accept="image/*"
@@ -522,7 +523,7 @@
           class="hidden"
         />
 
-        <!-- 上传区域 -->
+        <!-- Upload area -->
         <div class="space-y-3">
           <div
             class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer transition-colors duration-200 {isUploading ? 'border-blue-400 bg-blue-50' : 'hover:border-gray-400 hover:bg-gray-50'}"
@@ -536,16 +537,16 @@
             {#if isUploading}
               <div class="flex flex-col items-center gap-2">
                 <div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                <span class="text-sm text-blue-600">正在处理图片...</span>
+                <span class="text-sm text-blue-600">Processing image...</span>
               </div>
             {:else}
               <div class="flex flex-col items-center gap-3">
                 <Upload class="w-8 h-8 text-gray-400" />
                 <div class="space-y-1">
-                  <div class="text-sm font-medium text-gray-700">点击选择图片</div>
-                  <div class="text-xs text-gray-500">或拖拽图片到此处</div>
+                  <div class="text-sm font-medium text-gray-700">Click to select image</div>
+                  <div class="text-xs text-gray-500">or drag image here</div>
                 </div>
-                <div class="text-xs text-gray-400">支持 JPEG、PNG、WebP、GIF 格式，最大 5MB</div>
+                <div class="text-xs text-gray-400">Supports JPEG, PNG, WebP, GIF formats, max 5MB</div>
               </div>
             {/if}
           </div>
@@ -558,10 +559,10 @@
           {/if}
         </div>
 
-        <!-- 当前用户上传图片预览 -->
+        <!-- Current user uploaded image preview -->
         {#if activeTab === 'image' && currentType === 'image' && currentConfig.image}
           <div class="space-y-3">
-            <h4 class="text-sm font-medium text-gray-700 m-0">当前图片</h4>
+            <h4 class="text-sm font-medium text-gray-700 m-0">Current Image</h4>
             <div class="flex gap-3">
               <div
                 class="w-16 h-16 border border-gray-300 rounded-lg bg-cover bg-center flex-shrink-0"
@@ -569,10 +570,10 @@
               ></div>
               <div class="flex flex-col gap-1 text-xs text-gray-600">
                 <div>ID: {currentConfig.image.imageId}</div>
-                <div>适应: {currentConfig.image.fit}</div>
-                <div>位置: {currentConfig.image.position}</div>
+                <div>Fit: {currentConfig.image.fit}</div>
+                <div>Position: {currentConfig.image.position}</div>
                 {#if currentConfig.image.opacity !== undefined && currentConfig.image.opacity < 1}
-                  <div>透明度: {Math.round(currentConfig.image.opacity * 100)}%</div>
+                  <div>Opacity: {Math.round(currentConfig.image.opacity * 100)}%</div>
                 {/if}
               </div>
             </div>
@@ -580,32 +581,33 @@
         {/if}
       </div>
     {:else if activeTab === 'wallpaper'}
-      <!-- 壁纸背景选择器 -->
+      <!-- Wallpaper background selector -->
       <div class="space-y-4">
-        <!-- 壁纸统计 -->
+        <!-- Wallpaper statistics -->
         <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <span class="text-sm font-medium text-blue-700">壁纸库</span>
+              <span class="text-sm font-medium text-blue-700">Wallpaper Library</span>
               <span class="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">
-                共{Object.values(WALLPAPER_CATEGORIES).reduce((total, cat) => total + cat.wallpapers.length, 0)}张
+                {Object.values(WALLPAPER_CATEGORIES).reduce((total, cat) => total + cat.wallpapers.length, 0)} total
               </span>
             </div>
             <div class="text-xs text-blue-600">
-              {Object.keys(WALLPAPER_CATEGORIES).length}个分类
+              {Object.keys(WALLPAPER_CATEGORIES).length} categories
             </div>
           </div>
         </div>
 
-        <!-- 壁纸分类 -->
+        <!-- Wallpaper categories -->
         {#each Object.entries(WALLPAPER_CATEGORIES) as [, category]}
           {#if category.wallpapers.length > 0}
+
             <div class="space-y-3">
               <h4 class="text-sm font-medium text-gray-700 m-0 flex items-center gap-2">
                 <span class="text-base">{category.icon}</span>
                 {category.name}
                 <span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                  {category.wallpapers.length}张
+                  {category.wallpapers.length} colors
                 </span>
               </h4>
               {#if category.description}
@@ -642,10 +644,10 @@
           {/if}
         {/each}
 
-        <!-- 当前壁纸预览 -->
+        <!-- Current wallpaper preview -->
         {#if activeTab === 'wallpaper' && currentType === 'wallpaper' && currentConfig.wallpaper}
           <div class="mt-4 p-3 bg-gray-50 rounded-lg border">
-            <h4 class="text-sm font-medium text-gray-700 mb-2 m-0">当前壁纸</h4>
+            <h4 class="text-sm font-medium text-gray-700 mb-2 m-0">Current wallpaper</h4>
             <div class="flex gap-3">
               <div
                 class="w-20 h-15 bg-gray-200 rounded-md overflow-hidden flex-shrink-0"
@@ -653,32 +655,32 @@
               ></div>
               <div class="flex flex-col gap-1 text-xs text-gray-600">
                 <div>ID: {currentConfig.wallpaper.imageId}</div>
-                <div>适应: {currentConfig.wallpaper.fit}</div>
-                <div>位置: {currentConfig.wallpaper.position}</div>
+                <div>Fit: {currentConfig.wallpaper.fit}</div>
+                <div>Position: {currentConfig.wallpaper.position}</div>
               </div>
             </div>
           </div>
         {/if}
       </div>
     {:else if activeTab === 'gradient'}
-      <!-- 渐变色选择器 -->
+      <!-- Gradient background selector -->
       <div class="space-y-4">
-        <!-- 渐变统计 -->
+        <!-- Gradient statistics -->
         <div class="mb-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <span class="text-sm font-medium text-purple-700">渐变库</span>
+              <span class="text-sm font-medium text-purple-700">Gradient Library</span>
               <span class="text-xs text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">
-                共{PRESET_GRADIENTS.length}个
+                {PRESET_GRADIENTS.length} total
               </span>
             </div>
             <div class="text-xs text-purple-600">
-              {gradientCategories.length}个分类
+              {gradientCategories.length} categories
             </div>
           </div>
         </div>
 
-        <!-- 预设渐变分类 -->
+        <!-- Preset gradient categories -->
         {#each gradientCategories as category}
           {#if category.gradients.length > 0}
             <div class="space-y-3">
@@ -686,13 +688,13 @@
                 <span class="text-base">{category.icon}</span>
                 {category.name}
                 <span class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                  {category.gradients.length}个
+                  {category.gradients.length} colors
                 </span>
               </h4>
               {#if category.description}
                 <p class="text-xs text-gray-500 m-0">{category.description}</p>
               {/if}
-              <!-- 8个渐变使用4x2网格布局 -->
+              <!-- 8 colors using 4x2 grid layout -->
               <div class="grid grid-cols-4 gap-2 mb-4">
                 {#each category.gradients as preset}
                   <div class="relative group">
@@ -703,11 +705,11 @@
                       onclick={() => handlePresetGradientSelect(preset)}
                       onkeydown={(e) => handleColorKeydown(e, () => handlePresetGradientSelect(preset))}
                       type="button"
-                      aria-label="{preset.name}渐变，{preset.description || ''}"
+                      aria-label="{preset.name} gradient, {preset.description || ''}"
                       tabindex="0"
                     >
                     </button>
-                    <!-- 悬停时显示渐变名称 - 移到上方避免被遮挡 -->
+                    <!-- Show gradient name on hover - moved to top to avoid being covered -->
                     <div class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-20">
                       {preset.name}
                     </div>
@@ -718,9 +720,9 @@
           {/if}
         {/each}
 
-        <!-- 当前渐变预览 -->
+        <!-- Current gradient preview -->
         <div class="mt-4 p-3 bg-gray-50 rounded-lg border">
-          <h4 class="text-sm font-medium text-gray-700 mb-2 m-0">当前渐变</h4>
+          <h4 class="text-sm font-medium text-gray-700 mb-2 m-0">Current gradient</h4>
           <div class="flex gap-3">
             <div
               class="w-20 h-12 rounded-md border border-gray-300 flex-shrink-0"
@@ -729,34 +731,34 @@
             <div class="flex flex-col gap-1 text-xs text-gray-600">
               {#if currentType === 'gradient' && currentConfig.gradient}
                 <div>
-                  类型: {currentConfig.gradient.type === 'linear' ? '线性' :
-                        currentConfig.gradient.type === 'radial' ? '径向' : '圆锥'}渐变
+                  Type: {currentConfig.gradient.type === 'linear' ? 'Linear' :
+                         currentConfig.gradient.type === 'radial' ? 'Radial' : 'Conic'} Gradient
                 </div>
                 <div>
-                  颜色数: {currentConfig.gradient.stops.length}
+                  Colors: {currentConfig.gradient.stops.length}
                 </div>
               {:else}
-                <div class="text-gray-500">请选择一个渐变效果</div>
+                <div class="text-gray-500">Please select a gradient effect</div>
               {/if}
             </div>
           </div>
         </div>
 
-        <!-- 渐变参数调整 (未来扩展) -->
+        <!-- Gradient parameter adjustment (future extension) -->
         <div class="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-          <h4 class="text-sm font-medium text-blue-700 mb-2 m-0">参数调整</h4>
+          <h4 class="text-sm font-medium text-blue-700 mb-2 m-0">Parameter Adjustment</h4>
           <div class="text-center py-4">
-            <p class="text-sm text-blue-600 mb-1">🎛️ 高级参数调整功能</p>
-            <p class="text-xs text-blue-500">即将支持自定义渐变角度、位置和颜色停止点</p>
+            <p class="text-sm text-blue-600 mb-1">🎛️ Advanced parameter adjustment features</p>
+            <p class="text-xs text-blue-500">Coming soon: support for custom gradient angles, positions and color stops</p>
           </div>
         </div>
       </div>
     {/if}
   </div>
 
-  <!-- 当前选择状态显示 -->
+  <!-- Current selection status display -->
   <div class="mt-4 p-3 bg-gray-50 rounded-lg border flex items-center gap-3">
-    <span class="text-sm font-medium text-gray-700">当前设置:</span>
+    <span class="text-sm font-medium text-gray-700">Current setting:</span>
     <div class="flex items-center gap-2">
       {#if currentType === 'solid-color'}
         <div class="w-6 h-6 rounded border border-gray-300" style="background-color: {currentColor}"></div>
@@ -770,13 +772,125 @@
         ></div>
         <span class="text-sm text-gray-600">
           {#if currentConfig.gradient}
-            {currentConfig.gradient.type === 'linear' ? '线性' :
-             currentConfig.gradient.type === 'radial' ? '径向' : '圆锥'}渐变
+            {currentConfig.gradient.type === 'linear' ? 'Linear' :
+             currentConfig.gradient.type === 'radial' ? 'Radial' : 'Conic'} Gradient
           {:else}
-            渐变背景
+            Gradient Background
           {/if}
         </span>
       {/if}
     </div>
   </div>
 </div>
+
+<style>
+  /* Tab container with horizontal scroll support */
+  .tab-container {
+    position: relative;
+    width: 100%;
+  }
+
+  .tab-wrapper {
+    display: flex;
+    background-color: #f3f4f6; /* bg-gray-100 */
+    border-radius: 0.375rem; /* rounded-md */
+    padding: 0.125rem; /* p-0.5 */
+    gap: 0.125rem; /* gap-0.5 */
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+    scroll-behavior: smooth;
+    /* Add padding to prevent content from being cut off */
+    padding-right: 0.5rem;
+  }
+
+  /* Hide scrollbar for WebKit browsers */
+  .tab-wrapper::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Tab button styles */
+  .tab-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem; /* gap-1.5 */
+    padding: 0.5rem 0.75rem; /* px-3 py-2 */
+    border: none;
+    border-radius: 0.25rem; /* rounded */
+    color: #4b5563; /* text-gray-600 */
+    font-size: 0.75rem; /* text-xs */
+    font-weight: 500; /* font-medium */
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-width: fit-content;
+  }
+
+  .tab-active {
+    background-color: white;
+    color: #2563eb; /* text-blue-600 */
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
+  }
+
+  .tab-inactive {
+    background-color: transparent;
+  }
+
+  .tab-inactive:hover {
+    background-color: #e5e7eb; /* hover:bg-gray-200 */
+    color: #374151; /* hover:text-gray-700 */
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 640px) {
+    .tab-button {
+      padding: 0.375rem 0.5rem; /* Smaller padding on mobile */
+      font-size: 0.6875rem; /* Smaller text on mobile */
+    }
+    
+    .tab-button span {
+      display: none; /* Hide text labels on very small screens, show only icons */
+    }
+  }
+
+  @media (max-width: 480px) {
+    .tab-button {
+      padding: 0.25rem 0.375rem;
+      min-width: 2.5rem;
+    }
+  }
+
+  /* Add subtle scroll indicators */
+  .tab-container::before,
+  .tab-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1rem;
+    pointer-events: none;
+    z-index: 1;
+    transition: opacity 0.2s ease-in-out;
+  }
+
+  .tab-container::before {
+    left: 0;
+    background: linear-gradient(to right, #f3f4f6, transparent);
+    border-radius: 0.375rem 0 0 0.375rem;
+  }
+
+  .tab-container::after {
+    right: 0;
+    background: linear-gradient(to left, #f3f4f6, transparent);
+    border-radius: 0 0.375rem 0.375rem 0;
+  }
+
+  /* Show scroll indicators only when content overflows */
+  .tab-wrapper:not(:hover)::before,
+  .tab-wrapper:not(:hover)::after {
+    opacity: 0.7;
+  }
+</style>

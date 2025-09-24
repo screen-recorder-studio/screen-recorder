@@ -272,16 +272,16 @@
 </script>
 
 <svelte:head>
-  <title>屏幕录制</title>
+  <title>Screen Recording Studio</title>
 </svelte:head>
 
 <div class="flex h-screen bg-gray-50">
-  <!-- 左侧主预览播放器 - 不允许滚动，高度占满 100vh -->
+  <!-- Left main preview player - no scrolling, full height 100vh -->
   <div class="flex-1 min-h-0 flex flex-col h-full overflow-hidden">
-    <!-- 预览区域标题 -->
+    <!-- Preview area header -->
     <div class="flex-shrink-0 p-6 border-b border-gray-200 bg-white">
       <div class="flex items-center justify-between relative">
-        <!-- 左侧标题 -->
+        <!-- Left title -->
         <div class="flex items-center gap-3">
           <div class="flex items-center gap-2">
             <Video class="w-6 h-6 text-blue-600" />
@@ -292,25 +292,25 @@
           </span>
         </div>
         
-        <!-- 中间的视频比例控制 -->
+        <!-- Center video aspect ratio control -->
         <div class="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
           <AspectRatioControl />
         </div>
         
-        <!-- 右侧 Drive 按钮 -->
+        <!-- Right Drive button -->
         <button
           class="p-2 rounded-lg border border-gray-300 hover:border-blue-400 hover:bg-white/70 hover:shadow-sm transition-all duration-200 group"
           onclick={() => window.open('/drive.html', '_blank')}
-          title="打开录制文件管理"
+          title="Open Recording File Manager"
         >
           <HardDrive class="w-5 h-5 text-gray-600 group-hover:text-blue-600 transition-colors duration-200" />
         </button>
       </div>
     </div>
 
-    <!-- 预览播放器内容区域 -->
+    <!-- Preview player content area -->
     <div class="flex-1 min-h-0 flex flex-col p-6 relative">
-      <!-- 使用新的 VideoPreviewComposite 组件 -->
+      <!-- Using new VideoPreviewComposite component -->
       <div class="flex-1 min-h-0 flex items-stretch justify-center" bind:this={previewContainerEl}>
         <VideoPreviewComposite
           encodedChunks={workerEncodedChunks}
@@ -415,9 +415,9 @@
     </div>
   </div>
 
-  <!-- 右侧编辑面板 - 允许滚动 -->
+  <!-- Right editing panel - allows scrolling -->
   <div class="w-100 bg-white border-l border-gray-200 flex flex-col h-full">
-    <!-- 编辑面板标题 -->
+    <!-- Editing panel header -->
     <div class="flex-shrink-0 p-6 border-b border-gray-200">
       <VideoExportPanel
           encodedChunks={workerEncodedChunks}
@@ -428,32 +428,32 @@
         />
     </div>
 
-    <!-- 可滚动的编辑内容区域 -->
+    <!-- Scrollable editing content area -->
     <div class="flex-1 overflow-y-auto">
       <div class="p-6 space-y-6">
-        <!-- 视频配置区块 -->
+        <!-- Video configuration blocks -->
 
-        <!-- 背景颜色选择 -->
+        <!-- Background color selection -->
           <div class="col-span-2 lg:col-span-1">
             <BackgroundColorPicker />
           </div>
 
-          <!-- 圆角配置 -->
+          <!-- Border radius configuration -->
           <div>
             <BorderRadiusControl />
           </div>
 
-          <!-- 边距配置 -->
+          <!-- Padding configuration -->
           <div>
             <PaddingControl />
           </div>
 
-          <!-- 视频比例配置 -->
+          <!-- Video aspect ratio configuration -->
           <div class="col-span-2 lg:col-span-1">
             <!-- <AspectRatioControl /> -->
           </div>
 
-          <!-- 阴影配置 -->
+          <!-- Shadow configuration -->
           <div class="col-span-2 lg:col-span-1">
             <ShadowControl />
           </div>
@@ -463,7 +463,7 @@
 </div>
 
 <style>
-  /* 自定义动画类 */
+  /* Custom animation classes */
   @keyframes fade-in {
     from {
       opacity: 0;

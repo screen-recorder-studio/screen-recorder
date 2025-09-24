@@ -1,54 +1,54 @@
-<!-- 边距配置控件 -->
+<!-- Padding configuration control -->
 <script lang="ts">
   import { Move, Minimize2, Maximize2, Eye, SlidersHorizontal } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
 
-  // 当前边距值
+  // Current padding value
   const currentPadding = $derived(backgroundConfigStore.config.padding || 60)
 
-  // 预设边距值
+  // Preset padding values
   const PRESET_PADDING = [
-    { name: '无边距', value: 0, icon: Minimize2 },
-    { name: '小边距', value: 30, icon: Move },
-    { name: '中边距', value: 60, icon: Move },
-    { name: '大边距', value: 120, icon: Move },
-    { name: '超大边距', value: 200, icon: Maximize2 }
+    { name: 'No Padding', value: 0, icon: Minimize2 },
+    { name: 'Small Padding', value: 30, icon: Move },
+    { name: 'Medium Padding', value: 60, icon: Move },
+    { name: 'Large Padding', value: 120, icon: Move },
+    { name: 'Extra Large Padding', value: 200, icon: Maximize2 }
   ] as const
 
-  // 处理滑块变化
+  // Handle slider change
   function handleSliderChange(event: Event) {
     const target = event.target as HTMLInputElement
     const value = parseInt(target.value)
     backgroundConfigStore.updatePadding(value)
   }
 
-  // 处理预设值选择
+  // Handle preset selection
   function handlePresetSelect(preset: typeof PRESET_PADDING[number]) {
     console.log('🎨 [PaddingControl] Preset selected:', preset)
     backgroundConfigStore.updatePadding(preset.value)
   }
 
-  // 检查是否为当前选中的预设
+  // Check if preset is currently selected
   function isPresetSelected(value: number) {
     return currentPadding === value
   }
 
-  // 计算预览边距 - 使用更小的比例并设置最大值
+  // Calculate preview padding - use smaller ratio and set maximum value
   const previewPadding = $derived(Math.min(Math.round(currentPadding * 0.2), 40))
 
-  // 根据边距大小决定文字显示内容
-  const displayText = $derived(currentPadding > 150 ? '视频' : '视频区域')
+  // Determine display text based on padding size
+  const displayText = $derived(currentPadding > 150 ? 'Video' : 'Video Area')
   const showPaddingValue = $derived(currentPadding <= 120)
 </script>
 
-<!-- 边距配置控件 -->
+<!-- Padding configuration control -->
 <div class="p-4 border border-gray-200 rounded-lg bg-white">
   <div class="flex items-center gap-2 mb-4">
     <SlidersHorizontal class="w-4 h-4 text-gray-600" />
-    <h3 class="text-sm font-semibold text-gray-700">视频边距</h3>
+    <h3 class="text-sm font-semibold text-gray-700">Video Padding</h3>
   </div>
 
-  <!-- 滑块控制 -->
+  <!-- Slider control -->
   <div class="flex items-center gap-3 mb-4">
     <input
       type="range"
@@ -64,7 +64,7 @@
     </div>
   </div>
 
-  <!-- 预设值快速选择 -->
+  <!-- Preset value quick selection -->
   <div class="flex gap-2 mb-4 flex-wrap">
     {#each PRESET_PADDING as preset}
       {@const IconComponent = preset.icon}
@@ -87,11 +87,11 @@
     {/each}
   </div>
 
-  <!-- 视觉预览 -->
+  <!-- Visual preview -->
   <div class="mt-4">
     <div class="flex items-center gap-2 mb-2">
       <Eye class="w-3 h-3 text-gray-600" />
-      <div class="text-xs text-gray-600 font-medium">预览效果:</div>
+      <div class="text-xs text-gray-600 font-medium">Preview Effect:</div>
     </div>
     <div class="flex flex-col gap-2">
       <div class="flex items-center justify-center p-6 bg-gray-50 rounded-md">
@@ -116,14 +116,14 @@
         </div>
       </div>
       <div class="text-xs text-gray-600 text-center font-medium">
-        边距: {currentPadding}px
+        Padding: {currentPadding}px
       </div>
     </div>
   </div>
 </div>
 
 <style>
-  /* 自定义滑块样式 - 使用绿色主题 */
+  /* Custom slider styles - using green theme */
   .slider-thumb::-webkit-slider-thumb {
     appearance: none;
     width: 20px;

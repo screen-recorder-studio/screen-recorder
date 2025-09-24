@@ -3,10 +3,10 @@
   import { Edit, Trash2, Info } from '@lucide/svelte'
   import VideoPreview from '$lib/components/VideoPreview.svelte'
 
-  // 新增状态：控制元数据显示（已不需要，改为 hover 显示）
+  // New status: control metadata display (no longer needed, changed to hover display)
   // let showMetadata = $state(false)
 
-  // 组件属性
+  // Component properties
   interface Props {
     recording: {
       id: string
@@ -28,18 +28,18 @@
 
   let { recording, selected, onToggleSelect, onDelete }: Props = $props()
 
-  // 状态管理
+  // State management
   let thumbnailLoaded = $state(false)
   let thumbnailError = $state(false)
   let showPreview = $state(false)
   let previewComponent = $state<VideoPreview | null>(null)
-  // 新增：预览需要的完整数据与加载状态
+  // New: complete data and loading status required for preview
   let encodedChunks = $state<any[]>([])
   let isDecoding = $state(false)
   let hasLoadedFullData = $state(false)
   let loadError = $state<string | null>(null)
 
-  // 格式化文件大小
+  // Format file size
   function formatBytes(bytes: number): string {
     if (bytes === 0) return '0 B'
     const k = 1024
@@ -48,22 +48,22 @@
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
   }
 
-  // 格式化时间
+  // Format time
   function formatTime(seconds: number): string {
     if (seconds < 60) {
-      return `${Math.round(seconds)}秒`
+      return `${Math.round(seconds)}s`
     } else if (seconds < 3600) {
       const minutes = Math.floor(seconds / 60)
       const remainingSeconds = Math.round(seconds % 60)
-      return remainingSeconds > 0 ? `${minutes}分${remainingSeconds}秒` : `${minutes}分钟`
+      return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`
     } else {
       const hours = Math.floor(seconds / 3600)
       const minutes = Math.floor((seconds % 3600) / 60)
-      return minutes > 0 ? `${hours}小时${minutes}分钟` : `${hours}小时`
+      return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`
     }
   }
 
-  // 格式化日期
+  // Format date
   function formatDate(timestamp: number): string {
     const date = new Date(timestamp)
     const now = new Date()
@@ -71,19 +71,19 @@
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
     if (diffDays === 0) {
-      return '今天 ' + date.toLocaleTimeString('zh-CN', { 
+      return 'Today ' + date.toLocaleTimeString('en-US', { 
         hour: '2-digit', 
         minute: '2-digit' 
       })
     } else if (diffDays === 1) {
-      return '昨天 ' + date.toLocaleTimeString('zh-CN', { 
+      return 'Yesterday ' + date.toLocaleTimeString('en-US', { 
         hour: '2-digit', 
         minute: '2-digit' 
       })
     } else if (diffDays < 7) {
-      return `${diffDays}天前`
+      return `${diffDays} days ago`
     } else {
-      return date.toLocaleDateString('zh-CN', {
+      return date.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
@@ -91,10 +91,10 @@
     }
   }
 
-  // 生成缩略图
+  // Generate thumbnail
   async function generateThumbnail(): Promise<string | null> {
     try {
-      // 检查OPFS支持
+      // Check OPFS support
       if (!navigator.storage?.getDirectory) {
         throw new Error('OPFS not supported')
       }
@@ -102,7 +102,7 @@
       const root = await navigator.storage.getDirectory()
       const recordingDir = await root.getDirectoryHandle(recording.id)
       
-      // 读取第一个视频块
+      // Read first video chunk
       const indexHandle = await recordingDir.getFileHandle('index.jsonl')
       const indexFile = await indexHandle.getFile()
       const indexText = await indexFile.text()
@@ -114,15 +114,15 @@
 
       const firstChunk = JSON.parse(lines[0])
       
-      // 读取数据文件
+      // Read data file
       const dataHandle = await recordingDir.getFileHandle('data.bin')
       const dataFile = await dataHandle.getFile()
       const buffer = await dataFile.arrayBuffer()
       
-      // 提取第一帧数据
+      // Extract first frame data
       const chunkData = buffer.slice(firstChunk.offset, firstChunk.offset + firstChunk.size)
       
-      // 使用 VideoDecoder 解码第一帧
+      // Use VideoDecoder to decode first frame
       if ('VideoDecoder' in window) {
         return await decodeFirstFrame(chunkData, firstChunk)
       } else {
@@ -130,15 +130,15 @@
       }
       
     } catch (error) {
-      console.warn('生成缩略图失败:', error)
+      console.warn('Failed to generate thumbnail:', error)
       return null
     }
   }
 
-  // 预览图尺寸上限（长边）
+  // Thumbnail size limit (long edge)
   const MAX_THUMBNAIL_LONG_EDGE = 480
 
-  // 解码第一帧
+  // Decode first frame
   async function decodeFirstFrame(chunkData: ArrayBuffer, chunkInfo: any): Promise<string> {
     return new Promise((resolve, reject) => {
       let resolved = false
@@ -152,7 +152,7 @@
           resolved = true
           
           try {
-            // 根据长边限制缩放尺寸，减少存储与内存占用
+            // Scale size based on long edge limit to reduce storage and memory usage
             const srcW = frame.codedWidth
             const srcH = frame.codedHeight
             const maxSide = Math.max(srcW, srcH)
@@ -165,11 +165,11 @@
             canvas.height = dstH
             const ctx = canvas.getContext('2d')!
             
-            // 直接按目标尺寸绘制，浏览器会进行插值缩放
+            // Draw directly at target size, browser will perform interpolation scaling
             ctx.drawImage(frame, 0, 0, dstW, dstH)
             frame.close()
             
-            // 优先使用 WEBP（更小），不支持时回落到 JPEG
+            // Prefer WEBP (smaller), fallback to JPEG if not supported
             let dataUrl = ''
             try {
               dataUrl = canvas.toDataURL('image/webp', 0.75)
@@ -192,14 +192,14 @@
       })
 
       try {
-        // 配置解码器
+        // Configure decoder
         decoder.configure({
           codec: chunkInfo.codec || 'vp8',
           codedWidth: chunkInfo.codedWidth || recording.meta?.width || 1920,
           codedHeight: chunkInfo.codedHeight || recording.meta?.height || 1080
         })
 
-        // 解码第一帧
+        // Decode first frame
         const chunk = new EncodedVideoChunk({
           type: chunkInfo.type || 'key',
           timestamp: chunkInfo.timestamp || 0,
@@ -217,7 +217,7 @@
     })
   }
 
-  // 将 dataURL 转为 Blob
+  // Convert dataURL to Blob
   function dataURLToBlob(dataUrl: string): Blob {
     const [header, base64] = dataUrl.split(',')
     const mimeMatch = header.match(/data:(.*);base64/)
@@ -229,14 +229,14 @@
     return new Blob([bytes], { type: mime })
   }
 
-  // 根据 dataURL 的 mime 选择封面文件名
+  // Choose cover filename based on dataURL mime type
   function pickCoverFilename(dataUrl: string): string {
     if (dataUrl.startsWith('data:image/webp')) return 'cover.webp'
     if (dataUrl.startsWith('data:image/png')) return 'cover.png'
     return 'cover.jpg'
   }
 
-  // OPFS: 将封面写入缓存（根据 mime 写对应扩展名）
+  // OPFS: Write cover to cache (write with appropriate extension based on mime)
   async function writeCachedCoverFromDataURL(dataUrl: string): Promise<void> {
     try {
       if (!navigator.storage?.getDirectory) return
@@ -249,11 +249,11 @@
       await writable.write(blob)
       await writable.close()
     } catch (e) {
-      console.warn('写入封面缓存失败:', e)
+      console.warn('Failed to write cover cache:', e)
     }
   }
 
-  // 新增：加载完整预览数据（index.jsonl + data.bin）
+  // Load full preview data (index.jsonl + data.bin)
   async function loadFullData() {
     if (hasLoadedFullData || isDecoding) return
     try {
@@ -261,7 +261,7 @@
       loadError = null
 
       if (!navigator.storage?.getDirectory) {
-        throw new Error('当前环境不支持 OPFS')
+        throw new Error('Current environment does not support OPFS')
       }
 
       const root = await navigator.storage.getDirectory()
@@ -285,12 +285,12 @@
       const lines = indexText.split('\n').filter(Boolean)
       const entries = lines
         .map((line, i) => {
-          try { return JSON.parse(line) } catch (e) { console.warn(`index.jsonl 第 ${i} 行解析失败`, e); return null }
+          try { return JSON.parse(line) } catch (e) { console.warn(`Failed to parse line ${i} in index.jsonl`, e); return null }
         })
         .filter(Boolean) as any[]
 
       if (entries.length === 0) {
-        throw new Error('index.jsonl 为空')
+        throw new Error('index.jsonl is empty')
       }
 
       const chunks = entries.map((ent: any) => {
@@ -311,34 +311,34 @@
       encodedChunks = chunks
       hasLoadedFullData = true
     } catch (e) {
-      console.error('加载完整数据失败:', e)
+      console.error('Failed to load full data:', e)
       loadError = e instanceof Error ? e.message : String(e)
     } finally {
       isDecoding = false
     }
   }
 
-  // 打开预览
+  // Open preview
   function openPreview() {
     showPreview = true
     if (!hasLoadedFullData) {
-      // 懒加载完整数据，避免首屏阻塞
+      // Lazy load full data to avoid blocking first screen
       loadFullData()
     }
   }
 
-  // 关闭预览
+  // Close preview
   function closePreview() {
     showPreview = false
   }
 
-  // 播放录制 -> 改为编辑录制
+  // Play recording -> changed to edit recording
   function editRecording() {
-    // 跳转到 studio 页面进行编辑
+    // Navigate to studio page for editing
     window.open(`/studio.html?id=${recording.id}`, '_blank')
   }
 
-  // OPFS: 读取已缓存的封面图片（cover.jpg / cover.webp / cover.png）
+  // OPFS: Read cached cover image (cover.jpg / cover.webp / cover.png)
   async function readCachedCover(): Promise<string | null> {
     try {
       if (!navigator.storage?.getDirectory) return null
@@ -360,10 +360,10 @@
     }
   }
 
-  // 组件挂载时生成/读取缩略图（带 OPFS 缓存）
+  // Generate/read thumbnail on component mount (with OPFS cache)
   onMount(async () => {
     try {
-      // 1) 优先尝试从 OPFS 读取已缓存封面
+      // 1) First try to read cached cover from OPFS
       const cached = await readCachedCover()
       if (cached) {
         recording.thumbnail = cached
@@ -371,28 +371,28 @@
         return
       }
     } catch (e) {
-      console.warn('读取封面缓存失败:', e)
+      console.warn('Failed to read cover cache:', e)
     }
 
     if (recording.thumbnail) {
-      // 已有缩略图（例如外部提供）
+      // Already has thumbnail (e.g. provided externally)
       thumbnailLoaded = true
       return
     }
 
-    // 2) 生成首帧封面，并写入 OPFS 缓存
+    // 2) Generate first frame cover and write to OPFS cache
     try {
       const thumbnail = await generateThumbnail()
       if (thumbnail) {
         recording.thumbnail = thumbnail
         thumbnailLoaded = true
-        // 异步落盘缓存（不阻塞渲染）
+        // Async cache to disk (don't block rendering)
         writeCachedCoverFromDataURL(thumbnail)
       } else {
         thumbnailError = true
       }
     } catch (error) {
-      console.warn('缩略图生成失败:', error)
+      console.warn('Thumbnail generation failed:', error)
       thumbnailError = true
     }
   })
@@ -412,7 +412,7 @@
       <button class="info-btn" onclick={(e) => { e.stopPropagation() }}>
         <Info class="w-4 h-4" />
       </button>
-      <!-- 元数据 Tooltip - hover i 图标时显示 -->
+      <!-- Metadata Tooltip - show on hover over i icon -->
       <div class="metadata-tooltip">
         <div class="tooltip-content">
           <div class="meta-row">
@@ -420,35 +420,35 @@
             <span class="value">{recording.id}</span>
           </div>
           <div class="meta-row">
-            <span class="label">创建时间:</span>
+            <span class="label">Created:</span>
             <span class="value">{formatDate(recording.createdAt)}</span>
           </div>
           <div class="meta-row">
-            <span class="label">完成状态:</span>
-            <span class="value">{recording.meta?.completed ? '已完成' : '未完成'}</span>
+            <span class="label">Status:</span>
+            <span class="value">{recording.meta?.completed ? 'Completed' : 'Incomplete'}</span>
           </div>
           {#if recording.codec || recording.meta?.codec}
             <div class="meta-row">
-              <span class="label">编码:</span>
+              <span class="label">Codec:</span>
               <span class="value">{(recording.codec || recording.meta?.codec)?.toUpperCase()}</span>
             </div>
           {/if}
           <div class="meta-row">
-            <span class="label">分辨率:</span>
+            <span class="label">Resolution:</span>
             <span class="value">{recording.meta?.width || 0} × {recording.meta?.height || 0}</span>
           </div>
           {#if recording.fps || recording.meta?.fps}
             <div class="meta-row">
-              <span class="label">帧率:</span>
+              <span class="label">FPS:</span>
               <span class="value">{recording.fps || recording.meta?.fps} FPS</span>
             </div>
           {/if}
           <div class="meta-row">
-            <span class="label">文件大小:</span>
+            <span class="label">File Size:</span>
             <span class="value">{formatBytes(recording.meta?.totalBytes || recording.size)}</span>
           </div>
           <div class="meta-row">
-            <span class="label">总帧数:</span>
+            <span class="label">Total Frames:</span>
             <span class="value">{(recording.meta?.totalChunks || recording.totalChunks).toLocaleString()}</span>
           </div>
         </div>
@@ -460,7 +460,7 @@
     class="thumbnail-container"
     role="button"
     tabindex="0"
-    aria-label={`播放录制：${recording.displayName}`}
+    aria-label={`Play recording: ${recording.displayName}`}
     onclick={editRecording}
     onkeydown={(e) => {
       if (e.key === 'Enter' || e.key === ' ') {
@@ -473,18 +473,18 @@
    {#if thumbnailLoaded && recording.thumbnail}
       <img 
         src={recording.thumbnail} 
-        alt="录制缩略图"
+        alt="Recording thumbnail"
         class="thumbnail"
       />
     {:else if thumbnailError}
       <div class="thumbnail-placeholder error">
         <span class="icon">📹</span>
-        <span class="text">无法加载预览</span>
+        <span class="text">Cannot load preview</span>
       </div>
     {:else}
       <div class="thumbnail-placeholder loading">
         <div class="spinner"></div>
-        <span class="text">生成预览中...</span>
+        <span class="text">Generating preview...</span>
       </div>
     {/if}
     
@@ -506,11 +506,11 @@
   <div class="card-actions">
     <button class="btn btn-primary" onclick={editRecording}>
       <Edit class="w-4 h-4" />
-      编辑
+      Edit
     </button>
     <button class="btn btn-danger" onclick={onDelete}>
       <Trash2 class="w-4 h-4" />
-      删除
+      Delete
     </button>
   </div>
 </div>
@@ -520,7 +520,7 @@
     class="preview-modal"
     role="button"
     tabindex="0"
-    aria-label="关闭预览"
+    aria-label="Close preview"
     onclick={closePreview}
     onkeydown={(e) => {
       if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
@@ -543,7 +543,7 @@
       </div>
       <div class="preview-content">
         {#if loadError}
-          <div class="error-banner">预览数据加载失败：{loadError}</div>
+          <div class="error-banner">Failed to load preview data: {loadError}</div>
         {/if}
         <VideoPreview 
           bind:this={previewComponent}
@@ -689,7 +689,7 @@
     @apply bg-blue-600;
   }
 
-  /* 预览模态框 */
+  /* Preview modal */
   .preview-modal {
     @apply fixed inset-0 bg-black/80 flex items-center justify-center z-50;
   }

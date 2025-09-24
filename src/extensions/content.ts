@@ -12,6 +12,7 @@
     paused: false,
     selectedElement: null,
     selectionBox: null,
+    maskOverlay: null,
     isDragging: false,
     startX: 0,
     startY: 0,
@@ -42,7 +43,11 @@
     sinkStarted: false,
     // 编码数据收集
     encodedChunks: [],
-    recordingMetadata: null
+    recordingMetadata: null,
+    // Countdown overlay for delayed start
+    countdownOverlay: null,
+    countdownTimer: null,
+    countdownPending: false
   };
 
   // --- Selection Tips (popup triggers ENTER_SELECTION) ---
@@ -69,6 +74,201 @@
     try { if (selectionTipTimer) clearTimeout(selectionTipTimer); selectionTipTimer = null } catch {}
     if (selectionTipEl) { try { selectionTipEl.remove() } catch {}; selectionTipEl = null }
   }
+
+
+  // --- Bottom-centered floating control bar (for element/region recording) ---
+  // lightweight state extensions
+  (state as any).controlBar = null;
+  (state as any).controlBarVisible = false;
+  ;(state as any).barHideTimer = null as any;
+  const BAR_BOTTOM_THRESHOLD = 64; // px from bottom to reveal while recording
+  const BAR_HIDE_DELAY = 1500; // ms delay before hiding while recording
+
+  function isInputLike(target: any): boolean {
+    if (!(target instanceof Element)) return false;
+    const tag = target.tagName?.toLowerCase() || '';
+    if (['input','textarea','select','button'].includes(tag)) return true;
+    // contentEditable or within editable
+    if ((target as HTMLElement).isContentEditable) return true;
+    const editable = (el: any) => !!el && (el.getAttribute && (el.getAttribute('contenteditable') === 'true'));
+    return editable(target) || (!!target.closest && !!target.closest('[contenteditable="true"]'));
+  }
+
+  function ensureControlBar() {
+    // If a control bar element already exists in DOM, reuse it
+    const existing = document.querySelector('.mcp-control-bar') as HTMLElement | null;
+    if (existing) { (state as any).controlBar = existing; return existing; }
+    // Or reuse previously created if still connected under documentElement
+    if ((state as any).controlBar && document.documentElement.contains((state as any).controlBar)) return (state as any).controlBar;
+
+    const bar = document.createElement('div');
+    bar.className = 'mcp-control-bar';
+    bar.innerHTML = [
+      '<div class="info"><span class="mode">—</span><span class="sp"> · </span><span class="desc">未选择</span></div>',
+      '<button class="btn btn-pick-region">选区域</button>',
+      '<button class="btn btn-pick-element">选元素</button>',
+      '<button class="btn primary btn-start">开始录制</button>',
+      '<button class="btn btn-pause" style="display:none">暂停</button>',
+      '<button class="btn btn-resume" style="display:none">继续</button>',
+      '<button class="btn danger btn-stop" style="display:none">停止</button>',
+      '<button class="btn btn-close" style="display:none">关闭</button>'
+    ].join('');
+    // Append to body if available; fallback to documentElement
+    const host = document.body || document.documentElement;
+    host.appendChild(bar);
+    (state as any).controlBar = bar;
+
+    const onStart = () => { try { onBarStart(); } catch {} };
+    const onPause = () => { try { onBarTogglePause(); } catch {} };
+    const onResume = () => { try { onBarTogglePause(); } catch {} };
+    const onStop = () => { try { onBarStop(); } catch {} };
+    bar.querySelector('.btn-pick-region')?.addEventListener('click', onBarPickRegion);
+    bar.querySelector('.btn-pick-element')?.addEventListener('click', onBarPickElement);
+    bar.querySelector('.btn-start')?.addEventListener('click', onBarPrimary);
+    bar.querySelector('.btn-pause')?.addEventListener('click', onPause);
+    bar.querySelector('.btn-resume')?.addEventListener('click', onResume);
+    bar.querySelector('.btn-stop')?.addEventListener('click', onStop);
+    bar.querySelector('.btn-close')?.addEventListener('click', onBarClose);
+
+    return bar;
+  }
+
+  function updateControlBar() {
+    const bar = ensureControlBar();
+    // info text
+    try {
+      const modeText = state.mode === 'region' ? '区域' : '元素';
+      const desc = (state.mode === 'region' && state.selectionBox && state.selectionBox.style.display !== 'none')
+        ? `${Math.round(parseFloat(state.selectionBox.style.width||'0'))}×${Math.round(parseFloat(state.selectionBox.style.height||'0'))}`
+        : (state.selectedElement ? getElDesc(state.selectedElement) : (state.mode === 'region' && state.regionContainer ? '已选择区域' : '未选择'));
+      bar.querySelector('.mode')!.textContent = modeText;
+      bar.querySelector('.desc')!.textContent = desc || '未选择';
+    } catch {}
+
+    const btnStart = bar.querySelector('.btn-start') as HTMLButtonElement | null;
+    const btnPause = bar.querySelector('.btn-pause') as HTMLButtonElement | null;
+    const btnResume = bar.querySelector('.btn-resume') as HTMLButtonElement | null;
+    const btnStop = bar.querySelector('.btn-stop') as HTMLButtonElement | null;
+    const btnPickRegion = bar.querySelector('.btn-pick-region') as HTMLButtonElement | null;
+    const btnPickElement = bar.querySelector('.btn-pick-element') as HTMLButtonElement | null;
+    const btnClose = bar.querySelector('.btn-close') as HTMLButtonElement | null;
+
+    const hasSelection = !!(state.elementRecordingTarget || state.regionRecordingTarget);
+
+    if (!state.recording) {
+      if (btnStart) { btnStart.style.display = 'inline-flex'; btnStart.disabled = !hasSelection; btnStart.textContent = '开始录制'; }
+      if (btnPause) btnPause.style.display = 'none';
+      if (btnResume) btnResume.style.display = 'none';
+      if (btnStop) { btnStop.style.display = 'none'; }
+      if (btnPickRegion) { btnPickRegion.style.display = 'inline-flex'; btnPickRegion.disabled = false; }
+      if (btnPickElement) { btnPickElement.style.display = 'inline-flex'; btnPickElement.disabled = false; }
+      if (btnClose) { btnClose.style.display = 'inline-flex'; }
+    } else {
+      if (btnStart) { btnStart.style.display = 'inline-flex'; btnStart.disabled = false; btnStart.textContent = '停止录制'; }
+      if (state.paused) {
+        if (btnPause) btnPause.style.display = 'none';
+        if (btnResume) btnResume.style.display = 'inline-flex';
+      } else {
+        if (btnPause) { btnPause.style.display = 'inline-flex'; btnPause.disabled = false; }
+        if (btnResume) btnResume.style.display = 'none';
+      }
+      if (btnStop) { btnStop.style.display = 'none'; }
+      if (btnPickRegion) btnPickRegion.style.display = 'none';
+      if (btnPickElement) btnPickElement.style.display = 'none';
+      if (btnClose) btnClose.style.display = 'none';
+    }
+  }
+
+  function showControlBar(forceVisible = false) {
+    const bar = ensureControlBar();
+    if (!(state as any).controlBarVisible || forceVisible) {
+      bar.classList.add('visible');
+      (state as any).controlBarVisible = true;
+      updateControlBar();
+    }
+  }
+
+  function hideControlBar(immediate = false) {
+    const bar = ensureControlBar();
+    if (immediate) {
+      bar.classList.remove('visible');
+      (state as any).controlBarVisible = false;
+      return;
+    }
+    // animate hide
+    bar.classList.remove('visible');
+    (state as any).controlBarVisible = false;
+  }
+
+  function scheduleBarAutoHide() {
+    try { if ((state as any).barHideTimer) clearTimeout((state as any).barHideTimer) } catch {}
+    if (state.recording && !state.paused) {
+      (state as any).barHideTimer = setTimeout(() => hideControlBar(false), BAR_HIDE_DELAY);
+    }
+  }
+
+  function onMouseMoveReveal(e: MouseEvent) {
+    // During recording, keep control bar visible (no auto-hide)
+    if (!state.recording) return;
+    showControlBar(true);
+  }
+
+  function onHotkeys(e: KeyboardEvent) {
+    if (isInputLike(e.target)) return; // don't interfere with typing
+    // ESC handled by existing onEscKey
+    if ((e.key === 'Enter' || e.code === 'Enter') && !state.recording) {
+      const hasSelection = !!(state.elementRecordingTarget || state.regionRecordingTarget);
+      if (!hasSelection) return;
+      e.preventDefault(); onBarStart(); return;
+    }
+    if ((e.key === ' ' || e.code === 'Space') && state.recording) {
+      e.preventDefault(); onBarTogglePause(); return;
+    }
+    if ((e.key?.toLowerCase?.() === 's' || e.code === 'KeyS') && (e.shiftKey || e.altKey) && state.recording) {
+      // Use Shift+S or Alt+S to avoid clashing with browser save
+      e.preventDefault(); onBarStop(); return;
+    }
+  }
+
+  function onBarPrimary() {
+    if (!state.recording) { try { onBarStart(); } catch {} }
+    else { try { onBarStop(); } catch {} }
+  }
+  function onBarStart() {
+    if (!state.recording) { try { startCapture(); } catch {} }
+  }
+  function onBarTogglePause() {
+    if (state.recording) { try { setPaused(!state.paused); updateControlBar(); } catch {} }
+  }
+  function onBarStop() {
+    if (state.recording) { try { stopCapture(); } catch {} }
+  }
+  function onBarPickRegion() {
+    if (state.recording) return;
+    try { clearSelection(); } catch {}
+    state.mode = 'region';
+    try { enterSelection(); } catch {}
+    try { showControlBar(true); updateControlBar(); } catch {}
+  }
+  function onBarPickElement() {
+    if (state.recording) return;
+    try { clearSelection(); } catch {}
+    state.mode = 'element';
+    try { enterSelection(); } catch {}
+    try { showControlBar(true); updateControlBar(); } catch {}
+  }
+  function onBarClose() {
+    try { hideControlBar(true); } catch {}
+  }
+
+  // attach global listeners once
+  window.addEventListener('mousemove', onMouseMoveReveal, { passive: true });
+  window.addEventListener('keydown', onHotkeys, true);
+
+	  // keep element container synced on scroll/resize while selected
+	  window.addEventListener('scroll', () => { try { syncElementContainer(); } catch {} }, true);
+	  window.addEventListener('resize', () => { try { syncElementContainer(); } catch {} });
+
 
 
 	  // 流式累积是否就绪（sidepanel注册后由 background 通知）
@@ -120,6 +320,8 @@
           }
         } catch {}
       }
+      // Update control bar visibility/state (always visible during recording)
+      try { showControlBar(true); updateControlBar(); } catch {}
       // Notify background/popup about pause state
       safePortPost({ type: 'STREAM_META', meta: { paused: state.paused } });
     } catch {}
@@ -241,6 +443,7 @@
     state.elementContainer.style.top = rect.top + 'px';
     state.elementContainer.style.width = rect.width + 'px';
     state.elementContainer.style.height = rect.height + 'px';
+    try { updateMaskRect(rect.left, rect.top, rect.width, rect.height); } catch {}
   }
 
   // 清理元素选择
@@ -283,6 +486,58 @@
     return state.selectionBox;
   }
 
+
+  // --- Mask overlay (visual background dim with a rectangular hole) ---
+  function ensureMaskOverlay() {
+    try {
+      if (state.maskOverlay && document.documentElement.contains(state.maskOverlay)) return state.maskOverlay;
+      const el = document.createElement('div');
+      el.className = 'mcp-mask-overlay';
+      el.style.cssText = [
+        'position:fixed', 'inset:0',
+        // Visual dim
+        'background:rgba(0,0,0,0.35)',
+        // Keep it below selection containers and control bar
+        'z-index:2147482998',
+        // Visual-only by default; avoid interfering with existing handlers
+        'pointer-events:none',
+        // -webkit-mask: full-screen minus hole at (--mcp-mask-x, --mcp-mask-y) sized (--mcp-mask-w x --mcp-mask-h)
+        '-webkit-mask-image:linear-gradient(#fff 0 0),linear-gradient(#fff 0 0)',
+        '-webkit-mask-size:cover,var(--mcp-mask-w,0px) var(--mcp-mask-h,0px)',
+        '-webkit-mask-position:0 0,var(--mcp-mask-x,-99999px) var(--mcp-mask-y,-99999px)',
+        '-webkit-mask-repeat:no-repeat',
+        // Subtract second mask from the first (Chromium)
+        '-webkit-mask-composite:xor'
+      ].join(';');
+      state.root.appendChild(el);
+      state.maskOverlay = el;
+      return el;
+    } catch (_) { return null; }
+  }
+  function showMask() {
+    try { const el = ensureMaskOverlay(); if (el) el.style.display = 'block'; } catch {}
+  }
+  function hideMask() {
+    try { if (state.maskOverlay) { state.maskOverlay.style.display = 'none'; } } catch {}
+  }
+  function updateMaskRect(x, y, w, h) {
+    try {
+      const el = ensureMaskOverlay(); if (!el) return;
+      el.style.setProperty('--mcp-mask-x', `${Math.max(0, Math.round(x))}px`);
+      el.style.setProperty('--mcp-mask-y', `${Math.max(0, Math.round(y))}px`);
+      el.style.setProperty('--mcp-mask-w', `${Math.max(0, Math.round(w))}px`);
+      el.style.setProperty('--mcp-mask-h', `${Math.max(0, Math.round(h))}px`);
+      showMask();
+    } catch {}
+  }
+  function updateMaskForElement(el) {
+    try {
+      if (!el || !(el instanceof Element)) return;
+      const r = el.getBoundingClientRect();
+      updateMaskRect(r.left, r.top, r.width, r.height);
+    } catch {}
+  }
+
   function addDragOverlay() {
     const overlay = document.createElement('div');
     overlay.className = 'mcp-drag-overlay';
@@ -297,6 +552,7 @@
       sb.style.left = `${state.startX}px`;
       sb.style.top = `${state.startY}px`;
       sb.style.width = '0px'; sb.style.height = '0px';
+      try { updateMaskRect(state.startX, state.startY, 0, 0); } catch {}
       e.preventDefault();
       e.stopPropagation();
     }, true);
@@ -309,6 +565,7 @@
       const w = Math.abs(e.clientX - state.startX);
       const h = Math.abs(e.clientY - state.startY);
       sb.style.left = `${x}px`; sb.style.top = `${y}px`; sb.style.width = `${w}px`; sb.style.height = `${h}px`;
+      try { updateMaskRect(x, y, w, h); } catch {}
     }, true);
 
     window.addEventListener('mouseup', () => {
@@ -337,6 +594,8 @@
         // 隐藏原来的选择框
         sb.style.display = 'none';
 
+        // 固定遮罩洞到选区
+        try { updateMaskRect(x, y, w, h); showMask(); } catch {}
         report({ selectedDesc: `区域 ${Math.round(w)}×${Math.round(h)}` });
         // 区域选择完成后，自动退出选择态，并移除拖拽遮罩，防止继续选中内部
         state.selecting = false;
@@ -345,6 +604,9 @@
         hideSelectionTip();
         // 预热通信 iframe，降低 startCapture 阶段等待
         ensureSinkIframe().catch(() => {});
+        // 显示底部控制条，便于直接开始/暂停/停止
+        try { showControlBar(true); } catch {}
+
       }
     }, true);
 
@@ -360,6 +622,7 @@
     document.removeEventListener('click', onClick, true);
 
     state.selecting = true;
+    try { ensureMaskOverlay(); showMask(); updateMaskRect(-99999, -99999, 0, 0); } catch {}
     if (state.mode === 'region') {
       dragOverlay = dragOverlay || addDragOverlay();
     } else {
@@ -374,6 +637,7 @@
 
   function exitSelection() {
     state.selecting = false;
+    try { hideMask(); } catch {}
     // remove overlays/listeners
     if (dragOverlay) {
       dragOverlay.remove();
@@ -401,6 +665,7 @@
     if (isOwnNode(el)) return;
     clearHighlight();
     el.classList.add('mcp-highlight');
+    try { updateMaskForElement(el); } catch {}
   }
 
   function onOut(e) {
@@ -417,12 +682,16 @@
     if (isOwnNode(el)) return;
     e.preventDefault(); e.stopPropagation();
     selectElement(el);
+    try { updateMaskForElement(el); showMask(); } catch {}
     // 选择完成后自动退出选择态，避免继续在内部再次选择
     state.selecting = false;
     document.removeEventListener('mouseover', onHover, true);
     document.removeEventListener('mouseout', onOut, true);
     document.removeEventListener('click', onClick, true);
     report({ selecting: false });
+    // 显示底部控制条，便于直接开始/暂停/停止
+    try { showControlBar(true); } catch {}
+
     hideSelectionTip();
     // 预热通信 iframe，降低 startCapture 阶段等待
     ensureSinkIframe().catch(() => {});
@@ -454,22 +723,91 @@
 
     // 添加到页面
     root.appendChild(container);
-
     clearHighlight();
     report({ selectedDesc: `元素 ${getElDesc(el)}` });
   }
+
+
+	  // ===== Countdown helpers (global) to ensure stopCapture can cancel during pre-start =====
+	  ;(state as any).countdownRaf = 0;
+	  function cancelStartCountdownGlobal() {
+	    try { state.countdownPending = false; } catch {}
+	    try { if (state.countdownTimer) { clearTimeout(state.countdownTimer); state.countdownTimer = null } } catch {}
+	    try { if (state.countdownOverlay) { state.countdownOverlay.remove(); state.countdownOverlay = null } } catch {}
+	    try { if ((state as any).countdownRaf) { cancelAnimationFrame((state as any).countdownRaf); (state as any).countdownRaf = 0 } } catch {}
+	  }
+	  async function showStartCountdownGlobal(seconds = 5) {
+	    try {
+	      const host = state.elementContainer || state.regionContainer;
+	      if (!host || seconds <= 0) return;
+	      // Align container before overlay appears
+	      try { syncElementContainer(); } catch {}
+	      const overlay = document.createElement('div');
+	      overlay.className = 'mcp-countdown-overlay';
+	      overlay.style.cssText = [
+	        'position:absolute', 'inset:0', 'display:flex', 'align-items:center', 'justify-content:center',
+	        'background:rgba(0,0,0,0.25)', 'color:#fff', 'font-size:96px', 'font-weight:700', 'letter-spacing:.02em',
+	        'text-shadow:0 2px 8px rgba(0,0,0,.35)', 'z-index:2147483646', 'pointer-events:none',
+	        'backdrop-filter:saturate(120%) blur(0px)'
+	      ].join(';') + ';';
+	      const label = document.createElement('div');
+	      label.style.cssText = 'padding:.25em .5em; border-radius:.2em; background:rgba(0,0,0,.35)';
+	      overlay.appendChild(label);
+	      state.countdownOverlay = overlay;
+	      state.countdownPending = true;
+	      host.appendChild(overlay);
+	      let n = Math.max(1, Math.floor(seconds));
+	      label.textContent = String(n);
+      // Broadcast initial badge countdown to background
+      try { chrome.runtime.sendMessage({ type: 'STREAM_META', meta: { preparing: true, countdown: n } }); } catch {}
+	      // During countdown, keep container synced (handles scroll/layout changes)
+	      const raf = () => {
+	        if (!state.countdownPending) return;
+	        try { syncElementContainer(); } catch {}
+	        (state as any).countdownRaf = requestAnimationFrame(raf);
+	      };
+	      (state as any).countdownRaf = requestAnimationFrame(raf);
+	      await new Promise<void>((resolve) => {
+	        const tick = () => {
+	          if (!state.countdownPending) { cancelStartCountdownGlobal(); resolve(); return; }
+	          n -= 1;
+	          if (n <= 0) { cancelStartCountdownGlobal(); resolve(); return; }
+	          label.textContent = String(n);
+          try { chrome.runtime.sendMessage({ type: 'STREAM_META', meta: { preparing: true, countdown: n } }); } catch {}
+	          state.countdownTimer = setTimeout(tick, 1000);
+	        };
+	        state.countdownTimer = setTimeout(tick, 1000);
+	      });
+	    } catch (_) {
+	      cancelStartCountdownGlobal();
+	    }
+	  }
+	  ;(state as any)._cancelStartCountdown = cancelStartCountdownGlobal;
+	  ;(state as any)._showStartCountdown = showStartCountdownGlobal;
 
   async function startCapture() {
     if (state.recording) return;
     try {
       state.recording = true;
+      // Show control bar and update state during recording (no auto-hide)
+      try { showControlBar(true); updateControlBar(); } catch {}
+
       // reset per-session counters and sink session flag for repeat recording
       state.chunkCount = 0;
       state.byteCount = 0;
       state.sinkStarted = false;
       const displayMediaOptions = { video: { displaySurface: 'window' }, audio: false, preferCurrentTab: true };
+      console.log('[Stream][Content] getDisplayMedia request', displayMediaOptions);
       state.stream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions);
+      console.log('[Stream][Content] getDisplayMedia success', {
+        tracks: state.stream ? state.stream.getTracks().map(t => ({ kind: t.kind, label: t.label, readyState: t.readyState })) : null
+      });
+
+      // Fixed 5s countdown inside selection area to avoid share banner layout shift
+      if ((state as any)._showStartCountdown) await (state as any)._showStartCountdown(5);
+
       state.track = state.stream.getVideoTracks()[0];
+      try { console.log('[Stream][Content] video track settings', state.track?.getSettings?.()); } catch {}
 
       // Try Element Capture first if element mode (使用原始元素)
       if (state.mode === 'element' && state.selectedElement && typeof window.RestrictionTarget !== 'undefined') {
@@ -495,6 +833,49 @@
           }
         } catch (e) { console.warn('cropTo failed', e); }
       }
+
+  function cancelStartCountdown() {
+    try { state.countdownPending = false; } catch {}
+    try { if (state.countdownTimer) { clearTimeout(state.countdownTimer); state.countdownTimer = null } } catch {}
+    try { if (state.countdownOverlay) { state.countdownOverlay.remove(); state.countdownOverlay = null } } catch {}
+  }
+
+  async function showStartCountdown(seconds = 5) {
+    try {
+      const host = state.elementContainer || state.regionContainer;
+      if (!host || seconds <= 0) return;
+      const overlay = document.createElement('div');
+      overlay.className = 'mcp-countdown-overlay';
+      overlay.style.cssText = [
+        'position:absolute', 'inset:0', 'display:flex', 'align-items:center', 'justify-content:center',
+        'background:rgba(0,0,0,0.25)', 'color:#fff', 'font-size:96px', 'font-weight:700', 'letter-spacing:.02em',
+        'text-shadow:0 2px 8px rgba(0,0,0,.35)', 'z-index:2147483646', 'pointer-events:none',
+        'backdrop-filter:saturate(120%) blur(0px)'
+      ].join(';') + ';';
+      const label = document.createElement('div');
+      label.style.cssText = 'padding:.25em .5em; border-radius:.2em; background:rgba(0,0,0,.35)';
+      overlay.appendChild(label);
+      state.countdownOverlay = overlay;
+      state.countdownPending = true;
+      host.appendChild(overlay);
+
+      let n = Math.max(1, Math.floor(seconds));
+      label.textContent = String(n);
+
+      await new Promise<void>((resolve) => {
+        const tick = () => {
+          if (!state.countdownPending) { cancelStartCountdown(); resolve(); return; }
+          n -= 1;
+          if (n <= 0) { cancelStartCountdown(); resolve(); return; }
+          label.textContent = String(n);
+          state.countdownTimer = setTimeout(tick, 1000);
+        };
+        state.countdownTimer = setTimeout(tick, 1000);
+      });
+    } catch (_) {
+      cancelStartCountdown();
+    }
+  }
 
       // WebCodecs 可用则使用 VideoEncoder 管道，否则回退到 MediaRecorder
       const canWebCodecs = typeof window.VideoEncoder !== 'undefined' && typeof window.MediaStreamTrackProcessor !== 'undefined';
@@ -604,8 +985,14 @@
           state.byteCount = 0;
           state.recordingMetadata = null;
           hidePreview();
+          // Clear selection upon stop as requested
+          try { clearSelection(); } catch {}
           report({ recording: false });
+          // After stop, show control bar (idle) with reselect buttons and close
+          try { showControlBar(true); updateControlBar(); } catch {}
         };
+
+
 
         state.worker.onmessage = (ev) => {
           const msg = ev.data || {};
@@ -691,7 +1078,6 @@
             console.error('frame pump error', err);
           }
         })();
-
       } else {
         // 初始化 MediaRecorder 进行录制（回退）
         state.recordedChunks = [];
@@ -706,24 +1092,70 @@
         state.mediaRecorder.onstop = () => {
           state.videoBlob = new Blob(state.recordedChunks, { type: 'video/webm' });
           const videoUrl = URL.createObjectURL(state.videoBlob);
+          // Clear selection upon stop as requested
+          try { clearSelection(); } catch {}
           report({ recording: false, hasVideo: true, videoSize: state.videoBlob.size, videoUrl });
+          // After stop (fallback path), show control bar (idle) with reselect buttons and close
+          try { showControlBar(true); updateControlBar(); } catch {}
         };
+
         state.mediaRecorder.start(1000);
       }
 
       showPreview();
-      state.track.onended = stopCapture;
+      state.track.onended = () => { console.log('[Stream][Content] track.onended fired'); try { stopCapture(); } catch (err) { console.warn('[Stream][Content] stopCapture error from onended', err); } };
       report({ recording: true });
+      // Ensure control bar reflects recording state
+      try { showControlBar(true); updateControlBar(); } catch {}
+
     } catch (e) {
-      console.error('startCapture error', e);
+      // Ensure control bar label reflects recording state promptly
+      try { showControlBar(true); updateControlBar(); } catch {}
+
+      const name = e?.name || '';
+      const message = e?.message || '';
+      const stack = e?.stack || '';
+      console.error('startCapture error', e, { name, message, stack, usingWebCodecs: state.usingWebCodecs, recording: state.recording, chunkCount: state.chunkCount, byteCount: state.byteCount });
+
+      // Try fallback to MediaRecorder if we already obtained a stream but WebCodecs setup failed
+      try {
+        if (state.stream && !state.mediaRecorder) {
+          console.warn('[Stream][Content] Falling back to MediaRecorder...');
+          state.recordedChunks = [];
+          state.mediaRecorder = new MediaRecorder(state.stream, { mimeType: 'video/webm;codecs=vp9' });
+          state.mediaRecorder.ondataavailable = (event) => { if (event?.data?.size > 0) state.recordedChunks.push(event.data); };
+          state.mediaRecorder.onstop = () => {
+            try {
+              state.videoBlob = new Blob(state.recordedChunks, { type: 'video/webm' });
+              const videoUrl = URL.createObjectURL(state.videoBlob);
+              try { clearSelection(); } catch {}
+              report({ recording: false, hasVideo: true, videoSize: state.videoBlob.size, videoUrl });
+              try { showControlBar(true); updateControlBar(); } catch {}
+            } catch (err) {
+              console.error('[Stream][Content] MediaRecorder onstop error', err);
+            }
+          };
+          state.mediaRecorder.start(1000);
+          state.recording = true;
+          try { showPreview(); } catch {}
+          report({ recording: true });
+          try { showControlBar(true); updateControlBar(); } catch {}
+          return; // fallback succeeded, exit startCapture
+        }
+      } catch (fallbackErr) {
+        console.warn('[Stream][Content] MediaRecorder fallback failed', fallbackErr);
+      }
+
+
       state.recording = false;
       // 通知 sidepanel 失败，避免 UI 卡在“正在请求权限”
-      try { chrome.runtime.sendMessage({ type: 'CAPTURE_FAILED', error: (e && (e.name||e.message)) || String(e) }); } catch {}
+      try { chrome.runtime.sendMessage({ type: 'CAPTURE_FAILED', error: name || message || String(e) }); } catch {}
       report({ recording: false });
     }
   }
 
   function stopCapture() {
+    console.log('[Stream][Content] stopCapture called', { usingWebCodecs: state.usingWebCodecs, recording: state.recording, chunkCount: state.chunkCount, byteCount: state.byteCount });
     try {
       if (state.usingWebCodecs) {
         try { state.reader?.cancel(); } catch {}
@@ -739,6 +1171,20 @@
         // 传递编码数据给主系统进行编辑（仅在未建立流式通道时兜底一次性传递）
         console.log('[Stream][Content] end-request posted', { streamingReady, encodedChunks: state.encodedChunks.length });
         console.log('[Stream][Content] awaiting worker "end" to finalize...');
+
+    // If user stops during countdown/pre-start (no worker/mediaRecorder yet)
+    if (!state.worker && !state.mediaRecorder) {
+      console.log('[Stream][Content] stopCapture during countdown/pre-start');
+      try { (state as any)._cancelStartCountdown?.(); } catch {}
+      try { state.stream && state.stream.getTracks().forEach(t => t.stop()); } catch {}
+      state.stream = null; state.track = null; state.usingWebCodecs = false;
+      state.recording = false;
+      try { hidePreview(); } catch {}
+      try { clearSelection(); } catch {}
+      report({ recording: false });
+      try { showControlBar(true); updateControlBar(); } catch {}
+      return;
+    }
 
         if (!streamingReady && state.encodedChunks.length > 0) {
           transferToMainSystem();
@@ -792,7 +1238,11 @@
       state.selectionBox.style.height = '0px';
     }
 
+    try { hideMask(); } catch {}
     hideSelectionTip();
+    // 隐藏底部控制条（无选区时不需要显示）
+    try { hideControlBar(true); } catch {}
+
     report({ selectedDesc: undefined });
   }
 

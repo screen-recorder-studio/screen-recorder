@@ -1,13 +1,13 @@
-<!-- 视频预览组件 - 用于预览和编辑录制的视频 -->
+<!-- Video preview component - for previewing and editing recorded videos -->
 <script lang="ts">
   import { onMount } from 'svelte'
 
   // Props
   interface Props {
-    displayWidth?: number      // 显示宽度
-    displayHeight?: number     // 显示高度
-    canvasWidth?: number       // Canvas 内部分辨率宽度
-    canvasHeight?: number      // Canvas 内部分辨率高度
+    displayWidth?: number      // Display width
+    displayHeight?: number     // Display height
+    canvasWidth?: number       // Canvas internal resolution width
+    canvasHeight?: number      // Canvas internal resolution height
     aspectRatio?: string
     showControls?: boolean
     showTimeline?: boolean
@@ -17,9 +17,9 @@
   }
 
   let {
-    displayWidth = 640,        // 显示尺寸
+    displayWidth = 640,        // Display size
     displayHeight = 360,
-    canvasWidth = 1920,        // 内部高分辨率
+    canvasWidth = 1920,        // Internal high resolution
     canvasHeight = 1080,
     aspectRatio = '16/9',
     showControls = true,
@@ -29,7 +29,7 @@
     className = ''
   }: Props = $props()
 
-  // 组件状态
+  // Component state
   let canvas: HTMLCanvasElement
   let context: CanvasRenderingContext2D | null = null
   let videoDecoder: VideoDecoder | null = null
@@ -44,33 +44,33 @@
   let lastProcessedChunksLength = $state(0)
   let isCurrentlyDecoding = $state(false)
 
-  // 播放控制
+  // Playback control
   let playbackTimer: ReturnType<typeof setInterval> | null = null
   let frameRate = 30 // fps
 
-  // 初始化 Canvas
+  // Initialize Canvas
   function initializeCanvas() {
     if (!canvas) return
 
-    // 设置 Canvas 内部高分辨率
+    // Set Canvas internal high resolution
     canvas.width = canvasWidth
     canvas.height = canvasHeight
 
-    // 不设置 CSS 尺寸，让 CSS 样式控制显示
-    // Canvas 会通过 CSS 自动缩放到容器大小
+    // Don't set CSS size, let CSS styles control display
+    // Canvas will automatically scale to container size through CSS
 
     context = canvas.getContext('2d')
 
     if (context) {
-      // 设置初始背景
+      // Set initial background
       context.fillStyle = '#1a1a1a'
       context.fillRect(0, 0, canvas.width, canvas.height)
 
-      // 绘制占位符（适应高分辨率）
+      // Draw placeholder (adapted for high resolution)
       context.fillStyle = '#666666'
-      context.font = '48px Arial'  // 更大字体适应高分辨率
+      context.font = '48px Arial'  // Larger font for high resolution
       context.textAlign = 'center'
-      context.fillText('等待视频数据...', canvas.width / 2, canvas.height / 2)
+      context.fillText('Waiting for video data...', canvas.width / 2, canvas.height / 2)
 
       isInitialized = true
       console.log('🎨 [VideoPreview] Canvas initialized:', {
@@ -80,7 +80,7 @@
     }
   }
 
-  // 解码视频块到帧
+  // Decode video chunks to frames
   async function decodeVideoChunks(chunks: any[]) {
     if (!chunks.length || !context || isCurrentlyDecoding) return
 
@@ -88,27 +88,27 @@
       console.log('🎬 [VideoPreview] Starting to decode', chunks.length, 'chunks')
       isCurrentlyDecoding = true
 
-      // 清空之前的帧
+      // Clear previous frames
       decodedFrames.forEach(frame => frame.close())
       decodedFrames = []
       currentFrameIndex = 0
 
-      // 关闭之前的解码器
+      // Close previous decoder
       if (videoDecoder) {
         try {
           videoDecoder.close()
         } catch (e) {
-          // 忽略关闭错误
+          // Ignore close errors
         }
       }
 
-      // 动态检测实际编码分辨率（从第一个编码块）
+      // Dynamically detect actual encoding resolution (from first encoded chunk)
       let actualWidth = canvasWidth
       let actualHeight = canvasHeight
 
       if (chunks.length > 0) {
         const firstChunk = chunks[0]
-        // 尝试从编码块中获取实际分辨率信息
+        // Try to get actual resolution info from encoded chunk
         if (firstChunk.codedWidth && firstChunk.codedHeight) {
           actualWidth = firstChunk.codedWidth
           actualHeight = firstChunk.codedHeight
@@ -118,23 +118,23 @@
         }
       }
 
-      // 如果检测到的分辨率与 Canvas 不匹配，调整 Canvas
+      // If detected resolution doesn't match Canvas, adjust Canvas
       if (actualWidth !== canvas.width || actualHeight !== canvas.height) {
         console.log(`🎬 [VideoPreview] Adjusting Canvas resolution from ${canvas.width}x${canvas.height} to ${actualWidth}x${actualHeight}`)
         canvas.width = actualWidth
         canvas.height = actualHeight
 
-        // 重新获取 context
+        // Re-get context
         context = canvas.getContext('2d')
       }
 
-      // 创建新的 VideoDecoder
+      // Create new VideoDecoder
       videoDecoder = new VideoDecoder({
         output: (frame: VideoFrame) => {
           decodedFrames.push(frame)
           console.log(`🎬 [VideoPreview] Decoded frame ${decodedFrames.length}, size: ${frame.codedWidth}x${frame.codedHeight}, timestamp: ${frame.timestamp}`)
 
-          // 如果是第一帧，立即显示
+          // If it's the first frame, display immediately
           if (decodedFrames.length === 1) {
             renderFrame(0)
           }
@@ -145,7 +145,7 @@
         }
       })
 
-      // 配置解码器（使用检测到的实际分辨率）
+      // Configure decoder (using detected actual resolution)
       const decoderConfig = {
         codec: 'vp8',
         codedWidth: actualWidth,
@@ -155,7 +155,7 @@
       console.log('🎬 [VideoPreview] Configuring decoder with:', decoderConfig)
       videoDecoder.configure(decoderConfig)
 
-      // 解码所有块
+      // Decode all chunks
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i]
 
@@ -172,7 +172,7 @@
         }
       }
 
-      // 等待解码完成
+      // Wait for decoding to complete
       await videoDecoder.flush()
 
       totalFrames = decodedFrames.length
@@ -188,39 +188,39 @@
     }
   }
 
-  // 渲染指定帧
+  // Render specified frame
   function renderFrame(frameIndex: number) {
     if (!context || !decodedFrames[frameIndex]) return
 
     const frame = decodedFrames[frameIndex]
 
-    // 清空画布
+    // Clear canvas
     context.fillStyle = '#1a1a1a'
     context.fillRect(0, 0, canvas.width, canvas.height)
 
-    // 获取视频帧的实际尺寸
+    // Get actual dimensions of video frame
     const frameWidth = frame.codedWidth || frame.displayWidth
     const frameHeight = frame.codedHeight || frame.displayHeight
 
     console.log(`🎨 [VideoPreview] Rendering frame ${frameIndex}: frame=${frameWidth}x${frameHeight}, canvas=${canvas.width}x${canvas.height}`)
 
-    // 方案1：直接拉伸填满整个 Canvas（简单有效）
+    // Solution 1: Directly stretch to fill entire Canvas (simple and effective)
     context.drawImage(frame, 0, 0, canvas.width, canvas.height)
 
-    // 如果需要保持宽高比，可以使用下面的代码：
+    // If you need to maintain aspect ratio, you can use the code below:
     /*
-    // 计算缩放比例以填满 Canvas（保持宽高比）
+    // Calculate scale ratio to fill Canvas (maintain aspect ratio)
     const scaleX = canvas.width / frameWidth
     const scaleY = canvas.height / frameHeight
-    const scale = Math.max(scaleX, scaleY) // 使用较大的缩放比例以填满区域
+    const scale = Math.max(scaleX, scaleY) // Use larger scale ratio to fill area
 
-    // 计算居中位置
+    // Calculate center position
     const scaledWidth = frameWidth * scale
     const scaledHeight = frameHeight * scale
     const offsetX = (canvas.width - scaledWidth) / 2
     const offsetY = (canvas.height - scaledHeight) / 2
 
-    // 绘制视频帧（填满预览区域）
+    // Draw video frame (fill preview area)
     context.drawImage(
       frame,
       offsetX, offsetY,
@@ -234,7 +234,7 @@
     console.log(`🎨 [VideoPreview] Frame rendered: stretched to ${canvas.width}x${canvas.height}`)
   }
 
-  // 播放控制
+  // Playback control
   function play() {
     if (isPlaying || !decodedFrames.length) return
     
@@ -282,14 +282,14 @@
     seekToFrame(frameIndex)
   }
 
-  // 格式化时间显示
+  // Format time display
   function formatTime(seconds: number): string {
     const mins = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
-  // 响应式更新
+  // Responsive updates
   $effect(() => {
     if (canvas && !isInitialized) {
       initializeCanvas()
@@ -297,7 +297,7 @@
   })
 
   $effect(() => {
-    // 只有当编码块数量发生变化且不在解码中时才触发解码
+    // Only trigger decoding when encoded chunk count changes and not currently decoding
     if (encodedChunks.length > 0 &&
         isInitialized &&
         !isCurrentlyDecoding &&
@@ -306,7 +306,7 @@
     }
   })
 
-  // 清理资源
+  // Clean up resources
   onMount(() => {
     return () => {
       if (playbackTimer) {
@@ -319,7 +319,7 @@
     }
   })
 
-  // 导出控制方法
+  // Export control methods
   export function getControls() {
     return {
       play,
@@ -336,9 +336,9 @@
   }
 </script>
 
-<!-- 视频预览容器 -->
+<!-- Video preview container -->
 <div class="video-preview {className}">
-  <!-- Canvas 显示区域 -->
+  <!-- Canvas display area -->
   <div class="canvas-container" style="aspect-ratio: {aspectRatio};">
     <canvas
       bind:this={canvas}
@@ -349,12 +349,12 @@
     {#if isDecoding}
       <div class="decoding-overlay">
         <div class="spinner"></div>
-        <span>正在解码视频...</span>
+        <span>Decoding video...</span>
       </div>
     {/if}
   </div>
 
-  <!-- 播放控制栏 -->
+  <!-- Playback control bar -->
   {#if showControls && totalFrames > 0}
     <div class="controls-bar">
       <div class="playback-controls">
@@ -380,7 +380,7 @@
       </div>
 
       <div class="speed-control">
-        <label for="playback-speed">速度:</label>
+        <label for="playback-speed">Speed:</label>
         <select id="playback-speed" bind:value={playbackSpeed}>
           <option value={0.25}>0.25x</option>
           <option value={0.5}>0.5x</option>
@@ -392,7 +392,7 @@
     </div>
   {/if}
 
-  <!-- 时间轴 -->
+  <!-- Timeline -->
   {#if showTimeline && totalFrames > 0}
     <div class="timeline">
       <input
@@ -404,7 +404,7 @@
         class="timeline-slider"
       />
       <div class="frame-info">
-        帧 {currentFrameIndex + 1} / {totalFrames}
+        Frame {currentFrameIndex + 1} / {totalFrames}
       </div>
     </div>
   {/if}
@@ -426,7 +426,7 @@
   .video-canvas {
     width: 100%;
     height: 100%;
-    object-fit: fill;  /* 拉伸填满容器 */
+    object-fit: fill;  /* Stretch to fill container */
     transition: opacity 0.3s ease;
     display: block;
   }

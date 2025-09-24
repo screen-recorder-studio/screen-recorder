@@ -1,0 +1,1 @@
+The ultimate offline-first screen recorder. Create stunning videos and publish them anywhere.
