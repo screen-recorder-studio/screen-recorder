@@ -1,5 +1,5 @@
 {
-	"name": "screen-recorder-extension",
+	"name": "screen-recorder-studio",
 	"private": true,
 	"version": "0.5.0",
 	"type": "module",
@@ -12,7 +12,7 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"build:extension": "pnpm run build && node scripts/build-content.mjs && node scripts/build-background.mjs && node scripts/build-worker.mjs && node scripts/build-opfs-writer.mjs && node scripts/build-opfs-writer-worker.mjs && node scripts/build-offscreen2.mjs && cp static/manifest.json build/",
-		"package:extension": "pnpm run build:extension && cd build && zip -r ../screen-recorder-extension.zip ."
+		"package:extension": "pnpm run build:extension && cd build && zip -r ../screen-recorder-studio.zip ."
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-static": "^3.0.9",

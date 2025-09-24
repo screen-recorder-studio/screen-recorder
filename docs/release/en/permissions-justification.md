@@ -24,21 +24,25 @@ We are providing this document to explain why our extension, Screen Recorder Stu
 
 *   **Justification:** This permission is used to display our extension's user interface in the browser's side panel, providing a non-intrusive and easily accessible control center for recording.
 
-### 6. `activeTab` & `scripting`
+### 6. `activeTab`
 
-*   **Justification:** These permissions are required for our element selection feature. They allow the user to select a specific HTML element on a page to record, which requires injecting a script into the active tab to identify the element's boundaries.
+*   **Justification:** This permission grants temporary access to the currently active tab when the user clicks the extension icon. It is used to initiate the "Area Recording" and "Element Recording" features on the user's command, providing a privacy-friendly way to interact with the page without requiring persistent access.
 
-### 7. `tabs`
+### 7. `scripting`
 
-*   **Justification:** This permission is used to manage the recording state across different tabs, especially when initiating a tab recording, to ensure the correct tab is being captured.
+*   **Justification:** This permission is essential for our "Area Recording" and "Element Recording" features. It allows the extension to inject scripts into the active webpage. These scripts are responsible for creating the visual overlay for area selection and for identifying the specific HTML element the user wishes to record. This permission is used only when the user activates these features.
 
-### 8. `offscreen`
+### 8. `tabs`
+
+*   **Justification:** This permission is used to get the title and URL of the active tab to set it as the default file name for the recording. It also helps manage the recording state across different tabs, ensuring the correct tab is being captured when initiating a tab recording.
+
+### 9. `offscreen`
 
 *   **Justification:** To ensure a smooth and stable recording experience, especially for long recordings, we use the `offscreen` permission to run parts of the recording and encoding process in a background document. This prevents the main UI from becoming unresponsive.
 
-### 9. `host_permissions: ["<all_urls>"]`
+### 10. `host_permissions: ["<all_urls>"]`
 
-*   **Justification:** This permission is strictly required for the element selection feature to work on any website the user visits. Without it, the content script needed to identify and select elements cannot be injected, and the feature would be broken. We do not collect any data or track user activity with this permission.
+*   **Justification:** This permission is strictly required for the "Area Recording" and "Element Recording" features to function on any website the user visits. It allows our content scripts to be injected to draw the selection overlay and identify element boundaries. We do not collect any data or track user activity with this permission; it is used solely to enable on-page recording functionality.
 
 We assure you that all permissions are used responsibly and are essential for providing the features that make Screen Recorder Studio a powerful and user-friendly screen recorder. We are committed to transparency and user privacy.
 
