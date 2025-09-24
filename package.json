@@ -1,9 +1,9 @@
 {
 	"name": "screen-recorder-extension",
 	"private": true,
-	"version": "1.0.0",
+	"version": "0.5.0",
 	"type": "module",
-	"description": "Chrome 屏幕录制扩展",
+	"description": "A Chrome extension for recording tabs, windows, screens, page regions, and elements",
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",

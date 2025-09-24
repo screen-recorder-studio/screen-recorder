@@ -81,7 +81,9 @@ async function broadcastStateWithCapabilities(tabId) {
 // 扩展安装时的初始化
 chrome.runtime.onInstalled.addListener((details) => {
   console.log('Extension installed:', details.reason)
-
+  if (details.reason === 'install') {
+    chrome.tabs.create({ url: '/welcome.html' });
+  }
   // 设置默认配置
   chrome.storage.local.set({
     settings: {
