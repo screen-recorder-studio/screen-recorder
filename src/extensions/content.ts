@@ -916,7 +916,7 @@
             y: parseFloat(state.selectionBox.style.top || '0')
           } : null,
           startTime: Date.now(),
-          codec: 'vp8',
+          codec: 'auto',
           width,
           height,
           framerate
@@ -931,7 +931,7 @@
         });
 
         // 使用一次性消息向 background 报告会话开始
-        safePortPost({ type: 'STREAM_START', codec: 'vp8', width, height, framerate, startTime: state.recordingMetadata?.startTime || Date.now() });
+        safePortPost({ type: 'STREAM_START', codec: 'auto', width, height, framerate, startTime: state.recordingMetadata?.startTime || Date.now() });
 
         // 初始化 Dedicated Worker 承担编码职责
         // 通过 fetch -> Blob URL 创建 Worker，避免跨源构造限制
@@ -946,7 +946,8 @@
           const ok = await ensureSinkIframe();
           if (ok && state.sinkWin && !state.sinkStarted) {
             try {
-              state.sinkWin.postMessage({ type: 'start', codec: 'vp8', width, height, framerate }, '*');
+              // 预启动时使用 auto，占位，实际 codec 在 configured 后再覆盖并 start（若未启动）或 meta 更新
+              state.sinkWin.postMessage({ type: 'start', codec: 'auto', width, height, framerate }, '*');
               state.sinkWin.postMessage({ type: 'meta', metadata: state.recordingMetadata }, '*');
               state.sinkStarted = true;
               console.log('[Stream][Content] sink pre-started with meta');
@@ -1001,10 +1002,11 @@
             case 'configured':
               try {
                 const cfg = msg.config || {};
-                if (cfg && (cfg.width || cfg.height || cfg.framerate)) {
+                if (cfg && (cfg.width || cfg.height || cfg.framerate || cfg.codec)) {
                   if (typeof cfg.width === 'number') state.recordingMetadata.width = cfg.width;
                   if (typeof cfg.height === 'number') state.recordingMetadata.height = cfg.height;
                   if (typeof cfg.framerate === 'number') state.recordingMetadata.framerate = cfg.framerate;
+                  if (typeof cfg.codec === 'string') state.recordingMetadata.codec = cfg.codec;
                 }
               } catch {}
               console.log('[encoder-worker] configured', { codec: state.recordingMetadata?.codec, width: state.recordingMetadata?.width, height: state.recordingMetadata?.height, framerate: state.recordingMetadata?.framerate });
@@ -1012,9 +1014,12 @@
               try { ensureSinkIframe().then(() => {
                 try {
                   if (state.sinkWin && !state.sinkStarted) {
-                    state.sinkWin.postMessage({ type: 'start', codec: state.recordingMetadata?.codec || 'vp8', width: state.recordingMetadata?.width, height: state.recordingMetadata?.height, framerate: state.recordingMetadata?.framerate }, '*');
+                    state.sinkWin.postMessage({ type: 'start', codec: state.recordingMetadata?.codec || 'auto', width: state.recordingMetadata?.width, height: state.recordingMetadata?.height, framerate: state.recordingMetadata?.framerate }, '*');
                     state.sinkWin.postMessage({ type: 'meta', metadata: state.recordingMetadata }, '*');
                     state.sinkStarted = true;
+                  } else if (state.sinkWin) {
+                    // 若已启动，则仅更新 meta，通知 codec 变更
+                    state.sinkWin.postMessage({ type: 'meta', metadata: state.recordingMetadata }, '*');
                   }
                 } catch {}
               }); } catch {}
@@ -1056,7 +1061,7 @@
               break;
           }
         };
-        state.worker.postMessage({ type: 'configure', codec: 'vp8', width, height, framerate, bitrate: 4_000_000 });
+        state.worker.postMessage({ type: 'configure', codec: 'auto', width, height, framerate, bitrate: 4_000_000 });
 
         // 建立逐帧处理，逐帧转交给 worker 编码（转移所有权零拷贝）
         state.processor = new MediaStreamTrackProcessor({ track: state.track });
