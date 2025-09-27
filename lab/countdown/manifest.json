@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Countdown Popup",
+  "version": "0.1.0",
+  "description": "Click the toolbar button to open a popup window with a countdown.",
+  "permissions": ["windows"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Countdown"
+  }
+}
