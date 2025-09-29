@@ -106,153 +106,6 @@ chrome.runtime.onInstalled.addListener((details) => {
   }
 })
 
-// 扩展图标点击事件：开发期便捷切换
-// - 若未在录制：弹出桌面捕获授权 → 将 streamId 下发给 Offscreen 启动录制
-// - 若已在录制：直接通知 Offscreen 停止录制
-// chrome.action.onClicked.addListener(async (tab) => {
-//   const timestamp = new Date().toISOString()
-//   console.log(`🎬 [${timestamp}] Action clicked - Tab:`, { id: tab?.id, url: tab?.url })
-
-//   try {
-//     // 检查当前录制状态
-//     if (currentRecording?.isRecording) {
-//       console.log(`🛑 [${timestamp}] Stopping current recording...`, {
-//         streamId: currentRecording.streamId,
-//         duration: Date.now() - (currentRecording.startTime || 0)
-//       })
-
-//       // 更新扩展图标状态（可选）
-//       try {
-//         await chrome.action.setBadgeText({ text: '⏹️' })
-//         await chrome.action.setBadgeBackgroundColor({ color: '#ff4444' })
-//       } catch (e) {
-//         console.warn('Failed to update action badge:', e)
-//       }
-
-//       await ensureOffscreenDocument({
-//         url: 'offscreen.html',
-//         reasons: ['DISPLAY_MEDIA', 'WORKERS', 'BLOBS'],
-//         justification: 'Stop screen recording in offscreen document'
-//       })
-//       await sendToOffscreen({
-//         type: 'OFFSCREEN_STOP_RECORDING',
-//         trigger: 'action.onClicked',
-//         timestamp
-//       }, { reasons: ['BLOBS'] })
-
-//       currentRecording = { isRecording: false, streamId: null, startTime: null }
-
-//       // 清除图标状态
-//       setTimeout(async () => {
-//         try {
-//           await chrome.action.setBadgeText({ text: '' })
-//         } catch (e) {
-//           console.warn('Failed to clear action badge:', e)
-//         }
-//       }, 2000)
-
-//       console.log(`✅ [${timestamp}] Recording stop request sent`)
-//       return
-//     }
-
-//     console.log(`🎥 [${timestamp}] Starting new recording...`)
-
-//     // 更新扩展图标状态
-//     try {
-//       await chrome.action.setBadgeText({ text: '🎬' })
-//       await chrome.action.setBadgeBackgroundColor({ color: '#4CAF50' })
-//     } catch (e) {
-//       console.warn('Failed to update action badge:', e)
-//     }
-
-//     // 确保 offscreen document 存在
-//     console.log(`⚡ [${timestamp}] Ensuring offscreen document...`)
-//     try {
-//       await ensureOffscreenDocument({
-//         url: 'offscreen.html',
-//         reasons: ['USER_MEDIA', 'BLOBS'],
-//         justification: 'Screen recording with user authorization in offscreen document'
-//       })
-//       console.log(`✅ [${timestamp}] Offscreen document ready`)
-//     } catch (e) {
-//       console.error(`❌ [${timestamp}] Failed to ensure offscreen document:`, e)
-//       throw e
-//     }
-
-//     // 直接发送开始录制命令到 offscreen（用户授权将在 offscreen 中进行）
-//     try {
-//       await sendToOffscreen({
-//         type: 'OFFSCREEN_START_RECORDING',
-//         payload: {
-//           options: {
-//             video: true,
-//             audio: true
-//           }
-//         },
-//         trigger: 'action.onClicked',
-//         timestamp
-//       }, { reasons: ['USER_MEDIA', 'BLOBS'] })
-
-//       // 更新录制状态（临时，实际状态将由 offscreen 确认）
-//       currentRecording = { isRecording: true, streamId: 'pending', startTime: Date.now() }
-
-//       console.log(`✅ [${timestamp}] Recording start request sent to offscreen`)
-
-//       // 更新图标为录制状态
-//       try {
-//         await chrome.action.setBadgeText({ text: '🔴' })
-//         await chrome.action.setBadgeBackgroundColor({ color: '#ff0000' })
-//       } catch (e) {
-//         console.warn('Failed to update recording badge:', e)
-//       }
-
-//     } catch (e) {
-//       console.error(`❌ [${timestamp}] Failed to start recording via offscreen:`, e)
-//       // 重置状态
-//       currentRecording = { isRecording: false, streamId: null, startTime: null }
-//       try {
-//         await chrome.action.setBadgeText({ text: '❌' })
-//         await chrome.action.setBadgeBackgroundColor({ color: '#ff4444' })
-//         setTimeout(async () => {
-//           try {
-//             await chrome.action.setBadgeText({ text: '' })
-//           } catch (e) {
-//             console.warn('Failed to clear error badge:', e)
-//           }
-//         }, 3000)
-//       } catch (e) {
-//         console.warn('Failed to update error badge:', e)
-//       }
-//       throw e
-//     }
-
-//   } catch (error) {
-//     console.error(`💥 [${timestamp}] Critical error in action.onClicked:`, {
-//       error: error.message,
-//       stack: error.stack,
-//       currentRecording
-//     })
-
-//     // 重置状态
-//     currentRecording = { isRecording: false, streamId: null, startTime: null }
-
-//     // 显示错误状态
-//     try {
-//       await chrome.action.setBadgeText({ text: '💥' })
-//       await chrome.action.setBadgeBackgroundColor({ color: '#ff0000' })
-//       setTimeout(async () => {
-//         try {
-//           await chrome.action.setBadgeText({ text: '' })
-//         } catch (e) {
-//           console.warn('Failed to clear error badge:', e)
-//         }
-//       }, 5000)
-//     } catch (e) {
-//       console.warn('Failed to update error badge:', e)
-//     }
-//   }
-// })
-
 // 处理来自 sidepanel 的消息
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('Received message:', message.action || message.type, message)
@@ -319,8 +172,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       case 'START_CAPTURE':
         state.recording = true;
-        ensureContentInjected(tabId).then(() => {
-          chrome.tabs.sendMessage(tabId, { type: 'START_CAPTURE' });
+        ensureContentInjected(tabId).then(async () => {
+          let c = (typeof message.countdown === 'number') ? message.countdown : undefined;
+          if (!(typeof c === 'number' && c >= 1 && c <= 5)) {
+            try {
+              const stored = await new Promise<any>(res => chrome.storage.local.get(['settings'], r => res(r)));
+              const v = stored?.settings?.countdownSeconds;
+              if (typeof v === 'number' && v >= 1 && v <= 5) c = v;
+            } catch {}
+          }
+          if (!(typeof c === 'number' && c >= 1 && c <= 5)) c = 3;
+          // Countdown should open only after user grants capture permission (stream ready)
+          // So we do NOT open countdown here; content will trigger via STREAM_META once stream is available
+          chrome.tabs.sendMessage(tabId, { type: 'START_CAPTURE', countdown: c });
         });
         broadcastStateWithCapabilities(tabId);
         try { sendResponse({ ok: true, state }); } catch (e) {}
@@ -450,8 +314,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Handle preparing countdown for badge, and pause/resume meta
         const meta = message?.meta || {}
         if (meta && meta.preparing && typeof meta.countdown === 'number') {
-          try { chrome.action.setBadgeBackgroundColor({ color: '#fb8c00' }) } catch {}
-          try { chrome.action.setBadgeText({ text: String(Math.max(0, Math.floor(meta.countdown))) }) } catch {}
+          // Determine mode hint for size adjustment
+          let kind: string | undefined;
+          try {
+            if (state?.uiSelectedMode) kind = state.uiSelectedMode;
+            else if (state?.mode === 'region') kind = 'area';
+            else if (state?.mode === 'element') kind = 'element';
+          } catch {}
+          try { ensureCountdownWindow(Math.max(0, Math.floor(meta.countdown)), kind) } catch {}
           try { sendResponse({ ok: true }) } catch {}
           return true;
         }
@@ -503,8 +373,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'REQUEST_START_RECORDING':
       case 'OFFSCREEN_START_RECORDING': {
         (async () => {
-          console.log('OFFSCREEN_START_RECORDING received:', message?.payload?.options ?? message?.payload)
-          await startRecordingViaOffscreen(message?.payload?.options ?? message?.payload)
+          const raw = message?.payload?.options ?? message?.payload
+          // Inject countdown from storage if missing / invalid
+          let c = raw?.countdown
+          if (!(typeof c === 'number' && c >=1 && c <=5)) {
+            try {
+              const stored = await new Promise<any>(res => chrome.storage.local.get(['settings'], r => res(r)));
+              const v = stored?.settings?.countdownSeconds;
+              if (typeof v === 'number' && v >=1 && v <=5) c = v; else c = 3;
+            } catch { c = 3 }
+          }
+          raw.countdown = c;
+          console.log('OFFSCREEN_START_RECORDING received with countdown:', c)
+          // Countdown should open only after user grants capture permission (stream ready)
+          // Offscreen will trigger via STREAM_META once stream is available
+          await startRecordingViaOffscreen(raw)
           try { sendResponse({ ok: true }) } catch (e) {}
         })()
         return true;
@@ -961,20 +844,75 @@ async function stopBadgeTimer() {
   try { await chrome.action.setBadgeText({ text: '' }) } catch {}
 }
 
+// Countdown popup management (unified for all recording modes)
+let countdownWinId: number | null = null;
+let lastCountdownValue: number | null = null;
+async function ensureCountdownWindow(value: number, kind?: string){
+  try {
+    // If value is 0 we keep window for final beep close by COUNTDOWN_DONE message
+    const popupWidth = 260;
+    const popupHeight = (kind === 'area' || kind === 'element') ? 240 : 180;
+    if (countdownWinId) {
+      // Update title via chrome.windows.update not possible; rely on page internal logic (it owns its own timer)
+      return;
+    }
+    // Center on current window
+    chrome.windows.getCurrent(current => {
+      let left: number | undefined, top: number | undefined;
+      if (current && typeof current.left === 'number' && typeof current.top === 'number') {
+        left = current.left + Math.max(0, Math.round(((current.width||popupWidth) - popupWidth) / 2));
+        top = current.top + Math.max(0, Math.round(((current.height||popupHeight) - popupHeight) / 2));
+      }
+      chrome.windows.create({
+        url: chrome.runtime.getURL('countdown.html?s=' + value),
+        type: 'popup',
+        width: popupWidth,
+        height: popupHeight,
+        left,
+        top,
+        focused: true
+      }, win => {
+        if (win && win.id != null) countdownWinId = win.id;
+      });
+    });
+  } catch (e) {
+    console.warn('ensureCountdownWindow error', e);
+  }
+}
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg && msg.type === 'COUNTDOWN_DONE') {
+    // Only broadcast after the window is actually closed to avoid capturing last-frame "0"
+    const doBroadcast = () => {
+      try {
+        setTimeout(() => {
+          try { chrome.runtime.sendMessage({ type: 'COUNTDOWN_DONE_BROADCAST', ts: Date.now(), afterClose: true }) } catch {}
+        }, 120); // small compositor cushion
+      } catch {}
+    };
+    if (countdownWinId) {
+      const id = countdownWinId;
+      chrome.windows.remove(id, () => { countdownWinId = null; doBroadcast(); });
+    } else {
+      doBroadcast();
+    }
+  }
+});
+
 // Unified start/stop helpers for Offscreen recording
 async function startRecordingViaOffscreen(options) {
-
   try {
     const mode = (options?.mode === 'tab' || options?.mode === 'window' || options?.mode === 'screen') ? options.mode : 'screen'
     const normalizedOptions = {
       mode,
       video: options?.video ?? true,
-      audio: options?.audio ?? false
+      audio: options?.audio ?? false,
+      countdown: (typeof options?.countdown === 'number' && options.countdown >=1 && options.countdown <=5) ? options.countdown : 3
     }
 
     await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
     await sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_START_RECORDING', payload: { options: normalizedOptions } })
-    // Enter preparing phase: do NOT start duration timer until STREAM_START
+    // Enter preparing phase: will flip to active on STREAM_START
     currentRecording = { isRecording: false, isPaused: false, streamId: 'offscreen', startTime: null }
     try { await chrome.action.setBadgeBackgroundColor({ color: '#fb8c00' }) } catch {}
     try { await chrome.action.setBadgeText({ text: '' }) } catch {}

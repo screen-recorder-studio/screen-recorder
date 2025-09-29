@@ -1,13 +1,19 @@
 // @ts-nocheck
 
 // encoder-worker.js (classic worker)
-// Receives VideoFrame objects from content script, encodes with WebCodecs VideoEncoder,
-// and posts EncodedVideoChunk payloads (ArrayBuffer) back to the content script.
+// H.264-first WebCodecs encoder with auto-detection, realtime params, backpressure, and GOP keyframes.
+// Receives VideoFrame objects and posts EncodedVideoChunk payloads (ArrayBuffer) back to the content script.
+
+import { tryConfigureBestEncoder, computeBitrate } from '../lib/utils/webcodecs-config'
 
 let encoder = null;
 let configured = false;
 let stats = { chunks: 0, bytes: 0 };
-let cfg = { codec: 'vp8', width: 1280, height: 720, framerate: 30, bitrate: 4_000_000 };
+let cfg = { codec: 'auto', width: 1280, height: 720, framerate: 30, bitrate: 4_000_000 };
+let selectedCodec = 'unknown';
+let gopFrames = 60; // default ~2s at 30fps, will be recalculated on configure
+let frameCounter = 0;
+const BACKPRESSURE_MAX = 8; // drop frames if encode queue grows beyond this
 
 function postError(message) {
   try { postMessage({ type: 'error', message }); } catch {}
@@ -52,32 +58,50 @@ onmessage = async (ev) => {
   try {
     switch (msg.type) {
       case 'configure': {
+        // Merge and sanitize
         cfg = {
-          codec: msg.codec || cfg.codec,
+          codec: (msg.codec ?? cfg.codec) || 'auto',
           width: msg.width || cfg.width,
           height: msg.height || cfg.height,
           framerate: msg.framerate || cfg.framerate,
           bitrate: msg.bitrate || cfg.bitrate,
         };
-        const enc = ensureEncoder();
-        if (!enc) return;
-        enc.configure({ codec: cfg.codec, width: cfg.width, height: cfg.height, bitrate: cfg.bitrate, framerate: cfg.framerate });
-        configured = true;
+        // Recalculate GOP based on fps
+        const fps = Math.max(1, cfg.framerate|0);
+        gopFrames = Math.max(30, Math.round(fps * 1.5)); // ~1.5s
+        frameCounter = 0;
         stats = { chunks: 0, bytes: 0 };
-        // Return the final encoder configuration so callers can update metadata accurately
+
         try {
-          postMessage({ type: 'configured', config: { ...cfg } });
-        } catch (_) {
-          postMessage({ type: 'configured' });
+          ensureEncoder();
+          const { applied, selectedCodec: sel } = await tryConfigureBestEncoder(encoder, cfg);
+          configured = true;
+          selectedCodec = sel;
+          const report = { ...applied, codec: sel };
+          try { postMessage({ type: 'configured', config: report }); } catch {}
+        } catch (e) {
+          postError('configure failed: ' + (e?.message || String(e)));
         }
         break;
       }
+
       case 'frame': {
-        if (!configured) return;
-        const frame = msg.frame; // ownership transferred
-        const keyFrame = !!msg.keyFrame;
+        if (!configured || !encoder) { try { msg.frame?.close?.(); } catch {}; return; }
+        const frame = msg.frame; // VideoFrame ownership transferred
+
+        // Backpressure: drop if queue too long
         try {
-          encoder.encode(frame, { keyFrame });
+          if (encoder.encodeQueueSize != null && encoder.encodeQueueSize > BACKPRESSURE_MAX) {
+            try { frame?.close?.(); } catch {}
+            break;
+          }
+        } catch {}
+
+        const externalKey = !!msg.keyFrame;
+        frameCounter = (frameCounter + 1) >>> 0;
+        const forceKey = externalKey || (gopFrames > 0 && (frameCounter % gopFrames === 0));
+        try {
+          encoder.encode(frame, forceKey ? { keyFrame: true } : {});
         } catch (e) {
           postError('encode error: ' + (e?.message || String(e)));
         } finally {
@@ -85,11 +109,13 @@ onmessage = async (ev) => {
         }
         break;
       }
+
       case 'stop': {
         await flushAndClose();
         postMessage({ type: 'end', chunks: stats.chunks, bytes: stats.bytes });
         break;
       }
+
       default:
         break;
     }

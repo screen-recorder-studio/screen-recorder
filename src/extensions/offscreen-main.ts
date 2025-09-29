@@ -371,13 +371,17 @@
       // Wait until worker confirms configured to avoid unconfigured encode errors
       await waitForConfigured
       // Global pre-start countdown for all modes to avoid early layout shifts and unify UX
-      log('🟠 Worker configured confirmed, starting pre-start countdown (5s)')
-      const COUNTDOWN_SECONDS = 5
-      for (let n = COUNTDOWN_SECONDS; n >= 1; n--) {
-        try { chrome.runtime.sendMessage({ type: 'STREAM_META', meta: { preparing: true, countdown: n } }) } catch {}
-        await new Promise((r) => setTimeout(r, 1000))
-        if (!currentStream) { log('⏹️ Pre-start aborted: stream missing'); return }
-      }
+      // After user grants capture (stream available), open centralized countdown via background
+      const COUNTDOWN_SECONDS = (typeof options?.countdown === 'number' && options.countdown >= 1 && options.countdown <= 5) ? options.countdown : 3;
+      try { chrome.runtime.sendMessage({ type: 'STREAM_META', meta: { preparing: true, countdown: COUNTDOWN_SECONDS } }) } catch {}
+      // Wait for unified countdown gate from background (use dynamic timeout based on configured countdown)
+      await new Promise((resolve) => {
+        const to = setTimeout(resolve, (COUNTDOWN_SECONDS + 2) * 1000);
+        function onMsg(msg: any) { if (msg?.type === 'COUNTDOWN_DONE_BROADCAST') { try { clearTimeout(to) } catch {}; try { chrome.runtime.onMessage.removeListener(onMsg) } catch {}; resolve(null); } }
+        try { chrome.runtime.onMessage.addListener(onMsg) } catch {}
+      })
+      // Extra guard to avoid capturing the last compositor frame of countdown window
+      await new Promise((r) => setTimeout(r, 140));
 
       // 6) Start frame processing loop
       isPaused = false

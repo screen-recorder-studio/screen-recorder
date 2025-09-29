@@ -728,62 +728,7 @@
   }
 
 
-	  // ===== Countdown helpers (global) to ensure stopCapture can cancel during pre-start =====
-	  ;(state as any).countdownRaf = 0;
-	  function cancelStartCountdownGlobal() {
-	    try { state.countdownPending = false; } catch {}
-	    try { if (state.countdownTimer) { clearTimeout(state.countdownTimer); state.countdownTimer = null } } catch {}
-	    try { if (state.countdownOverlay) { state.countdownOverlay.remove(); state.countdownOverlay = null } } catch {}
-	    try { if ((state as any).countdownRaf) { cancelAnimationFrame((state as any).countdownRaf); (state as any).countdownRaf = 0 } } catch {}
-	  }
-	  async function showStartCountdownGlobal(seconds = 5) {
-	    try {
-	      const host = state.elementContainer || state.regionContainer;
-	      if (!host || seconds <= 0) return;
-	      // Align container before overlay appears
-	      try { syncElementContainer(); } catch {}
-	      const overlay = document.createElement('div');
-	      overlay.className = 'mcp-countdown-overlay';
-	      overlay.style.cssText = [
-	        'position:absolute', 'inset:0', 'display:flex', 'align-items:center', 'justify-content:center',
-	        'background:rgba(0,0,0,0.25)', 'color:#fff', 'font-size:96px', 'font-weight:700', 'letter-spacing:.02em',
-	        'text-shadow:0 2px 8px rgba(0,0,0,.35)', 'z-index:2147483646', 'pointer-events:none',
-	        'backdrop-filter:saturate(120%) blur(0px)'
-	      ].join(';') + ';';
-	      const label = document.createElement('div');
-	      label.style.cssText = 'padding:.25em .5em; border-radius:.2em; background:rgba(0,0,0,.35)';
-	      overlay.appendChild(label);
-	      state.countdownOverlay = overlay;
-	      state.countdownPending = true;
-	      host.appendChild(overlay);
-	      let n = Math.max(1, Math.floor(seconds));
-	      label.textContent = String(n);
-      // Broadcast initial badge countdown to background
-      try { chrome.runtime.sendMessage({ type: 'STREAM_META', meta: { preparing: true, countdown: n } }); } catch {}
-	      // During countdown, keep container synced (handles scroll/layout changes)
-	      const raf = () => {
-	        if (!state.countdownPending) return;
-	        try { syncElementContainer(); } catch {}
-	        (state as any).countdownRaf = requestAnimationFrame(raf);
-	      };
-	      (state as any).countdownRaf = requestAnimationFrame(raf);
-	      await new Promise<void>((resolve) => {
-	        const tick = () => {
-	          if (!state.countdownPending) { cancelStartCountdownGlobal(); resolve(); return; }
-	          n -= 1;
-	          if (n <= 0) { cancelStartCountdownGlobal(); resolve(); return; }
-	          label.textContent = String(n);
-          try { chrome.runtime.sendMessage({ type: 'STREAM_META', meta: { preparing: true, countdown: n } }); } catch {}
-	          state.countdownTimer = setTimeout(tick, 1000);
-	        };
-	        state.countdownTimer = setTimeout(tick, 1000);
-	      });
-	    } catch (_) {
-	      cancelStartCountdownGlobal();
-	    }
-	  }
-	  ;(state as any)._cancelStartCountdown = cancelStartCountdownGlobal;
-	  ;(state as any)._showStartCountdown = showStartCountdownGlobal;
+  // (inline countdown helpers removed - unified popup countdown handled by background)
 
   async function startCapture() {
     if (state.recording) return;
@@ -803,8 +748,18 @@
         tracks: state.stream ? state.stream.getTracks().map(t => ({ kind: t.kind, label: t.label, readyState: t.readyState })) : null
       });
 
-      // Fixed 5s countdown inside selection area to avoid share banner layout shift
-      if ((state as any)._showStartCountdown) await (state as any)._showStartCountdown(5);
+      // After user grants capture (stream available), open centralized countdown via background
+      const requestedCountdown = (window as any).__mcpRequestedCountdown;
+      const totalCountdown = (typeof requestedCountdown === 'number' && requestedCountdown >= 1 && requestedCountdown <= 5) ? requestedCountdown : 3;
+      try { chrome.runtime.sendMessage({ type: 'STREAM_META', meta: { preparing: true, countdown: totalCountdown } }); } catch {}
+      // Then wait for unified countdown gate from background (use dynamic timeout based on configured countdown)
+      await new Promise((resolve) => {
+        const to = setTimeout(resolve, (totalCountdown + 2) * 1000);
+        function onMsg(msg) { if (msg?.type === 'COUNTDOWN_DONE_BROADCAST') { try { clearTimeout(to) } catch {}; try { chrome.runtime.onMessage.removeListener(onMsg) } catch {}; resolve(null); } }
+        try { chrome.runtime.onMessage.addListener(onMsg) } catch {}
+      });
+      // Extra guard to avoid capturing the last compositor frame of countdown window
+      await new Promise((r) => setTimeout(r, 140));
 
       state.track = state.stream.getVideoTracks()[0];
       try { console.log('[Stream][Content] video track settings', state.track?.getSettings?.()); } catch {}
@@ -834,48 +789,7 @@
         } catch (e) { console.warn('cropTo failed', e); }
       }
 
-  function cancelStartCountdown() {
-    try { state.countdownPending = false; } catch {}
-    try { if (state.countdownTimer) { clearTimeout(state.countdownTimer); state.countdownTimer = null } } catch {}
-    try { if (state.countdownOverlay) { state.countdownOverlay.remove(); state.countdownOverlay = null } } catch {}
-  }
-
-  async function showStartCountdown(seconds = 5) {
-    try {
-      const host = state.elementContainer || state.regionContainer;
-      if (!host || seconds <= 0) return;
-      const overlay = document.createElement('div');
-      overlay.className = 'mcp-countdown-overlay';
-      overlay.style.cssText = [
-        'position:absolute', 'inset:0', 'display:flex', 'align-items:center', 'justify-content:center',
-        'background:rgba(0,0,0,0.25)', 'color:#fff', 'font-size:96px', 'font-weight:700', 'letter-spacing:.02em',
-        'text-shadow:0 2px 8px rgba(0,0,0,.35)', 'z-index:2147483646', 'pointer-events:none',
-        'backdrop-filter:saturate(120%) blur(0px)'
-      ].join(';') + ';';
-      const label = document.createElement('div');
-      label.style.cssText = 'padding:.25em .5em; border-radius:.2em; background:rgba(0,0,0,.35)';
-      overlay.appendChild(label);
-      state.countdownOverlay = overlay;
-      state.countdownPending = true;
-      host.appendChild(overlay);
-
-      let n = Math.max(1, Math.floor(seconds));
-      label.textContent = String(n);
-
-      await new Promise<void>((resolve) => {
-        const tick = () => {
-          if (!state.countdownPending) { cancelStartCountdown(); resolve(); return; }
-          n -= 1;
-          if (n <= 0) { cancelStartCountdown(); resolve(); return; }
-          label.textContent = String(n);
-          state.countdownTimer = setTimeout(tick, 1000);
-        };
-        state.countdownTimer = setTimeout(tick, 1000);
-      });
-    } catch (_) {
-      cancelStartCountdown();
-    }
-  }
+  // (removed legacy inline countdown helpers cancelStartCountdown/showStartCountdown)
 
       // WebCodecs 可用则使用 VideoEncoder 管道，否则回退到 MediaRecorder
       const canWebCodecs = typeof window.VideoEncoder !== 'undefined' && typeof window.MediaStreamTrackProcessor !== 'undefined';
@@ -916,7 +830,7 @@
             y: parseFloat(state.selectionBox.style.top || '0')
           } : null,
           startTime: Date.now(),
-          codec: 'vp8',
+          codec: 'auto',
           width,
           height,
           framerate
@@ -931,7 +845,7 @@
         });
 
         // 使用一次性消息向 background 报告会话开始
-        safePortPost({ type: 'STREAM_START', codec: 'vp8', width, height, framerate, startTime: state.recordingMetadata?.startTime || Date.now() });
+        safePortPost({ type: 'STREAM_START', codec: 'auto', width, height, framerate, startTime: state.recordingMetadata?.startTime || Date.now() });
 
         // 初始化 Dedicated Worker 承担编码职责
         // 通过 fetch -> Blob URL 创建 Worker，避免跨源构造限制
@@ -946,7 +860,8 @@
           const ok = await ensureSinkIframe();
           if (ok && state.sinkWin && !state.sinkStarted) {
             try {
-              state.sinkWin.postMessage({ type: 'start', codec: 'vp8', width, height, framerate }, '*');
+              // 预启动时使用 auto，占位，实际 codec 在 configured 后再覆盖并 start（若未启动）或 meta 更新
+              state.sinkWin.postMessage({ type: 'start', codec: 'auto', width, height, framerate }, '*');
               state.sinkWin.postMessage({ type: 'meta', metadata: state.recordingMetadata }, '*');
               state.sinkStarted = true;
               console.log('[Stream][Content] sink pre-started with meta');
@@ -1001,10 +916,11 @@
             case 'configured':
               try {
                 const cfg = msg.config || {};
-                if (cfg && (cfg.width || cfg.height || cfg.framerate)) {
+                if (cfg && (cfg.width || cfg.height || cfg.framerate || cfg.codec)) {
                   if (typeof cfg.width === 'number') state.recordingMetadata.width = cfg.width;
                   if (typeof cfg.height === 'number') state.recordingMetadata.height = cfg.height;
                   if (typeof cfg.framerate === 'number') state.recordingMetadata.framerate = cfg.framerate;
+                  if (typeof cfg.codec === 'string') state.recordingMetadata.codec = cfg.codec;
                 }
               } catch {}
               console.log('[encoder-worker] configured', { codec: state.recordingMetadata?.codec, width: state.recordingMetadata?.width, height: state.recordingMetadata?.height, framerate: state.recordingMetadata?.framerate });
@@ -1012,9 +928,12 @@
               try { ensureSinkIframe().then(() => {
                 try {
                   if (state.sinkWin && !state.sinkStarted) {
-                    state.sinkWin.postMessage({ type: 'start', codec: state.recordingMetadata?.codec || 'vp8', width: state.recordingMetadata?.width, height: state.recordingMetadata?.height, framerate: state.recordingMetadata?.framerate }, '*');
+                    state.sinkWin.postMessage({ type: 'start', codec: state.recordingMetadata?.codec || 'auto', width: state.recordingMetadata?.width, height: state.recordingMetadata?.height, framerate: state.recordingMetadata?.framerate }, '*');
                     state.sinkWin.postMessage({ type: 'meta', metadata: state.recordingMetadata }, '*');
                     state.sinkStarted = true;
+                  } else if (state.sinkWin) {
+                    // 若已启动，则仅更新 meta，通知 codec 变更
+                    state.sinkWin.postMessage({ type: 'meta', metadata: state.recordingMetadata }, '*');
                   }
                 } catch {}
               }); } catch {}
@@ -1056,7 +975,7 @@
               break;
           }
         };
-        state.worker.postMessage({ type: 'configure', codec: 'vp8', width, height, framerate, bitrate: 4_000_000 });
+        state.worker.postMessage({ type: 'configure', codec: 'auto', width, height, framerate, bitrate: 4_000_000 });
 
         // 建立逐帧处理，逐帧转交给 worker 编码（转移所有权零拷贝）
         state.processor = new MediaStreamTrackProcessor({ track: state.track });
@@ -1175,7 +1094,7 @@
     // If user stops during countdown/pre-start (no worker/mediaRecorder yet)
     if (!state.worker && !state.mediaRecorder) {
       console.log('[Stream][Content] stopCapture during countdown/pre-start');
-      try { (state as any)._cancelStartCountdown?.(); } catch {}
+      // legacy inline countdown cancel hook removed (no-op now)
       try { state.stream && state.stream.getTracks().forEach(t => t.stop()); } catch {}
       state.stream = null; state.track = null; state.usingWebCodecs = false;
       state.recording = false;
@@ -1480,6 +1399,7 @@
       case 'EXIT_SELECTION':
         exitSelection(); break;
       case 'START_CAPTURE':
+        if (typeof msg.countdown === 'number') { (window as any).__mcpRequestedCountdown = msg.countdown; }
         startCapture(); break;
       case 'STOP_CAPTURE':
         stopCapture(); break;

@@ -1,6 +1,8 @@
 // WebCodecs Worker - 在 Worker 中进行视频编码
 // 这个 Worker 接收 VideoFrame 并使用 WebCodecs 进行编码
 
+import { tryConfigureBestEncoder } from '../utils/webcodecs-config'
+
 let encoder: VideoEncoder | null = null
 let chunks: Uint8Array[] = []
 let currentEncoderConfig: VideoEncoderConfig | null = null
@@ -63,80 +65,28 @@ async function configureEncoder(config: any) {
     })
     console.log('✅ [WORKER] VideoEncoder instance created')
 
-    // 尝试多种编解码器配置，从最兼容的开始（基于 MDN 文档）
-    const codecConfigs = [
-      // VP8 - 最兼容，简单字符串
-      {
-        codec: 'vp8',
-        width: config.width || 1920,
-        height: config.height || 1080,
-        bitrate: config.bitrate || 8000000,
-        framerate: config.framerate || 30
-      },
-      // H.264 Baseline Profile - 广泛支持
-      {
-        codec: 'avc1.42001E',
-        width: config.width || 1920,
-        height: config.height || 1080,
-        bitrate: config.bitrate || 8000000,
-        framerate: config.framerate || 30
-      },
-      // VP9 - 如果支持的话
-      {
-        codec: 'vp09.00.10.08',
-        width: config.width || 1920,
-        height: config.height || 1080,
-        bitrate: config.bitrate || 8000000,
-        framerate: config.framerate || 30
-      }
-    ]
+    // 使用共享工具进行统一的编解码器选择与探测
+    console.log('🔍 [WORKER] Selecting best codec via shared utils...')
+    const { applied, selectedCodec } = await tryConfigureBestEncoder(encoder, {
+      codec: config?.codec ?? 'auto',
+      width: config?.width ?? 1920,
+      height: config?.height ?? 1080,
+      framerate: config?.framerate ?? 30,
+      bitrate: config?.bitrate,
+      latencyMode: config?.latencyMode,
+      hardwareAcceleration: config?.hardwareAcceleration,
+      bitrateMode: config?.bitrateMode,
+    })
 
-    let encoderConfig: VideoEncoderConfig | null = null
-    let supportedCodec = ''
+    // 保存最终配置（注意：tryConfigureBestEncoder 内部已完成 encoder.configure）
+    currentEncoderConfig = applied
 
-    // 逐个尝试编解码器配置，直到找到支持的
-    console.log('🔍 [WORKER] Testing codec configurations...')
-    for (let i = 0; i < codecConfigs.length; i++) {
-      const testConfig = codecConfigs[i]
-      console.log(`🔍 [WORKER] Testing codec ${i + 1}/${codecConfigs.length}: ${testConfig.codec}`)
+    console.log('🎉 [WORKER] ✅ WebCodecs encoder configured via shared utils!', { codec: selectedCodec, config: applied })
 
-      try {
-        const supportResult = await VideoEncoder.isConfigSupported(testConfig)
-        console.log(`🔍 [WORKER] Support result for ${testConfig.codec}:`, supportResult)
-
-        if (supportResult.supported) {
-          encoderConfig = testConfig
-          supportedCodec = testConfig.codec
-          console.log(`✅ [WORKER] Found supported codec: ${supportedCodec}`)
-          break
-        } else {
-          console.log(`❌ [WORKER] Codec ${testConfig.codec} not supported`)
-        }
-      } catch (error) {
-        console.log(`❌ [WORKER] Error testing codec ${testConfig.codec}:`, error)
-        continue
-      }
-    }
-
-    // 检查是否找到了支持的配置
-    if (!encoderConfig) {
-      throw new Error('No supported video codec configuration found')
-    }
-
-    console.log('⚙️ [WORKER] Using encoder configuration:', encoderConfig)
-
-    console.log('🔧 [WORKER] Applying configuration to encoder...')
-    encoder.configure(encoderConfig)
-
-    // 保存配置信息供后续使用
-    currentEncoderConfig = encoderConfig
-
-    console.log('🎉 [WORKER] ✅ WebCodecs encoder configured successfully!')
-
-    // 通知主线程配置成功
+    // 通知主线程配置成功（统一包含最终 codec 字段）
     self.postMessage({
       type: 'configured',
-      config: encoderConfig
+      config: { ...applied, codec: selectedCodec }
     })
 
   } catch (error) {
@@ -205,7 +155,7 @@ function handleEncodedChunk(chunk: EncodedVideoChunk, metadata?: any) {
         // 添加分辨率信息
         codedWidth: currentEncoderConfig?.width || 1920,
         codedHeight: currentEncoderConfig?.height || 1080,
-        codec: currentEncoderConfig?.codec || 'vp8'
+        codec: (currentEncoderConfig as any)?.codec || 'auto'
       }
     })
 
@@ -250,10 +200,10 @@ async function stopEncoding() {
     }
 
     // 通知主线程编码完成
-    self.postMessage({
+    ;(self as any).postMessage({
       type: 'complete',
       data: finalData
-    }, { transfer: [finalData.buffer] })
+    }, [finalData.buffer])
 
     console.log('✅ WebCodecs encoding completed')
     
