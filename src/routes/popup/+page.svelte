@@ -21,6 +21,24 @@
   let isPaused = $state(false)
   let selectedMode = $state<'area' | 'element' | 'camera' | 'tab' | 'window' | 'screen'>('tab')
   let isLoading = $state(false)
+  // Countdown seconds (1-5)
+  let countdownSeconds = $state(3)
+
+  function clampCountdown(v:number){
+    if (isNaN(v)) return 3; return Math.min(5, Math.max(1, v));
+  }
+  async function saveCountdown(newVal:number){
+    try {
+      const v = clampCountdown(newVal);
+      countdownSeconds = v;
+      const stored = await new Promise<any>(res => chrome.storage.local.get(['settings'], r => res(r)));
+      const settings = stored?.settings || {};
+      settings.countdownSeconds = v;
+      await new Promise(r => chrome.storage.local.set({ settings }, () => r(null)));
+    } catch(e) {
+      console.warn('Failed to persist countdownSeconds', e);
+    }
+  }
 
   // Capability state: whether the current page allows content script injection (affects element/area mode availability)
   let contentScriptAvailable = $state<boolean | null>(null)
@@ -37,6 +55,12 @@
   // Initialize: sync background state
   onMount(async () => {
     try {
+      // Load settings to restore countdownSeconds
+      try {
+        const stored = await new Promise<any>(res => chrome.storage.local.get(['settings'], r => res(r)));
+        const v = stored?.settings?.countdownSeconds;
+        if (typeof v === 'number') countdownSeconds = clampCountdown(v);
+      } catch {}
       const resp = await chrome.runtime.sendMessage({ type: 'REQUEST_RECORDING_STATE' })
       isRecording = !!resp?.state?.isRecording
       isPaused = !!resp?.state?.isPaused
@@ -221,7 +245,7 @@
           }
         } catch {}
         if (tabId != null) {
-          await chrome.runtime.sendMessage({ type: 'START_CAPTURE', tabId })
+            await chrome.runtime.sendMessage({ type: 'START_CAPTURE', tabId, countdown: countdownSeconds })
           // Wait for STREAM_START/STATE_UPDATE confirmation before updating isRecording/isPaused
         } else {
           throw new Error('Failed to get active tab, cannot start recording')
@@ -231,7 +255,7 @@
         const mode = (['tab','window','screen'] as const).includes(selectedMode as any) ? (selectedMode as 'tab'|'window'|'screen') : 'screen'
         await chrome.runtime.sendMessage({
           type: 'REQUEST_START_RECORDING',
-          payload: { options: { mode, video: true, audio: false } }
+          payload: { options: { mode, video: true, audio: false, countdown: countdownSeconds } }
         })
         // Wait for STREAM_START/STATE_UPDATE confirmation before updating isRecording/isPaused
       }
@@ -432,6 +456,7 @@
         disabled={isLoading}
       >
         <!-- Button icon -->
+        <!-- Button icon -->
         <div class="flex items-center justify-center w-5 h-5">
           {#if isLoading}
             <Loader2 class="w-5 h-5 animate-spin" />
@@ -476,4 +501,34 @@
       </div>
     </div>
   </div>
+<!-- Countdown setting (outside main button to avoid nested button issue) -->
+      {#if !isRecording}
+      <div class="flex items-center gap-2 mt-3 p-2 bg-white border border-gray-200 rounded-lg">
+        <label class="text-xs font-medium text-gray-600 flex items-center gap-1">
+          <Clock class="w-3 h-3 text-gray-500" /> 倒计时
+        </label>
+        <div class="flex items-center gap-1">
+          {#each [1,2,3,4,5] as v}
+            <button
+              class="px-2 py-1 text-xs rounded-md border transition-colors"
+              class:bg-blue-600={countdownSeconds===v}
+              class:text-white={countdownSeconds===v}
+              class:border-blue-600={countdownSeconds===v}
+              class:border-gray-300={countdownSeconds!==v}
+              class:hover:border-blue-400={countdownSeconds!==v}
+              onclick={() => saveCountdown(v)}
+            >{v}s</button>
+          {/each}
+        </div>
+        <input
+          type="number"
+          min="1"
+          max="5"
+          class="w-14 px-1 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+          bind:value={countdownSeconds}
+          onchange={(e:any)=> saveCountdown(clampCountdown(parseInt(e.target.value,10)))}
+        />
+      </div>
+      {/if}
+
 </div>

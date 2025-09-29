@@ -1,4 +1,4 @@
-// Simple 3-second auto countdown then close window with beep sound each second
+// Simple 3-second auto countdown then ask background to close popup with beep sound each second
 let remaining = 3;
 const el = document.getElementById('time');
 
@@ -24,7 +24,7 @@ function tick(){
   document.title = remaining + 's';
   playBeep(remaining === 0);
   if(remaining === 0){
-    setTimeout(()=> { window.close(); }, 300); // slight delay for final paint
+    setTimeout(()=> { chrome.runtime.sendMessage({type:'closeCountdown'}); }, 300); // slight delay for final paint
     return;
   }
   remaining--;

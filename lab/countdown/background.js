@@ -1,4 +1,12 @@
+let countdownWinId = null;
+
 chrome.action.onClicked.addListener(() => {
+  if (countdownWinId) {
+    chrome.windows.update(countdownWinId, { focused: true }, () => {
+      if (chrome.runtime.lastError) countdownWinId = null;
+    });
+    return;
+  }
   const popupWidth = 260;
   const popupHeight = 180;
   chrome.windows.getCurrent(current => {
@@ -15,6 +23,16 @@ chrome.action.onClicked.addListener(() => {
       left,
       top,
       focused: true
+    }, win => {
+      if (win && win.id) countdownWinId = win.id;
     });
   });
 });
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg && msg.type === 'closeCountdown' && countdownWinId) {
+    chrome.windows.remove(countdownWinId, () => { countdownWinId = null; });
+  }
+});
+
+chrome.windows.onRemoved.addListener(id => { if (id === countdownWinId) countdownWinId = null; });
