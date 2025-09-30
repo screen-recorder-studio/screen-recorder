@@ -373,7 +373,7 @@
       // Global pre-start countdown for all modes to avoid early layout shifts and unify UX
       // After user grants capture (stream available), open centralized countdown via background
       const COUNTDOWN_SECONDS = (typeof options?.countdown === 'number' && options.countdown >= 1 && options.countdown <= 5) ? options.countdown : 3;
-      try { chrome.runtime.sendMessage({ type: 'STREAM_META', meta: { preparing: true, countdown: COUNTDOWN_SECONDS } }) } catch {}
+      try { chrome.runtime.sendMessage({ type: 'STREAM_META', meta: { preparing: true, countdown: COUNTDOWN_SECONDS, mode } }) } catch {}
       // Wait for unified countdown gate from background (use dynamic timeout based on configured countdown)
       await new Promise((resolve) => {
         const to = setTimeout(resolve, (COUNTDOWN_SECONDS + 2) * 1000);

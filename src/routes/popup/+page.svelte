@@ -505,7 +505,7 @@
       {#if !isRecording}
       <div class="flex items-center gap-2 mt-3 p-2 bg-white border border-gray-200 rounded-lg">
         <label class="text-xs font-medium text-gray-600 flex items-center gap-1">
-          <Clock class="w-3 h-3 text-gray-500" /> 倒计时
+          <Clock class="w-3 h-3 text-gray-500" /> Countdown
         </label>
         <div class="flex items-center gap-1">
           {#each [1,2,3,4,5] as v}
