@@ -1,11 +1,13 @@
 <!-- Video preview component - using VideoComposite Worker for background composition -->
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { Play, Pause, LoaderCircle, Monitor, Info, Scissors } from '@lucide/svelte'
+  import { Play, Pause, LoaderCircle, Monitor, Info, Scissors, Crop } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import { DataFormatValidator } from '$lib/utils/data-format-validator'
   import { imageBackgroundManager } from '$lib/services/image-background-manager'
   import { trimStore } from '$lib/stores/trim.svelte'
+  import { videoCropStore } from '$lib/stores/video-crop.svelte'
+  import VideoCropPanel from './VideoCropPanel.svelte'
 
   // Props
   interface Props {
@@ -100,11 +102,16 @@
   // Rendered frame corresponding window start point (for stable timing display/log, avoid false jumps caused by props changing first)
   let lastFrameWindowStartIndex = $state(windowStartIndex)
 
-  // ✂️ 裁剪相关状态
+  // ✂️ 时间裁剪相关状态
   let timelineContainerEl: HTMLDivElement | null = null
   let isDraggingTrimStart = $state(false)
   let isDraggingTrimEnd = $state(false)
   let hasInitializedTrim = $state(false)
+
+  // ✂️ 视频裁剪相关状态
+  let isCropMode = $state(false)
+  let currentFrameBitmap = $state<ImageBitmap | null>(null)
+  let videoInfo = $state<{ width: number; height: number } | null>(null)
 
   // UI display duration: prioritize using global frame count/frame rate (consistent with timeline), then durationMs, finally fallback to internal duration
   const uiDurationSec = $derived.by(() => {
@@ -260,6 +267,14 @@
     console.log('🎨 [VideoPreview] Canvas initialized for bitmap rendering')
   }
 
+  // 🔧 消息计数器（诊断用）
+  let workerMessageCount = 0
+  
+  // 🔧 frameBitmap 等待标志（用于 enterCropMode）
+  let waitingForFrameBitmap = false
+  let frameBitmapResolver: ((bitmap: ImageBitmap) => void) | null = null
+  let frameBitmapRejecter: ((error: Error) => void) | null = null
+  
   // Initialize VideoComposite Worker
   function initializeWorker() {
     if (compositeWorker) return
@@ -273,6 +288,12 @@
 
     // Worker message handling
     compositeWorker.onmessage = (event) => {
+      workerMessageCount++
+      console.log(`📨 [VideoPreview] Worker message #${workerMessageCount} received:`, event.data.type, {
+        type: event.data.type,
+        hasData: !!event.data.data,
+        hasBitmap: !!event.data.data?.bitmap
+      })
       const { type, data } = event.data
 
       switch (type) {
@@ -287,6 +308,10 @@
           duration = totalFrames / frameRate
           outputWidth = data.outputSize.width
           outputHeight = data.outputSize.height
+          // 保存视频信息用于裁剪
+          videoInfo = { width: outputWidth, height: outputHeight }
+          // 🆕 设置裁剪 store 的原始尺寸
+          videoCropStore.setOriginalSize(outputWidth, outputHeight)
           console.log('[progress] Worker ready - internal state updated:', {
             totalFrames,
             duration,
@@ -344,7 +369,43 @@
 
         case 'frame':
           // Display composite after frame
-          displayFrame(data.bitmap, data.frameIndex, data.timestamp)
+          console.log('📺 [VideoPreview] Received frame from worker:', {
+            frameIndex: data.frameIndex,
+            timestamp: data.timestamp,
+            hasBitmap: !!data.bitmap,
+            isCropMode
+          })
+          
+          // 🔧 关键修复：只在非裁剪模式下显示帧
+          if (!isCropMode) {
+            displayFrame(data.bitmap, data.frameIndex, data.timestamp)
+          } else {
+            console.log('⚠️ [VideoPreview] Skipping displayFrame - in crop mode')
+            // 裁剪模式下不显示，直接释放 bitmap
+            try {
+              data.bitmap.close()
+            } catch (e) {
+              console.warn('⚠️ [VideoPreview] Failed to close bitmap:', e)
+            }
+          }
+          break
+        
+        case 'frameBitmap':
+          // Worker 返回的当前帧 bitmap（用于裁剪）
+          console.log('✂️ [VideoPreview] Received frame bitmap for cropping', {
+            waitingForFrameBitmap,
+            hasResolver: !!frameBitmapResolver,
+            hasBitmap: !!data.bitmap
+          })
+          
+          // 🔧 关键修复：在 onmessage 中处理 frameBitmap
+          if (waitingForFrameBitmap && frameBitmapResolver) {
+            console.log('✅ [VideoPreview] Resolving frameBitmap promise')
+            frameBitmapResolver(data.bitmap)
+            waitingForFrameBitmap = false
+            frameBitmapResolver = null
+            frameBitmapRejecter = null
+          }
           break
 
         case 'bufferStatus':
@@ -513,8 +574,24 @@
 
   // Display frame (core display logic)
   function displayFrame(bitmap: ImageBitmap, frameIndex: number, timestamp: number) {
+    console.log('📀 [VideoPreview] displayFrame called:', {
+      frameIndex,
+      timestamp,
+      hasBitmap: !!bitmap,
+      bitmapWidth: bitmap.width,
+      bitmapHeight: bitmap.height,
+      hasBitmapCtx: !!bitmapCtx,
+      hasCanvas: !!canvas,
+      canvasWidth: canvas?.width,
+      canvasHeight: canvas?.height
+    })
+    
     if (!bitmapCtx) {
-      console.error('❌ [VideoPreview] Bitmap context not available')
+      console.error('❌ [VideoPreview] Bitmap context not available', {
+        hasCanvas: !!canvas,
+        canvasWidth: canvas?.width,
+        canvasHeight: canvas?.height
+      })
       return
     }
 
@@ -524,7 +601,9 @@
 
     try {
       // Efficiently display ImageBitmap
+      console.log('🎨 [VideoPreview] Transferring bitmap to canvas...')
       bitmapCtx.transferFromImageBitmap(bitmap)
+      console.log('✅ [VideoPreview] Frame displayed successfully:', frameIndex)
 
       // Update playback state
       currentFrameIndex = frameIndex
@@ -710,7 +789,9 @@
         scale: backgroundConfig.wallpaper.scale,
         offsetX: backgroundConfig.wallpaper.offsetX,
         offsetY: backgroundConfig.wallpaper.offsetY
-      } : undefined
+      } : undefined,
+      // 🆕 添加视频裁剪配置
+      videoCrop: videoCropStore.getCropConfig()
     }
 
     // If image background, get new ImageBitmap
@@ -783,6 +864,100 @@
       console.log('[prefetch] stats', { hits: prefetchHits, misses: prefetchMisses, hitRate: rate })
     }
 
+  }
+
+  // ✂️ 视频裁剪模式函数
+  // 进入裁剪模式
+  async function enterCropMode() {
+    // 暂停播放
+    if (isPlaying) {
+      pause()
+    }
+    
+    // 获取当前帧的 ImageBitmap
+    if (!compositeWorker || currentFrameIndex >= totalFrames) {
+      console.warn('⚠️ [VideoPreview] Cannot enter crop mode: no frame available')
+      return
+    }
+    
+    try {
+      // 🔧 关键修复：使用全局标志位代替 addEventListener
+      // 先设置 Promise，再发送消息（避免竞态）
+      const bitmap = await new Promise<ImageBitmap>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          console.error('❌ [VideoPreview] getCurrentFrameBitmap timeout')
+          waitingForFrameBitmap = false
+          frameBitmapResolver = null
+          frameBitmapRejecter = null
+          reject(new Error('Timeout waiting for frameBitmap'))
+        }, 3000)
+        
+        // 设置全局标志，由 onmessage 处理器调用
+        waitingForFrameBitmap = true
+        frameBitmapResolver = (bitmap: ImageBitmap) => {
+          clearTimeout(timeout)
+          resolve(bitmap)
+        }
+        frameBitmapRejecter = (error: Error) => {
+          clearTimeout(timeout)
+          reject(error)
+        }
+        
+        console.log('✂️ [VideoPreview] Set up frameBitmap waiting, sending request...')
+        
+        // 🔧 关键：在 Promise 内部发送消息，确保 resolver 已经设置
+        compositeWorker!.postMessage({
+          type: 'getCurrentFrameBitmap',
+          data: { frameIndex: currentFrameIndex }
+        })
+      })
+      
+      currentFrameBitmap = bitmap
+      isCropMode = true
+      
+      console.log('✂️ [VideoPreview] Entered crop mode with frame', currentFrameIndex)
+    } catch (error) {
+      console.error('❌ [VideoPreview] Failed to enter crop mode:', error)
+    }
+  }
+  
+  // 退出裁剪模式
+  function exitCropMode(applied: boolean) {
+    console.log('✂️ [VideoPreview] Exiting crop mode, applied:', applied)
+    
+    isCropMode = false
+    
+    // 清理 ImageBitmap
+    if (currentFrameBitmap) {
+      currentFrameBitmap.close()
+      currentFrameBitmap = null
+    }
+    
+    if (applied) {
+      console.log('✂️ [VideoPreview] Applying crop, current config:', videoCropStore.getCropConfig())
+      
+      // 🔧 应用裁剪：更新配置后强制刷新显示
+      if (compositeWorker) {
+        // 保存当前帧位置
+        const savedFrameIndex = currentFrameIndex
+        
+        // 更新 Worker 配置
+        updateBackgroundConfig(backgroundConfig).then(() => {
+          console.log('✅ [VideoPreview] Crop config updated, forcing frame refresh...')
+          
+          // 🔧 关键修复：强制 seek 到当前帧，确保帧被重新渲染和显示
+          requestAnimationFrame(() => {
+            seekToFrame(savedFrameIndex)
+          })
+        }).catch(error => {
+          console.error('❌ [VideoPreview] Failed to apply crop:', error)
+        })
+      } else {
+        console.warn('⚠️ [VideoPreview] Cannot apply crop: missing worker', {
+          hasWorker: !!compositeWorker
+        })
+      }
+    }
   }
 
   // Playback control
@@ -1035,7 +1210,9 @@
         scale: newConfig.wallpaper.scale,
         offsetX: newConfig.wallpaper.offsetX,
         offsetY: newConfig.wallpaper.offsetY
-      } : undefined
+      } : undefined,
+      // 🆕 添加视频裁剪配置
+      videoCrop: videoCropStore.getCropConfig()
     }
 
     console.log('⚙️ [VideoPreview] Updating background config:', plainConfig)
@@ -1388,33 +1565,47 @@
       <Monitor class="w-4 h-4 text-gray-400" />
       <span class="text-sm font-semibold text-gray-100">Video Preview</span>
     </div>
-    <span class="text-xs font-medium text-purple-400 bg-purple-500/10 px-2 py-1 rounded border border-purple-500/20">
-      {backgroundConfig.outputRatio === 'custom' ? `${outputWidth}×${outputHeight}` : backgroundConfig.outputRatio}
-    </span>
-  </div>
 
-  <!-- Canvas display area - takes remaining space -->
-  <div class="flex-1 flex items-center justify-center p-4 min-h-0">
-    <div class="relative bg-black flex items-center justify-center rounded overflow-hidden" style="width: {previewWidth}px; height: {previewHeight}px;">
-      <canvas
-        bind:this={canvas}
-        class="block rounded transition-opacity duration-300"
-        class:opacity-50={isProcessing}
-        style="width: {previewWidth}px; height: {previewHeight}px;"
-      ></canvas>
-
-      {#if isProcessing}
-        <div class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white">
-          <LoaderCircle class="w-8 h-8 text-blue-500 animate-spin mb-2" />
-          <span class="text-sm">Processing video...</span>
-        </div>
+    <!-- Crop button -->
+    <button
+      class="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium rounded border transition-all duration-200 {videoCropStore.enabled ? 'border-blue-500 bg-blue-500/10' : 'border-gray-600'}"
+      onclick={enterCropMode}
+      disabled={isProcessing || !hasEverProcessed}
+      title={videoCropStore.enabled ? 'Cropped - Click to edit' : 'Crop video'}
+    >
+      <Crop class="w-3.5 h-3.5" />
+      {#if videoCropStore.enabled}
+        Cropped
+      {:else}
+        Crop
       {/if}
-    </div>
+    </button>
   </div>
 
+  <!-- 🔧 普通预览模式区域 - 包含 Canvas 和时间轴 -->
+  <!-- 在裁剪模式下整体隐藏，避免布局混乱 -->
+  <div class:hidden={isCropMode}>
+    <!-- Canvas display area - takes remaining space -->
+    <div class="flex-1 flex items-center justify-center p-4 min-h-0">
+      <div class="relative bg-black flex items-center justify-center rounded overflow-hidden" style="width: {previewWidth}px; height: {previewHeight}px;">
+        <canvas
+          bind:this={canvas}
+          class="block rounded transition-opacity duration-300"
+          class:opacity-50={isProcessing}
+          style="width: {previewWidth}px; height: {previewHeight}px;"
+        ></canvas>
 
-  <!-- Time axis - fixed height (based on real duration, milliseconds) -->
-  {#if showTimeline && timelineMaxMs > 0}
+        {#if isProcessing}
+          <div class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white">
+            <LoaderCircle class="w-8 h-8 text-blue-500 animate-spin mb-2" />
+            <span class="text-sm">Processing video...</span>
+          </div>
+        {/if}
+      </div>
+    </div>
+
+    <!-- Time axis - fixed height (based on real duration, milliseconds) -->
+    {#if showTimeline && timelineMaxMs > 0}
     <div class="flex-shrink-0 p-3 bg-gray-800">
       <!-- 时间轴容器，包含进度条和裁剪手柄 -->
       <div bind:this={timelineContainerEl} class="relative w-full mb-3">
@@ -1527,6 +1718,25 @@
           <span>Resolution: {outputWidth}×{outputHeight}</span>
         </div>
       </div>
+    </div>
+  {/if}
+  </div>
+  <!-- 🔧 普通预览模式区域结束 -->
+
+  <!-- 🆕 裁剪模式 - 独立显示，不销毁 Canvas -->
+  {#if isCropMode}
+    <div class="flex-1 flex items-center justify-center p-4 min-h-0">
+      {#if currentFrameBitmap && videoInfo}
+        <VideoCropPanel
+          frameBitmap={currentFrameBitmap}
+          videoWidth={videoInfo.width}
+          videoHeight={videoInfo.height}
+          displayWidth={previewWidth}
+          displayHeight={previewHeight}
+          onConfirm={() => exitCropMode(true)}
+          onCancel={() => exitCropMode(false)}
+        />
+      {/if}
     </div>
   {/if}
 </div>

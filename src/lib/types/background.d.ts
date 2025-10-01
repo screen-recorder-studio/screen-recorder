@@ -85,6 +85,21 @@ export interface BackgroundConfig {
     blur: number
     color: string
   }
+  // 视频源裁剪配置
+  videoCrop?: {
+    enabled: boolean
+    mode: 'pixels' | 'percentage'
+    // 像素模式（视频像素坐标）
+    x: number
+    y: number
+    width: number
+    height: number
+    // 百分比模式（0-1）
+    xPercent: number
+    yPercent: number
+    widthPercent: number
+    heightPercent: number
+  }
 }
 
 // 预设渐变配置类型

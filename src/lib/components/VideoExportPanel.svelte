@@ -4,6 +4,7 @@
   import { ExportManager } from '$lib/services/export-manager'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import { trimStore } from '$lib/stores/trim.svelte'
+  import { videoCropStore } from '$lib/stores/video-crop.svelte'
 
   // Props
   interface Props {
@@ -195,8 +196,16 @@
           scale: backgroundConfig.wallpaper.scale,
           offsetX: backgroundConfig.wallpaper.offsetX,
           offsetY: backgroundConfig.wallpaper.offsetY
-        } : undefined
+        } : undefined,
+        // 🆕 Deep convert videoCrop object - 从 videoCropStore 获取
+        videoCrop: videoCropStore.getCropConfig()
       } : undefined
+
+      console.log('🎬 [Export] WebM export config:', {
+        hasBackgroundConfig: !!plainBackgroundConfig,
+        videoCrop: plainBackgroundConfig?.videoCrop,
+        videoCropEnabled: plainBackgroundConfig?.videoCrop?.enabled
+      })
 
       const videoResult = await exportManager.exportEditedVideo(
         encodedChunks,
@@ -349,8 +358,16 @@
           scale: backgroundConfig.wallpaper.scale,
           offsetX: backgroundConfig.wallpaper.offsetX,
           offsetY: backgroundConfig.wallpaper.offsetY
-        } : undefined
+        } : undefined,
+        // 🆕 Deep convert videoCrop object - 从 videoCropStore 获取
+        videoCrop: videoCropStore.getCropConfig()
       } : undefined
+
+      console.log('🎬 [Export] MP4 export config:', {
+        hasBackgroundConfig: !!plainBackgroundConfig,
+        videoCrop: plainBackgroundConfig?.videoCrop,
+        videoCropEnabled: plainBackgroundConfig?.videoCrop?.enabled
+      })
 
       const videoBlob = await exportManager.exportEditedVideo(
         encodedChunks,

@@ -155,17 +155,39 @@ function calculateVideoLayout(
   const availableWidth = outputWidth - totalPadding * 2;
   const availableHeight = outputHeight - totalPadding * 2;
 
+  // 🆕 如果启用裁剪，使用裁剪后的尺寸计算布局
+  let effectiveWidth = videoWidth;
+  let effectiveHeight = videoHeight;
+  
+  if (config.videoCrop?.enabled) {
+    const crop = config.videoCrop;
+    if (crop.mode === 'percentage') {
+      effectiveWidth = Math.floor(videoWidth * crop.widthPercent);
+      effectiveHeight = Math.floor(videoHeight * crop.heightPercent);
+    } else {
+      effectiveWidth = crop.width;
+      effectiveHeight = crop.height;
+    }
+    
+    console.log('📐 [COMPOSITE-WORKER] Layout using cropped dimensions:', {
+      original: { width: videoWidth, height: videoHeight },
+      cropped: { width: effectiveWidth, height: effectiveHeight }
+    });
+  }
+
   console.log('🔍 [COMPOSITE-WORKER] Layout calculation:', {
     padding,
     inset,
     totalPadding,
     outputSize: { width: outputWidth, height: outputHeight },
     availableSize: { width: availableWidth, height: availableHeight },
-    videoSize: { width: videoWidth, height: videoHeight }
+    videoSize: { width: videoWidth, height: videoHeight },
+    effectiveSize: { width: effectiveWidth, height: effectiveHeight },
+    cropEnabled: config.videoCrop?.enabled || false
   });
 
-  // 保持视频纵横比的缩放计算
-  const videoAspectRatio = videoWidth / videoHeight;
+  // 保持视频纵横比的缩放计算（基于裁剪后的尺寸）
+  const videoAspectRatio = effectiveWidth / effectiveHeight;
   const availableAspectRatio = availableWidth / availableHeight;
 
   console.log('📐 [COMPOSITE-WORKER] Aspect ratio comparison:', {
@@ -527,7 +549,7 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
       ctx.clip();
     }
 
-    // 6. 绘制视频帧（优先使用可见区域，避免非方像素/裁剪导致的形变）
+    // 6. 绘制视频帧（支持用户自定义裁剪）
     const vr = frame.visibleRect;
 
     // 验证帧尺寸信息
@@ -539,33 +561,65 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
       visibleRect: vr ? { x: vr.x, y: vr.y, width: vr.width, height: vr.height } : null
     };
 
-    // 计算渲染的缩放比例
-    let sourceWidth, sourceHeight;
-    if (vr && vr.width > 0 && vr.height > 0) {
-      sourceWidth = vr.width;
-      sourceHeight = vr.height;
-    } else {
-      // 🔧 关键修复：使用修正后的尺寸，而不是 VideoFrame 的原始尺寸
-      if (correctedVideoSize) {
-        sourceWidth = correctedVideoSize.width;
-        sourceHeight = correctedVideoSize.height;
-        console.log('✅ [COMPOSITE-WORKER] Using corrected video size for rendering:', {
-          correctedWidth: sourceWidth,
-          correctedHeight: sourceHeight,
-          frameDisplayWidth: frame.displayWidth,
-          frameDisplayHeight: frame.displayHeight,
-          frameCodedWidth: frame.codedWidth,
-          frameCodedHeight: frame.codedHeight
-        });
+    // 🆕 计算源裁剪区域（用户自定义裁剪）
+    let srcX = 0, srcY = 0, srcWidth = frame.codedWidth, srcHeight = frame.codedHeight;
+    
+    if (config.videoCrop?.enabled) {
+      const crop = config.videoCrop;
+      
+      if (crop.mode === 'percentage') {
+        // 百分比模式：基于原始帧尺寸计算
+        srcX = Math.floor(crop.xPercent * frame.codedWidth);
+        srcY = Math.floor(crop.yPercent * frame.codedHeight);
+        srcWidth = Math.floor(crop.widthPercent * frame.codedWidth);
+        srcHeight = Math.floor(crop.heightPercent * frame.codedHeight);
       } else {
-        sourceWidth = frame.displayWidth || frame.codedWidth || 1920;
-        sourceHeight = frame.displayHeight || frame.codedHeight || 1080;
-        console.warn('⚠️ [COMPOSITE-WORKER] No corrected size available, using frame dimensions');
+        // 像素模式：直接使用配置值
+        srcX = crop.x;
+        srcY = crop.y;
+        srcWidth = crop.width;
+        srcHeight = crop.height;
       }
+      
+      // 边界检查
+      srcX = Math.max(0, Math.min(srcX, frame.codedWidth));
+      srcY = Math.max(0, Math.min(srcY, frame.codedHeight));
+      srcWidth = Math.min(srcWidth, frame.codedWidth - srcX);
+      srcHeight = Math.min(srcHeight, frame.codedHeight - srcY);
+      
+      // 检查裁剪区域是否有效
+      if (srcWidth <= 0 || srcHeight <= 0) {
+        console.error('❌ [COMPOSITE-WORKER] Invalid crop region after boundary check:', {
+          srcX, srcY, srcWidth, srcHeight,
+          frameSize: { width: frame.codedWidth, height: frame.codedHeight },
+          originalCrop: crop
+        });
+        // 回退到全屏
+        srcX = 0;
+        srcY = 0;
+        srcWidth = frame.codedWidth;
+        srcHeight = frame.codedHeight;
+      }
+      
+      console.log('✂️ [COMPOSITE-WORKER] Applying video crop:', {
+        mode: crop.mode,
+        original: { width: frame.codedWidth, height: frame.codedHeight },
+        crop: { x: srcX, y: srcY, width: srcWidth, height: srcHeight },
+        percent: crop.mode === 'percentage' ? {
+          x: crop.xPercent,
+          y: crop.yPercent,
+          width: crop.widthPercent,
+          height: crop.heightPercent
+        } : null
+      });
     }
 
-    const scaleX = layout.width / sourceWidth;
-    const scaleY = layout.height / sourceHeight;
+    // 计算渲染的缩放比例（基于裁剪后或原始尺寸）
+    const effectiveSourceWidth = srcWidth;
+    const effectiveSourceHeight = srcHeight;
+    
+    const scaleX = layout.width / effectiveSourceWidth;
+    const scaleY = layout.height / effectiveSourceHeight;
     const isProportional = Math.abs(scaleX - scaleY) < 0.01; // 允许1%误差
 
     // 每60帧输出一次调试信息
@@ -573,7 +627,9 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
       console.log('🎞️ [COMPOSITE-WORKER] Frame rendering analysis:', {
         frameInfo,
         layout,
-        sourceSize: { width: sourceWidth, height: sourceHeight },
+        sourceSize: { width: effectiveSourceWidth, height: effectiveSourceHeight },
+        cropApplied: config.videoCrop?.enabled || false,
+        cropRegion: config.videoCrop?.enabled ? { x: srcX, y: srcY, width: srcWidth, height: srcHeight } : null,
         targetSize: { width: layout.width, height: layout.height },
         scale: { x: scaleX.toFixed(3), y: scaleY.toFixed(3) },
         isProportional,
@@ -585,16 +641,20 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
       }
     }
 
-    if (vr && vr.width > 0 && vr.height > 0) {
-      // 使用 9 参数重载：源裁剪区域 + 目标区域
-      ctx.drawImage(
-        frame,
-        vr.x, vr.y, vr.width, vr.height,
-        layout.x, layout.y, layout.width, layout.height
-      );
-    } else {
-      // 无可见区域信息时，直接按目标矩形绘制（布局已按显示尺寸等比计算）
-      ctx.drawImage(frame, layout.x, layout.y, layout.width, layout.height);
+    // 🆕 使用 9 参数模式绘制（带源裁剪）
+    ctx.drawImage(
+      frame,
+      srcX, srcY, srcWidth, srcHeight,           // 源区域（裁剪区域）
+      layout.x, layout.y, layout.width, layout.height  // 目标区域
+    );
+    
+    // 确认裁剪渲染成功
+    if (config.videoCrop?.enabled && currentFrameIndex % 30 === 0) {
+      console.log('✅ [COMPOSITE-WORKER] Crop rendered successfully:', {
+        source: { x: srcX, y: srcY, width: srcWidth, height: srcHeight },
+        target: { x: layout.x, y: layout.y, width: layout.width, height: layout.height },
+        frameIndex: currentFrameIndex
+      });
     }
 
     // 7. 恢复状态
@@ -680,21 +740,33 @@ function startStreamingDecode(chunks: any[]) {
             console.log(`📽️ [COMPOSITE-WORKER] [stream] Frames decoded: ${decodedFrames.length}/${chunks.length}`);
           }
           if (pendingSeekIndex !== null && decodedFrames.length > pendingSeekIndex) {
+            console.log('🎯 [COMPOSITE-WORKER] Processing pending seek:', pendingSeekIndex);
             try {
               if (currentConfig && fixedVideoLayout) {
                 const f = decodedFrames[pendingSeekIndex];
+                console.log('🔍 [COMPOSITE-WORKER] Rendering pending seek frame...');
                 const bitmap = renderCompositeFrame(f, fixedVideoLayout, currentConfig);
                 if (bitmap) {
+                  console.log('✅ [COMPOSITE-WORKER] Pending seek frame rendered, sending to main thread');
                   self.postMessage({
                     type: 'frame',
                     data: { bitmap, frameIndex: pendingSeekIndex, timestamp: f.timestamp }
                   }, { transfer: [bitmap] });
                   currentFrameIndex = pendingSeekIndex;
+                  console.log('📤 [COMPOSITE-WORKER] Pending seek frame sent successfully');
+                } else {
+                  console.error('❌ [COMPOSITE-WORKER] renderCompositeFrame returned null for pending seek');
                 }
+              } else {
+                console.warn('⚠️ [COMPOSITE-WORKER] Cannot render pending seek - missing config or layout:', {
+                  hasConfig: !!currentConfig,
+                  hasLayout: !!fixedVideoLayout
+                });
               }
             } catch (e) {
-              console.warn('[progress] VideoComposite - pending seek render failed:', e);
+              console.error('❌ [COMPOSITE-WORKER] pending seek render failed:', e);
             } finally {
+              console.log('🗑️ [COMPOSITE-WORKER] Clearing pending seek index');
               pendingSeekIndex = null;
             }
           }
@@ -1185,20 +1257,40 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         break;
 
       case 'seek':
-        console.log('⏭️ [COMPOSITE-WORKER] Seeking to frame:', data.frameIndex);
+        console.log('⏭️ [COMPOSITE-WORKER] Seeking to frame:', data.frameIndex, {
+          decodedFramesLength: decodedFrames.length,
+          hasConfig: !!currentConfig,
+          hasLayout: !!fixedVideoLayout,
+          isDecoding
+        });
         if (data.frameIndex !== undefined) {
           const target = Math.max(0, data.frameIndex);
           if (target < decodedFrames.length) {
             currentFrameIndex = target;
+            console.log('🔍 [COMPOSITE-WORKER] Seek target in range, checking conditions:', {
+              hasConfig: !!currentConfig,
+              hasFrame: !!decodedFrames[currentFrameIndex],
+              hasLayout: !!fixedVideoLayout
+            });
             if (currentConfig && decodedFrames[currentFrameIndex] && fixedVideoLayout) {
               const frame = decodedFrames[currentFrameIndex];
+              console.log('✅ [COMPOSITE-WORKER] Rendering frame', currentFrameIndex);
               const bitmap = renderCompositeFrame(frame, fixedVideoLayout, currentConfig);
               if (bitmap) {
                 self.postMessage({
                   type: 'frame',
                   data: { bitmap, frameIndex: currentFrameIndex, timestamp: frame.timestamp }
                 }, { transfer: [bitmap] });
+                console.log('📤 [COMPOSITE-WORKER] Frame bitmap sent to main thread');
+              } else {
+                console.error('❌ [COMPOSITE-WORKER] renderCompositeFrame returned null');
               }
+            } else {
+              console.warn('⚠️ [COMPOSITE-WORKER] Cannot render frame - missing requirements:', {
+                hasConfig: !!currentConfig,
+                hasFrame: !!decodedFrames[currentFrameIndex],
+                hasLayout: !!fixedVideoLayout
+              });
             }
           } else if (isDecoding) {
             // 目标帧尚未解码，挂起本次seek，待足够帧可用时立即渲染
@@ -1218,6 +1310,35 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
                 }, { transfer: [bitmap] });
               }
             }
+          }
+        }
+        break;
+
+      case 'getCurrentFrameBitmap':
+        console.log('🖼️ [COMPOSITE-WORKER] Getting current frame bitmap...');
+        
+        if (data.frameIndex !== undefined && currentConfig && fixedVideoLayout) {
+          const frameIndex = data.frameIndex;
+          
+          if (frameIndex >= 0 && frameIndex < decodedFrames.length) {
+            const frame = decodedFrames[frameIndex];
+            
+            // 渲染合成帧
+            const bitmap = renderCompositeFrame(frame, fixedVideoLayout, currentConfig);
+            
+            if (bitmap) {
+              self.postMessage({
+                type: 'frameBitmap',
+                data: { 
+                  bitmap,
+                  frameIndex 
+                }
+              }, { transfer: [bitmap] });
+              
+              console.log('✅ [COMPOSITE-WORKER] Frame bitmap sent:', frameIndex);
+            }
+          } else {
+            console.error('❌ [COMPOSITE-WORKER] Frame index out of range:', frameIndex, '/ total:', decodedFrames.length);
           }
         }
         break;
@@ -1263,11 +1384,26 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
           calculateAndCacheLayout();
 
           // 重新渲染当前帧
+          console.log('🔍 [COMPOSITE-WORKER] Checking frame render conditions:', {
+            hasFrame: !!decodedFrames[currentFrameIndex],
+            hasLayout: !!fixedVideoLayout,
+            currentFrameIndex,
+            decodedFramesLength: decodedFrames.length
+          });
+          
           if (decodedFrames[currentFrameIndex] && fixedVideoLayout) {
             const frame = decodedFrames[currentFrameIndex];
+            console.log('✅ [COMPOSITE-WORKER] Rendering frame for config update:', currentFrameIndex);
 
             const bitmap = renderCompositeFrame(frame, fixedVideoLayout, currentConfig);
+            console.log('🖼️ [COMPOSITE-WORKER] renderCompositeFrame returned:', {
+              hasBitmap: !!bitmap,
+              bitmapWidth: bitmap?.width,
+              bitmapHeight: bitmap?.height
+            });
+            
             if (bitmap) {
+              console.log('📤 [COMPOSITE-WORKER] Sending frame bitmap to main thread...');
               self.postMessage({
                 type: 'frame',
                 data: {
@@ -1276,7 +1412,12 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
                   timestamp: frame.timestamp
                 }
               }, { transfer: [bitmap] });
+              console.log('✅ [COMPOSITE-WORKER] Frame bitmap sent successfully from config handler');
+            } else {
+              console.error('❌ [COMPOSITE-WORKER] renderCompositeFrame returned null in config handler!');
             }
+          } else {
+            console.warn('⚠️ [COMPOSITE-WORKER] Cannot render frame in config handler - conditions not met');
           }
         }
         break;
