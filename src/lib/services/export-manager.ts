@@ -56,7 +56,7 @@ export class ExportManager {
    */
   private prepareExportData(encodedChunks: any[], options: ExportOptions) {
     // 转换为标准格式
-    const standardChunks: EncodedChunk[] = encodedChunks.map(chunk => ({
+    let standardChunks: EncodedChunk[] = encodedChunks.map(chunk => ({
       data: chunk.data instanceof Uint8Array ? chunk.data : new Uint8Array(chunk.data),
       timestamp: chunk.timestamp || 0,
       type: chunk.type === 'key' ? 'key' : 'delta',
@@ -65,6 +65,36 @@ export class ExportManager {
       codedHeight: chunk.codedHeight || 1080,
       codec: chunk.codec || 'vp8'
     }))
+
+    // 🔧 裁剪处理：根据时间戳过滤帧
+    if (options.trim && options.trim.enabled) {
+      console.log('✂️ [ExportManager] Applying trim filter:', {
+        startMs: options.trim.startMs,
+        endMs: options.trim.endMs,
+        originalChunks: standardChunks.length
+      })
+
+      const firstTimestamp = standardChunks[0]?.timestamp || 0
+      const trimStartTimestamp = firstTimestamp + (options.trim.startMs * 1000) // 转换为微秒
+      const trimEndTimestamp = firstTimestamp + (options.trim.endMs * 1000)
+
+      // 过滤并调整时间戳
+      standardChunks = standardChunks
+        .filter(chunk => {
+          return chunk.timestamp >= trimStartTimestamp && chunk.timestamp <= trimEndTimestamp
+        })
+        .map((chunk, index) => ({
+          ...chunk,
+          // 重新计算时间戳，使其从 0 开始
+          timestamp: chunk.timestamp - trimStartTimestamp
+        }))
+
+      console.log('✂️ [ExportManager] Trim applied:', {
+        trimmedChunks: standardChunks.length,
+        firstTimestamp: standardChunks[0]?.timestamp,
+        lastTimestamp: standardChunks[standardChunks.length - 1]?.timestamp
+      })
+    }
 
     // 默认导出参数
     const defaultOptions = {

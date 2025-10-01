@@ -59,7 +59,12 @@ let warnedCanvasSizeMismatch = false
 
 let isOpfsMode = false
 
-async function initializeOpfsReader(dirId: string, windowSize?: number): Promise<void> {
+// 裁剪参数
+let trimStartFrame = 0
+let trimEndFrame = Number.MAX_SAFE_INTEGER
+let isTrimEnabled = false
+
+async function initializeOpfsReader(dirId: string, windowSize?: number, trimOptions?: { startFrame: number, endFrame: number }): Promise<void> {
   try {
     console.log('🗂️ [MP4-Export-Worker] Initializing OPFS reader for dirId:', dirId)
 
@@ -73,6 +78,20 @@ async function initializeOpfsReader(dirId: string, windowSize?: number): Promise
     opfsSummary = ready?.summary || { totalChunks: 0 }
     totalOpfsFrames = Number(opfsSummary.totalChunks) || 0
 
+    // ✂️ 应用裁剪范围
+    if (trimOptions) {
+      isTrimEnabled = true
+      trimStartFrame = Math.max(0, trimOptions.startFrame)
+      trimEndFrame = Math.min(totalOpfsFrames - 1, trimOptions.endFrame)
+      totalOpfsFrames = Math.max(0, trimEndFrame - trimStartFrame + 1)
+      console.log('✂️ [MP4-Export-Worker] Trim applied:', {
+        originalTotalFrames: opfsSummary.totalChunks,
+        trimStartFrame,
+        trimEndFrame,
+        trimmedTotalFrames: totalOpfsFrames
+      })
+    }
+
     consumedGlobalFrames = 0
     lastEmittedGlobalEnd = 0
     isOpfsMode = true
@@ -82,7 +101,8 @@ async function initializeOpfsReader(dirId: string, windowSize?: number): Promise
       windowSize: opfsWindowSize,
       durationMs: opfsSummary.durationMs,
       fps: ready?.meta?.fps || 30,
-      keyframes: opfsSummary.keyframeCount
+      keyframes: opfsSummary.keyframeCount,
+      trimEnabled: isTrimEnabled
     })
 
   } catch (error) {
@@ -96,18 +116,41 @@ async function loadOpfsWindow(start: number, count: number): Promise<{ chunks: a
     throw new Error('OPFS reader not initialized')
   }
 
-  console.log(`📦 [MP4-Export-Worker] Loading OPFS window: request start=${start}, count=${count}`)
+  // ✂️ 应用裁剪偏移：将逻辑帧索引转换为物理帧索引
+  let physicalStart = start
+  let physicalCount = count
+  
+  if (isTrimEnabled) {
+    physicalStart = trimStartFrame + start
+    // 确保不超出裁剪结束位置
+    const maxCount = Math.max(0, trimEndFrame - physicalStart + 1)
+    physicalCount = Math.min(count, maxCount)
+    
+    console.log(`✂️ [MP4-Export-Worker] Applying trim offset:`, {
+      logicalStart: start,
+      logicalCount: count,
+      physicalStart,
+      physicalCount,
+      trimStartFrame,
+      trimEndFrame
+    })
+  }
 
-  opfsReader.postMessage({ type: 'getRange', start, count })
+  console.log(`📦 [MP4-Export-Worker] Loading OPFS window: request start=${physicalStart}, count=${physicalCount}`)
+
+  opfsReader.postMessage({ type: 'getRange', start: physicalStart, count: physicalCount })
   const range: any = await onceFromWorker(opfsReader, 'range')
 
   const chunks = range?.chunks || []
-  const actualStart = Number(range?.start ?? start)
+  // 返回逻辑帧索引（相对于裁剪区间的偏移）
+  const actualStart = isTrimEnabled ? Number(range?.start ?? physicalStart) - trimStartFrame : Number(range?.start ?? start)
   const actualCount = Number(range?.count ?? chunks.length ?? 0)
 
   console.log(`✅ [MP4-Export-Worker] OPFS window loaded:`, {
-    requestedStart: start,
-    requestedCount: count,
+    requestedLogicalStart: start,
+    requestedLogicalCount: count,
+    physicalStart,
+    physicalCount,
     actualStart,
     actualCount,
     chunksReceived: chunks.length,
@@ -135,6 +178,11 @@ function cleanupOpfsReader(): void {
   consumedGlobalFrames = 0
   lastEmittedGlobalEnd = 0
   isOpfsMode = false
+  
+  // ✂️ 重置裁剪参数
+  isTrimEnabled = false
+  trimStartFrame = 0
+  trimEndFrame = Number.MAX_SAFE_INTEGER
 }
 // ---- end OPFS data processing utilities ----
 
@@ -432,7 +480,12 @@ async function handleExport(exportData: ExportData) {
       // 2) 处理视频合成（OPFS/内存）
       console.log('🎨 [WebM-Export-Worker] Starting video composition')
       if ((options as any)?.source === 'opfs' && (options as any)?.opfsDirId) {
-        await initializeOpfsReader((options as any).opfsDirId, (options as any).windowSize)
+        // ✂️ 准备裁剪参数
+        const trimOptions = options.trim?.enabled ? {
+          startFrame: options.trim.startFrame,
+          endFrame: options.trim.endFrame
+        } : undefined
+        await initializeOpfsReader((options as any).opfsDirId, (options as any).windowSize, trimOptions)
         const { chunks: firstChunks, actualStart } = await loadOpfsWindow(0, opfsWindowSize)
         await processVideoCompositionOpfs(firstChunks, options, actualStart)
       } else {
@@ -461,7 +514,12 @@ async function handleExport(exportData: ExportData) {
 
     // 当来源为 OPFS 时，初始化 OPFS 读取器（用于实际导出）
     if ((options as any)?.source === 'opfs' && (options as any)?.opfsDirId) {
-      await initializeOpfsReader((options as any).opfsDirId, (options as any).windowSize)
+      // ✂️ 准备裁剪参数
+      const trimOptions = options.trim?.enabled ? {
+        startFrame: options.trim.startFrame,
+        endFrame: options.trim.endFrame
+      } : undefined
+      await initializeOpfsReader((options as any).opfsDirId, (options as any).windowSize, trimOptions)
     }
 
     // 更新进度：准备阶段

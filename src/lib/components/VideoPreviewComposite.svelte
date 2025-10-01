@@ -1,10 +1,11 @@
 <!-- Video preview component - using VideoComposite Worker for background composition -->
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { Play, Pause, LoaderCircle, Monitor, Info } from '@lucide/svelte'
+  import { Play, Pause, LoaderCircle, Monitor, Info, Scissors } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import { DataFormatValidator } from '$lib/utils/data-format-validator'
   import { imageBackgroundManager } from '$lib/services/image-background-manager'
+  import { trimStore } from '$lib/stores/trim.svelte'
 
   // Props
   interface Props {
@@ -19,6 +20,12 @@
     windowEndMs?: number
     totalFramesAll?: number
     windowStartIndex?: number
+    keyframeInfo?: {
+      indices: number[]
+      timestamps: number[]
+      count: number
+      avgInterval: number
+    } | null
     onRequestWindow?: (args: { centerMs: number; beforeMs: number; afterMs: number }) => void
     // Optional: only fetch data, don't switch window, used for prefetch cache
     fetchWindowData?: (args: { centerMs: number; beforeMs: number; afterMs: number }) => Promise<{ chunks: any[]; windowStartIndex: number }>
@@ -37,6 +44,7 @@
     windowEndMs = 0,
     totalFramesAll = 0,
     windowStartIndex = 0,
+    keyframeInfo = null,
     onRequestWindow,
     fetchWindowData,
     className = ''
@@ -91,6 +99,12 @@
   let continueFromGlobalFrame = $state(0) // 🔧 Record which global frame to continue playback from
   // Rendered frame corresponding window start point (for stable timing display/log, avoid false jumps caused by props changing first)
   let lastFrameWindowStartIndex = $state(windowStartIndex)
+
+  // ✂️ 裁剪相关状态
+  let timelineContainerEl: HTMLDivElement | null = null
+  let isDraggingTrimStart = $state(false)
+  let isDraggingTrimEnd = $state(false)
+  let hasInitializedTrim = $state(false)
 
   // UI display duration: prioritize using global frame count/frame rate (consistent with timeline), then durationMs, finally fallback to internal duration
   const uiDurationSec = $derived.by(() => {
@@ -519,6 +533,17 @@
       // Use global frame index calculation relative video start time, avoid absolute timestamp (like epoch/us) causing huge value
       currentTime = (lastFrameWindowStartIndex + frameIndex) / frameRate
 
+      // 🔧 裁剪检查：如果启用了裁剪且到达裁剪终点，自动停止播放
+      if (trimStore.enabled && isPlaying) {
+        const currentGlobalFrame = lastFrameWindowStartIndex + frameIndex
+        const currentGlobalMs = (currentGlobalFrame / frameRate) * 1000
+        
+        if (currentGlobalMs >= trimStore.trimEndMs) {
+          console.log('✂️ [VideoPreview] Reached trim end point, stopping playback')
+          pause()
+        }
+      }
+
       // Debug: reduce per-frame log cost, only development environment and every 60 frames output once
       // if (import.meta.env.DEV && frameIndex % 60 === 0) {
       //   console.debug(`[VideoPreview] frame ${frameIndex}/${totalFrames} global ${windowStartIndex + frameIndex + 1}/${totalFramesAll}`)
@@ -764,6 +789,23 @@
   function play() {
     if (!compositeWorker || totalFrames === 0) return
 
+    // 🔧 裁剪检查：如果启用了裁剪且当前位置超出裁剪范围，则跳转到裁剪开始位置
+    if (trimStore.enabled) {
+      const currentGlobalFrame = windowStartIndex + currentFrameIndex
+      const currentGlobalMs = (currentGlobalFrame / frameRate) * 1000
+      
+      if (currentGlobalMs < trimStore.trimStartMs || currentGlobalMs >= trimStore.trimEndMs) {
+        console.log('⚠️ [VideoPreview] Current position outside trim range, seeking to trim start')
+        seekToGlobalTime(trimStore.trimStartMs)
+        // 等待 seek 完成后再播放
+        requestAnimationFrame(() => {
+          compositeWorker!.postMessage({ type: 'play' })
+        })
+        isPlaying = true
+        return
+      }
+    }
+
     console.log('▶️ [VideoPreview] Starting playback')
     isPlaying = true
 
@@ -807,6 +849,106 @@
     const mm = Math.floor(total / 60)
     const ss = total % 60
     return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
+  }
+
+  // ✂️ 裁剪相关函数
+  // 初始化 trimStore
+  $effect(() => {
+    if (timelineMaxMs > 0 && totalFramesAll > 0 && !hasInitializedTrim) {
+      trimStore.initialize(timelineMaxMs, frameRate, totalFramesAll)
+      hasInitializedTrim = true
+      console.log('✂️ [VideoPreview] Trim store initialized')
+    } else if (timelineMaxMs > 0 && totalFramesAll > 0 && hasInitializedTrim) {
+      trimStore.updateParameters(timelineMaxMs, frameRate, totalFramesAll)
+    }
+  })
+
+  // 计算裁剪手柄的位置百分比
+  const trimStartPercent = $derived(timelineMaxMs > 0 ? (trimStore.trimStartMs / timelineMaxMs) * 100 : 0)
+  const trimEndPercent = $derived(timelineMaxMs > 0 ? (trimStore.trimEndMs / timelineMaxMs) * 100 : 100)
+
+  // 将像素位置转换为时间（毫秒）
+  function pixelToTimeMs(pixelX: number): number {
+    if (!timelineContainerEl) return 0
+    const rect = timelineContainerEl.getBoundingClientRect()
+    const relativeX = Math.max(0, Math.min(pixelX - rect.left, rect.width))
+    return (relativeX / rect.width) * timelineMaxMs
+  }
+
+  // 处理裁剪开始手柄拖拽
+  function handleTrimStartDrag(e: MouseEvent) {
+    if (isProcessing) return
+    e.preventDefault()
+    e.stopPropagation()
+    isDraggingTrimStart = true
+    trimStore.enable()
+
+    // 暂停播放以便进行精确拖拽
+    const wasPlaying = isPlaying
+    if (wasPlaying) {
+      pause()
+    }
+
+    const handleMove = (moveEvent: MouseEvent) => {
+      const newTime = pixelToTimeMs(moveEvent.clientX)
+      trimStore.setTrimStart(newTime)
+      // ✂️ 拖拽时实时 seek 预览视频到裁剪开始位置
+      seekToGlobalTime(newTime)
+      console.log('✂️ [Trim] Dragging trim start, seeking to:', newTime, 'ms')
+    }
+
+    const handleUp = () => {
+      isDraggingTrimStart = false
+      document.removeEventListener('mousemove', handleMove)
+      document.removeEventListener('mouseup', handleUp)
+      console.log('✂️ [Trim] Trim start drag ended at:', trimStore.trimStartMs, 'ms')
+      
+      // 如果之前在播放，可选择恢复播放（暂时不恢复，让用户手动控制）
+      // if (wasPlaying) {
+      //   play()
+      // }
+    }
+
+    document.addEventListener('mousemove', handleMove)
+    document.addEventListener('mouseup', handleUp)
+  }
+
+  // 处理裁剪结束手柄拖拽
+  function handleTrimEndDrag(e: MouseEvent) {
+    if (isProcessing) return
+    e.preventDefault()
+    e.stopPropagation()
+    isDraggingTrimEnd = true
+    trimStore.enable()
+
+    // 暂停播放以便进行精确拖拽
+    const wasPlaying = isPlaying
+    if (wasPlaying) {
+      pause()
+    }
+
+    const handleMove = (moveEvent: MouseEvent) => {
+      const newTime = pixelToTimeMs(moveEvent.clientX)
+      trimStore.setTrimEnd(newTime)
+      // ✂️ 拖拽时实时 seek 预览视频到裁剪结束位置
+      seekToGlobalTime(newTime)
+      console.log('✂️ [Trim] Dragging trim end, seeking to:', newTime, 'ms')
+    }
+
+    const handleUp = () => {
+      isDraggingTrimEnd = false
+      document.removeEventListener('mousemove', handleMove)
+      document.removeEventListener('mouseup', handleUp)
+      console.log('✂️ [Trim] Trim end drag ended at:', trimStore.trimEndMs, 'ms')
+      
+      // 如果之前在播放，可选择恢复播放（暂时不恢复，让用户手动控制）
+      // if (wasPlaying) {
+      //   play()
+      // }
+    }
+
+    document.addEventListener('mousemove', handleMove)
+    document.addEventListener('mouseup', handleUp)
   }
 
   // ===== Debug logging for timer and frame jumps =====
@@ -1274,17 +1416,71 @@
   <!-- Time axis - fixed height (based on real duration, milliseconds) -->
   {#if showTimeline && timelineMaxMs > 0}
     <div class="flex-shrink-0 p-3 bg-gray-800">
-      <input
-        type="range"
-        class="w-full h-1 bg-gray-600 rounded-sm outline-none cursor-pointer timeline-slider"
-        min="0"
-        max={timelineMaxMs}
-        value={Math.min(timelineMaxMs, Math.floor((windowStartIndex + currentFrameIndex) / frameRate * 1000))}
-        oninput={(e) => handleTimelineInput(parseInt((e.target as HTMLInputElement).value))}
-        disabled={isProcessing}
-      />
-      <div class="flex justify-between items-center mt-1">
+      <!-- 时间轴容器，包含进度条和裁剪手柄 -->
+      <div bind:this={timelineContainerEl} class="relative w-full mb-3">
+        <!-- 裁剪区域背景（被裁减的部分） -->
+        {#if trimStore.enabled}
+          <!-- 左侧遮罩 -->
+          <div
+            class="absolute top-0 left-0 h-2 bg-black/40 pointer-events-none rounded-l"
+            style="width: {trimStartPercent}%"
+          ></div>
+          <!-- 右侧遮罩 -->
+          <div
+            class="absolute top-0 h-2 bg-black/40 pointer-events-none rounded-r"
+            style="left: {trimEndPercent}%; width: {100 - trimEndPercent}%"
+          ></div>
+          <!-- 裁剪区域高亮 -->
+          <div
+            class="absolute top-0 h-2 bg-blue-500/20 pointer-events-none"
+            style="left: {trimStartPercent}%; width: {trimEndPercent - trimStartPercent}%"
+          ></div>
+        {/if}
+
+        <!-- 主进度条 -->
+        <input
+          type="range"
+          class="w-full h-2 bg-gray-600 rounded outline-none cursor-pointer timeline-slider relative z-10"
+          min="0"
+          max={timelineMaxMs}
+          value={Math.min(timelineMaxMs, Math.floor((windowStartIndex + currentFrameIndex) / frameRate * 1000))}
+          oninput={(e) => handleTimelineInput(parseInt((e.target as HTMLInputElement).value))}
+          disabled={isProcessing}
+        />
+
+        <!-- 裁剪开始手柄（左侧剪刀） -->
+        {#if trimStore.enabled}
+          <button
+            class="absolute top-1/2 -translate-y-1/2 w-8 h-8 -ml-4 bg-blue-500 hover:bg-blue-600 rounded-full shadow-lg cursor-ew-resize flex items-center justify-center transition-all z-20 group"
+            class:ring-4={isDraggingTrimStart}
+            class:ring-blue-300={isDraggingTrimStart}
+            style="left: {trimStartPercent}%"
+            onmousedown={handleTrimStartDrag}
+            title="Drag to set trim start"
+          >
+            <Scissors class="w-4 h-4 text-white" />
+          </button>
+        {/if}
+
+        <!-- 裁剪结束手柄（右侧剪刀） -->
+        {#if trimStore.enabled}
+          <button
+            class="absolute top-1/2 -translate-y-1/2 w-8 h-8 -mr-4 bg-blue-500 hover:bg-blue-600 rounded-full shadow-lg cursor-ew-resize flex items-center justify-center transition-all z-20 group"
+            class:ring-4={isDraggingTrimEnd}
+            class:ring-blue-300={isDraggingTrimEnd}
+            style="left: {trimEndPercent}%"
+            onmousedown={handleTrimEndDrag}
+            title="Drag to set trim end"
+          >
+            <Scissors class="w-4 h-4 text-white" />
+          </button>
+        {/if}
+      </div>
+
+      <!-- 控制按钮和信息 -->
+      <div class="flex justify-between items-center">
         <div class="flex items-center gap-2 text-white text-sm">
+          <!-- 播放/暂停按钮 -->
           <button
             class="flex items-center justify-center w-8 h-8 border border-gray-600 text-white rounded cursor-pointer transition-all duration-200 hover:bg-gray-700 hover:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
             onclick={isPlaying ? pause : play}
@@ -1296,15 +1492,39 @@
               <Play class="w-4 h-4" />
             {/if}
           </button>
+          
+          <!-- 启用/禁用裁剪按钮 -->
+          <button
+            class="flex items-center justify-center gap-1 px-2 py-1 text-xs rounded transition-all duration-200"
+            class:bg-blue-500={trimStore.enabled}
+            class:text-white={trimStore.enabled}
+            class:hover:bg-blue-600={trimStore.enabled}
+            class:bg-gray-700={!trimStore.enabled}
+            class:text-gray-300={!trimStore.enabled}
+            class:hover:bg-gray-600={!trimStore.enabled}
+            onclick={() => trimStore.toggle()}
+            disabled={isProcessing}
+            title={trimStore.enabled ? 'Disable trim' : 'Enable trim'}
+          >
+            <Scissors class="w-3 h-3" />
+            {trimStore.enabled ? 'Trim On' : 'Trim Off'}
+          </button>
+
           <span class="font-mono text-sm text-gray-300 ml-2">
             {formatTimeSec((windowStartIndex + currentFrameIndex) / frameRate)} / {formatTimeSec(uiDurationSec)}
           </span>
+          
+          <!-- 裁剪信息 -->
+          {#if trimStore.enabled}
+            <span class="text-xs text-blue-400 font-semibold">
+              ✂️ {formatTimeSec(trimStore.trimDurationMs / 1000)} ({trimStore.trimFrameCount} frames)
+            </span>
+          {/if}
         </div>
+        
         <div class="flex items-center gap-4 text-xs text-gray-400">
           <span>Frame: {windowStartIndex + currentFrameIndex + 1}/{totalFramesAll > 0 ? totalFramesAll : (totalFrames > 0 ? totalFrames : encodedChunks.length)}</span>
-          <span>Window: {windowStartIndex + 1}-{windowStartIndex + totalFrames}/{totalFramesAll}</span>
           <span>Resolution: {outputWidth}×{outputHeight}</span>
-          <span>Duration: {Math.floor(timelineMaxMs / 1000)}s</span>
         </div>
       </div>
     </div>

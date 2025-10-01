@@ -324,6 +324,7 @@
           windowEndMs={windowEndMs}
           totalFramesAll={globalTotalFrames}
           windowStartIndex={windowStartIndex}
+          keyframeInfo={keyframeInfo}
           onRequestWindow={({ centerMs, beforeMs, afterMs }) => {
             console.log('[progress] Parent component - window request:', { centerMs, beforeMs, afterMs })
 

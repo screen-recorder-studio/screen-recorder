@@ -166,6 +166,14 @@ export interface ExportOptions {
   saveToOpfs?: boolean
   // 指定写入 OPFS 的文件名（不含路径），缺省时自动生成
   opfsFileName?: string
+  // 视频裁剪配置
+  trim?: {
+    enabled: boolean
+    startMs: number
+    endMs: number
+    startFrame: number
+    endFrame: number
+  }
 }
 
 export interface ExportProgress {

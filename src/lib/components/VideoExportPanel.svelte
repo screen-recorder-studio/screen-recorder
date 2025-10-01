@@ -3,6 +3,7 @@
   import { Download, Video, Film, LoaderCircle, Info, TriangleAlert, CircleCheck, Clock } from '@lucide/svelte'
   import { ExportManager } from '$lib/services/export-manager'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
+  import { trimStore } from '$lib/stores/trim.svelte'
 
   // Props
   interface Props {
@@ -211,7 +212,15 @@
             if (!opfsDirId) return undefined
             const ts = new Date().toISOString().replace(/[:.]/g, '-')
             return `edited-video-${ts}.webm`
-          })()
+          })(),
+          // 🔧 裁剪参数
+          trim: trimStore.enabled ? {
+            enabled: true,
+            startMs: trimStore.trimStartMs,
+            endMs: trimStore.trimEndMs,
+            startFrame: trimStore.trimStartFrame,
+            endFrame: trimStore.trimEndFrame
+          } : undefined
         },
         (progress) => {
           // Cache and throttle update non-critical fields, avoid high-frequency re-rendering of entire block area
@@ -351,7 +360,15 @@
           backgroundConfig: plainBackgroundConfig as any,
           quality: 'medium',
           source: opfsDirId ? 'opfs' : 'chunks',
-          opfsDirId: opfsDirId || undefined
+          opfsDirId: opfsDirId || undefined,
+          // 🔧 裁剪参数
+          trim: trimStore.enabled ? {
+            enabled: true,
+            startMs: trimStore.trimStartMs,
+            endMs: trimStore.trimEndMs,
+            startFrame: trimStore.trimStartFrame,
+            endFrame: trimStore.trimEndFrame
+          } : undefined
         },
         (progress) => {
           // Cache and throttle update non-critical fields, avoid high-frequency re-rendering of entire block area
@@ -474,6 +491,9 @@
         <span class="bg-blue-500 text-white px-2 py-1 rounded">{displayTotalFrames} frames</span>
         {#if backgroundConfig}
           <span class="bg-emerald-500 text-white px-2 py-1 rounded">With Background</span>
+        {/if}
+        {#if trimStore.enabled}
+          <span class="bg-orange-500 text-white px-2 py-1 rounded">✂️ Trimmed ({trimStore.trimFrameCount} frames)</span>
         {/if}
       {:else}
         <span class="text-slate-500">No recording data</span>
