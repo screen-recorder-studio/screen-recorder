@@ -47,7 +47,21 @@ function ensureEncoder() {
 }
 
 async function flushAndClose() {
-  try { await encoder?.flush?.(); } catch {}
+  try {
+    if (encoder) {
+      const queueBefore = encoder.encodeQueueSize;
+      console.log(`[Encoder] Flushing (queue: ${queueBefore})...`);
+      await encoder.flush();
+      const queueAfter = encoder.encodeQueueSize;
+      console.log(`[Encoder] Flushed (queue: ${queueAfter})`);
+
+      if (queueAfter > 0) {
+        console.warn(`⚠️ [Encoder] Queue not empty after flush: ${queueAfter}`);
+      }
+    }
+  } catch (e) {
+    console.error(`[Encoder] Flush error:`, e);
+  }
   try { encoder?.close?.(); } catch {}
   encoder = null;
   configured = false;

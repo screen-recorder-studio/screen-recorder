@@ -56,6 +56,17 @@ const BUFFER_CONFIG = {
 let lowWatermarkNotified = false;
 let criticalWatermarkNotified = false;
 
+// 🚀 P1 优化：帧缓冲限制，防止内存无限增长
+const FRAME_BUFFER_LIMITS = {
+  maxDecodedFrames: 150,      // 当前窗口最大帧数 (~5秒@30fps, ~1.2GB @ 1080p)
+  maxNextDecoded: 120,        // 预取窗口最大帧数 (~4秒@30fps, ~1GB @ 1080p)
+  warningThreshold: 0.9       // 90% 时警告
+};
+
+// 统计信息
+let droppedFramesCount = 0;
+let lastBufferWarningTime = 0;
+
 // 固定的视频布局（避免每帧重新计算）
 let fixedVideoLayout: VideoLayout | null = null;
 let videoInfo: { width: number; height: number } | null = null;
@@ -627,7 +638,42 @@ function startStreamingDecode(chunks: any[]) {
     videoDecoder = new VideoDecoder({
       output: (frame: VideoFrame) => {
         const targetBuf = (outputTarget === 'next') ? nextDecoded : decodedFrames;
+        const maxSize = (outputTarget === 'next') ? FRAME_BUFFER_LIMITS.maxNextDecoded : FRAME_BUFFER_LIMITS.maxDecodedFrames;
+
+        // 🚀 P1 优化：帧缓冲限制
+        if (targetBuf.length >= maxSize) {
+          const bufferName = (outputTarget === 'next') ? 'nextDecoded' : 'decodedFrames';
+          console.warn(`⚠️ [COMPOSITE-WORKER] Buffer full (${bufferName}: ${targetBuf.length}/${maxSize}), dropping oldest frame`);
+
+          const oldest = targetBuf.shift();
+          try {
+            oldest?.close();
+          } catch (e) {
+            console.warn('[COMPOSITE-WORKER] Failed to close dropped frame:', e);
+          }
+
+          droppedFramesCount++;
+
+          // 每10个丢帧或每5秒报告一次
+          const now = Date.now();
+          if (droppedFramesCount % 10 === 0 || now - lastBufferWarningTime > 5000) {
+            console.warn(`⚠️ [COMPOSITE-WORKER] Total frames dropped: ${droppedFramesCount}`);
+            lastBufferWarningTime = now;
+          }
+        }
+
+        // 缓冲区接近满时警告
+        if (targetBuf.length >= maxSize * FRAME_BUFFER_LIMITS.warningThreshold) {
+          const bufferName = (outputTarget === 'next') ? 'nextDecoded' : 'decodedFrames';
+          const now = Date.now();
+          if (now - lastBufferWarningTime > 5000) {
+            console.warn(`⚠️ [COMPOSITE-WORKER] Buffer approaching limit (${bufferName}: ${targetBuf.length}/${maxSize})`);
+            lastBufferWarningTime = now;
+          }
+        }
+
         targetBuf.push(frame);
+
         // 仅当输出到当前窗口时，才执行日志与 pending seek 渲染
         if (outputTarget !== 'next') {
           if (decodedFrames.length % 60 === 0) {
@@ -974,6 +1020,15 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         criticalWatermarkNotified = false;
 
         currentConfig = data.backgroundConfig;
+
+        // 🚀 P1 优化：报告缓冲区状态
+        console.log('📊 [COMPOSITE-WORKER] Buffer status:', {
+          decodedFrames: decodedFrames.length,
+          nextDecoded: nextDecoded.length,
+          limits: FRAME_BUFFER_LIMITS,
+          droppedFrames: droppedFramesCount,
+          estimatedMemory: `${((decodedFrames.length + nextDecoded.length) * 8).toFixed(0)}MB (@ 1080p)`
+        });
 
         console.log('🔧 [COMPOSITE-WORKER] Received config:', {
           type: currentConfig.type,

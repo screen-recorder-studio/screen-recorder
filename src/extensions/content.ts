@@ -977,7 +977,7 @@
               break;
           }
         };
-        state.worker.postMessage({ type: 'configure', codec: 'auto', width, height, framerate, bitrate: 4_000_000 });
+        state.worker.postMessage({ type: 'configure', codec: 'auto', width, height, framerate, bitrate: 8_000_000 });
 
         // 建立逐帧处理，逐帧转交给 worker 编码（转移所有权零拷贝）
         state.processor = new MediaStreamTrackProcessor({ track: state.track });

@@ -317,50 +317,51 @@
             break
           case 'complete':
             try {
-              const finalU8: Uint8Array = data
-              log('🎞️ WebCodecs final data received:', { bytes: finalU8?.byteLength })
-              const _copy = new Uint8Array(finalU8.byteLength); _copy.set(finalU8); const finalBlob = new Blob([_copy], { type: 'video/webm' })
+              log('🎞️ WebCodecs encoding complete')
               const stopTs = new Date().toISOString()
               const duration = recordingStartTime ? Date.now() - recordingStartTime : 0
 
-              // Request OPFS finalize
-              try {
-                if (OPFS_WRITER_ENABLED) {
-                  if (!opfsWriterReady || opfsPendingChunks.length > 0) {
-                    opfsEndPending = true
-                  } else {
-                    void finalizeOpfsWriter()
-                  }
-                }
-              } catch {}
-
-              const readerFR = new FileReader()
-              readerFR.onloadend = () => {
+              // ✅ 延迟100ms确保所有chunks到达OPFS Writer
+              setTimeout(() => {
                 try {
-                  log('[stop-share] offscreen: sending RECORDING_COMPLETE')
-                  chrome.runtime.sendMessage({
-                    type: 'RECORDING_COMPLETE',
-                    target: 'service-worker',
-                    data: {
-                      videoBlob: readerFR.result, // Base64 encoded
-                      metadata: {
-                        size: finalBlob.size,
-                        type: finalBlob.type,
-                        duration,
-                        chunks: recordedChunks.length,
-                        timestamp: stopTs,
-                        engine: 'webcodecs',
-                        width,
-                        height,
-                        framerate
-                      }
+                  if (OPFS_WRITER_ENABLED) {
+                    if (!opfsWriterReady || opfsPendingChunks.length > 0) {
+                      log(`⏳ OPFS not ready or has pending chunks (${opfsPendingChunks.length}), deferring finalize`)
+                      opfsEndPending = true
+                    } else {
+                      log('✅ Finalizing OPFS writer')
+                      void finalizeOpfsWriter()
                     }
-                  })
-                } catch {}
+                  }
+                } catch (e) {
+                  log('❌ Failed to finalize OPFS:', e)
+                }
+              }, 100)
+
+              // 通知录制完成（不再发送base64 blob，使用OPFS）
+              try {
+                log('[stop-share] offscreen: sending RECORDING_COMPLETE')
+                chrome.runtime.sendMessage({
+                  type: 'RECORDING_COMPLETE',
+                  target: 'service-worker',
+                  data: {
+                    metadata: {
+                      duration,
+                      chunks: recordedChunks.length,
+                      timestamp: stopTs,
+                      engine: 'webcodecs',
+                      width,
+                      height,
+                      framerate,
+                      useOpfs: OPFS_WRITER_ENABLED
+                    }
+                  }
+                })
+              } catch (e) {
+                log('❌ Failed to send RECORDING_COMPLETE:', e)
               }
-              readerFR.readAsDataURL(finalBlob)
             } catch (e) {
-              log('❌ Failed to process final WebCodecs data:', e)
+              log('❌ Failed to process complete message:', e)
             }
             break
         }

@@ -307,15 +307,41 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
       const chunks: ChunkWire[] = []
       const transfer: ArrayBuffer[] = []
 
+      // 🚀 P0 优化：批量读取，减少 I/O 次数
+      const startOffset = indexEntries[startIdx].offset
+      const endEntry = indexEntries[endIdx - 1]
+      const endOffset = endEntry.offset + endEntry.size
+
+      console.log('[OPFS-READER] Batch read optimization:', {
+        startIdx,
+        endIdx,
+        count: endIdx - startIdx,
+        startOffset,
+        endOffset,
+        totalBytes: endOffset - startOffset,
+        oldMethod: `${endIdx - startIdx} I/O operations`,
+        newMethod: '1 I/O operation'
+      })
+
+      // 一次性读取整个窗口的数据
+      const batchReadStart = performance.now()
+      const totalSlice = file.slice(startOffset, endOffset)
+      const totalBuf = await totalSlice.arrayBuffer()
+      const batchReadTime = performance.now() - batchReadStart
+
+      console.log(`✅ [OPFS-READER] Batch read completed in ${batchReadTime.toFixed(1)}ms`)
+
+      // 切分为单个 chunks
       for (let i = startIdx; i < endIdx; i++) {
         const ent = indexEntries[i]
-        const slice = file.slice(ent.offset, ent.offset + ent.size)
-        const buf = await slice.arrayBuffer()
+        const relativeOffset = ent.offset - startOffset
+        const buf = totalBuf.slice(relativeOffset, relativeOffset + ent.size)
+
         const wire: ChunkWire = {
           data: buf,
           timestamp: Number(ent.timestamp) || 0,
           type: (ent.type === 'key' ? 'key' : 'delta'),
-          size: Number(ent.size) || (buf.byteLength || 0),
+          size: Number(ent.size) || buf.byteLength,
           codedWidth: ent.codedWidth,
           codedHeight: ent.codedHeight,
           codec: ent.codec
@@ -383,16 +409,41 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
       const chunks: ChunkWire[] = []
       const transfer: ArrayBuffer[] = []
 
+      // 🚀 P0 优化：批量读取，减少 I/O 次数
+      const startOffset = indexEntries[start].offset
+      const endEntry = indexEntries[end - 1]
+      const endOffset = endEntry.offset + endEntry.size
+
+      console.log('[OPFS-READER] Batch read optimization (getRange):', {
+        start,
+        end,
+        count: end - start,
+        startOffset,
+        endOffset,
+        totalBytes: endOffset - startOffset,
+        oldMethod: `${end - start} I/O operations`,
+        newMethod: '1 I/O operation'
+      })
+
+      // 一次性读取整个窗口的数据
+      const batchReadStart = performance.now()
+      const totalSlice = file.slice(startOffset, endOffset)
+      const totalBuf = await totalSlice.arrayBuffer()
+      const batchReadTime = performance.now() - batchReadStart
+
+      console.log(`✅ [OPFS-READER] Batch read completed in ${batchReadTime.toFixed(1)}ms`)
+
+      // 切分为单个 chunks
       for (let i = start; i < end; i++) {
         const ent = indexEntries[i]
-        // boundary guard
-        const slice = file.slice(ent.offset, ent.offset + ent.size)
-        const buf = await slice.arrayBuffer()
+        const relativeOffset = ent.offset - startOffset
+        const buf = totalBuf.slice(relativeOffset, relativeOffset + ent.size)
+
         const wire: ChunkWire = {
           data: buf,
           timestamp: Number(ent.timestamp) || 0,
           type: (ent.type === 'key' ? 'key' : 'delta'),
-          size: Number(ent.size) || (buf.byteLength || 0),
+          size: Number(ent.size) || buf.byteLength,
           codedWidth: ent.codedWidth,
           codedHeight: ent.codedHeight,
           codec: ent.codec

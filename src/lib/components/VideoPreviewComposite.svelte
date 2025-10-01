@@ -105,8 +105,16 @@
 
     // Priority 1: Use global duration (based on global frame count)
     if (totalFramesAll > 0 && frameRate > 0) {
-      result = Math.max(1, Math.floor((totalFramesAll / frameRate) * 1000))
-      console.log('[progress] timelineMaxMs: using global frames:', { totalFramesAll, frameRate, result })
+      // 🐛 修复进度条末尾空白：使用最后一帧的时间戳，而不是总时长
+      // 原因：帧索引从 0 开始，最后一帧索引 = totalFramesAll - 1
+      // 这样当播放到最后一帧时，进度条可以到达 100%
+      result = Math.max(1, Math.floor(((totalFramesAll - 1) / frameRate) * 1000))
+      console.log('[progress] timelineMaxMs: using global frames (last frame):', {
+        totalFramesAll,
+        lastFrameIndex: totalFramesAll - 1,
+        frameRate,
+        result
+      })
     }
     // Priority 2: Use passed real duration
     else if (durationMs > 0) {
@@ -115,8 +123,14 @@
     }
     // Priority 3: Use current window frame count calculation
     else if (totalFrames > 0 && frameRate > 0) {
-      result = Math.max(1, Math.floor((totalFrames / frameRate) * 1000))
-      console.log('[progress] timelineMaxMs: using window frames:', { totalFrames, frameRate, result })
+      // 🐛 修复进度条末尾空白：使用最后一帧的时间戳
+      result = Math.max(1, Math.floor(((totalFrames - 1) / frameRate) * 1000))
+      console.log('[progress] timelineMaxMs: using window frames (last frame):', {
+        totalFrames,
+        lastFrameIndex: totalFrames - 1,
+        frameRate,
+        result
+      })
     }
     // Priority 4: Use window duration
     else if (windowEndMs > windowStartMs) {
