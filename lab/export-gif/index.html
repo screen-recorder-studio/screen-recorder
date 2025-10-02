@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GIF 导出测试 - gif.js</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 2.5em;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .section-title {
+            font-size: 1.2em;
+            color: #555;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            color: #666;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+        }
+
+        .value-display {
+            color: #667eea;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        select {
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #666;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #d0d0d0;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .canvas-container, .result-container {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 300px;
+            justify-content: center;
+        }
+
+        canvas, video {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        #result {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .status.info {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .status.success {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .status.processing {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .progress-bar.active {
+            display: block;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+
+        .file-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .webcam-controls {
+            margin-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 GIF 导出测试</h1>
+
+        <div class="content-grid">
+            <div class="section">
+                <h2 class="section-title">📹 视频源</h2>
+                <div class="canvas-container">
+                    <video id="video" width="400" controls style="display: none;"></video>
+                    <canvas id="canvas" width="400" height="300"></canvas>
+                </div>
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="source-select">选择源:</label>
+                        <select id="source-select">
+                            <option value="canvas">Canvas 动画</option>
+                            <option value="video">视频文件</option>
+                            <option value="webcam">摄像头</option>
+                        </select>
+                    </div>
+                    <input type="file" id="video-file" accept="video/*" style="display: none;">
+                    <div class="webcam-controls" style="display: none;">
+                        <button class="btn-secondary" id="start-webcam">开启摄像头</button>
+                        <button class="btn-secondary" id="stop-webcam" disabled>关闭摄像头</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">🖼️ GIF 输出</h2>
+                <div class="result-container">
+                    <img id="result" style="display: none;">
+                    <div id="placeholder" style="color: #999;">GIF 将显示在这里</div>
+                </div>
+                <div class="file-info" id="file-info" style="display: none;"></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">⚙️ 设置</h2>
+            <div class="controls">
+                <div class="control-group">
+                    <label for="quality">
+                        采样质量: <span class="value-display" id="quality-value">10</span>
+                    </label>
+                    <input type="range" id="quality" min="1" max="30" value="10">
+                    <small style="color: #999;">1=最高质量(慢) | 10=平衡 | 30=最低质量(快)</small>
+                </div>
+
+                <div class="control-group">
+                    <label for="workers">
+                        工作线程数: <span class="value-display" id="workers-value">2</span>
+                    </label>
+                    <input type="range" id="workers" min="1" max="8" value="2">
+                </div>
+
+                <div class="control-group">
+                    <label for="frame-rate">
+                        帧率 (FPS): <span class="value-display" id="frame-rate-value">10</span>
+                    </label>
+                    <input type="range" id="frame-rate" min="1" max="30" value="10">
+                </div>
+
+                <div class="control-group">
+                    <label for="duration">
+                        录制时长 (秒): <span class="value-display" id="duration-value">3</span>
+                    </label>
+                    <input type="range" id="duration" min="1" max="10" value="3">
+                </div>
+
+                <div class="control-group">
+                    <label for="width">
+                        宽度: <span class="value-display" id="width-value">400</span>px
+                    </label>
+                    <input type="range" id="width" min="100" max="1920" value="400" step="10">
+                </div>
+
+                <div class="control-group">
+                    <label for="height">
+                        高度: <span class="value-display" id="height-value">300</span>px
+                    </label>
+                    <input type="range" id="height" min="100" max="1080" value="300" step="10">
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn-primary" id="start-recording">开始录制</button>
+                <button class="btn-secondary" id="stop-recording" disabled>停止录制</button>
+                <button class="btn-secondary" id="download-gif" disabled>下载 GIF</button>
+            </div>
+        </div>
+
+        <div class="status info" id="status">准备就绪</div>
+        <div class="progress-bar" id="progress-bar">
+            <div class="progress-fill" id="progress-fill" style="width: 0%">0%</div>
+        </div>
+    </div>
+
+    <script src="gif.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
