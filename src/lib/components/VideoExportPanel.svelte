@@ -212,10 +212,9 @@
             totalFrames: progress.totalFrames,
             estimatedTimeRemaining: progress.estimatedTimeRemaining || 0
           }
-          // Use worker-reported overall percentage; cap below 100 until completion
-          const pct = typeof progress.progress === 'number' ? progress.progress : 0
-          const capped = Math.min(pct, 99.5)
-          setProgressTarget(capped)
+          const denomGif = displayTotalFrames || progress.totalFrames || 0
+          const frameBasedPctGif = denomGif > 0 ? (progress.currentFrame / denomGif) * 100 : progress.progress
+          setProgressTarget(frameBasedPctGif)
           scheduleProgressFieldsUpdate()
         }
       )
@@ -832,7 +831,7 @@
   isExporting={isExportingGIF}
   exportProgress={exportProgress?.type === 'gif' ? {
     stage: exportProgress.stage,
-    progress: Math.floor(displayedProgress),
+    progress: displayedProgress,
     currentFrame: exportProgress.currentFrame,
     totalFrames: exportProgress.totalFrames
   } : null}
