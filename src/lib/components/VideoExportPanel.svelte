@@ -5,6 +5,7 @@
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import { trimStore } from '$lib/stores/trim.svelte'
   import { videoCropStore } from '$lib/stores/video-crop.svelte'
+  import GifExportDialog, { type GifExportOptions } from './GifExportDialog.svelte'
 
   // Props
   interface Props {
@@ -32,8 +33,13 @@
   // Export status
   let isExportingWebM = $state(false)
   let isExportingMP4 = $state(false)
+  let isExportingGIF = $state(false)
+  let isGifLibReady = $state(false)
+
+  // GIF 导出对话框
+  let showGifDialog = $state(false)
   let exportProgress = $state<{
-    type: 'webm' | 'mp4'
+    type: 'webm' | 'mp4' | 'gif'
     stage: 'preparing' | 'compositing' | 'encoding' | 'muxing' | 'finalizing'
     progress: number
     currentFrame: number
@@ -46,6 +52,197 @@
   let displayedProgress = $state(0)
   let targetProgress = $state(0)
   let rafId: number | null = null
+
+  // Lazy-load gif.js from /gif/gif.js and verify availability
+  async function ensureGifLibLoaded(): Promise<boolean> {
+    if (typeof window === 'undefined') return false
+    // already loaded
+    if ((window as any).GIF) {
+      return true
+    }
+    return await new Promise<boolean>((resolve) => {
+      const script = document.createElement('script')
+      script.src = '/gif/gif.js'
+      script.async = true
+      script.onload = () => {
+        const ok = Boolean((window as any).GIF)
+        if (ok) {
+          console.log('✅ [Export] gif.js loaded, GIF constructor available')
+        } else {
+          console.warn('⚠️ [Export] gif.js loaded but GIF constructor not found')
+        }
+        resolve(ok)
+      }
+      script.onerror = () => {
+        console.error('❌ [Export] Failed to load /gif/gif.js')
+        resolve(false)
+      }
+      document.head.appendChild(script)
+    })
+  }
+
+  // 打开 GIF 导出对话框
+  function openGifExportDialog() {
+    if (!canExport) return
+    showGifDialog = true
+  }
+
+  // 执行 GIF 导出
+  async function performGifExport(options: GifExportOptions) {
+    if (!canExport) return
+
+    try {
+      isExportingGIF = true
+      exportProgress = {
+        type: 'gif',
+        stage: 'preparing',
+        progress: 0,
+        currentFrame: 0,
+        totalFrames: encodedChunks.length,
+        estimatedTimeRemaining: 0
+      }
+
+      console.log('🎨 [Export] Starting GIF export with', encodedChunks.length, 'chunks')
+      console.log('🎨 [Export] GIF options:', options)
+
+      // 确保 gif.js 已加载
+      const gifLibLoaded = await ensureGifLibLoaded()
+      if (!gifLibLoaded) {
+        throw new Error('Failed to load gif.js library')
+      }
+      isGifLibReady = true
+
+      // Convert Svelte 5 Proxy objects to plain objects
+      const plainBackgroundConfig = backgroundConfig ? {
+        type: backgroundConfig.type,
+        color: backgroundConfig.color,
+        padding: backgroundConfig.padding,
+        outputRatio: backgroundConfig.outputRatio,
+        videoPosition: backgroundConfig.videoPosition,
+        borderRadius: backgroundConfig.borderRadius,
+        inset: backgroundConfig.inset,
+        gradient: backgroundConfig.gradient ? {
+          type: backgroundConfig.gradient.type,
+          ...(backgroundConfig.gradient.type === 'linear' && 'angle' in backgroundConfig.gradient ? { angle: backgroundConfig.gradient.angle } : {}),
+          ...(backgroundConfig.gradient.type === 'radial' && 'centerX' in backgroundConfig.gradient ? {
+            centerX: backgroundConfig.gradient.centerX,
+            centerY: backgroundConfig.gradient.centerY,
+            radius: backgroundConfig.gradient.radius
+          } : {}),
+          ...(backgroundConfig.gradient.type === 'conic' && 'centerX' in backgroundConfig.gradient ? {
+            centerX: backgroundConfig.gradient.centerX,
+            centerY: backgroundConfig.gradient.centerY,
+            angle: 'angle' in backgroundConfig.gradient ? backgroundConfig.gradient.angle : 0
+          } : {}),
+          stops: backgroundConfig.gradient.stops.map(stop => ({
+            color: stop.color,
+            position: stop.position
+          }))
+        } : undefined,
+        shadow: backgroundConfig.shadow ? {
+          offsetX: backgroundConfig.shadow.offsetX,
+          offsetY: backgroundConfig.shadow.offsetY,
+          blur: backgroundConfig.shadow.blur,
+          color: backgroundConfig.shadow.color
+        } : undefined,
+        image: backgroundConfig.image ? {
+          imageId: backgroundConfig.image.imageId,
+          imageBitmap: backgroundConfig.image.imageBitmap,
+          fit: backgroundConfig.image.fit,
+          position: backgroundConfig.image.position,
+          opacity: backgroundConfig.image.opacity,
+          blur: backgroundConfig.image.blur,
+          scale: backgroundConfig.image.scale,
+          offsetX: backgroundConfig.image.offsetX,
+          offsetY: backgroundConfig.image.offsetY
+        } : undefined,
+        wallpaper: backgroundConfig.wallpaper ? {
+          imageId: backgroundConfig.wallpaper.imageId,
+          imageBitmap: backgroundConfig.wallpaper.imageBitmap,
+          fit: backgroundConfig.wallpaper.fit,
+          position: backgroundConfig.wallpaper.position,
+          opacity: backgroundConfig.wallpaper.opacity,
+          blur: backgroundConfig.wallpaper.blur,
+          scale: backgroundConfig.wallpaper.scale,
+          offsetX: backgroundConfig.wallpaper.offsetX,
+          offsetY: backgroundConfig.wallpaper.offsetY
+        } : undefined,
+        videoCrop: videoCropStore.getCropConfig()
+      } : undefined
+
+      console.log('🎨 [Export] GIF export config:', {
+        hasBackgroundConfig: !!plainBackgroundConfig,
+        videoCrop: plainBackgroundConfig?.videoCrop,
+        videoCropEnabled: plainBackgroundConfig?.videoCrop?.enabled
+      })
+
+      // 使用对话框中的 GIF 导出选项
+      const gifOptions = {
+        fps: options.fps,
+        quality: options.quality,
+        scale: options.scale,
+        workers: options.workers,
+        repeat: options.repeat,
+        dither: options.dither,
+        transparent: options.transparent
+      }
+
+      const gifBlob = await exportManager.exportEditedVideo(
+        encodedChunks,
+        {
+          format: 'gif',
+          includeBackground: !!plainBackgroundConfig,
+          backgroundConfig: plainBackgroundConfig as any,
+          quality: 'medium',
+          source: opfsDirId ? 'opfs' : 'chunks',
+          opfsDirId: opfsDirId || undefined,
+          trim: trimStore.enabled ? {
+            enabled: true,
+            startMs: trimStore.trimStartMs,
+            endMs: trimStore.trimEndMs,
+            startFrame: trimStore.trimStartFrame,
+            endFrame: trimStore.trimEndFrame
+          } : undefined,
+          gifOptions
+        },
+        (progress) => {
+          pendingProgress = {
+            stage: progress.stage,
+            currentFrame: progress.currentFrame,
+            totalFrames: progress.totalFrames,
+            estimatedTimeRemaining: progress.estimatedTimeRemaining || 0
+          }
+          // Use worker-reported overall percentage; cap below 100 until completion
+          const pct = typeof progress.progress === 'number' ? progress.progress : 0
+          const capped = Math.min(pct, 99.5)
+          setProgressTarget(capped)
+          scheduleProgressFieldsUpdate()
+        }
+      )
+
+      // Download file
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+      const filename = `edited-video-${timestamp}.gif`
+
+      // Ensure display progress reaches 100%
+      setProgressTarget(100)
+
+      await downloadBlob(gifBlob, filename)
+
+      console.log('✅ [Export] GIF export completed:', filename)
+
+      // 导出成功，关闭对话框
+      showGifDialog = false
+
+    } catch (error) {
+      console.error('❌ [Export] GIF export failed:', error)
+      // TODO: Show error message
+    } finally {
+      isExportingGIF = false
+      resetProgressAnimation()
+      exportProgress = null
+    }
+  }
 
   function resetProgressAnimation() {
     if (rafId) {
@@ -118,7 +315,8 @@
     isRecordingComplete &&
     encodedChunks.length > 0 &&
     !isExportingWebM &&
-    !isExportingMP4
+    !isExportingMP4 &&
+    !isExportingGIF
   )
 
   // Export WebM
@@ -497,6 +695,7 @@
 </script>
 
 <!-- Video export panel component -->
+
 <div class="flex flex-col gap-4 p-4 bg-slate-50 border border-slate-200 rounded-lg {className}">
   <div class="flex justify-between items-center">
     <div class="flex items-center gap-2">
@@ -518,11 +717,10 @@
     </div>
   </div>
 
-  <!-- Export button -->
+  <!-- Export buttons -->
   <div class="flex gap-3">
     <button
       class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-500 text-white text-sm font-medium rounded-md cursor-pointer transition-all duration-200 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
-
       disabled={!canExport}
       onclick={() => { resetProgressAnimation(); exportWebM() }}
     >
@@ -549,10 +747,32 @@
         Export MP4
       {/if}
     </button>
+
+    <!-- Export GIF -->
+    <button
+      class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-purple-500 text-white text-sm font-medium rounded-md cursor-pointer transition-all duration-200 hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
+      disabled={!canExport}
+      onclick={openGifExportDialog}
+    >
+      {#if isExportingGIF}
+        <LoaderCircle class="w-4 h-4 animate-spin" />
+        Exporting GIF...
+      {:else}
+        <Download class="w-4 h-4" />
+        Export GIF
+      {/if}
+    </button>
   </div>
 
-  <!-- Export progress -->
-  {#if exportProgress}
+  {#if isGifLibReady}
+    <div class="flex items-center gap-2 p-2 bg-emerald-50 border border-emerald-200 rounded text-xs text-emerald-800">
+      <CircleCheck class="w-3 h-3" />
+      GIF library loaded (gif.js ready)
+    </div>
+  {/if}
+
+  <!-- Export progress (仅显示 WebM 和 MP4 的进度，GIF 进度在对话框中显示) -->
+  {#if exportProgress && exportProgress.type !== 'gif'}
     <div class="bg-white border border-slate-200 rounded-md p-3">
       <div class="flex justify-between items-center mb-2">
         <span class="text-sm font-medium text-gray-700">
@@ -600,5 +820,22 @@
     </div>
   {/if}
 </div>
+
+<!-- GIF 导出设置对话框 -->
+<GifExportDialog
+  bind:open={showGifDialog}
+  onClose={() => { showGifDialog = false }}
+  onConfirm={performGifExport}
+  videoDuration={displayTotalFrames / 30}
+  videoWidth={1920}
+  videoHeight={1080}
+  isExporting={isExportingGIF}
+  exportProgress={exportProgress?.type === 'gif' ? {
+    stage: exportProgress.stage,
+    progress: Math.floor(displayedProgress),
+    currentFrame: exportProgress.currentFrame,
+    totalFrames: exportProgress.totalFrames
+  } : null}
+/>
 
 <!-- All styles have been migrated to Tailwind CSS -->

@@ -161,7 +161,7 @@ export type GradientDirection =
   | 'to-top-left'      // 315deg
 
 export interface ExportOptions {
-  format: 'webm' | 'mp4'
+  format: 'webm' | 'mp4' | 'gif'
   includeBackground: boolean
   backgroundConfig?: BackgroundConfig
   quality: 'high' | 'medium' | 'low'
@@ -189,10 +189,21 @@ export interface ExportOptions {
     startFrame: number
     endFrame: number
   }
+  // GIF 专用选项
+  gifOptions?: {
+    fps?: number // 帧率 (默认 10)
+    quality?: number // 质量 1-30 (默认 10)
+    scale?: number // 缩放比例 0-1 (默认 1.0)
+    workers?: number // Worker 线程数 (默认 2)
+    repeat?: number // 重复次数 (-1=不重复, 0=永远, 默认 0)
+    dither?: boolean | string // 抖动算法 (默认 false)
+    transparent?: string | null // 透明色 (默认 null)
+    debug?: boolean // 调试模式 (默认 false)
+  }
 }
 
 export interface ExportProgress {
-  type: 'webm' | 'mp4'
+  type: 'webm' | 'mp4' | 'gif'
   stage: 'preparing' | 'compositing' | 'encoding' | 'muxing' | 'finalizing'
   progress: number
   currentFrame: number

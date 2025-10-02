@@ -1,9 +1,11 @@
-// 导出管理器 - 统一处理 WebM 和 MP4 导出
+// 导出管理器 - 统一处理 WebM、MP4 和 GIF 导出
 import type { ExportOptions, ExportProgress, EncodedChunk } from '$lib/types/background'
+import { handleGifEncodeRequest, type GifFrameData } from './gif-encoder'
 
 export class ExportManager {
   private currentExportWorker: Worker | null = null
   private progressCallback: ((progress: ExportProgress) => void) | null = null
+  private gifEncodeHandler: ((event: MessageEvent) => void) | null = null
 
   /**
    * 导出编辑后的视频
@@ -38,6 +40,8 @@ export class ExportManager {
         return await this.exportWebM(exportData, options)
       } else if (options.format === 'mp4') {
         return await this.exportMP4(exportData, options)
+      } else if (options.format === 'gif') {
+        return await this.exportGIF(exportData, options)
       } else {
         throw new Error(`Unsupported format: ${options.format}`)
       }
@@ -261,9 +265,149 @@ export class ExportManager {
    */
   private cleanup(): void {
     if (this.currentExportWorker) {
+      // 移除 GIF 编码处理器
+      if (this.gifEncodeHandler) {
+        this.currentExportWorker.removeEventListener('message', this.gifEncodeHandler)
+        this.gifEncodeHandler = null
+      }
+
       this.currentExportWorker.terminate()
       this.currentExportWorker = null
     }
     this.progressCallback = null
+  }
+
+  /**
+   * 导出 GIF（流式处理）
+   */
+  private async exportGIF(exportData: any, options: ExportOptions): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      // 创建 Worker
+      this.currentExportWorker = new Worker(
+        new URL('../workers/export-worker/index.ts', import.meta.url),
+        { type: 'module' }
+      )
+
+      // GIF 编码器实例
+      let gifEncoder: any = null
+
+      // 设置 GIF 编码请求处理器（流式处理）
+      this.gifEncodeHandler = async (event: MessageEvent) => {
+        const { type, data } = event.data
+
+        try {
+          if (type === 'gif-init') {
+            // 初始化 GIF 编码器
+            console.log('🎨 [ExportManager] Initializing GIF encoder...')
+
+            const { GifEncoder } = await import('./gif-encoder')
+            gifEncoder = new GifEncoder(data.options)
+            await gifEncoder.initialize()
+
+            // 通知 worker 编码器已准备好
+            this.currentExportWorker?.postMessage({
+              type: 'gif-encoder-ready',
+              data: {}
+            })
+
+          } else if (type === 'gif-add-frame') {
+            // 添加单帧
+            if (!gifEncoder) {
+              throw new Error('GIF encoder not initialized')
+            }
+
+            gifEncoder.addFrame(data.imageData, data.delay, data.dispose)
+
+            // 通知 worker 帧已添加
+            this.currentExportWorker?.postMessage({
+              type: 'gif-frame-added',
+              data: { frameIndex: data.frameIndex }
+            })
+
+          } else if (type === 'gif-render') {
+            // 渲染 GIF
+            if (!gifEncoder) {
+              throw new Error('GIF encoder not initialized')
+            }
+
+            console.log('🎬 [ExportManager] Rendering GIF...')
+            const blob = await gifEncoder.render((progress: number) => {
+              // 发送渲染进度回 worker
+              this.currentExportWorker?.postMessage({
+                type: 'gif-encode-progress',
+                data: { progress }
+              })
+            })
+
+            // 清理编码器
+            gifEncoder.cleanup()
+            gifEncoder = null
+
+            // 发送编码完成消息回 worker
+            this.currentExportWorker?.postMessage({
+              type: 'gif-encode-complete',
+              data: { blob }
+            })
+          }
+
+        } catch (error) {
+          console.error('❌ [ExportManager] GIF encoding error:', error)
+
+          // 清理编码器
+          if (gifEncoder) {
+            gifEncoder.cleanup()
+            gifEncoder = null
+          }
+
+          // 发送错误消息回 worker
+          this.currentExportWorker?.postMessage({
+            type: 'gif-encode-error',
+            data: { error: (error as Error).message }
+          })
+        }
+      }
+
+      // 监听 Worker 消息
+      this.currentExportWorker.addEventListener('message', (event) => {
+        const { type, data } = event.data
+
+        switch (type) {
+          case 'progress':
+            this.updateProgress(data as ExportProgress)
+            break
+
+          case 'complete':
+            console.log('✅ [ExportManager] GIF export completed')
+            resolve(data.blob)
+            break
+
+          case 'error':
+            console.error('❌ [ExportManager] GIF export failed:', data.error)
+            reject(new Error(data.error))
+            break
+
+          case 'gif-init':
+          case 'gif-add-frame':
+          case 'gif-render':
+            // 处理 GIF 编码请求（流式处理）
+            if (this.gifEncodeHandler) {
+              this.gifEncodeHandler(event)
+            }
+            break
+        }
+      })
+
+      // 监听 Worker 错误
+      this.currentExportWorker.addEventListener('error', (error) => {
+        console.error('❌ [ExportManager] Worker error:', error)
+        reject(error)
+      })
+
+      // 发送导出请求到 Worker
+      this.currentExportWorker.postMessage({
+        type: 'export',
+        data: exportData
+      })
+    })
   }
 }
