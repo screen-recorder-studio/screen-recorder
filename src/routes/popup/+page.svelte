@@ -155,24 +155,6 @@
   // Recording mode configuration
   const recordingModes = [
     {
-      id: 'area' as const,
-      name: 'Area',
-      icon: MousePointer,
-      description: 'Select screen area to record'
-    },
-    {
-      id: 'element' as const,
-      name: 'Element',
-      icon: Monitor,
-      description: 'Select page element to record'
-    },
-    {
-      id: 'camera' as const,
-      name: 'Camera',
-      icon: Camera,
-      description: 'Record camera feed'
-    },
-    {
       id: 'tab' as const,
       name: 'Tab',
       icon: FileText,
@@ -189,6 +171,24 @@
       name: 'Screen',
       icon: ScreenShare,
       description: 'Record entire screen'
+    },
+    {
+      id: 'area' as const,
+      name: 'Area',
+      icon: MousePointer,
+      description: 'Select screen area to record'
+    },
+    {
+      id: 'element' as const,
+      name: 'Element',
+      icon: Monitor,
+      description: 'Select page element to record'
+    },
+    {
+      id: 'camera' as const,
+      name: 'Camera',
+      icon: Camera,
+      description: 'Record camera feed'
     }
   ]
 
