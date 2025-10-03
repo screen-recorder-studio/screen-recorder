@@ -1,5 +1,18 @@
 <script lang="ts">
-  import { X, LoaderCircle } from '@lucide/svelte'
+  import { 
+    X, 
+    LoaderCircle, 
+    Film, 
+    Target, 
+    Gem, 
+    Scale, 
+    FileDown, 
+    Waves, 
+    Gamepad2,
+    Settings,
+    Palette,
+    BarChart3
+  } from '@lucide/svelte'
 
   interface Props {
     open: boolean
@@ -38,7 +51,7 @@
     transparent: string | null
   }
 
-  // 默认设置
+  // Default settings
   let fps = $state(10)
   let quality = $state(10)
   let scale = $state(75)
@@ -47,7 +60,7 @@
   let dither = $state<string>('false')
   let transparent = $state<string | null>(null)
 
-  // 预设模板
+  // Preset templates
   const presets = {
     'high-quality': {
       fps: 15,
@@ -112,7 +125,7 @@
       transparent
     }
     onConfirm(options)
-    // 不关闭对话框，等待导出完成
+    // Keep dialog open until export completes
   }
 
   function handleCancel() {
@@ -122,25 +135,25 @@
     }
   }
 
-  // 获取阶段文本
+  // Get stage text
   const stageText = $derived(() => {
     if (!exportProgress) return ''
     switch (exportProgress.stage) {
-      case 'preparing': return '准备中'
-      case 'compositing': return '合成视频'
-      case 'encoding': return '提取帧'
-      case 'muxing': return '添加帧'
-      case 'finalizing': return '渲染 GIF'
+      case 'preparing': return 'Preparing'
+      case 'compositing': return 'Compositing Video'
+      case 'encoding': return 'Extracting Frames'
+      case 'muxing': return 'Adding Frames'
+      case 'finalizing': return 'Rendering GIF'
       default: return exportProgress.stage
     }
   })
 
-  // 计算预估信息
+  // Calculate estimated output info
   const estimatedFrames = $derived(Math.ceil(videoDuration * fps))
   const estimatedWidth = $derived(Math.round(videoWidth * (scale / 100)))
   const estimatedHeight = $derived(Math.round(videoHeight * (scale / 100)))
   const estimatedSize = $derived(() => {
-    // 粗略估算：每帧约 width * height * 0.5 字节
+    // Rough estimate: approximately width * height * 0.5 bytes per frame
     const bytesPerFrame = estimatedWidth * estimatedHeight * 0.5
     const totalBytes = bytesPerFrame * estimatedFrames
     if (totalBytes < 1024 * 1024) {
@@ -150,17 +163,17 @@
     }
   })
 
-  const repeatText = $derived(repeat === -1 ? '不重复' : repeat === 0 ? '永远循环' : `${repeat} 次`)
+  const repeatText = $derived(repeat === -1 ? 'No loop' : repeat === 0 ? 'Loop forever' : `${repeat} time${repeat > 1 ? 's' : ''}`)
 </script>
 
 {#if open}
-  <!-- 遮罩层 -->
-  <div 
+  <!-- Backdrop overlay -->
+  <div
     class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
     onclick={handleCancel}
     role="presentation"
   >
-    <!-- 对话框 -->
+    <!-- Dialog content -->
     <div
       class="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
       onclick={(e) => e.stopPropagation()}
@@ -169,66 +182,80 @@
       aria-modal="true"
       tabindex="-1"
     >
-      <!-- 头部 -->
+      <!-- Header -->
       <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-xl">
-        <h2 class="text-xl font-semibold text-gray-900">🎬 GIF 导出设置</h2>
+        <h2 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
+          <Film class="w-6 h-6 text-purple-600" />
+          GIF Export Settings
+        </h2>
         <button
           onclick={handleCancel}
           class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          aria-label="关闭"
+          aria-label="Close"
         >
           <X class="w-5 h-5 text-gray-500" />
         </button>
       </div>
 
-      <!-- 内容 -->
+      <!-- Content -->
       <div class="px-6 py-4 space-y-6">
-        <!-- 预设模板 -->
+        <!-- Presets -->
         <div class="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4">
-          <label class="block text-sm font-semibold text-gray-700 mb-3">🎯 预设模板</label>
+          <label class="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+            <Target class="w-4 h-4" />
+            Presets
+          </label>
           <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
             <button
               onclick={() => applyPreset('high-quality')}
-              class="px-3 py-2 bg-white border-2 border-purple-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all text-sm font-medium"
+              class="px-3 py-2 bg-white border-2 border-purple-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all text-sm font-medium flex items-center justify-center gap-1.5"
             >
-              💎 高质量
+              <Gem class="w-4 h-4" />
+              High Quality
             </button>
             <button
               onclick={() => applyPreset('balanced')}
-              class="px-3 py-2 bg-white border-2 border-purple-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all text-sm font-medium"
+              class="px-3 py-2 bg-white border-2 border-purple-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all text-sm font-medium flex items-center justify-center gap-1.5"
             >
-              ⚖️ 平衡
+              <Scale class="w-4 h-4" />
+              Balanced
             </button>
             <button
               onclick={() => applyPreset('small-size')}
-              class="px-3 py-2 bg-white border-2 border-purple-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all text-sm font-medium"
+              class="px-3 py-2 bg-white border-2 border-purple-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all text-sm font-medium flex items-center justify-center gap-1.5"
             >
-              💾 小文件
+              <FileDown class="w-4 h-4" />
+              Small Size
             </button>
             <button
               onclick={() => applyPreset('smooth')}
-              class="px-3 py-2 bg-white border-2 border-purple-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all text-sm font-medium"
+              class="px-3 py-2 bg-white border-2 border-purple-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all text-sm font-medium flex items-center justify-center gap-1.5"
             >
-              🌊 流畅
+              <Waves class="w-4 h-4" />
+              Smooth
             </button>
             <button
               onclick={() => applyPreset('retro')}
-              class="px-3 py-2 bg-white border-2 border-purple-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all text-sm font-medium"
+              class="px-3 py-2 bg-white border-2 border-purple-300 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all text-sm font-medium flex items-center justify-center gap-1.5"
             >
-              🕹️ 复古
+              <Gamepad2 class="w-4 h-4" />
+              Retro
             </button>
           </div>
         </div>
 
-        <!-- 基础设置 -->
+        <!-- Basic Settings -->
         <div class="space-y-4">
-          <h3 class="text-sm font-semibold text-gray-700">⚙️ 基础设置</h3>
+          <h3 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+            <Settings class="w-4 h-4" />
+            Basic Settings
+          </h3>
           
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- 帧率 -->
+            <!-- Frame Rate -->
             <div>
               <label class="block text-sm text-gray-600 mb-2">
-                帧率 (FPS): <span class="font-semibold text-purple-600">{fps}</span>
+                Frame Rate (FPS): <span class="font-semibold text-purple-600">{fps}</span>
               </label>
               <input
                 type="range"
@@ -238,13 +265,13 @@
                 step="1"
                 class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
               />
-              <p class="text-xs text-gray-500 mt-1">越高越流畅，但文件越大</p>
+              <p class="text-xs text-gray-500 mt-1">Higher = smoother, but larger file size</p>
             </div>
 
-            <!-- 质量 -->
+            <!-- Quality -->
             <div>
               <label class="block text-sm text-gray-600 mb-2">
-                采样质量: <span class="font-semibold text-purple-600">{quality}</span>
+                Quality: <span class="font-semibold text-purple-600">{quality}</span>
               </label>
               <input
                 type="range"
@@ -254,13 +281,13 @@
                 step="1"
                 class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
               />
-              <p class="text-xs text-gray-500 mt-1">1=最佳(慢) | 10=均衡 | 30=最快(质量低)</p>
+              <p class="text-xs text-gray-500 mt-1">1 = Best (slow) | 10 = Balanced | 30 = Fast (lower quality)</p>
             </div>
 
-            <!-- 缩放 -->
+            <!-- Scale -->
             <div>
               <label class="block text-sm text-gray-600 mb-2">
-                缩放比例: <span class="font-semibold text-purple-600">{scale}%</span>
+                Scale: <span class="font-semibold text-purple-600">{scale}%</span>
               </label>
               <input
                 type="range"
@@ -270,13 +297,13 @@
                 step="5"
                 class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
               />
-              <p class="text-xs text-gray-500 mt-1">输出尺寸: {estimatedWidth}x{estimatedHeight}</p>
+              <p class="text-xs text-gray-500 mt-1">Output size: {estimatedWidth}x{estimatedHeight}</p>
             </div>
 
-            <!-- 工作线程 -->
+            <!-- Worker Threads -->
             <div>
               <label class="block text-sm text-gray-600 mb-2">
-                工作线程: <span class="font-semibold text-purple-600">{workers}</span>
+                Worker Threads: <span class="font-semibold text-purple-600">{workers}</span>
               </label>
               <input
                 type="range"
@@ -286,20 +313,23 @@
                 step="1"
                 class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
               />
-              <p class="text-xs text-gray-500 mt-1">更多线程 = 更快编码</p>
+              <p class="text-xs text-gray-500 mt-1">More threads = faster encoding</p>
             </div>
           </div>
         </div>
 
-        <!-- 高级设置 -->
+        <!-- Advanced Settings -->
         <div class="space-y-4">
-          <h3 class="text-sm font-semibold text-gray-700">🎨 高级设置</h3>
+          <h3 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+            <Palette class="w-4 h-4" />
+            Advanced Settings
+          </h3>
           
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- 重复次数 -->
+            <!-- Loop Count -->
             <div>
               <label class="block text-sm text-gray-600 mb-2">
-                重复次数: <span class="font-semibold text-purple-600">{repeatText}</span>
+                Loop Count: <span class="font-semibold text-purple-600">{repeatText}</span>
               </label>
               <input
                 type="range"
@@ -309,65 +339,68 @@
                 step="1"
                 class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
               />
-              <p class="text-xs text-gray-500 mt-1">-1=不重复 | 0=永远循环</p>
+              <p class="text-xs text-gray-500 mt-1">-1 = No loop | 0 = Loop forever</p>
             </div>
 
-            <!-- 抖动算法 -->
+            <!-- Dithering Algorithm -->
             <div>
-              <label class="block text-sm text-gray-600 mb-2">抖动算法</label>
+              <label class="block text-sm text-gray-600 mb-2">Dithering</label>
               <select
                 bind:value={dither}
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
-                <option value="false">无抖动</option>
+                <option value="false">None</option>
                 <option value="FloydSteinberg">Floyd-Steinberg</option>
                 <option value="FalseFloydSteinberg">False Floyd-Steinberg</option>
                 <option value="Stucki">Stucki</option>
                 <option value="Atkinson">Atkinson</option>
-                <option value="FloydSteinberg-serpentine">Floyd-Steinberg (蛇形)</option>
+                <option value="FloydSteinberg-serpentine">Floyd-Steinberg (Serpentine)</option>
               </select>
-              <p class="text-xs text-gray-500 mt-1">抖动可改善颜色过渡</p>
+              <p class="text-xs text-gray-500 mt-1">Improves color transitions</p>
             </div>
           </div>
         </div>
 
-        <!-- 预估信息 -->
+        <!-- Estimated Output -->
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h4 class="text-sm font-semibold text-blue-900 mb-2">📊 预估信息</h4>
+          <h4 class="text-sm font-semibold text-blue-900 mb-2 flex items-center gap-2">
+            <BarChart3 class="w-4 h-4" />
+            Estimated Output
+          </h4>
           <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
             <div>
-              <span class="text-blue-600">帧数:</span>
+              <span class="text-blue-600">Frames:</span>
               <span class="font-semibold ml-1">{estimatedFrames}</span>
             </div>
             <div>
-              <span class="text-blue-600">尺寸:</span>
+              <span class="text-blue-600">Size:</span>
               <span class="font-semibold ml-1">{estimatedWidth}x{estimatedHeight}</span>
             </div>
             <div>
-              <span class="text-blue-600">预估大小:</span>
+              <span class="text-blue-600">File Size:</span>
               <span class="font-semibold ml-1">{estimatedSize()}</span>
             </div>
             <div>
-              <span class="text-blue-600">时长:</span>
+              <span class="text-blue-600">Duration:</span>
               <span class="font-semibold ml-1">{videoDuration.toFixed(1)}s</span>
             </div>
           </div>
         </div>
 
-        <!-- 导出进度 -->
+        <!-- Export Progress -->
         {#if isExporting && exportProgress}
           <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
             <div class="flex items-center justify-between mb-3">
               <h4 class="text-sm font-semibold text-purple-900 flex items-center gap-2">
                 <LoaderCircle class="w-4 h-4 animate-spin" />
-                正在导出 GIF...
+                Exporting GIF...
               </h4>
               <span class="text-sm font-semibold text-purple-600">
                 {Math.round(exportProgress.progress)}%
               </span>
             </div>
 
-            <!-- 进度条 -->
+            <!-- Progress Bar -->
             <div class="w-full h-2 bg-purple-100 rounded-full overflow-hidden mb-3">
               <div
                 class="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full transition-all duration-300"
@@ -375,14 +408,14 @@
               ></div>
             </div>
 
-            <!-- 详细信息 -->
+            <!-- Details -->
             <div class="grid grid-cols-2 gap-3 text-sm">
               <div>
-                <span class="text-purple-600">阶段:</span>
+                <span class="text-purple-600">Stage:</span>
                 <span class="font-semibold ml-1">{stageText()}</span>
               </div>
               <div>
-                <span class="text-purple-600">帧数:</span>
+                <span class="text-purple-600">Frames:</span>
                 <span class="font-semibold ml-1">{exportProgress.currentFrame} / {exportProgress.totalFrames}</span>
               </div>
             </div>
@@ -390,14 +423,14 @@
         {/if}
       </div>
 
-      <!-- 底部按钮 -->
+      <!-- Footer Buttons -->
       <div class="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end gap-3 rounded-b-xl">
         <button
           onclick={handleCancel}
           disabled={isExporting}
           class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isExporting ? '导出中...' : '取消'}
+          {isExporting ? 'Exporting...' : 'Cancel'}
         </button>
         <button
           onclick={handleConfirm}
@@ -407,10 +440,10 @@
           {#if isExporting}
             <span class="flex items-center gap-2">
               <LoaderCircle class="w-4 h-4 animate-spin" />
-              导出中...
+              Exporting...
             </span>
           {:else}
-            开始导出
+            Start Export
           {/if}
         </button>
       </div>
