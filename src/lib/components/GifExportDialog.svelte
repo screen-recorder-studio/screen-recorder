@@ -244,7 +244,7 @@
             <div>
               <label class="block text-sm text-gray-600 mb-2">
                 Frame Rate (FPS): <span class="font-semibold text-purple-600">{fps}</span>
-              </label>
+              
               <input
                 type="range"
                 bind:value={fps}
@@ -253,6 +253,7 @@
                 step="1"
                 class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
               />
+              </label>
               <p class="text-xs text-gray-500 mt-1">Higher = smoother, but larger file size</p>
             </div>
 
@@ -260,7 +261,7 @@
             <div>
               <label class="block text-sm text-gray-600 mb-2">
                 Quality: <span class="font-semibold text-purple-600">{quality}</span>
-              </label>
+              
               <input
                 type="range"
                 bind:value={quality}
@@ -269,6 +270,7 @@
                 step="1"
                 class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
               />
+              </label>
               <p class="text-xs text-gray-500 mt-1">1 = Best (slow) | 10 = Balanced | 30 = Fast (lower quality)</p>
             </div>
 
@@ -276,7 +278,7 @@
             <div>
               <label class="block text-sm text-gray-600 mb-2">
                 Scale: <span class="font-semibold text-purple-600">{scale}%</span>
-              </label>
+              
               <input
                 type="range"
                 bind:value={scale}
@@ -285,6 +287,7 @@
                 step="5"
                 class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
               />
+              </label>
               <p class="text-xs text-gray-500 mt-1">Output size: {estimatedWidth}x{estimatedHeight}</p>
             </div>
 
@@ -292,7 +295,7 @@
             <div>
               <label class="block text-sm text-gray-600 mb-2">
                 Worker Threads: <span class="font-semibold text-purple-600">{workers}</span>
-              </label>
+              
               <input
                 type="range"
                 bind:value={workers}
@@ -301,6 +304,7 @@
                 step="1"
                 class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
               />
+              </label>
               <p class="text-xs text-gray-500 mt-1">More threads = faster encoding</p>
             </div>
           </div>
@@ -318,7 +322,7 @@
             <div>
               <label class="block text-sm text-gray-600 mb-2">
                 Loop Count: <span class="font-semibold text-purple-600">{repeatText}</span>
-              </label>
+              
               <input
                 type="range"
                 bind:value={repeat}
@@ -327,12 +331,15 @@
                 step="1"
                 class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
               />
+              </label>
               <p class="text-xs text-gray-500 mt-1">-1 = No loop | 0 = Loop forever</p>
             </div>
 
             <!-- Dithering Algorithm -->
             <div>
-              <label class="block text-sm text-gray-600 mb-2">Dithering</label>
+              <label class="block text-sm text-gray-600 mb-2">
+                Dithering
+              
               <select
                 bind:value={dither}
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -344,6 +351,7 @@
                 <option value="Atkinson">Atkinson</option>
                 <option value="FloydSteinberg-serpentine">Floyd-Steinberg (Serpentine)</option>
               </select>
+              </label>
               <p class="text-xs text-gray-500 mt-1">Improves color transitions</p>
             </div>
           </div>

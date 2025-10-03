@@ -361,12 +361,13 @@
           </label>
           <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
             {#each Object.entries(presets) as [key, preset]}
+              {@const Icon = preset.icon}
               <button
                 onclick={() => applyPreset(key as keyof typeof presets)}
                 disabled={isExporting}
                 class="px-3 py-2 bg-white border-2 border-blue-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-sm font-medium flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <svelte:component this={preset.icon} class="w-4 h-4" />
+                <Icon class="w-4 h-4" />
                 {preset.name}
               </button>
             {/each}
@@ -385,7 +386,7 @@
             <div>
               <label class="block text-sm text-gray-600 mb-2">
                 Resolution
-              </label>
+              
               <select
                 bind:value={resolution}
                 disabled={isExporting}
@@ -395,13 +396,14 @@
                   <option value={option.value}>{option.label}</option>
                 {/each}
               </select>
+              </label>
             </div>
 
             <!-- Quality -->
             <div>
               <label class="block text-sm text-gray-600 mb-2">
                 Quality
-              </label>
+              
               <select
                 bind:value={quality}
                 disabled={isExporting}
@@ -411,13 +413,14 @@
                   <option value={preset.value}>{preset.label} - {preset.description}</option>
                 {/each}
               </select>
+              </label>
             </div>
 
             <!-- Frame Rate -->
             <div>
               <label class="block text-sm text-gray-600 mb-2">
                 Frame Rate
-              </label>
+              
               <select
                 bind:value={framerate}
                 disabled={isExporting}
@@ -427,13 +430,14 @@
                   <option value={fps}>{fps} fps</option>
                 {/each}
               </select>
+              </label>
             </div>
 
             <!-- Encoding Speed -->
             <div>
               <label class="block text-sm text-gray-600 mb-2">
                 Encoding Speed
-              </label>
+              
               <select
                 bind:value={encodingSpeed}
                 disabled={isExporting}
@@ -443,6 +447,7 @@
                   <option value={speed.value}>{speed.label}</option>
                 {/each}
               </select>
+              </label>
             </div>
           </div>
         </div>
@@ -454,7 +459,7 @@
           <div class="space-y-3">
             <!-- Bitrate Control -->
             <div>
-              <label class="block text-sm text-gray-600 mb-2">Bitrate Control</label>
+              <div class="block text-sm text-gray-600 mb-2">Bitrate Control</div>
               <div class="flex gap-4 mb-2">
                 <label class="flex items-center gap-2">
                   <input

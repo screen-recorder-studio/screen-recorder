@@ -69,7 +69,7 @@
   let dragMode = $state<'move' | 'resize-nw' | 'resize-ne' | 'resize-sw' | 'resize-se' | 'resize-n' | 'resize-s' | 'resize-w' | 'resize-e' | null>(null)
   let dragStartX = $state(0)
   let dragStartY = $state(0)
-  let dragStartBox = $state({ ...cropBox })
+  let dragStartBox = $state({ x: 0, y: 0, width: 0, height: 0 })
   
   // 初始化 Canvas 并绘制当前帧
   $effect(() => {
@@ -400,6 +400,8 @@
       ] as handle}
         {@const screenPos = canvasToScreen(handle.x, handle.y)}
         <div
+          role="button"
+          tabindex="0"
           class="absolute w-3 h-3 bg-white border-2 border-blue-500 rounded-full hover:scale-125 transition-transform z-10"
           style="
             left: {screenPos.x - 6}px;
@@ -407,6 +409,7 @@
             cursor: {handle.cursor};
           "
           onmousedown={(e) => handleMouseDown(e, `resize-${handle.pos}`)}
+          onkeydown={(e) => e.key === 'Enter' && handleMouseDown(e as any, `resize-${handle.pos}`)}
         ></div>
       {/each}
     </div>

@@ -103,7 +103,7 @@
   let lastFrameWindowStartIndex = $state(windowStartIndex)
 
   // ✂️ 时间裁剪相关状态
-  let timelineContainerEl: HTMLDivElement | null = null
+  let timelineContainerEl = $state<HTMLDivElement | null>(null)
   let isDraggingTrimStart = $state(false)
   let isDraggingTrimEnd = $state(false)
   let hasInitializedTrim = $state(false)
