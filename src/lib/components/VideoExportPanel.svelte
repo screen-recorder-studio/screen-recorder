@@ -1,11 +1,13 @@
 <!-- Video export panel component -->
 <script lang="ts">
-  import { Download, Video, Film, LoaderCircle, Info, TriangleAlert, CircleCheck, Clock } from '@lucide/svelte'
+  import { Download, Video, Film, LoaderCircle, Info, TriangleAlert } from '@lucide/svelte'
   import { ExportManager } from '$lib/services/export-manager'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import { trimStore } from '$lib/stores/trim.svelte'
   import { videoCropStore } from '$lib/stores/video-crop.svelte'
   import GifExportDialog, { type GifExportOptions } from './GifExportDialog.svelte'
+  import VideoExportDialog, { type VideoExportOptions, type SourceVideoInfo } from './VideoExportDialog.svelte'
+  import { extractSourceInfo, convertBackgroundConfigForExport } from '$lib/utils/export-utils'
 
   // Props
   interface Props {
@@ -36,8 +38,11 @@
   let isExportingGIF = $state(false)
   let isGifLibReady = $state(false)
 
-  // GIF 导出对话框
+  // Export dialogs
   let showGifDialog = $state(false)
+  let showMp4Dialog = $state(false)
+  let showWebmDialog = $state(false)
+  
   let exportProgress = $state<{
     type: 'webm' | 'mp4' | 'gif'
     stage: 'preparing' | 'compositing' | 'encoding' | 'muxing' | 'finalizing'
@@ -46,6 +51,11 @@
     totalFrames: number
     estimatedTimeRemaining: number
   } | null>(null)
+
+  // Source video information for export dialogs
+  const sourceInfo = $derived<SourceVideoInfo>(
+    extractSourceInfo(encodedChunks, totalFramesAll)
+  )
 
 
   // Smooth display export progress, avoid UI flicker caused by high-frequency updates
@@ -112,63 +122,8 @@
       }
       isGifLibReady = true
 
-      // Convert Svelte 5 Proxy objects to plain objects
-      const plainBackgroundConfig = backgroundConfig ? {
-        type: backgroundConfig.type,
-        color: backgroundConfig.color,
-        padding: backgroundConfig.padding,
-        outputRatio: backgroundConfig.outputRatio,
-        videoPosition: backgroundConfig.videoPosition,
-        borderRadius: backgroundConfig.borderRadius,
-        inset: backgroundConfig.inset,
-        gradient: backgroundConfig.gradient ? {
-          type: backgroundConfig.gradient.type,
-          ...(backgroundConfig.gradient.type === 'linear' && 'angle' in backgroundConfig.gradient ? { angle: backgroundConfig.gradient.angle } : {}),
-          ...(backgroundConfig.gradient.type === 'radial' && 'centerX' in backgroundConfig.gradient ? {
-            centerX: backgroundConfig.gradient.centerX,
-            centerY: backgroundConfig.gradient.centerY,
-            radius: backgroundConfig.gradient.radius
-          } : {}),
-          ...(backgroundConfig.gradient.type === 'conic' && 'centerX' in backgroundConfig.gradient ? {
-            centerX: backgroundConfig.gradient.centerX,
-            centerY: backgroundConfig.gradient.centerY,
-            angle: 'angle' in backgroundConfig.gradient ? backgroundConfig.gradient.angle : 0
-          } : {}),
-          stops: backgroundConfig.gradient.stops.map(stop => ({
-            color: stop.color,
-            position: stop.position
-          }))
-        } : undefined,
-        shadow: backgroundConfig.shadow ? {
-          offsetX: backgroundConfig.shadow.offsetX,
-          offsetY: backgroundConfig.shadow.offsetY,
-          blur: backgroundConfig.shadow.blur,
-          color: backgroundConfig.shadow.color
-        } : undefined,
-        image: backgroundConfig.image ? {
-          imageId: backgroundConfig.image.imageId,
-          imageBitmap: backgroundConfig.image.imageBitmap,
-          fit: backgroundConfig.image.fit,
-          position: backgroundConfig.image.position,
-          opacity: backgroundConfig.image.opacity,
-          blur: backgroundConfig.image.blur,
-          scale: backgroundConfig.image.scale,
-          offsetX: backgroundConfig.image.offsetX,
-          offsetY: backgroundConfig.image.offsetY
-        } : undefined,
-        wallpaper: backgroundConfig.wallpaper ? {
-          imageId: backgroundConfig.wallpaper.imageId,
-          imageBitmap: backgroundConfig.wallpaper.imageBitmap,
-          fit: backgroundConfig.wallpaper.fit,
-          position: backgroundConfig.wallpaper.position,
-          opacity: backgroundConfig.wallpaper.opacity,
-          blur: backgroundConfig.wallpaper.blur,
-          scale: backgroundConfig.wallpaper.scale,
-          offsetX: backgroundConfig.wallpaper.offsetX,
-          offsetY: backgroundConfig.wallpaper.offsetY
-        } : undefined,
-        videoCrop: videoCropStore.getCropConfig()
-      } : undefined
+      // Convert Svelte 5 Proxy objects to plain objects using utility
+      const plainBackgroundConfig = convertBackgroundConfigForExport(backgroundConfig, videoCropStore)
 
       console.log('🎨 [Export] GIF export config:', {
         hasBackgroundConfig: !!plainBackgroundConfig,
@@ -318,8 +273,14 @@
     !isExportingGIF
   )
 
-  // Export WebM
-  async function exportWebM() {
+  // Open WebM export dialog
+  function openWebmExportDialog() {
+    if (!canExport) return
+    showWebmDialog = true
+  }
+
+  // Perform WebM export
+  async function performWebMExport(options: VideoExportOptions) {
     if (!canExport) return
 
     try {
@@ -334,69 +295,10 @@
       }
 
       console.log('🎬 [Export] Starting WebM export with', encodedChunks.length, 'chunks')
+      console.log('⚙️ [Export] WebM options:', options)
 
-      // Convert Svelte 5 Proxy objects to plain objects
-      const plainBackgroundConfig = backgroundConfig ? {
-        type: backgroundConfig.type,
-        color: backgroundConfig.color,
-        padding: backgroundConfig.padding,
-        outputRatio: backgroundConfig.outputRatio,
-        videoPosition: backgroundConfig.videoPosition,
-        borderRadius: backgroundConfig.borderRadius,
-        inset: backgroundConfig.inset,
-        // Deep convert gradient object
-        gradient: backgroundConfig.gradient ? {
-          type: backgroundConfig.gradient.type,
-          ...(backgroundConfig.gradient.type === 'linear' && 'angle' in backgroundConfig.gradient ? { angle: backgroundConfig.gradient.angle } : {}),
-          ...(backgroundConfig.gradient.type === 'radial' && 'centerX' in backgroundConfig.gradient ? {
-            centerX: backgroundConfig.gradient.centerX,
-            centerY: backgroundConfig.gradient.centerY,
-            radius: backgroundConfig.gradient.radius
-          } : {}),
-          ...(backgroundConfig.gradient.type === 'conic' && 'centerX' in backgroundConfig.gradient ? {
-            centerX: backgroundConfig.gradient.centerX,
-            centerY: backgroundConfig.gradient.centerY,
-            angle: 'angle' in backgroundConfig.gradient ? backgroundConfig.gradient.angle : 0
-          } : {}),
-          stops: backgroundConfig.gradient.stops.map(stop => ({
-            color: stop.color,
-            position: stop.position
-          }))
-        } : undefined,
-        // Deep convert shadow object
-        shadow: backgroundConfig.shadow ? {
-          offsetX: backgroundConfig.shadow.offsetX,
-          offsetY: backgroundConfig.shadow.offsetY,
-          blur: backgroundConfig.shadow.blur,
-          color: backgroundConfig.shadow.color
-        } : undefined,
-        // Deep convert image object
-        image: backgroundConfig.image ? {
-          imageId: backgroundConfig.image.imageId,
-          imageBitmap: backgroundConfig.image.imageBitmap,
-          fit: backgroundConfig.image.fit,
-          position: backgroundConfig.image.position,
-          opacity: backgroundConfig.image.opacity,
-          blur: backgroundConfig.image.blur,
-          scale: backgroundConfig.image.scale,
-          offsetX: backgroundConfig.image.offsetX,
-          offsetY: backgroundConfig.image.offsetY
-        } : undefined,
-        // Deep convert wallpaper object
-        wallpaper: backgroundConfig.wallpaper ? {
-          imageId: backgroundConfig.wallpaper.imageId,
-          imageBitmap: backgroundConfig.wallpaper.imageBitmap,
-          fit: backgroundConfig.wallpaper.fit,
-          position: backgroundConfig.wallpaper.position,
-          opacity: backgroundConfig.wallpaper.opacity,
-          blur: backgroundConfig.wallpaper.blur,
-          scale: backgroundConfig.wallpaper.scale,
-          offsetX: backgroundConfig.wallpaper.offsetX,
-          offsetY: backgroundConfig.wallpaper.offsetY
-        } : undefined,
-        // 🆕 Deep convert videoCrop object - 从 videoCropStore 获取
-        videoCrop: videoCropStore.getCropConfig()
-      } : undefined
+      // Convert Svelte 5 Proxy objects to plain objects using utility
+      const plainBackgroundConfig = convertBackgroundConfigForExport(backgroundConfig, videoCropStore)
 
       console.log('🎬 [Export] WebM export config:', {
         hasBackgroundConfig: !!plainBackgroundConfig,
@@ -410,7 +312,9 @@
           format: 'webm',
           includeBackground: !!plainBackgroundConfig,
           backgroundConfig: plainBackgroundConfig as any,
-          quality: 'medium',
+          quality: options.quality,
+          bitrate: options.bitrate,
+          framerate: options.framerate,
           source: opfsDirId ? 'opfs' : 'chunks',
           opfsDirId: opfsDirId || undefined,
           saveToOpfs: !!opfsDirId,
@@ -419,7 +323,6 @@
             const ts = new Date().toISOString().replace(/[:.]/g, '-')
             return `edited-video-${ts}.webm`
           })(),
-          // 🔧 裁剪参数
           trim: trimStore.enabled ? {
             enabled: true,
             startMs: trimStore.trimStartMs,
@@ -470,6 +373,9 @@
         console.log('✅ [Export] WebM export completed:', fallbackFilename)
       }
 
+      // Close dialog on success
+      showWebmDialog = false
+
     } catch (error) {
       console.error('❌ [Export] WebM export failed:', error)
       // TODO: Show error message
@@ -480,8 +386,14 @@
     }
   }
 
-  // Export MP4
-  async function exportMP4() {
+  // Open MP4 export dialog
+  function openMp4ExportDialog() {
+    if (!canExport) return
+    showMp4Dialog = true
+  }
+
+  // Perform MP4 export
+  async function performMP4Export(options: VideoExportOptions) {
     if (!canExport) return
 
     try {
@@ -496,69 +408,10 @@
       }
 
       console.log('🎬 [Export] Starting MP4 export with', encodedChunks.length, 'chunks')
+      console.log('⚙️ [Export] MP4 options:', options)
 
-      // Convert Svelte 5 Proxy objects to plain objects
-      const plainBackgroundConfig = backgroundConfig ? {
-        type: backgroundConfig.type,
-        color: backgroundConfig.color,
-        padding: backgroundConfig.padding,
-        outputRatio: backgroundConfig.outputRatio,
-        videoPosition: backgroundConfig.videoPosition,
-        borderRadius: backgroundConfig.borderRadius,
-        inset: backgroundConfig.inset,
-        // Deep convert gradient object
-        gradient: backgroundConfig.gradient ? {
-          type: backgroundConfig.gradient.type,
-          ...(backgroundConfig.gradient.type === 'linear' && 'angle' in backgroundConfig.gradient ? { angle: backgroundConfig.gradient.angle } : {}),
-          ...(backgroundConfig.gradient.type === 'radial' && 'centerX' in backgroundConfig.gradient ? {
-            centerX: backgroundConfig.gradient.centerX,
-            centerY: backgroundConfig.gradient.centerY,
-            radius: backgroundConfig.gradient.radius
-          } : {}),
-          ...(backgroundConfig.gradient.type === 'conic' && 'centerX' in backgroundConfig.gradient ? {
-            centerX: backgroundConfig.gradient.centerX,
-            centerY: backgroundConfig.gradient.centerY,
-            angle: 'angle' in backgroundConfig.gradient ? backgroundConfig.gradient.angle : 0
-          } : {}),
-          stops: backgroundConfig.gradient.stops.map(stop => ({
-            color: stop.color,
-            position: stop.position
-          }))
-        } : undefined,
-        // Deep convert shadow object
-        shadow: backgroundConfig.shadow ? {
-          offsetX: backgroundConfig.shadow.offsetX,
-          offsetY: backgroundConfig.shadow.offsetY,
-          blur: backgroundConfig.shadow.blur,
-          color: backgroundConfig.shadow.color
-        } : undefined,
-        // Deep convert image object
-        image: backgroundConfig.image ? {
-          imageId: backgroundConfig.image.imageId,
-          imageBitmap: backgroundConfig.image.imageBitmap,
-          fit: backgroundConfig.image.fit,
-          position: backgroundConfig.image.position,
-          opacity: backgroundConfig.image.opacity,
-          blur: backgroundConfig.image.blur,
-          scale: backgroundConfig.image.scale,
-          offsetX: backgroundConfig.image.offsetX,
-          offsetY: backgroundConfig.image.offsetY
-        } : undefined,
-        // Deep convert wallpaper object
-        wallpaper: backgroundConfig.wallpaper ? {
-          imageId: backgroundConfig.wallpaper.imageId,
-          imageBitmap: backgroundConfig.wallpaper.imageBitmap,
-          fit: backgroundConfig.wallpaper.fit,
-          position: backgroundConfig.wallpaper.position,
-          opacity: backgroundConfig.wallpaper.opacity,
-          blur: backgroundConfig.wallpaper.blur,
-          scale: backgroundConfig.wallpaper.scale,
-          offsetX: backgroundConfig.wallpaper.offsetX,
-          offsetY: backgroundConfig.wallpaper.offsetY
-        } : undefined,
-        // 🆕 Deep convert videoCrop object - 从 videoCropStore 获取
-        videoCrop: videoCropStore.getCropConfig()
-      } : undefined
+      // Convert Svelte 5 Proxy objects to plain objects using utility
+      const plainBackgroundConfig = convertBackgroundConfigForExport(backgroundConfig, videoCropStore)
 
       console.log('🎬 [Export] MP4 export config:', {
         hasBackgroundConfig: !!plainBackgroundConfig,
@@ -572,10 +425,11 @@
           format: 'mp4',
           includeBackground: !!plainBackgroundConfig,
           backgroundConfig: plainBackgroundConfig as any,
-          quality: 'medium',
+          quality: options.quality,
+          bitrate: options.bitrate,
+          framerate: options.framerate,
           source: opfsDirId ? 'opfs' : 'chunks',
           opfsDirId: opfsDirId || undefined,
-          // 🔧 裁剪参数
           trim: trimStore.enabled ? {
             enabled: true,
             startMs: trimStore.trimStartMs,
@@ -618,6 +472,9 @@
       await downloadBlob(videoBlob, filename)
 
       console.log('✅ [Export] MP4 export completed:', filename)
+
+      // Close dialog on success
+      showMp4Dialog = false
 
     } catch (error) {
       console.error('❌ [Export] MP4 export failed:', error)
@@ -721,30 +578,19 @@
     <button
       class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-500 text-white text-sm font-medium rounded-md cursor-pointer transition-all duration-200 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
       disabled={!canExport}
-      onclick={() => { resetProgressAnimation(); exportWebM() }}
+      onclick={openWebmExportDialog}
     >
-      {#if isExportingWebM}
-        <LoaderCircle class="w-4 h-4 animate-spin" />
-        Exporting WebM...
-      {:else}
-        <Video class="w-4 h-4" />
-        Export WebM
-      {/if}
+      <Video class="w-4 h-4" />
+      Export WebM
     </button>
 
     <button
       class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-emerald-500 text-white text-sm font-medium rounded-md cursor-pointer transition-all duration-200 hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
-      class:opacity-80={isExportingMP4}
       disabled={!canExport}
-      onclick={() => { resetProgressAnimation(); exportMP4() }}
+      onclick={openMp4ExportDialog}
     >
-      {#if isExportingMP4}
-        <LoaderCircle class="w-4 h-4 animate-spin" />
-        Exporting MP4...
-      {:else}
-        <Film class="w-4 h-4" />
-        Export MP4
-      {/if}
+      <Film class="w-4 h-4" />
+      Export MP4
     </button>
 
     <!-- Export GIF -->
@@ -763,48 +609,6 @@
     </button>
   </div>
 
-  {#if isGifLibReady}
-    <div class="flex items-center gap-2 p-2 bg-emerald-50 border border-emerald-200 rounded text-xs text-emerald-800">
-      <CircleCheck class="w-3 h-3" />
-      GIF library loaded (gif.js ready)
-    </div>
-  {/if}
-
-  <!-- Export progress (仅显示 WebM 和 MP4 的进度，GIF 进度在对话框中显示) -->
-  {#if exportProgress && exportProgress.type !== 'gif'}
-    <div class="bg-white border border-slate-200 rounded-md p-3">
-      <div class="flex justify-between items-center mb-2">
-        <span class="text-sm font-medium text-gray-700">
-          Exporting {exportProgress.type.toUpperCase()} - {formatStage(exportProgress.stage)}
-        </span>
-        <span class="text-sm font-semibold text-gray-900">
-          {Math.round(displayedProgress)}%
-        </span>
-      </div>
-
-      <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mb-2">
-        <div
-          class="h-full origin-left transition-transform duration-300 rounded-full will-change-transform"
-          class:bg-blue-500={exportProgress.type === 'webm'}
-          class:bg-emerald-500={exportProgress.type === 'mp4'}
-          style="transform: scaleX({displayedProgress / 100})"
-        ></div>
-      </div>
-
-      <div class="flex justify-between text-xs text-slate-600">
-        <span class="flex items-center gap-1">
-          <CircleCheck class="w-3 h-3" />
-          {exportProgress.currentFrame} / {displayTotalFrames} frames
-        </span>
-        {#if exportProgress.estimatedTimeRemaining > 0}
-          <span class="flex items-center gap-1">
-            <Clock class="w-3 h-3" />
-            Remaining {formatTime(exportProgress.estimatedTimeRemaining)}
-          </span>
-        {/if}
-      </div>
-    </div>
-  {/if}
 
   <!-- Notification messages -->
   {#if !isRecordingComplete}
@@ -820,14 +624,48 @@
   {/if}
 </div>
 
-<!-- GIF 导出设置对话框 -->
+<!-- MP4 Export Dialog -->
+<VideoExportDialog
+  bind:open={showMp4Dialog}
+  format="mp4"
+  onClose={() => { showMp4Dialog = false }}
+  onConfirm={performMP4Export}
+  sourceInfo={sourceInfo}
+  isExporting={isExportingMP4}
+  exportProgress={exportProgress?.type === 'mp4' ? {
+    stage: exportProgress.stage,
+    progress: displayedProgress,
+    currentFrame: exportProgress.currentFrame,
+    totalFrames: exportProgress.totalFrames,
+    estimatedTimeRemaining: exportProgress.estimatedTimeRemaining
+  } : null}
+/>
+
+<!-- WebM Export Dialog -->
+<VideoExportDialog
+  bind:open={showWebmDialog}
+  format="webm"
+  onClose={() => { showWebmDialog = false }}
+  onConfirm={performWebMExport}
+  sourceInfo={sourceInfo}
+  isExporting={isExportingWebM}
+  exportProgress={exportProgress?.type === 'webm' ? {
+    stage: exportProgress.stage,
+    progress: displayedProgress,
+    currentFrame: exportProgress.currentFrame,
+    totalFrames: exportProgress.totalFrames,
+    estimatedTimeRemaining: exportProgress.estimatedTimeRemaining
+  } : null}
+/>
+
+<!-- GIF Export Dialog -->
 <GifExportDialog
   bind:open={showGifDialog}
   onClose={() => { showGifDialog = false }}
   onConfirm={performGifExport}
   videoDuration={displayTotalFrames / 30}
-  videoWidth={1920}
-  videoHeight={1080}
+  videoWidth={sourceInfo.width}
+  videoHeight={sourceInfo.height}
   isExporting={isExportingGIF}
   exportProgress={exportProgress?.type === 'gif' ? {
     stage: exportProgress.stage,
@@ -836,5 +674,3 @@
     totalFrames: exportProgress.totalFrames
   } : null}
 />
-
-<!-- All styles have been migrated to Tailwind CSS -->
