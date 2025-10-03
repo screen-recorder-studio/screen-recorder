@@ -33,6 +33,8 @@ let canvasCtx: OffscreenCanvasRenderingContext2D | null = null
 let exportBgColor: string = '#000000'
 // 当前背景配置（用于渐变背景处理）
 let currentBackgroundConfig: BackgroundConfig | null = null
+// 当前导出格式，用于控制进度更新逻辑
+let currentExportFormat: string = ''
 
 // ---- OPFS data processing utilities ----
 function onceFromWorker<T = any>(worker: Worker, type: string): Promise<T> {
@@ -466,6 +468,9 @@ async function handleExport(exportData: ExportData) {
     console.log('🎬 [Export-Worker] Starting export', { format: options?.format })
     console.log('📊 [Export-Worker] Input chunks:', chunks.length)
     console.log('⚙️ [Export-Worker] Export options:', options)
+    
+    // 记录当前导出格式
+    currentExportFormat = options?.format || ''
 
     // 分支：WebM 兼容路径（保持原 webm-export-worker 行为：不使用 OPFS 窗口/流式）
     if (options?.format === 'webm') {
@@ -749,13 +754,16 @@ async function processVideoComposition(chunks: EncodedChunk[], options: ExportOp
       return
     }
 
-    // 更新进度
-    updateProgress({
-      stage: 'compositing',
-      progress: 10,
-      currentFrame: 0,
-      totalFrames: chunks.length
-    })
+    // GIF 导出时不在这里更新进度，由帧收集控制
+    // 其他格式（MP4/WebM）仍然需要更新
+    if (options.format !== 'gif') {
+      updateProgress({
+        stage: 'compositing',
+        progress: 10,
+        currentFrame: 0,
+        totalFrames: chunks.length
+      })
+    }
 
     // 准备可传输的数据块（兼容 Uint8Array / ArrayBuffer）
     const transferableChunks = chunks.map((chunk: any) => {
@@ -829,12 +837,15 @@ async function processVideoCompositionOpfs(wireChunks: any[], options: ExportOpt
       return
     }
 
-    updateProgress({
-      stage: 'compositing',
-      progress: 10,
-      currentFrame: isOpfsMode ? lastEmittedGlobalEnd : consumedGlobalFrames,
-      totalFrames: (totalOpfsFrames > 0 ? totalOpfsFrames : wireChunks.length)
-    })
+    // GIF 导出时不在这里更新进度，由帧收集控制
+    if (options.format !== 'gif') {
+      updateProgress({
+        stage: 'compositing',
+        progress: 10,
+        currentFrame: isOpfsMode ? lastEmittedGlobalEnd : consumedGlobalFrames,
+        totalFrames: (totalOpfsFrames > 0 ? totalOpfsFrames : wireChunks.length)
+      })
+    }
 
     const transferable = wireChunks.map((c: any) => ({
       data: c.data as ArrayBuffer,
@@ -955,14 +966,17 @@ function handleCompositeFrame(bitmap: ImageBitmap, frameIndex: number) {
 
     processedFrames++
 
-    // 更新进度
-    const progress = 20 + (processedFrames / totalFrames) * 50 // 20%-70%
-    updateProgress({
-      stage: 'compositing',
-      progress,
-      currentFrame: processedFrames,
-      totalFrames: isOpfsMode ? totalOpfsFrames : totalFrames
-    })
+    // GIF 导出时不在这里更新进度，由帧收集控制
+    // 其他格式（MP4/WebM）仍然需要更新
+    if (currentExportFormat !== 'gif') {
+      const progress = 20 + (processedFrames / totalFrames) * 50 // 20%-70%
+      updateProgress({
+        stage: 'compositing',
+        progress,
+        currentFrame: processedFrames,
+        totalFrames: isOpfsMode ? totalOpfsFrames : totalFrames
+      })
+    }
 
     const totalForLog = isOpfsMode ? totalOpfsFrames : totalFrames
     console.log(`🎨 [MP4-Export-Worker] Frame ${frameIndex} composited (${processedFrames}/${totalForLog})`)
@@ -1534,6 +1548,7 @@ function cleanup() {
   processedFrames = 0
   videoInfo = null
   isExporting = false
+  currentExportFormat = ''
 }
 
 // Worker 初始化检查
@@ -1820,13 +1835,8 @@ async function exportToGIF(options: ExportOptions): Promise<Blob> {
     debug: gifOptions.debug || false
   })
 
-  // 更新进度：编码阶段
-  updateProgress({
-    stage: 'encoding',
-    progress: 10,
-    currentFrame: 0,
-    totalFrames: isOpfsMode ? totalOpfsFrames : totalFrames
-  })
+  // 不在这里更新进度，因为在 handleExport 中已经更新过了
+  // 避免进度倒退
 
   const frameDelay = 1000 / fps // 毫秒
   const targetFrameCount = isOpfsMode ? totalOpfsFrames : totalFrames
@@ -1846,16 +1856,13 @@ async function exportToGIF(options: ExportOptions): Promise<Blob> {
 
   console.log(`✅ [GIF-Export-Worker] Collected ${frames.length} frames`)
 
-  // 更新进度：准备发送到主线程
-  updateProgress({
-    stage: 'muxing',
-    progress: 80,
-    currentFrame: frames.length,
-    totalFrames: targetFrameCount
-  })
+  // 不在这里更新进度，由主线程的 ExportManager 统一管理
+  // 避免 Worker 和主线程同时更新导致进度跳变
+  console.log(`📦 [GIF-Export-Worker] Frames collected, ready to encode in main thread`)
 
   // 发送帧数据到主线程进行 GIF 编码
   // 由于 gif.js 需要在主线程运行，我们通过消息传递帧数据
+  console.log('📦 [GIF-Export-Worker] Starting GIF encoding in main thread...')
   const gifBlob = await encodeGifInMainThread(frames, gifStrategy.getOptions())
 
   // 清理
@@ -1863,14 +1870,8 @@ async function exportToGIF(options: ExportOptions): Promise<Blob> {
 
   console.log('✅ [GIF-Export-Worker] GIF export completed, size:', gifBlob.size)
 
-  // 最终进度
-  updateProgress({
-    stage: 'finalizing',
-    progress: 100,
-    currentFrame: targetFrameCount,
-    totalFrames: targetFrameCount,
-    fileSize: gifBlob.size
-  })
+  // 不在这里更新进度，由主线程完成后自然达到100%
+  console.log(`✅ [GIF-Export-Worker] GIF export finished, blob size: ${gifBlob.size}`)
 
   return gifBlob
 }
@@ -1916,8 +1917,8 @@ async function collectFrames(
         })
       }
 
-      // 更新进度
-      const progress = 10 + (frameIndex / totalFrames) * 70 // 10%-80%
+      // 更新进度：帧收集阶段占总进度的5%-40%
+      const progress = 5 + ((frameIndex + 1) / totalFrames) * 35
       updateProgress({
         stage: 'encoding',
         progress,
@@ -1992,8 +1993,8 @@ async function collectFramesOpfs(
           })
         }
 
-        // 更新进度
-        const progress = 10 + (frames.length / totalOpfsFrames) * 70
+        // 更新进度：帧收集阶段占总进度的5%-40%
+        const progress = 5 + (frames.length / totalOpfsFrames) * 35
         updateProgress({
           stage: 'encoding',
           progress,
@@ -2034,16 +2035,7 @@ async function encodeGifInMainThread(
       } else if (type === 'gif-frame-added') {
         // 帧已添加，发送下一帧
         currentFrameIndex++
-
-        // 更新进度
-        const progress = 80 + (currentFrameIndex / frames.length) * 15 // 80%-95%
-        updateProgress({
-          stage: 'muxing',
-          progress,
-          currentFrame: currentFrameIndex,
-          totalFrames: frames.length
-        })
-
+        // 进度已经在主线程的 ExportManager 中更新，这里不重复更新
         sendNextFrame()
 
       } else if (type === 'gif-encode-complete') {
@@ -2058,14 +2050,8 @@ async function encodeGifInMainThread(
         reject(new Error(data.error || 'GIF encoding failed'))
 
       } else if (type === 'gif-encode-progress') {
-        // 渲染进度
-        const progress = 95 + data.progress * 5 // 95%-100%
-        updateProgress({
-          stage: 'finalizing',
-          progress,
-          currentFrame: frames.length,
-          totalFrames: frames.length
-        })
+        // 进度更新已经在主线程处理，这里只记录日志
+        console.log(`🎨 [GIF-Export-Worker] Received render progress: ${(data.progress * 100).toFixed(1)}%`)
       }
     }
 
@@ -2089,7 +2075,9 @@ async function encodeGifInMainThread(
         console.log('📦 [GIF-Export-Worker] All frames sent, requesting render...')
         self.postMessage({
           type: 'gif-render',
-          data: {}
+          data: {
+            totalFrames: frames.length  // 添加总帧数信息
+          }
         })
       }
     }
@@ -2100,7 +2088,10 @@ async function encodeGifInMainThread(
     console.log('🎨 [GIF-Export-Worker] Initializing GIF encoder...')
     self.postMessage({
       type: 'gif-init',
-      data: { options }
+      data: { 
+        options,
+        totalFrames: frames.length
+      }
     })
 
     // 设置超时

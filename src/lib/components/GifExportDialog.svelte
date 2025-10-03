@@ -135,18 +135,6 @@
     }
   }
 
-  // Get stage text
-  const stageText = $derived(() => {
-    if (!exportProgress) return ''
-    switch (exportProgress.stage) {
-      case 'preparing': return 'Preparing'
-      case 'compositing': return 'Compositing Video'
-      case 'encoding': return 'Extracting Frames'
-      case 'muxing': return 'Adding Frames'
-      case 'finalizing': return 'Rendering GIF'
-      default: return exportProgress.stage
-    }
-  })
 
   // Calculate estimated output info
   const estimatedFrames = $derived(Math.ceil(videoDuration * fps))
@@ -401,23 +389,11 @@
             </div>
 
             <!-- Progress Bar -->
-            <div class="w-full h-2 bg-purple-100 rounded-full overflow-hidden mb-3">
+            <div class="w-full h-2 bg-purple-100 rounded-full overflow-hidden">
               <div
                 class="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full transition-all duration-300"
                 style="width: {exportProgress.progress}%"
               ></div>
-            </div>
-
-            <!-- Details -->
-            <div class="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <span class="text-purple-600">Stage:</span>
-                <span class="font-semibold ml-1">{stageText()}</span>
-              </div>
-              <div>
-                <span class="text-purple-600">Frames:</span>
-                <span class="font-semibold ml-1">{exportProgress.currentFrame} / {exportProgress.totalFrames}</span>
-              </div>
             </div>
           </div>
         {/if}

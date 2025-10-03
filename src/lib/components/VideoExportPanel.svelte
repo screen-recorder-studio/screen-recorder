@@ -161,15 +161,15 @@
           gifOptions
         },
         (progress) => {
+          console.log(`📊 [VideoExportPanel] Progress callback: stage=${progress.stage}, progress=${progress.progress}%`)
           pendingProgress = {
             stage: progress.stage,
             currentFrame: progress.currentFrame,
             totalFrames: progress.totalFrames,
             estimatedTimeRemaining: progress.estimatedTimeRemaining || 0
           }
-          const denomGif = displayTotalFrames || progress.totalFrames || 0
-          const frameBasedPctGif = denomGif > 0 ? (progress.currentFrame / denomGif) * 100 : progress.progress
-          setProgressTarget(frameBasedPctGif)
+          // 使用实际的进度值，不基于帧数计算（因为GIF渲染阶段不是线性的）
+          setProgressTarget(progress.progress)
           scheduleProgressFieldsUpdate()
         }
       )
@@ -178,8 +178,8 @@
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
       const filename = `edited-video-${timestamp}.gif`
 
-      // Ensure display progress reaches 100%
-      setProgressTarget(100)
+      // 不要过早设置100%，让实际进度自然达到100%
+      // setProgressTarget(100) // 移除这行，避免过早显示100%
 
       await downloadBlob(gifBlob, filename)
 
@@ -208,7 +208,10 @@
   }
 
   function animateProgress() {
-    if (rafId) return
+    if (rafId) {
+      cancelAnimationFrame(rafId)
+      rafId = null
+    }
     const step = () => {
       const diff = targetProgress - displayedProgress
       if (Math.abs(diff) < 0.5) {
@@ -216,20 +219,18 @@
         rafId = null
         return
       }
-      // Ease to target, reduce redraw frequency, reduce flicker
-      displayedProgress += diff * 0.25
+      // 更快的响应速度用于进度更新
+      displayedProgress += diff * 0.4
       rafId = requestAnimationFrame(step)
     }
     rafId = requestAnimationFrame(step)
   }
 
   function setProgressTarget(p: number) {
-    // Prevent visual jumps caused by progress rollback
+    // 允许进度值更新（GIF导出时进度可能会因为阶段切换而变化）
     const clamped = Math.max(0, Math.min(100, p))
-    if (clamped >= targetProgress) {
-      targetProgress = clamped
-      animateProgress()
-    }
+    targetProgress = clamped
+    animateProgress()
   }
 
   // Throttle export progress field updates, reduce template re-render frequency

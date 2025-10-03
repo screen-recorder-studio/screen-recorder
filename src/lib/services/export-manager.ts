@@ -245,8 +245,11 @@ export class ExportManager {
    * 更新进度
    */
   private updateProgress(progress: ExportProgress) {
+    console.log(`📤 [ExportManager] Updating progress: type=${progress.type}, stage=${progress.stage}, progress=${progress.progress}%`)
     if (this.progressCallback) {
       this.progressCallback(progress)
+    } else {
+      console.warn('⚠️ [ExportManager] No progress callback set!')
     }
   }
 
@@ -304,6 +307,9 @@ export class ExportManager {
             gifEncoder = new GifEncoder(data.options)
             await gifEncoder.initialize()
 
+            // 不在这里更新进度，避免跳变
+            // 进度应该从帧收集开始平滑过渡
+
             // 通知 worker 编码器已准备好
             this.currentExportWorker?.postMessage({
               type: 'gif-encoder-ready',
@@ -318,6 +324,17 @@ export class ExportManager {
 
             gifEncoder.addFrame(data.imageData, data.delay, data.dispose)
 
+            // 更新进度：帧添加阶段占40%-60%
+            const frameProgress = 40 + ((data.frameIndex + 1) / data.totalFrames) * 20
+            this.updateProgress({
+              type: 'gif',
+              stage: 'muxing',
+              progress: frameProgress,
+              currentFrame: data.frameIndex + 1,
+              totalFrames: data.totalFrames,
+              estimatedTimeRemaining: 0
+            })
+
             // 通知 worker 帧已添加
             this.currentExportWorker?.postMessage({
               type: 'gif-frame-added',
@@ -330,12 +347,22 @@ export class ExportManager {
               throw new Error('GIF encoder not initialized')
             }
 
-            console.log('🎬 [ExportManager] Rendering GIF...')
+            const totalFrames = data.totalFrames || 0
+            console.log(`🎬 [ExportManager] Starting GIF render for ${totalFrames} frames...`)
+            
             const blob = await gifEncoder.render((progress: number) => {
-              // 发送渲染进度回 worker
-              this.currentExportWorker?.postMessage({
-                type: 'gif-encode-progress',
-                data: { progress }
+              // 直接更新进度，不通过 worker（因为这已经在主线程）
+              // 计算实际的总进度：GIF渲染阶段占60%-100%
+              const totalProgress = 60 + progress * 40
+              console.log(`📊 [ExportManager] GIF render progress: ${(progress * 100).toFixed(1)}% -> Total: ${totalProgress.toFixed(1)}%`)
+              
+              this.updateProgress({
+                type: 'gif',
+                stage: 'finalizing',
+                progress: totalProgress,
+                currentFrame: totalFrames,
+                totalFrames: totalFrames,
+                estimatedTimeRemaining: 0
               })
             })
 
