@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format loosely follows Keep a Changelog and Semantic Versioning (the project itself is still in pre‑1.0 iteration, so minor bumps may include internal refactors).
 
-## [0.5.1] - 2025-09-27
+## [0.6.0] - 2025-09-27
 ### Added / Improved
 - Automatic codec selection (`codec: "auto"`) replacing the previous hard‑coded `vp8`. The runtime now probes (in order) multiple H.264 profiles (High/Main/Baseline, both `annexb` & `avc` formats) → VP9 variants → VP8, and uses the first supported configuration.
 - New shared utility module `src/lib/utils/webcodecs-config.ts` providing:
@@ -21,7 +21,7 @@ The format loosely follows Keep a Changelog and Semantic Versioning (the project
   - Pre‑warm sink iframe with a provisional `start` (codec = `auto`) + metadata to avoid losing the earliest encoded chunks.
   - Post‑configuration metadata reconciliation (width / height / framerate / resolved codec) once the worker reports the final applied encoder settings.
   - Zero‑copy transfer of `VideoFrame` objects to the worker and encoded chunk ArrayBuffers to the sink iframe (reduced memory pressure).
-- Version bump in both `package.json` and `static/manifest.json` from `0.5.0` to `0.5.1`.
+- Version bump in both `package.json` and `static/manifest.json` from `0.5.0` to `0.6.0`.
 
 ### Compatibility Notes
 - Environments supporting H.264 will now most likely produce H.264 (profile & format may vary). If future MP4 muxing is added, Annex B → AVCC conversion may be required.
