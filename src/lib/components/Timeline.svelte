@@ -19,12 +19,18 @@
     trimStartMs?: number                   // 裁剪开始时间
     trimEndMs?: number                     // 裁剪结束时间
 
+    // Zoom state
+    zoomIntervals?: Array<{ startMs: number; endMs: number }>  // Zoom 区间列表
+
     // Callbacks
     onSeek?: (timeMs: number) => void      // 跳转时间
     onTrimStartChange?: (timeMs: number) => void
     onTrimEndChange?: (timeMs: number) => void
     onTrimToggle?: () => void              // 切换裁剪开关
-    onZoomChange?: (startMs: number, endMs: number) => void  // Zoom 变化
+    onZoomChange?: (startMs: number, endMs: number) => boolean  // Zoom 变化（返回是否成功）
+    onZoomRemove?: (index: number) => void // 删除 Zoom 区间
+    onHoverPreview?: (timeMs: number) => void      // 鼠标悬停预览
+    onHoverPreviewEnd?: () => void                 // 预览结束
   }
 
   let {
@@ -36,11 +42,15 @@
     trimEnabled = false,
     trimStartMs = 0,
     trimEndMs = 0,
+    zoomIntervals = [],
     onSeek,
     onTrimStartChange,
     onTrimEndChange,
     onTrimToggle,
-    onZoomChange
+    onZoomChange,
+    onZoomRemove,
+    onHoverPreview,
+    onHoverPreviewEnd
   }: Props = $props()
 
   // DOM 引用
@@ -59,6 +69,10 @@
   let zoomActive = $state(false)
   let zoomStartMs = $state(0)
   let zoomEndMs = $state(0)
+
+  // 🆕 预览状态
+  let isHoveringTimeline = $state(false)
+  let hoverPreviewTimeMs = $state(0)
 
   // 🔧 内存泄漏修复：跟踪所有活动的事件监听器清理函数
   let activeCleanups: (() => void)[] = []
@@ -88,6 +102,12 @@
   // 计算 Zoom 选区百分比
   const zoomStartPercent = $derived(timelineMaxMs > 0 ? (zoomStartMs / timelineMaxMs) * 100 : 0)
   const zoomEndPercent = $derived(timelineMaxMs > 0 ? (zoomEndMs / timelineMaxMs) * 100 : 100)
+
+  // 🆕 计算预览位置百分比
+  const hoverPreviewPercent = $derived(timelineMaxMs > 0 ? (hoverPreviewTimeMs / timelineMaxMs) * 100 : 0)
+
+  // 🆕 Zoom 是否激活（基于区间列表）
+  const hasZoomIntervals = $derived(zoomIntervals.length > 0)
   
   // ========== 时间刻度计算 ==========
   
@@ -173,39 +193,43 @@
       timelineMaxMs
     })
 
+    // 🔧 优化：使用 Map 去重，避免重复刻度
+    const markerMap = new Map<string, TimeMarker>()
+
     // 生成主要刻度（带时间标签）
     for (let t = 0; t <= durationSec; t += major) {
-      markers.push({
-        timeSec: t,
-        timeMs: t * 1000,
-        timeLabel: formatTimeSec(t),
-        isMajor: true,
-        position: (t / durationSec) * 100
-      })
+      const label = formatTimeSec(t)
+      const key = `major-${label}`
+
+      if (!markerMap.has(key)) {
+        markerMap.set(key, {
+          timeSec: t,
+          timeMs: t * 1000,
+          timeLabel: label,
+          isMajor: true,
+          position: (t / durationSec) * 100
+        })
+      }
     }
 
     // 确保最后一个刻度（视频结束点）总是存在
-    // 使用容差比较 + 标签去重，避免浮点数精度导致的重复刻度
-    const lastMarker = markers[markers.length - 1]
-    const TOLERANCE = 0.01  // 10ms 容差
     const endLabel = formatTimeSec(durationSec)
+    const endKey = `major-${endLabel}`
 
-    if (!lastMarker) {
-      // 没有任何刻度，添加结束刻度
-      markers.push({
-        timeSec: durationSec,
-        timeMs: durationSec * 1000,
-        timeLabel: endLabel,
-        isMajor: true,
-        position: 100
-      })
-    } else {
-      const timeDiff = durationSec - lastMarker.timeSec
-      const labelDiff = lastMarker.timeLabel !== endLabel
+    if (!markerMap.has(endKey)) {
+      // 检查是否有非常接近的刻度（容差 0.1 秒）
+      const TOLERANCE = 0.1
+      let hasSimilar = false
 
-      // 只有当时间差超过容差 AND 标签不同时才添加
-      if (timeDiff > TOLERANCE && labelDiff) {
-        markers.push({
+      for (const marker of markerMap.values()) {
+        if (marker.isMajor && Math.abs(marker.timeSec - durationSec) < TOLERANCE) {
+          hasSimilar = true
+          break
+        }
+      }
+
+      if (!hasSimilar) {
+        markerMap.set(endKey, {
           timeSec: durationSec,
           timeMs: durationSec * 1000,
           timeLabel: endLabel,
@@ -217,24 +241,41 @@
 
     // 生成次要刻度（不带标签）
     for (let t = minor; t < durationSec; t += minor) {
-      if (t % major !== 0) {
-        markers.push({
-          timeSec: t,
-          timeMs: t * 1000,
-          isMajor: false,
-          position: (t / durationSec) * 100
-        })
+      // 检查是否与主刻度重叠（使用容差）
+      const TOLERANCE = 0.01
+      let overlapsWithMajor = false
+
+      for (const marker of markerMap.values()) {
+        if (marker.isMajor && Math.abs(marker.timeSec - t) < TOLERANCE) {
+          overlapsWithMajor = true
+          break
+        }
+      }
+
+      if (!overlapsWithMajor) {
+        const key = `minor-${t.toFixed(3)}`
+        if (!markerMap.has(key)) {
+          markerMap.set(key, {
+            timeSec: t,
+            timeMs: t * 1000,
+            isMajor: false,
+            position: (t / durationSec) * 100
+          })
+        }
       }
     }
 
+    // 转换为数组并排序
+    const finalMarkers = Array.from(markerMap.values()).sort((a, b) => a.timeSec - b.timeSec)
+
     console.log('[Timeline] Generated markers:', {
-      total: markers.length,
-      major: markers.filter(m => m.isMajor).length,
-      minor: markers.filter(m => !m.isMajor).length,
-      firstFew: markers.slice(0, 5).map(m => ({ time: m.timeSec, label: m.timeLabel, pos: m.position.toFixed(1) }))
+      total: finalMarkers.length,
+      major: finalMarkers.filter(m => m.isMajor).length,
+      minor: finalMarkers.filter(m => !m.isMajor).length,
+      firstFew: finalMarkers.slice(0, 5).map(m => ({ time: m.timeSec, label: m.timeLabel, pos: m.position.toFixed(1) }))
     })
 
-    return markers.sort((a, b) => a.timeSec - b.timeSec)
+    return finalMarkers
   })
   
   // ========== 工具函数 ==========
@@ -288,9 +329,52 @@
   // 点击时间轴跳转
   function handleTimelineClick(e: MouseEvent) {
     if (isProcessing || isDraggingTrimStart || isDraggingTrimEnd) return
-    
+
     const newTimeMs = pixelToTimeMs(e.clientX)
     onSeek?.(newTimeMs)
+  }
+
+  // 🆕 鼠标移动处理（预览）
+  function handleTimelineMouseMove(e: MouseEvent) {
+    if (!timelineTrackEl || isDraggingPlayhead || isDraggingTrimStart || isDraggingTrimEnd || isProcessing) {
+      return
+    }
+
+    isHoveringTimeline = true
+    hoverPreviewTimeMs = pixelToTimeMs(e.clientX)
+
+    // 触发预览回调
+    onHoverPreview?.(hoverPreviewTimeMs)
+  }
+
+  // 🆕 Zoom 轨道鼠标移动处理（预览）
+  function handleZoomTrackMouseMove(e: MouseEvent) {
+    // 🔧 拖拽创建区间时不触发预览
+    if (!zoomTrackEl || isDraggingZoom || isProcessing) {
+      return
+    }
+
+    isHoveringTimeline = true
+    hoverPreviewTimeMs = pixelToTimeMs(e.clientX, zoomTrackEl)
+
+    // 触发预览回调
+    onHoverPreview?.(hoverPreviewTimeMs)
+  }
+
+  // 🆕 鼠标离开处理
+  function handleTimelineMouseLeave() {
+    if (!isHoveringTimeline) return
+
+    isHoveringTimeline = false
+    onHoverPreviewEnd?.()
+  }
+
+  // 🆕 Zoom 轨道鼠标离开处理
+  function handleZoomTrackMouseLeave() {
+    if (!isHoveringTimeline || isDraggingZoom) return
+
+    isHoveringTimeline = false
+    onHoverPreviewEnd?.()
   }
   
   // 键盘导航
@@ -387,7 +471,7 @@
   // ========== Zoom 功能 ==========
 
   function handleZoomTrackMouseDown(e: MouseEvent) {
-    if (!zoomTrackEl || zoomActive) return
+    if (!zoomTrackEl || hasZoomIntervals) return  // 🔧 改为检查是否已有区间
     e.preventDefault()
 
     const startX = e.clientX
@@ -416,9 +500,18 @@
       // 验证选区有效性（至少1秒）
       const duration = Math.abs(zoomEndMs - zoomStartMs)
       if (duration >= 1000) {
-        zoomActive = true
-        onZoomChange?.(zoomStartMs, zoomEndMs)
-        console.log(`🔍 [Timeline] Zoom applied: ${formatTimeSec(zoomStartMs / 1000)} - ${formatTimeSec(zoomEndMs / 1000)}`)
+        // 🔧 调用回调并检查返回值
+        const success = onZoomChange?.(zoomStartMs, zoomEndMs)
+
+        if (success) {
+          console.log(`✅ [Timeline] Zoom interval created: ${formatTimeSec(zoomStartMs / 1000)} - ${formatTimeSec(zoomEndMs / 1000)}`)
+        } else {
+          console.warn('⚠️ [Timeline] Zoom interval rejected (overlap)')
+        }
+
+        // 重置选区
+        zoomStartMs = 0
+        zoomEndMs = timelineMaxMs
       } else {
         // 选区太小，重置
         zoomStartMs = 0
@@ -496,13 +589,19 @@
     activeCleanups.push(cleanup)
   }
   
-  // 重置 Zoom
+  // 🔧 重置 Zoom（清除所有区间）
   function resetZoom() {
     zoomActive = false
     zoomStartMs = 0
     zoomEndMs = timelineMaxMs
-    onZoomChange?.(0, timelineMaxMs)
-    console.log('🔍 [Timeline] Zoom reset')
+    onZoomChange?.(0, 0)  // 🔧 传递 (0, 0) 表示清除所有区间
+    console.log('🔍 [Timeline] Zoom reset - all intervals cleared')
+  }
+
+  // 🆕 删除单个 Zoom 区间
+  function handleRemoveZoomInterval(index: number) {
+    onZoomRemove?.(index)
+    console.log('�️ [Timeline] Zoom interval removed:', index)
   }
 </script>
 
@@ -532,10 +631,12 @@
     </div>
     
     <!-- 时间轴轨道 -->
-    <div 
+    <div
       class="timeline-track"
       bind:this={timelineTrackEl}
       onclick={handleTimelineClick}
+      onmousemove={handleTimelineMouseMove}
+      onmouseleave={handleTimelineMouseLeave}
       onkeydown={handleTimelineKeydown}
       role="slider"
       tabindex="0"
@@ -592,71 +693,93 @@
     </div>
   </div>
   
+  <!-- 🆕 预览竖线（灰色） - 在播放头之前渲染 -->
+  {#if isHoveringTimeline && !isDraggingPlayhead && !isDraggingTrimStart && !isDraggingTrimEnd}
+    <div
+      class="preview-line-container"
+      style="left: {hoverPreviewPercent}%"
+    >
+      <div class="preview-line"></div>
+      <div class="preview-tooltip">
+        {formatTimeSec(hoverPreviewTimeMs / 1000)}
+      </div>
+    </div>
+  {/if}
+
   <!-- Zoom 控制区 -->
   <div class="zoom-control">
-    {#if !zoomActive}
+    {#if !hasZoomIntervals}
       <!-- 默认提示状态 -->
-      <div 
+      <div
         class="zoom-hint"
         bind:this={zoomTrackEl}
         onmousedown={handleZoomTrackMouseDown}
+        onmousemove={handleZoomTrackMouseMove}
+        onmouseleave={handleZoomTrackMouseLeave}
         role="button"
         tabindex="0"
-        aria-label="Click and drag to zoom"
+        aria-label="Click and drag to create zoom interval"
       >
         <ZoomIn class="w-4 h-4" />
-        <span>Click and drag to zoom</span>
+        <span>Click and drag to create zoom interval</span>
       </div>
     {:else}
-      <!-- Zoom 激活状态 -->
+      <!-- Zoom 激活状态 - 显示区间列表 -->
       <div class="zoom-active">
         <!-- 标题栏 -->
         <div class="zoom-header">
           <div class="zoom-info">
             <ZoomIn class="w-3.5 h-3.5" />
             <span class="text-xs font-medium">
-              Zoom: {formatTimeSec(zoomStartMs / 1000)} - {formatTimeSec(zoomEndMs / 1000)}
+              Zoom Intervals ({zoomIntervals.length})
             </span>
           </div>
           <button
             class="zoom-reset"
             onclick={resetZoom}
-            aria-label="Reset zoom"
-            title="Reset zoom"
+            aria-label="Clear all zoom intervals"
+            title="Clear all zoom intervals"
           >
             <X class="w-3.5 h-3.5" />
           </button>
         </div>
-        
+
         <!-- Zoom 缩略时间轴 -->
-        <div 
+        <div
           class="zoom-mini-timeline"
           bind:this={zoomTrackEl}
+          onmousemove={handleZoomTrackMouseMove}
+          onmouseleave={handleZoomTrackMouseLeave}
         >
           <!-- 全时间轴背景 -->
           <div class="zoom-full-range"></div>
-          
-          <!-- 选中区域 -->
-          <div 
-            class="zoom-selected-range"
-            style="left: {zoomStartPercent}%; width: {zoomEndPercent - zoomStartPercent}%"
-          >
-            <!-- 开始手柄 -->
-            <button
-              class="zoom-handle zoom-handle-start"
-              class:dragging={isDraggingZoomStart}
-              onmousedown={handleZoomStartDrag}
-              aria-label="Zoom start"
-            ></button>
-            
-            <!-- 结束手柄 -->
-            <button
-              class="zoom-handle zoom-handle-end"
-              class:dragging={isDraggingZoomEnd}
-              onmousedown={handleZoomEndDrag}
-              aria-label="Zoom end"
-            ></button>
-          </div>
+
+          <!-- 🆕 显示所有 Zoom 区间 -->
+          {#each zoomIntervals as interval, index}
+            {@const startPercent = (interval.startMs / timelineMaxMs) * 100}
+            {@const widthPercent = ((interval.endMs - interval.startMs) / timelineMaxMs) * 100}
+
+            <div
+              class="zoom-interval"
+              style="left: {startPercent}%; width: {widthPercent}%"
+              title="{formatTimeSec(interval.startMs / 1000)} - {formatTimeSec(interval.endMs / 1000)}"
+            >
+              <!-- 区间标签 -->
+              <span class="zoom-interval-label">
+                {index + 1}
+              </span>
+
+              <!-- 删除按钮 -->
+              <button
+                class="zoom-interval-delete"
+                onclick={() => handleRemoveZoomInterval(index)}
+                aria-label="Remove zoom interval {index + 1}"
+                title="Remove this interval"
+              >
+                <X class="w-3 h-3" />
+              </button>
+            </div>
+          {/each}
         </div>
       </div>
     {/if}
@@ -990,7 +1113,97 @@
     right: 0;
     border-radius: 0 0.375rem 0.375rem 0;
   }
+
+  /* 🆕 Zoom 区间块 */
+  .zoom-interval {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    background: linear-gradient(to bottom, rgba(59, 130, 246, 0.4), rgba(37, 99, 235, 0.5));
+    border: 2px solid #3b82f6;
+    border-radius: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 0.5rem;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    overflow: hidden;
+  }
+
+  .zoom-interval:hover {
+    background: linear-gradient(to bottom, rgba(59, 130, 246, 0.6), rgba(37, 99, 235, 0.7));
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+  }
+
+  .zoom-interval-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    flex-shrink: 0;
+  }
+
+  .zoom-interval-delete {
+    padding: 0.25rem;
+    background: rgba(239, 68, 68, 0.8);
+    border: none;
+    border-radius: 0.25rem;
+    color: white;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .zoom-interval:hover .zoom-interval-delete {
+    opacity: 1;
+  }
+
+  .zoom-interval-delete:hover {
+    background: rgba(220, 38, 38, 1);
+  }
   
+  /* ========== 预览竖线（灰色） ========== */
+  .preview-line-container {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    transform: translateX(-50%);
+    z-index: 25; /* 低于播放头 */
+    pointer-events: none;
+  }
+
+  .preview-line {
+    width: 2px;
+    height: 100%;
+    background: linear-gradient(to bottom, #9ca3af, #6b7280);
+    opacity: 0.8;
+    border-radius: 1px;
+    box-shadow: 0 0 4px rgba(156, 163, 175, 0.4);
+  }
+
+  .preview-tooltip {
+    position: absolute;
+    top: -2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.25rem 0.5rem;
+    background: rgba(107, 114, 128, 0.95);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: 0.25rem;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
   /* ========== 播放头竖线（覆盖整个时间轴） ========== */
   .playhead-container {
     position: absolute;

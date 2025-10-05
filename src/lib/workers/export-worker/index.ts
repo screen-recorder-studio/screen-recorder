@@ -899,9 +899,23 @@ async function processVideoCompositionOpfs(wireChunks: any[], options: ExportOpt
  * 处理合成帧
  */
 function handleCompositeFrame(bitmap: ImageBitmap, frameIndex: number) {
+  // 🔧 优化：确保 bitmap 在所有路径都被释放
+  let bitmapClosed = false
+
+  const closeBitmap = () => {
+    if (!bitmapClosed && bitmap) {
+      try {
+        bitmap.close()
+        bitmapClosed = true
+      } catch (e) {
+        console.warn('[MP4-Export-Worker] Failed to close bitmap:', e)
+      }
+    }
+  }
+
   if (!canvasCtx || !offscreenCanvas) {
     console.error('❌ [MP4-Export-Worker] Canvas not available')
-    try { bitmap.close() } catch {}
+    closeBitmap()
     return
   }
 
@@ -984,8 +998,8 @@ function handleCompositeFrame(bitmap: ImageBitmap, frameIndex: number) {
   } catch (error) {
     console.error('❌ [MP4-Export-Worker] Error handling composite frame:', error)
   } finally {
-    // 释放 GPU 侧的 ImageBitmap 资源，避免长视频导出内存飙升
-    try { bitmap.close() } catch {}
+    // 🔧 优化：确保 bitmap 在所有路径都被释放，避免内存泄漏
+    closeBitmap()
   }
 }
 

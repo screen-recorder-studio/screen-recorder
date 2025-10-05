@@ -1082,6 +1082,21 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
           self.cancelAnimationFrame(animationId);
           animationId = null;
         }
+
+        // 🔧 优化：清理旧帧缓冲，防止内存溢出
+        if (decodedFrames.length > FRAME_BUFFER_LIMITS.maxDecodedFrames * 0.5) {
+          console.warn('⚠️ [COMPOSITE-WORKER] Clearing old frames before new window:', {
+            oldFrames: decodedFrames.length,
+            maxLimit: FRAME_BUFFER_LIMITS.maxDecodedFrames
+          })
+          for (const frame of decodedFrames) {
+            try { frame.close() } catch (e) {
+              console.warn('[COMPOSITE-WORKER] Failed to close old frame:', e)
+            }
+          }
+          decodedFrames = []
+        }
+
         // 重置水位提示状态，确保每个窗口都会重新发出 low/critical 事件
 
         // 记录本窗口边界帧数（用于按窗口触发 windowComplete）
@@ -1314,27 +1329,58 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         }
         break;
 
+      case 'preview-frame':
+        // 🆕 预览帧请求（不改变播放状态）
+        console.log('🔍 [COMPOSITE-WORKER] Preview frame request:', data.frameIndex);
+
+        if (data.frameIndex !== undefined) {
+          const previewFrameIndex = Math.max(0, Math.min(data.frameIndex, decodedFrames.length - 1));
+
+          if (previewFrameIndex < decodedFrames.length && currentConfig && fixedVideoLayout) {
+            const frame = decodedFrames[previewFrameIndex];
+            const bitmap = renderCompositeFrame(frame, fixedVideoLayout, currentConfig);
+
+            if (bitmap) {
+              self.postMessage({
+                type: 'preview-frame',
+                data: { bitmap, frameIndex: previewFrameIndex }
+              }, { transfer: [bitmap] });
+
+              console.log('✅ [COMPOSITE-WORKER] Preview frame rendered:', previewFrameIndex);
+            }
+          } else {
+            console.warn('⚠️ [COMPOSITE-WORKER] Preview frame unavailable:', {
+              requestedIndex: data.frameIndex,
+              clampedIndex: previewFrameIndex,
+              decodedFramesLength: decodedFrames.length,
+              hasConfig: !!currentConfig,
+              hasLayout: !!fixedVideoLayout
+            });
+          }
+        }
+        break;
+
       case 'getCurrentFrameBitmap':
         console.log('🖼️ [COMPOSITE-WORKER] Getting current frame bitmap...');
-        
+
         if (data.frameIndex !== undefined && currentConfig && fixedVideoLayout) {
           const frameIndex = data.frameIndex;
-          
+
           if (frameIndex >= 0 && frameIndex < decodedFrames.length) {
             const frame = decodedFrames[frameIndex];
-            
+
             // 渲染合成帧
             const bitmap = renderCompositeFrame(frame, fixedVideoLayout, currentConfig);
-            
+
             if (bitmap) {
               self.postMessage({
                 type: 'frameBitmap',
-                data: { 
+                data: {
                   bitmap,
-                  frameIndex 
+                  frameIndex
                 }
               }, { transfer: [bitmap] });
-              
+
               console.log('✅ [COMPOSITE-WORKER] Frame bitmap sent:', frameIndex);
             }
           } else {

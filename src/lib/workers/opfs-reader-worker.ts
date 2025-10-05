@@ -350,9 +350,9 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
         transfer.push(buf)
       }
 
-      // 计算相对时间戳用于UI显示
-      const startMs = (indexEntries[startIdx]?.timestamp || 0 - baseTimestamp) / 1000
-      const endMs = (indexEntries[Math.max(startIdx, endIdx - 1)]?.timestamp || 0 - baseTimestamp) / 1000
+      // 🔧 修复：计算相对时间戳用于UI显示（修正运算符优先级）
+      const startMs = ((indexEntries[startIdx]?.timestamp || 0) - baseTimestamp) / 1000
+      const endMs = ((indexEntries[Math.max(startIdx, endIdx - 1)]?.timestamp || 0) - baseTimestamp) / 1000
 
       console.log('[progress] OPFS Reader - returning window:', {
         startIdx, endIdx, count: endIdx - startIdx,
