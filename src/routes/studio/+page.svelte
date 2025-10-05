@@ -309,7 +309,7 @@
     </div>
 
     <!-- Preview player content area -->
-    <div class="flex-1 min-h-0 flex flex-col p-6 relative">
+    <div class="flex-1 min-h-0 flex flex-col relative">
       <!-- Using new VideoPreviewComposite component -->
       <div class="flex-1 min-h-0 flex items-stretch justify-center" bind:this={previewContainerEl}>
         <VideoPreviewComposite

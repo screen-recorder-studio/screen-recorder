@@ -196,7 +196,7 @@
     const headerHeight = 60  // Preview info bar height
     const controlsHeight = showControls && totalFrames > 0 ? 56 : 0  // Play control bar height
     const timelineHeight = showTimeline && totalFrames > 0 ? 48 : 0  // Timeline height
-    const padding = 32  // Canvas area padding (p-4 = 16px * 2)
+    const padding = 48  // Canvas area padding (p-6 = 24px * 2)
 
     const availableWidth = displayWidth - padding
     const availableHeight = displayHeight - headerHeight - controlsHeight - timelineHeight - padding
@@ -1584,9 +1584,9 @@
 
   <!-- 🔧 普通预览模式区域 - 包含 Canvas 和时间轴 -->
   <!-- 在裁剪模式下整体隐藏，避免布局混乱 -->
-  <div class:hidden={isCropMode}>
+  <div class:hidden={isCropMode} class="flex-1 flex flex-col min-h-0">
     <!-- Canvas display area - takes remaining space -->
-    <div class="flex-1 flex items-center justify-center p-4 min-h-0">
+    <div class="flex-1 flex items-center justify-center p-6 min-h-0">
       <div class="relative bg-black flex items-center justify-center rounded overflow-hidden" style="width: {previewWidth}px; height: {previewHeight}px;">
         <canvas
           bind:this={canvas}
@@ -1606,9 +1606,60 @@
 
     <!-- Time axis - fixed height (based on real duration, milliseconds) -->
     {#if showTimeline && timelineMaxMs > 0}
-    <div class="flex-shrink-0 p-3 bg-gray-800">
+    <div class="flex-shrink-0 px-6 py-3 bg-gray-800">
+      <!-- 控制按钮和信息 -->
+      <div class="flex justify-between items-center mb-3">
+        <div class="flex items-center gap-2 text-white text-sm">
+          <!-- 播放/暂停按钮 -->
+          <button
+            class="flex items-center justify-center w-8 h-8 border border-gray-600 text-white rounded cursor-pointer transition-all duration-200 hover:bg-gray-700 hover:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            onclick={isPlaying ? pause : play}
+            disabled={isProcessing}
+          >
+            {#if isPlaying}
+              <Pause class="w-4 h-4" />
+            {:else}
+              <Play class="w-4 h-4" />
+            {/if}
+          </button>
+          
+          <!-- 启用/禁用裁剪按钮 -->
+          <button
+            class="flex items-center justify-center gap-1 px-2 py-1 text-xs rounded transition-all duration-200"
+            class:bg-blue-500={trimStore.enabled}
+            class:text-white={trimStore.enabled}
+            class:hover:bg-blue-600={trimStore.enabled}
+            class:bg-gray-700={!trimStore.enabled}
+            class:text-gray-300={!trimStore.enabled}
+            class:hover:bg-gray-600={!trimStore.enabled}
+            onclick={() => trimStore.toggle()}
+            disabled={isProcessing}
+            title={trimStore.enabled ? 'Disable trim' : 'Enable trim'}
+          >
+            <Scissors class="w-3 h-3" />
+            {trimStore.enabled ? 'Trim On' : 'Trim Off'}
+          </button>
+
+          <span class="font-mono text-sm text-gray-300 ml-2">
+            {formatTimeSec((windowStartIndex + currentFrameIndex) / frameRate)} / {formatTimeSec(uiDurationSec)}
+          </span>
+          
+          <!-- 裁剪信息 -->
+          {#if trimStore.enabled}
+            <span class="text-xs text-blue-400 font-semibold">
+              ✂️ {formatTimeSec(trimStore.trimDurationMs / 1000)} ({trimStore.trimFrameCount} frames)
+            </span>
+          {/if}
+        </div>
+        
+        <div class="flex items-center gap-4 text-xs text-gray-400">
+          <span>Frame: {windowStartIndex + currentFrameIndex + 1}/{totalFramesAll > 0 ? totalFramesAll : (totalFrames > 0 ? totalFrames : encodedChunks.length)}</span>
+          <span>Resolution: {outputWidth}×{outputHeight}</span>
+        </div>
+      </div>
+
       <!-- 时间轴容器，包含进度条和裁剪手柄 -->
-      <div bind:this={timelineContainerEl} class="relative w-full mb-3">
+      <div bind:this={timelineContainerEl} class="relative w-full">
         <!-- 裁剪区域背景（被裁减的部分） -->
         {#if trimStore.enabled}
           <!-- 左侧遮罩 -->
@@ -1666,57 +1717,6 @@
             <Scissors class="w-4 h-4 text-white" />
           </button>
         {/if}
-      </div>
-
-      <!-- 控制按钮和信息 -->
-      <div class="flex justify-between items-center">
-        <div class="flex items-center gap-2 text-white text-sm">
-          <!-- 播放/暂停按钮 -->
-          <button
-            class="flex items-center justify-center w-8 h-8 border border-gray-600 text-white rounded cursor-pointer transition-all duration-200 hover:bg-gray-700 hover:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            onclick={isPlaying ? pause : play}
-            disabled={isProcessing}
-          >
-            {#if isPlaying}
-              <Pause class="w-4 h-4" />
-            {:else}
-              <Play class="w-4 h-4" />
-            {/if}
-          </button>
-          
-          <!-- 启用/禁用裁剪按钮 -->
-          <button
-            class="flex items-center justify-center gap-1 px-2 py-1 text-xs rounded transition-all duration-200"
-            class:bg-blue-500={trimStore.enabled}
-            class:text-white={trimStore.enabled}
-            class:hover:bg-blue-600={trimStore.enabled}
-            class:bg-gray-700={!trimStore.enabled}
-            class:text-gray-300={!trimStore.enabled}
-            class:hover:bg-gray-600={!trimStore.enabled}
-            onclick={() => trimStore.toggle()}
-            disabled={isProcessing}
-            title={trimStore.enabled ? 'Disable trim' : 'Enable trim'}
-          >
-            <Scissors class="w-3 h-3" />
-            {trimStore.enabled ? 'Trim On' : 'Trim Off'}
-          </button>
-
-          <span class="font-mono text-sm text-gray-300 ml-2">
-            {formatTimeSec((windowStartIndex + currentFrameIndex) / frameRate)} / {formatTimeSec(uiDurationSec)}
-          </span>
-          
-          <!-- 裁剪信息 -->
-          {#if trimStore.enabled}
-            <span class="text-xs text-blue-400 font-semibold">
-              ✂️ {formatTimeSec(trimStore.trimDurationMs / 1000)} ({trimStore.trimFrameCount} frames)
-            </span>
-          {/if}
-        </div>
-        
-        <div class="flex items-center gap-4 text-xs text-gray-400">
-          <span>Frame: {windowStartIndex + currentFrameIndex + 1}/{totalFramesAll > 0 ? totalFramesAll : (totalFrames > 0 ? totalFrames : encodedChunks.length)}</span>
-          <span>Resolution: {outputWidth}×{outputHeight}</span>
-        </div>
       </div>
     </div>
   {/if}
