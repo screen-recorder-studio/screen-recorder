@@ -8,6 +8,7 @@
   import { trimStore } from '$lib/stores/trim.svelte'
   import { videoCropStore } from '$lib/stores/video-crop.svelte'
   import VideoCropPanel from './VideoCropPanel.svelte'
+  import Timeline from './Timeline.svelte'
 
   // Props
   interface Props {
@@ -103,9 +104,6 @@
   let lastFrameWindowStartIndex = $state(windowStartIndex)
 
   // ✂️ 时间裁剪相关状态
-  let timelineContainerEl = $state<HTMLDivElement | null>(null)
-  let isDraggingTrimStart = $state(false)
-  let isDraggingTrimEnd = $state(false)
   let hasInitializedTrim = $state(false)
 
   // ✂️ 视频裁剪相关状态
@@ -126,13 +124,11 @@
 
     // Priority 1: Use global duration (based on global frame count)
     if (totalFramesAll > 0 && frameRate > 0) {
-      // 🐛 修复进度条末尾空白：使用最后一帧的时间戳，而不是总时长
-      // 原因：帧索引从 0 开始，最后一帧索引 = totalFramesAll - 1
-      // 这样当播放到最后一帧时，进度条可以到达 100%
-      result = Math.max(1, Math.floor(((totalFramesAll - 1) / frameRate) * 1000))
-      console.log('[progress] timelineMaxMs: using global frames (last frame):', {
+      // 使用总时长，不是最后一帧的时间戳
+      // 这样时间轴会显示完整的视频时长
+      result = Math.max(1, Math.floor((totalFramesAll / frameRate) * 1000))
+      console.log('[progress] timelineMaxMs: using global frames:', {
         totalFramesAll,
-        lastFrameIndex: totalFramesAll - 1,
         frameRate,
         result
       })
@@ -144,11 +140,9 @@
     }
     // Priority 3: Use current window frame count calculation
     else if (totalFrames > 0 && frameRate > 0) {
-      // 🐛 修复进度条末尾空白：使用最后一帧的时间戳
-      result = Math.max(1, Math.floor(((totalFrames - 1) / frameRate) * 1000))
-      console.log('[progress] timelineMaxMs: using window frames (last frame):', {
+      result = Math.max(1, Math.floor((totalFrames / frameRate) * 1000))
+      console.log('[progress] timelineMaxMs: using window frames:', {
         totalFrames,
-        lastFrameIndex: totalFrames - 1,
         frameRate,
         result
       })
@@ -195,7 +189,9 @@
     // Calculate available space - consider control bar and timeline height
     const headerHeight = 60  // Preview info bar height
     const controlsHeight = showControls && totalFrames > 0 ? 56 : 0  // Play control bar height
-    const timelineHeight = showTimeline && totalFrames > 0 ? 48 : 0  // Timeline height
+    // 🔧 更新：新 Timeline 组件包含时间刻度、轨道和 Zoom 控制区，总高度约 200-232px
+    // 保守估计使用 232px 以确保不会溢出
+    const timelineHeight = showTimeline && totalFrames > 0 ? 232 : 0  // New Timeline component height (with zoom control)
     const padding = 48  // Canvas area padding (p-6 = 24px * 2)
 
     const availableWidth = displayWidth - padding
@@ -1038,93 +1034,10 @@
     }
   })
 
-  // 计算裁剪手柄的位置百分比
-  const trimStartPercent = $derived(timelineMaxMs > 0 ? (trimStore.trimStartMs / timelineMaxMs) * 100 : 0)
-  const trimEndPercent = $derived(timelineMaxMs > 0 ? (trimStore.trimEndMs / timelineMaxMs) * 100 : 100)
-
-  // 将像素位置转换为时间（毫秒）
-  function pixelToTimeMs(pixelX: number): number {
-    if (!timelineContainerEl) return 0
-    const rect = timelineContainerEl.getBoundingClientRect()
-    const relativeX = Math.max(0, Math.min(pixelX - rect.left, rect.width))
-    return (relativeX / rect.width) * timelineMaxMs
-  }
-
-  // 处理裁剪开始手柄拖拽
-  function handleTrimStartDrag(e: MouseEvent) {
-    if (isProcessing) return
-    e.preventDefault()
-    e.stopPropagation()
-    isDraggingTrimStart = true
-    trimStore.enable()
-
-    // 暂停播放以便进行精确拖拽
-    const wasPlaying = isPlaying
-    if (wasPlaying) {
-      pause()
-    }
-
-    const handleMove = (moveEvent: MouseEvent) => {
-      const newTime = pixelToTimeMs(moveEvent.clientX)
-      trimStore.setTrimStart(newTime)
-      // ✂️ 拖拽时实时 seek 预览视频到裁剪开始位置
-      seekToGlobalTime(newTime)
-      console.log('✂️ [Trim] Dragging trim start, seeking to:', newTime, 'ms')
-    }
-
-    const handleUp = () => {
-      isDraggingTrimStart = false
-      document.removeEventListener('mousemove', handleMove)
-      document.removeEventListener('mouseup', handleUp)
-      console.log('✂️ [Trim] Trim start drag ended at:', trimStore.trimStartMs, 'ms')
-      
-      // 如果之前在播放，可选择恢复播放（暂时不恢复，让用户手动控制）
-      // if (wasPlaying) {
-      //   play()
-      // }
-    }
-
-    document.addEventListener('mousemove', handleMove)
-    document.addEventListener('mouseup', handleUp)
-  }
-
-  // 处理裁剪结束手柄拖拽
-  function handleTrimEndDrag(e: MouseEvent) {
-    if (isProcessing) return
-    e.preventDefault()
-    e.stopPropagation()
-    isDraggingTrimEnd = true
-    trimStore.enable()
-
-    // 暂停播放以便进行精确拖拽
-    const wasPlaying = isPlaying
-    if (wasPlaying) {
-      pause()
-    }
-
-    const handleMove = (moveEvent: MouseEvent) => {
-      const newTime = pixelToTimeMs(moveEvent.clientX)
-      trimStore.setTrimEnd(newTime)
-      // ✂️ 拖拽时实时 seek 预览视频到裁剪结束位置
-      seekToGlobalTime(newTime)
-      console.log('✂️ [Trim] Dragging trim end, seeking to:', newTime, 'ms')
-    }
-
-    const handleUp = () => {
-      isDraggingTrimEnd = false
-      document.removeEventListener('mousemove', handleMove)
-      document.removeEventListener('mouseup', handleUp)
-      console.log('✂️ [Trim] Trim end drag ended at:', trimStore.trimEndMs, 'ms')
-      
-      // 如果之前在播放，可选择恢复播放（暂时不恢复，让用户手动控制）
-      // if (wasPlaying) {
-      //   play()
-      // }
-    }
-
-    document.addEventListener('mousemove', handleMove)
-    document.addEventListener('mouseup', handleUp)
-  }
+  // 计算当前播放时间（毫秒）
+  const currentTimeMs = $derived.by(() => {
+    return Math.floor((windowStartIndex + currentFrameIndex) / frameRate * 1000)
+  })
 
   // ===== Debug logging for timer and frame jumps =====
   // Print timer under progress bar and detect frame skips
@@ -1604,25 +1517,13 @@
       </div>
     </div>
 
-    <!-- Time axis - fixed height (based on real duration, milliseconds) -->
+    <!-- Time axis with controls - using new Timeline component -->
     {#if showTimeline && timelineMaxMs > 0}
     <div class="flex-shrink-0 px-6 py-3 bg-gray-800">
-      <!-- 控制按钮和信息 -->
+      <!-- 控制按钮和信息 - 三栏布局 -->
       <div class="flex justify-between items-center mb-3">
-        <div class="flex items-center gap-2 text-white text-sm">
-          <!-- 播放/暂停按钮 -->
-          <button
-            class="flex items-center justify-center w-8 h-8 border border-gray-600 text-white rounded cursor-pointer transition-all duration-200 hover:bg-gray-700 hover:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            onclick={isPlaying ? pause : play}
-            disabled={isProcessing}
-          >
-            {#if isPlaying}
-              <Pause class="w-4 h-4" />
-            {:else}
-              <Play class="w-4 h-4" />
-            {/if}
-          </button>
-          
+        <!-- 左侧：裁剪按钮和裁剪信息 -->
+        <div class="flex items-center gap-3 text-sm flex-1">
           <!-- 启用/禁用裁剪按钮 -->
           <button
             class="flex items-center justify-center gap-1 px-2 py-1 text-xs rounded transition-all duration-200"
@@ -1640,10 +1541,6 @@
             {trimStore.enabled ? 'Trim On' : 'Trim Off'}
           </button>
 
-          <span class="font-mono text-sm text-gray-300 ml-2">
-            {formatTimeSec((windowStartIndex + currentFrameIndex) / frameRate)} / {formatTimeSec(uiDurationSec)}
-          </span>
-          
           <!-- 裁剪信息 -->
           {#if trimStore.enabled}
             <span class="text-xs text-blue-400 font-semibold">
@@ -1651,73 +1548,59 @@
             </span>
           {/if}
         </div>
-        
-        <div class="flex items-center gap-4 text-xs text-gray-400">
+
+        <!-- 中间：播放按钮 + 时间显示 -->
+        <div class="flex items-center gap-3 flex-shrink-0">
+          <!-- 播放/暂停按钮 -->
+          <button
+            class="flex items-center justify-center w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-600"
+            onclick={isPlaying ? pause : play}
+            disabled={isProcessing}
+            title={isPlaying ? 'Pause' : 'Play'}
+          >
+            {#if isPlaying}
+              <Pause class="w-5 h-5" />
+            {:else}
+              <Play class="w-5 h-5 ml-0.5" />
+            {/if}
+          </button>
+
+          <!-- 时间显示 -->
+          <span class="font-mono text-sm text-gray-300 whitespace-nowrap">
+            {formatTimeSec((windowStartIndex + currentFrameIndex) / frameRate)} / {formatTimeSec(uiDurationSec)}
+          </span>
+        </div>
+
+        <!-- 右侧：帧信息和分辨率 -->
+        <div class="flex items-center justify-end gap-4 text-xs text-gray-400 flex-1">
           <span>Frame: {windowStartIndex + currentFrameIndex + 1}/{totalFramesAll > 0 ? totalFramesAll : (totalFrames > 0 ? totalFrames : encodedChunks.length)}</span>
           <span>Resolution: {outputWidth}×{outputHeight}</span>
         </div>
       </div>
 
-      <!-- 时间轴容器，包含进度条和裁剪手柄 -->
-      <div bind:this={timelineContainerEl} class="relative w-full">
-        <!-- 裁剪区域背景（被裁减的部分） -->
-        {#if trimStore.enabled}
-          <!-- 左侧遮罩 -->
-          <div
-            class="absolute top-0 left-0 h-2 bg-black/40 pointer-events-none rounded-l"
-            style="width: {trimStartPercent}%"
-          ></div>
-          <!-- 右侧遮罩 -->
-          <div
-            class="absolute top-0 h-2 bg-black/40 pointer-events-none rounded-r"
-            style="left: {trimEndPercent}%; width: {100 - trimEndPercent}%"
-          ></div>
-          <!-- 裁剪区域高亮 -->
-          <div
-            class="absolute top-0 h-2 bg-blue-500/20 pointer-events-none"
-            style="left: {trimStartPercent}%; width: {trimEndPercent - trimStartPercent}%"
-          ></div>
-        {/if}
-
-        <!-- 主进度条 -->
-        <input
-          type="range"
-          class="w-full h-2 bg-gray-600 rounded outline-none cursor-pointer timeline-slider relative z-10"
-          min="0"
-          max={timelineMaxMs}
-          value={Math.min(timelineMaxMs, Math.floor((windowStartIndex + currentFrameIndex) / frameRate * 1000))}
-          oninput={(e) => handleTimelineInput(parseInt((e.target as HTMLInputElement).value))}
-          disabled={isProcessing}
-        />
-
-        <!-- 裁剪开始手柄（左侧剪刀） -->
-        {#if trimStore.enabled}
-          <button
-            class="absolute top-1/2 -translate-y-1/2 w-8 h-8 -ml-4 bg-blue-500 hover:bg-blue-600 rounded-full shadow-lg cursor-ew-resize flex items-center justify-center transition-all z-20 group"
-            class:ring-4={isDraggingTrimStart}
-            class:ring-blue-300={isDraggingTrimStart}
-            style="left: {trimStartPercent}%"
-            onmousedown={handleTrimStartDrag}
-            title="Drag to set trim start"
-          >
-            <Scissors class="w-4 h-4 text-white" />
-          </button>
-        {/if}
-
-        <!-- 裁剪结束手柄（右侧剪刀） -->
-        {#if trimStore.enabled}
-          <button
-            class="absolute top-1/2 -translate-y-1/2 w-8 h-8 -mr-4 bg-blue-500 hover:bg-blue-600 rounded-full shadow-lg cursor-ew-resize flex items-center justify-center transition-all z-20 group"
-            class:ring-4={isDraggingTrimEnd}
-            class:ring-blue-300={isDraggingTrimEnd}
-            style="left: {trimEndPercent}%"
-            onmousedown={handleTrimEndDrag}
-            title="Drag to set trim end"
-          >
-            <Scissors class="w-4 h-4 text-white" />
-          </button>
-        {/if}
-      </div>
+      <!-- New Timeline Component -->
+      <Timeline
+        {timelineMaxMs}
+        currentTimeMs={currentTimeMs}
+        {frameRate}
+        {isPlaying}
+        {isProcessing}
+        trimEnabled={trimStore.enabled}
+        trimStartMs={trimStore.trimStartMs}
+        trimEndMs={trimStore.trimEndMs}
+        onSeek={handleTimelineInput}
+        onTrimStartChange={(newMs) => {
+          trimStore.setTrimStart(newMs)
+          trimStore.enable()
+          seekToGlobalTime(newMs)
+        }}
+        onTrimEndChange={(newMs) => {
+          trimStore.setTrimEnd(newMs)
+          trimStore.enable()
+          seekToGlobalTime(newMs)
+        }}
+        onTrimToggle={() => trimStore.toggle()}
+      />
     </div>
   {/if}
   </div>
@@ -1741,40 +1624,3 @@
   {/if}
 </div>
 
-<style>
-  /* Custom timeline slider styles - using blue theme */
-  .timeline-slider::-webkit-slider-thumb {
-    appearance: none;
-    width: 16px;
-    height: 16px;
-    background: #3b82f6;
-    border-radius: 50%;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .timeline-slider::-webkit-slider-thumb:hover {
-    background: #2563eb;
-    transform: scale(1.1);
-  }
-
-  .timeline-slider::-moz-range-thumb {
-    width: 16px;
-    height: 16px;
-    background: #3b82f6;
-    border-radius: 50%;
-    cursor: pointer;
-    border: none;
-    transition: all 0.2s ease;
-  }
-
-  .timeline-slider::-moz-range-thumb:hover {
-    background: #2563eb;
-    transform: scale(1.1);
-  }
-
-  .timeline-slider:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-</style>
