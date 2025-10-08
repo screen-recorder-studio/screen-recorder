@@ -74,6 +74,9 @@
   let isHoveringTimeline = $state(false)
   let hoverPreviewTimeMs = $state(0)
 
+  // rAF throttle for hover preview
+  let hoverRaf = 0
+
   // 🔧 内存泄漏修复：跟踪所有活动的事件监听器清理函数
   let activeCleanups: (() => void)[] = []
 
@@ -82,23 +85,27 @@
     activeCleanups.forEach(cleanup => cleanup())
     activeCleanups = []
   })
-  
+
   // 计算时长（秒）
   const durationSec = $derived(timelineMaxMs / 1000)
-  
+
   // 计算当前时间标签
   const currentTimeLabel = $derived(formatTimeSec(currentTimeMs / 1000))
-  
+
   // 计算播放头位置百分比
   const playheadPercent = $derived.by(() => {
     if (timelineMaxMs <= 0) return 0
     return Math.min(100, Math.max(0, (currentTimeMs / timelineMaxMs) * 100))
   })
-  
+
   // 计算裁剪手柄位置百分比
   const trimStartPercent = $derived(timelineMaxMs > 0 ? (trimStartMs / timelineMaxMs) * 100 : 0)
-  const trimEndPercent = $derived(timelineMaxMs > 0 ? (trimEndMs / timelineMaxMs) * 100 : 100)
-  
+  const trimEndPercent = $derived.by(() => {
+    if (timelineMaxMs <= 0) return 100
+    const end = trimEndMs > 0 ? trimEndMs : timelineMaxMs
+    return (end / timelineMaxMs) * 100
+  })
+
   // 计算 Zoom 选区百分比
   const zoomStartPercent = $derived(timelineMaxMs > 0 ? (zoomStartMs / timelineMaxMs) * 100 : 0)
   const zoomEndPercent = $derived(timelineMaxMs > 0 ? (zoomEndMs / timelineMaxMs) * 100 : 100)
@@ -108,9 +115,9 @@
 
   // 🆕 Zoom 是否激活（基于区间列表）
   const hasZoomIntervals = $derived(zoomIntervals.length > 0)
-  
+
   // ========== 时间刻度计算 ==========
-  
+
   interface TimeMarker {
     timeSec: number
     timeMs: number
@@ -118,7 +125,7 @@
     isMajor: boolean
     position: number
   }
-  
+
   // 智能刻度间隔计算 - 确保刻度均匀分布
   function calculateTickInterval(durationSec: number): { major: number; minor: number } {
     // 候选刻度间隔（秒），按优先级排序
@@ -175,7 +182,7 @@
 
     return { major: bestMajor, minor: bestMinor }
   }
-  
+
   // 生成时间刻度
   const timeMarkers = $derived.by((): TimeMarker[] => {
     if (durationSec <= 0) {
@@ -277,9 +284,9 @@
 
     return finalMarkers
   })
-  
+
   // ========== 工具函数 ==========
-  
+
   // 格式化时间为 mm:ss（统一格式）
   function formatTimeSec(sec: number): string {
     const total = Math.max(0, sec)
@@ -287,7 +294,7 @@
     const ss = Math.floor(total % 60)
     return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
   }
-  
+
   // 像素位置转换为时间（主时间轴）
   function pixelToTimeMs(pixelX: number, containerEl: HTMLElement | null = timelineTrackEl): number {
     if (!containerEl) return 0
@@ -295,7 +302,15 @@
     const relativeX = Math.max(0, Math.min(pixelX - rect.left, rect.width))
     return (relativeX / rect.width) * timelineMaxMs
   }
-  
+  // 将时间对齐到帧边界，保持与播放器一致（使用向下取整对齐）
+  function alignToFrameMs(rawMs: number): number {
+    if (!frameRate || frameRate <= 0) return rawMs
+    const frameIndex = Math.floor((rawMs / 1000) * frameRate)
+    const aligned = (frameIndex / frameRate) * 1000
+    return aligned
+  }
+
+
   // ========== 播放头拖拽 ==========
 
   function handlePlayheadMouseDown(e: MouseEvent) {
@@ -325,13 +340,14 @@
     document.addEventListener('mouseup', handleUp)
     activeCleanups.push(cleanup)
   }
-  
+
   // 点击时间轴跳转
   function handleTimelineClick(e: MouseEvent) {
     if (isProcessing || isDraggingTrimStart || isDraggingTrimEnd) return
 
-    const newTimeMs = pixelToTimeMs(e.clientX)
-    onSeek?.(newTimeMs)
+    const rawMs = pixelToTimeMs(e.clientX)
+    const alignedMs = alignToFrameMs(rawMs)
+    onSeek?.(alignedMs)
   }
 
   // 🆕 鼠标移动处理（预览）
@@ -341,10 +357,13 @@
     }
 
     isHoveringTimeline = true
-    hoverPreviewTimeMs = pixelToTimeMs(e.clientX)
 
-    // 触发预览回调
-    onHoverPreview?.(hoverPreviewTimeMs)
+    if (hoverRaf) cancelAnimationFrame(hoverRaf)
+    const x = e.clientX
+    hoverRaf = requestAnimationFrame(() => {
+      hoverPreviewTimeMs = pixelToTimeMs(x)
+      onHoverPreview?.(hoverPreviewTimeMs)
+    })
   }
 
   // 🆕 Zoom 轨道鼠标移动处理（预览）
@@ -360,6 +379,46 @@
     // 触发预览回调
     onHoverPreview?.(hoverPreviewTimeMs)
   }
+  // 统一容器级鼠标移动处理（覆盖整个进度条区域，包括内部元素/覆盖层）
+  function handleContainerMouseMove(e: MouseEvent) {
+    if (isDraggingPlayhead || isDraggingTrimStart || isDraggingTrimEnd || isProcessing) return
+
+    isHoveringTimeline = true
+
+    if (hoverRaf) cancelAnimationFrame(hoverRaf)
+    const x = e.clientX
+    const y = e.clientY
+
+    hoverRaf = requestAnimationFrame(() => {
+      let timeMs = 0
+      // 优先判断是否在 zoom 区域内
+      if (zoomTrackEl) {
+        const zr = zoomTrackEl.getBoundingClientRect()
+        if (y >= zr.top && y <= zr.bottom && x >= zr.left && x <= zr.right) {
+          timeMs = pixelToTimeMs(x, zoomTrackEl)
+          const aligned = alignToFrameMs(timeMs)
+          hoverPreviewTimeMs = aligned
+          onHoverPreview?.(aligned)
+          return
+        }
+      }
+      // 默认使用主轨道
+      if (timelineTrackEl) {
+        timeMs = pixelToTimeMs(x)
+        const aligned = alignToFrameMs(timeMs)
+        hoverPreviewTimeMs = aligned
+        onHoverPreview?.(aligned)
+      }
+    })
+  }
+
+  // 容器级鼠标离开
+  function handleContainerMouseLeave() {
+    if (!isHoveringTimeline) return
+    isHoveringTimeline = false
+    onHoverPreviewEnd?.()
+  }
+
 
   // 🆕 鼠标离开处理
   function handleTimelineMouseLeave() {
@@ -376,21 +435,21 @@
     isHoveringTimeline = false
     onHoverPreviewEnd?.()
   }
-  
+
   // 键盘导航
   function handleTimelineKeydown(e: KeyboardEvent) {
     if (isProcessing) return
-    
+
     // 左右箭头快进/快退
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
       e.preventDefault()
       const step = e.shiftKey ? 5000 : 1000  // Shift: 5秒, 普通: 1秒
-      const newTimeMs = e.key === 'ArrowLeft' 
+      const newTimeMs = e.key === 'ArrowLeft'
         ? Math.max(0, currentTimeMs - step)
         : Math.min(timelineMaxMs, currentTimeMs + step)
       onSeek?.(newTimeMs)
     }
-    
+
     // Home/End 跳转到开始/结束
     else if (e.key === 'Home') {
       e.preventDefault()
@@ -400,14 +459,14 @@
       e.preventDefault()
       onSeek?.(timelineMaxMs)
     }
-    
+
     // Space 播放/暂停（如果提供了回调）
     else if (e.key === ' ') {
       e.preventDefault()
       // Note: Timeline 本身不控制播放，交给父组件处理
     }
   }
-  
+
   // ========== 裁剪手柄拖拽 ==========
 
   function handleTrimStartDrag(e: MouseEvent) {
@@ -467,11 +526,11 @@
     document.addEventListener('mouseup', handleUp)
     activeCleanups.push(cleanup)
   }
-  
+
   // ========== Zoom 功能 ==========
 
   function handleZoomTrackMouseDown(e: MouseEvent) {
-    if (!zoomTrackEl || hasZoomIntervals) return  // 🔧 改为检查是否已有区间
+    if (!zoomTrackEl) return
     e.preventDefault()
 
     const startX = e.clientX
@@ -588,7 +647,7 @@
     document.addEventListener('mouseup', handleUp)
     activeCleanups.push(cleanup)
   }
-  
+
   // 🔧 重置 Zoom（清除所有区间）
   function resetZoom() {
     zoomActive = false
@@ -606,7 +665,7 @@
 </script>
 
 <!-- Timeline Container -->
-<div class="timeline-container">
+<div class="timeline-container" role="region" aria-label="Timeline area" onmousemove={handleContainerMouseMove} onmouseleave={handleContainerMouseLeave}>
   <!-- 主时间轴区域 -->
   <div class="timeline-main">
     <!-- 时间刻度 -->
@@ -629,14 +688,12 @@
         </div>
       {/each}
     </div>
-    
+
     <!-- 时间轴轨道 -->
     <div
       class="timeline-track"
       bind:this={timelineTrackEl}
       onclick={handleTimelineClick}
-      onmousemove={handleTimelineMouseMove}
-      onmouseleave={handleTimelineMouseLeave}
       onkeydown={handleTimelineKeydown}
       role="slider"
       tabindex="0"
@@ -663,7 +720,7 @@
           style="left: {trimStartPercent}%; width: {trimEndPercent - trimStartPercent}%"
         ></div>
       {/if}
-      
+
       <!-- 裁剪手柄 -->
       {#if trimEnabled}
         <!-- 开始手柄 -->
@@ -677,7 +734,7 @@
         >
           <Scissors class="w-4 h-4 text-white" />
         </button>
-        
+
         <!-- 结束手柄 -->
         <button
           class="trim-handle trim-end"
@@ -692,7 +749,7 @@
       {/if}
     </div>
   </div>
-  
+
   <!-- 🆕 预览竖线（灰色） - 在播放头之前渲染 -->
   {#if isHoveringTimeline && !isDraggingPlayhead && !isDraggingTrimStart && !isDraggingTrimEnd}
     <div
@@ -714,8 +771,6 @@
         class="zoom-hint"
         bind:this={zoomTrackEl}
         onmousedown={handleZoomTrackMouseDown}
-        onmousemove={handleZoomTrackMouseMove}
-        onmouseleave={handleZoomTrackMouseLeave}
         role="button"
         tabindex="0"
         aria-label="Click and drag to create zoom interval"
@@ -748,8 +803,7 @@
         <div
           class="zoom-mini-timeline"
           bind:this={zoomTrackEl}
-          onmousemove={handleZoomTrackMouseMove}
-          onmouseleave={handleZoomTrackMouseLeave}
+
         >
           <!-- 全时间轴背景 -->
           <div class="zoom-full-range"></div>
@@ -784,14 +838,14 @@
       </div>
     {/if}
   </div>
-  
+
   <!-- 播放头竖线 - 覆盖整个时间轴包括 zoom 区 -->
-  <div 
+  <div
     class="playhead-container"
     style="left: {playheadPercent}%"
   >
     <!-- 竖线 -->
-    <div 
+    <div
       class="playhead-line"
       class:playing={isPlaying}
       class:paused={!isPlaying}
@@ -800,7 +854,7 @@
       tabindex="0"
       aria-label="Playhead"
     ></div>
-    
+
     <!-- 时间气泡提示 -->
     <div class="playhead-tooltip">
       {currentTimeLabel}
@@ -941,7 +995,7 @@
     border-bottom: 2px solid rgba(59, 130, 246, 0.7);
     pointer-events: none;
   }
-  
+
   /* ========== 裁剪手柄 ========== */
   .trim-handle {
     position: absolute;
@@ -961,7 +1015,8 @@
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
-    z-index: 20;
+    z-index: 35; /* 高于预览线和播放头 */
+    pointer-events: auto; /* 确保可以接收鼠标事件 */
   }
 
   .trim-handle:hover {
@@ -981,7 +1036,7 @@
       0 10px 10px -5px rgba(0, 0, 0, 0.04),
       0 0 0 5px rgba(59, 130, 246, 0.4);
   }
-  
+
   /* ========== Zoom 控制区 ========== */
   .zoom-control {
     margin-top: 0.75rem; /* mt-3 */
@@ -1168,7 +1223,7 @@
   .zoom-interval-delete:hover {
     background: rgba(220, 38, 38, 1);
   }
-  
+
   /* ========== 预览竖线（灰色） ========== */
   .preview-line-container {
     position: absolute;
