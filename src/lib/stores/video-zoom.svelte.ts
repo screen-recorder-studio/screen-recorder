@@ -71,17 +71,59 @@ class VideoZoomStore {
   removeInterval(index: number) {
     if (index >= 0 && index < this.intervals.length) {
       const removed = this.intervals.splice(index, 1)[0]
-      
+
       if (this.intervals.length === 0) {
         this.enabled = false
       }
-      
+
       console.log('🗑️ [VideoZoomStore] Interval removed:', {
         index,
         removed,
         remaining: this.intervals.length
       })
     }
+  }
+
+  /**
+   * 移动指定索引的区间到新位置（不允许重叠）
+   * @returns true 成功，false 失败（重叠）
+   */
+  moveInterval(index: number, newStartMs: number, newEndMs: number): boolean {
+    if (index < 0 || index >= this.intervals.length) {
+      console.warn('⚠️ [VideoZoomStore] Invalid interval index:', index)
+      return false
+    }
+
+    // 创建临时数组，排除当前区间
+    const tempIntervals = this.intervals.filter((_, i) => i !== index)
+
+    // 检查新位置是否与其他区间重叠
+    const hasOverlap = tempIntervals.some(interval =>
+      newStartMs < interval.endMs && newEndMs > interval.startMs
+    )
+
+    if (hasOverlap) {
+      console.warn('⚠️ [VideoZoomStore] Cannot move interval: overlaps with existing interval:', {
+        index,
+        newPosition: { startMs: newStartMs, endMs: newEndMs },
+        existing: tempIntervals
+      })
+      return false
+    }
+
+    // 更新区间位置
+    this.intervals[index] = { startMs: newStartMs, endMs: newEndMs }
+
+    // 重新排序
+    this.intervals.sort((a, b) => a.startMs - b.startMs)
+
+    console.log('✅ [VideoZoomStore] Interval moved:', {
+      index,
+      newPosition: { startMs: newStartMs, endMs: newEndMs },
+      allIntervals: this.intervals
+    })
+
+    return true
   }
   
   /**

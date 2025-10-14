@@ -796,7 +796,9 @@ async function processVideoComposition(chunks: EncodedChunk[], options: ExportOp
           padding: 0,
           outputRatio: '16:9',
           videoPosition: 'center'
-        }
+        },
+        // propagate export framerate for consistent zoom timing
+        frameRate: (options as any)?.framerate || 30
       }
     }, { transfer: transferList })
 
@@ -889,7 +891,9 @@ async function processVideoCompositionOpfs(wireChunks: any[], options: ExportOpt
         backgroundConfig: options.backgroundConfig || {
           type: 'solid-color', color: '#000000', padding: 0, outputRatio: '16:9', videoPosition: 'center'
         },
-        startGlobalFrame
+        startGlobalFrame,
+        // prefer provided framerate, fallback to OPFS meta fps, finally 30
+        frameRate: (options as any)?.framerate || (opfsSummary?.meta?.fps) || 30
       }
     }, { transfer: transferList })
   })

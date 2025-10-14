@@ -97,7 +97,18 @@
   let totalFrames = $state(0)
   let currentTime = $state(0)
   let duration = $state(0)
-  let frameRate = 30
+  let frameRate = $state(30)
+
+  // 🆕 自动推断真实帧率（优先使用全局帧数和时长），避免 Zoom 时间漂移/跳出
+  $effect(() => {
+    if (totalFramesAll > 0 && durationMs > 0) {
+      const fps = Math.max(1, Math.round(totalFramesAll / (durationMs / 1000)))
+      if (fps !== frameRate) {
+        console.log('[VideoPreview] Adjusting frameRate from', frameRate, 'to', fps, { totalFramesAll, durationMs })
+        frameRate = fps
+      }
+    }
+  })
   let isPlaying = $state(false)
   let shouldContinuePlayback = $state(false) // 🔧 Continuous playback flag
   let continueFromGlobalFrame = $state(0) // 🔧 Record which global frame to continue playback from
@@ -885,7 +896,9 @@
         offsetY: backgroundConfig.wallpaper.offsetY
       } : undefined,
       // 🆕 添加视频裁剪配置
-      videoCrop: videoCropStore.getCropConfig()
+      videoCrop: videoCropStore.getCropConfig(),
+      // 🆕 添加视频 Zoom 配置（与 config 路径保持一致）
+      videoZoom: videoZoomStore.getZoomConfig()
     }
 
     // If image background, get new ImageBitmap
@@ -944,7 +957,8 @@
       data: {
         chunks: transferableChunks,
         backgroundConfig: plainBackgroundConfig,
-        startGlobalFrame: windowStartIndex
+        startGlobalFrame: windowStartIndex,
+        frameRate: frameRate  // 🆕 传递帧率
       }
     }, { transfer: transferObjects })
 
@@ -1245,7 +1259,9 @@
         offsetY: newConfig.wallpaper.offsetY
       } : undefined,
       // 🆕 添加视频裁剪配置
-      videoCrop: videoCropStore.getCropConfig()
+      videoCrop: videoCropStore.getCropConfig(),
+      // 🆕 添加视频 Zoom 配置
+      videoZoom: videoZoomStore.getZoomConfig()
     }
 
     console.log('⚙️ [VideoPreview] Updating background config:', plainConfig)
@@ -1293,10 +1309,20 @@
       }
     }
 
+    // 🔧 修复：包含窗口信息，确保 Zoom 时间计算正确
     compositeWorker.postMessage({
       type: 'config',
-      data: { backgroundConfig: plainConfig }
+      data: {
+        backgroundConfig: plainConfig,
+        startGlobalFrame: windowStartIndex,  // 🔧 添加窗口起始帧
+        frameRate: frameRate  // 🔧 添加帧率
+      }
     }, transferObjects.length > 0 ? { transfer: transferObjects } : undefined)
+
+    console.log('🔍 [VideoPreview] Config update with window info:', {
+      startGlobalFrame: windowStartIndex,
+      frameRate: frameRate
+    })
   }
 
   // Reactive processing - only process once after recording is complete
@@ -1516,6 +1542,12 @@
 
   // 🆕 处理鼠标悬停预览
   function handleHoverPreview(timeMs: number) {
+    // 🔧 防御性检查：确保时间值有效
+    if (typeof timeMs !== 'number' || isNaN(timeMs) || timeMs < 0) {
+      console.warn('⚠️ [Preview] Invalid timeMs:', timeMs)
+      return
+    }
+
     // 节流控制
     if (hoverPreviewThrottleTimer) return
 
@@ -1549,18 +1581,22 @@
 
     if (windowFrameIndex >= 0 && windowFrameIndex < totalFrames) {
       // 🔧 在当前窗口内，请求预览帧
-      compositeWorker?.postMessage({
-        type: 'preview-frame',
-        data: { frameIndex: windowFrameIndex }
-      })
+      if (compositeWorker) {
+        compositeWorker.postMessage({
+          type: 'preview-frame',
+          data: { frameIndex: windowFrameIndex }
+        })
 
-      console.log('🔍 [Preview] Requesting preview frame:', {
-        timeMs,
-        globalFrameIndex,
-        windowFrameIndex,
-        windowStartIndex,
-        totalFrames
-      })
+        console.log('🔍 [Preview] Requesting preview frame:', {
+          timeMs,
+          globalFrameIndex,
+          windowFrameIndex,
+          windowStartIndex,
+          totalFrames
+        })
+      } else {
+        console.warn('⚠️ [Preview] Worker not available')
+      }
     } else {
       // 🔧 不在当前窗口，触发窗口切换（带节流）
       if (!windowSwitchThrottleTimer) {
@@ -1589,10 +1625,26 @@
 
   // 🆕 处理预览结束
   function handleHoverPreviewEnd() {
-    if (!isPreviewMode) return
+    if (!isPreviewMode) {
+      console.log('🔍 [Preview] Already exited preview mode, skipping')
+      return
+    }
 
+    console.log('🔍 [Preview] Exiting preview mode...')
+
+    // 🔧 清理预览状态
     isPreviewMode = false
     previewFrameIndex = null
+
+    // 🔧 清理节流定时器
+    if (hoverPreviewThrottleTimer) {
+      clearTimeout(hoverPreviewThrottleTimer)
+      hoverPreviewThrottleTimer = null
+    }
+    if (windowSwitchThrottleTimer) {
+      clearTimeout(windowSwitchThrottleTimer)
+      windowSwitchThrottleTimer = null
+    }
 
     // 🔧 关键：恢复到保存的播放位置
     if (savedPlaybackState) {
@@ -1603,17 +1655,20 @@
         savedGlobalFrameIndex,
         savedWindowFrameIndex,
         windowStartIndex,
-        currentFrameIndex
+        currentFrameIndex,
+        wasPlaying: savedPlaybackState.isPlaying
       })
 
       // 🔧 恢复到保存的帧位置（窗口内索引）
       if (savedWindowFrameIndex >= 0 && savedWindowFrameIndex < totalFrames) {
         // 在当前窗口内，直接 seek
-        compositeWorker?.postMessage({
-          type: 'seek',
-          data: { frameIndex: savedWindowFrameIndex }
-        })
-        currentFrameIndex = savedWindowFrameIndex
+        if (compositeWorker) {
+          compositeWorker.postMessage({
+            type: 'seek',
+            data: { frameIndex: savedWindowFrameIndex }
+          })
+          currentFrameIndex = savedWindowFrameIndex
+        }
         // 无窗口切换，安全清除 pending 状态
         pendingPreviewWindowSwitch = false
         pendingRestoreGlobalFrameIndex = null
@@ -1628,40 +1683,111 @@
       // 恢复播放状态
       if (savedPlaybackState.isPlaying) {
         requestAnimationFrame(() => {
+          console.log('🔍 [Preview] Resuming playback...')
           play()
         })
       }
 
       savedPlaybackState = null
+    } else {
+      // 🔧 防御性：即使没有保存状态，也清理 pending 标志
+      console.warn('⚠️ [Preview] No saved playback state found')
+      pendingPreviewWindowSwitch = false
+      pendingRestoreGlobalFrameIndex = null
     }
 
     console.log('🔍 [Preview] Hover preview ended, restore handled')
   }
 
   // 🆕 处理 Zoom 区间变化
-  function handleZoomChange(startMs: number, endMs: number): boolean {
+  async function handleZoomChange(startMs: number, endMs: number): Promise<boolean> {
+    console.log('🔍 [VideoPreview] handleZoomChange called:', { startMs, endMs })
+
     // 特殊情况：(0, 0) 表示清除所有 Zoom
     if (startMs === 0 && endMs === 0) {
       videoZoomStore.clearAll()
-      updateBackgroundConfig(backgroundConfig)
+      // ✅ P0 修复：等待配置更新完成
+      await updateBackgroundConfig(backgroundConfig)
+
+      // 🆕 强制刷新当前帧（如果暂停状态）
+      if (!isPlaying) {
+        seekToFrame(currentFrameIndex)
+      }
+
+      console.log('✅ [VideoPreview] Zoom cleared and config updated')
       return true
     }
 
     // 尝试添加区间
     const success = videoZoomStore.addInterval(startMs, endMs)
 
+    console.log('🔍 [VideoPreview] addInterval result:', success)
+    console.log('🔍 [VideoPreview] videoZoomStore state:', {
+      enabled: videoZoomStore.enabled,
+      intervals: videoZoomStore.intervals,
+      zoomConfig: videoZoomStore.getZoomConfig()
+    })
+
     if (success) {
-      // 更新 worker 配置
-      updateBackgroundConfig(backgroundConfig)
+      // ✅ P0 修复：等待配置更新完成
+      await updateBackgroundConfig(backgroundConfig)
+
+      // 🆕 强制刷新当前帧（如果暂停状态）
+      if (!isPlaying) {
+        seekToFrame(currentFrameIndex)
+      }
+
+      console.log('✅ [VideoPreview] Zoom interval added and config updated')
     }
 
     return success
   }
 
   // 🆕 处理删除 Zoom 区间
-  function handleZoomRemove(index: number) {
+  async function handleZoomRemove(index: number): Promise<void> {
     videoZoomStore.removeInterval(index)
-    updateBackgroundConfig(backgroundConfig)
+
+    // ✅ P0 修复：等待配置更新完成
+    await updateBackgroundConfig(backgroundConfig)
+
+    // 🆕 强制刷新当前帧（如果暂停状态）
+    if (!isPlaying) {
+      seekToFrame(currentFrameIndex)
+    }
+
+    console.log('✅ [VideoPreview] Zoom interval removed and config updated')
+  }
+
+  // 🆕 处理移动 Zoom 区间
+  async function handleZoomIntervalMove(index: number, newStartMs: number, newEndMs: number): Promise<boolean> {
+    console.log('🔍 [VideoPreview] handleZoomIntervalMove called:', { index, newStartMs, newEndMs })
+    console.log('🔍 [VideoPreview] Before moveInterval - videoZoomStore state:', {
+      enabled: videoZoomStore.enabled,
+      intervals: videoZoomStore.intervals
+    })
+
+    const success = videoZoomStore.moveInterval(index, newStartMs, newEndMs)
+
+    console.log('🔍 [VideoPreview] After moveInterval - success:', success)
+    console.log('🔍 [VideoPreview] After moveInterval - videoZoomStore state:', {
+      enabled: videoZoomStore.enabled,
+      intervals: videoZoomStore.intervals,
+      zoomConfig: videoZoomStore.getZoomConfig()
+    })
+
+    if (success) {
+      // ✅ P0 修复：等待配置更新完成
+      await updateBackgroundConfig(backgroundConfig)
+
+      // 🆕 强制刷新当前帧（如果暂停状态）
+      if (!isPlaying) {
+        seekToFrame(currentFrameIndex)
+      }
+
+      console.log('✅ [VideoPreview] Zoom interval moved and config updated')
+    }
+
+    return success
   }
 
   $effect(() => {
@@ -1889,6 +2015,7 @@
         onTrimToggle={() => trimStore.toggle()}
         onZoomChange={handleZoomChange}
         onZoomRemove={handleZoomRemove}
+        onZoomIntervalMove={handleZoomIntervalMove}
       />
     </div>
   {/if}

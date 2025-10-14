@@ -100,6 +100,16 @@ export interface BackgroundConfig {
     widthPercent: number
     heightPercent: number
   }
+  // 视频 Zoom 配置
+  videoZoom?: {
+    enabled: boolean
+    scale: number  // 放大倍数（例如 1.5）
+    transitionDurationMs: number  // 过渡时长（暂不使用）
+    intervals: Array<{
+      startMs: number
+      endMs: number
+    }>
+  }
 }
 
 // 预设渐变配置类型

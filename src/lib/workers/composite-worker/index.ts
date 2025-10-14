@@ -13,6 +13,7 @@ interface CompositeMessage {
     timestamp?: number;
     frameIndex?: number;
     startGlobalFrame?: number; // 新增：窗口全局起点（用于C-2复用判断）
+    frameRate?: number; // 🆕 视频帧率
   };
 }
 
@@ -72,6 +73,9 @@ let fixedVideoLayout: VideoLayout | null = null;
 let videoInfo: { width: number; height: number } | null = null;
 // 🔧 新增：存储修正后的视频尺寸信息
 let correctedVideoSize: { width: number; height: number } | null = null;
+// 🆕 窗口信息（用于计算时间）
+let windowStartFrameIndex: number = 0;  // 窗口起始帧索引（全局）
+let videoFrameRate: number = 30;  // 视频帧率（默认 30fps）
 
 // 初始化 OffscreenCanvas
 function initializeCanvas(width: number, height: number) {
@@ -506,8 +510,95 @@ function createRoundedRectPath(x: number, y: number, width: number, height: numb
   ctx.closePath();
 }
 
+// 🆕 缓动函数：easeInOutCubic（先加速后减速）
+function easeInOutCubic(t: number): number {
+  return t < 0.5
+    ? 4 * t * t * t
+    : 1 - Math.pow(-2 * t + 2, 3) / 2
+}
+
+// 🆕 计算当前时间的 Zoom 缩放比例（包含缓动）
+// 返回值：1.0 = 无缩放，scale = 完全缩放
+function calculateZoomScale(currentTimeMs: number, zoomConfig: any, debugLog: boolean = false): number {
+  // 🔧 防御性检查：确保时间值有效
+  if (typeof currentTimeMs !== 'number' || isNaN(currentTimeMs) || currentTimeMs < 0) {
+    console.warn('⚠️ [calculateZoomScale] Invalid currentTimeMs:', currentTimeMs)
+    return 1.0
+  }
+
+  if (!zoomConfig?.enabled || !zoomConfig.intervals || zoomConfig.intervals.length === 0) {
+    if (debugLog) {
+      console.log('🔍 [calculateZoomScale] No zoom config:', {
+        hasConfig: !!zoomConfig,
+        enabled: zoomConfig?.enabled,
+        intervalsLength: zoomConfig?.intervals?.length
+      })
+    }
+    return 1.0
+  }
+
+  const targetScale = zoomConfig.scale || 1.5
+  const transitionMs = zoomConfig.transitionDurationMs || 300
+
+  if (debugLog) {
+    console.log('🔍 [calculateZoomScale] Checking intervals:', {
+      currentTimeMs,
+      targetScale,
+      transitionMs,
+      intervals: zoomConfig.intervals
+    })
+  }
+
+  // 查找当前时间所在或最近的区间
+  for (const interval of zoomConfig.intervals) {
+    const { startMs, endMs } = interval
+
+    // 🔧 防御性检查：确保区间值有效
+    if (typeof startMs !== 'number' || typeof endMs !== 'number' || startMs >= endMs) {
+      console.warn('⚠️ [calculateZoomScale] Invalid interval:', interval)
+      continue
+    }
+
+    // 1. 进入过渡阶段（区间开始前 transitionMs 到区间开始）
+    if (currentTimeMs >= startMs - transitionMs && currentTimeMs < startMs) {
+      const progress = (currentTimeMs - (startMs - transitionMs)) / transitionMs
+      const easedProgress = easeInOutCubic(progress)
+      const scale = 1.0 + (targetScale - 1.0) * easedProgress
+      if (debugLog) {
+        console.log('🔍 [calculateZoomScale] In transition (entering):', { interval, progress, easedProgress, scale })
+      }
+      return scale
+    }
+
+    // 2. 完全放大阶段（区间内）
+    if (currentTimeMs >= startMs && currentTimeMs <= endMs) {
+      if (debugLog) {
+        console.log('🔍 [calculateZoomScale] In zoom interval:', { interval, scale: targetScale })
+      }
+      return targetScale
+    }
+
+    // 3. 退出过渡阶段（区间结束到区间结束后 transitionMs）
+    if (currentTimeMs > endMs && currentTimeMs <= endMs + transitionMs) {
+      const progress = (currentTimeMs - endMs) / transitionMs
+      const easedProgress = easeInOutCubic(progress)
+      const scale = targetScale - (targetScale - 1.0) * easedProgress
+      if (debugLog) {
+        console.log('🔍 [calculateZoomScale] In transition (exiting):', { interval, progress, easedProgress, scale })
+      }
+      return scale
+    }
+  }
+
+  if (debugLog) {
+    console.log('🔍 [calculateZoomScale] Not in any interval, returning 1.0')
+  }
+  return 1.0
+}
+
 // 渲染合成帧（严格保持原始显示比例，支持可见区域裁剪）
-function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: BackgroundConfig) {
+// frameIndex: 窗口内帧索引（用于计算 Zoom 时间）
+function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: BackgroundConfig, frameIndex: number = currentFrameIndex) {
   if (!ctx || !offscreenCanvas) {
     console.error('❌ [COMPOSITE-WORKER] Canvas not initialized');
     return null;
@@ -520,6 +611,41 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
     // 2. 绘制背景（支持渐变）
     renderBackground(config);
 
+    // 🆕 6. 计算当前时间的 Zoom 缩放比例（包含缓动）
+    // 使用帧索引计算时间（而不是 frame.timestamp，因为它可能是系统时间戳）
+    const globalFrameIndex = windowStartFrameIndex + frameIndex  // 使用传入的 frameIndex
+    const currentTimeMs = (globalFrameIndex / videoFrameRate) * 1000
+
+    // 🔍 每 30 帧启用详细调试
+    const shouldDebug = frameIndex % 30 === 0 && config.videoZoom?.enabled
+    const zoomScale = calculateZoomScale(currentTimeMs, config.videoZoom, shouldDebug)
+
+    // 🔍 调试：每 30 帧输出一次时间计算信息
+    if (shouldDebug) {
+      console.log('🔍 [COMPOSITE-WORKER] Time calculation:', {
+        frameIndex,
+        windowStartFrameIndex,
+        globalFrameIndex,
+        videoFrameRate,
+        currentTimeMs: currentTimeMs.toFixed(0) + 'ms',
+        zoomIntervals: config.videoZoom.intervals,
+        zoomScale: zoomScale.toFixed(3)
+      })
+    }
+
+    // 🆕 计算实际布局（考虑 Zoom 缓动）
+    let actualLayout = layout
+    if (zoomScale > 1.0) {
+      const zoomedWidth = layout.width * zoomScale
+      const zoomedHeight = layout.height * zoomScale
+      actualLayout = {
+        x: layout.x - (zoomedWidth - layout.width) / 2,
+        y: layout.y - (zoomedHeight - layout.height) / 2,
+        width: zoomedWidth,
+        height: zoomedHeight
+      }
+    }
+
     // 3. 绘制阴影（如果配置了阴影）
     const borderRadius = config.borderRadius || 0;
 
@@ -530,12 +656,12 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
       ctx.shadowBlur = config.shadow.blur;
       ctx.shadowColor = config.shadow.color;
 
-      // 阴影形状基于目标布局矩形
+      // 🆕 阴影形状基于实际布局（包含 Zoom）
       if (borderRadius > 0) {
-        createRoundedRectPath(layout.x, layout.y, layout.width, layout.height, borderRadius);
+        createRoundedRectPath(actualLayout.x, actualLayout.y, actualLayout.width, actualLayout.height, borderRadius);
         ctx.fill();
       } else {
-        ctx.fillRect(layout.x, layout.y, layout.width, layout.height);
+        ctx.fillRect(actualLayout.x, actualLayout.y, actualLayout.width, actualLayout.height);
       }
       ctx.restore();
     }
@@ -545,11 +671,26 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
 
     // 5. 创建圆角遮罩（如果配置了圆角）
     if (borderRadius > 0) {
-      createRoundedRectPath(layout.x, layout.y, layout.width, layout.height, borderRadius);
+      // 🆕 遮罩基于实际布局（包含 Zoom）
+      createRoundedRectPath(actualLayout.x, actualLayout.y, actualLayout.width, actualLayout.height, borderRadius);
       ctx.clip();
     }
 
-    // 6. 绘制视频帧（支持用户自定义裁剪）
+    // 🔍 调试：输出 Zoom 状态（包含缓动）
+    if (zoomScale > 1.0 && frameIndex % 30 === 0) {
+      console.log('🔍 [COMPOSITE-WORKER] Zoom active:', {
+        backgroundType: config.type,
+        frameIndex,
+        globalFrameIndex,
+        currentTimeMs: currentTimeMs.toFixed(0) + 'ms',
+        zoomScale: zoomScale.toFixed(3),
+        isTransitioning: zoomScale > 1.0 && zoomScale < (config.videoZoom?.scale || 1.5),
+        originalLayout: layout,
+        zoomedLayout: actualLayout
+      })
+    }
+
+    // 7. 绘制视频帧（支持用户自定义裁剪 + Zoom）
     const vr = frame.visibleRect;
 
     // 验证帧尺寸信息
@@ -563,10 +704,10 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
 
     // 🆕 计算源裁剪区域（用户自定义裁剪）
     let srcX = 0, srcY = 0, srcWidth = frame.codedWidth, srcHeight = frame.codedHeight;
-    
+
     if (config.videoCrop?.enabled) {
       const crop = config.videoCrop;
-      
+
       if (crop.mode === 'percentage') {
         // 百分比模式：基于原始帧尺寸计算
         srcX = Math.floor(crop.xPercent * frame.codedWidth);
@@ -580,13 +721,13 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
         srcWidth = crop.width;
         srcHeight = crop.height;
       }
-      
+
       // 边界检查
       srcX = Math.max(0, Math.min(srcX, frame.codedWidth));
       srcY = Math.max(0, Math.min(srcY, frame.codedHeight));
       srcWidth = Math.min(srcWidth, frame.codedWidth - srcX);
       srcHeight = Math.min(srcHeight, frame.codedHeight - srcY);
-      
+
       // 检查裁剪区域是否有效
       if (srcWidth <= 0 || srcHeight <= 0) {
         console.error('❌ [COMPOSITE-WORKER] Invalid crop region after boundary check:', {
@@ -600,7 +741,7 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
         srcWidth = frame.codedWidth;
         srcHeight = frame.codedHeight;
       }
-      
+
       console.log('✂️ [COMPOSITE-WORKER] Applying video crop:', {
         mode: crop.mode,
         original: { width: frame.codedWidth, height: frame.codedHeight },
@@ -613,6 +754,8 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
         } : null
       });
     }
+
+    // 🆕 Zoom 现在通过放大 actualLayout 实现，不再修改源区域
 
     // 计算渲染的缩放比例（基于裁剪后或原始尺寸）
     const effectiveSourceWidth = srcWidth;
@@ -641,19 +784,22 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
       }
     }
 
-    // 🆕 使用 9 参数模式绘制（带源裁剪）
+    // 🆕 使用 9 参数模式绘制（带源裁剪 + Zoom 布局放大）
     ctx.drawImage(
       frame,
-      srcX, srcY, srcWidth, srcHeight,           // 源区域（裁剪区域）
-      layout.x, layout.y, layout.width, layout.height  // 目标区域
+      srcX, srcY, srcWidth, srcHeight,           // 源区域（用户裁剪区域）
+      actualLayout.x, actualLayout.y, actualLayout.width, actualLayout.height  // 🆕 目标区域（包含 Zoom 放大）
     );
     
-    // 确认裁剪渲染成功
-    if (config.videoCrop?.enabled && currentFrameIndex % 30 === 0) {
-      console.log('✅ [COMPOSITE-WORKER] Crop rendered successfully:', {
+    // 确认裁剪/Zoom 渲染成功
+    if ((config.videoCrop?.enabled || zoomScale > 1.0) && frameIndex % 30 === 0) {
+      console.log('✅ [COMPOSITE-WORKER] Video rendered:', {
         source: { x: srcX, y: srcY, width: srcWidth, height: srcHeight },
-        target: { x: layout.x, y: layout.y, width: layout.width, height: layout.height },
-        frameIndex: currentFrameIndex
+        target: actualLayout,
+        cropEnabled: config.videoCrop?.enabled || false,
+        zoomScale: zoomScale.toFixed(3),
+        isZooming: zoomScale > 1.0,
+        frameIndex
       });
     }
 
@@ -745,7 +891,7 @@ function startStreamingDecode(chunks: any[]) {
               if (currentConfig && fixedVideoLayout) {
                 const f = decodedFrames[pendingSeekIndex];
                 console.log('🔍 [COMPOSITE-WORKER] Rendering pending seek frame...');
-                const bitmap = renderCompositeFrame(f, fixedVideoLayout, currentConfig);
+                const bitmap = renderCompositeFrame(f, fixedVideoLayout, currentConfig, pendingSeekIndex);
                 if (bitmap) {
                   console.log('✅ [COMPOSITE-WORKER] Pending seek frame rendered, sending to main thread');
                   self.postMessage({
@@ -916,10 +1062,19 @@ function startPlayback() {
     return;
   }
 
+  // 🔧 修复：检查是否已到达边界，如果是则重置到开始
+  // 这样第二次播放时可以从头开始，而暂停后继续播放则保持当前位置
+  const boundary = windowBoundaryFrames ?? decodedFrames.length;
+  if (currentFrameIndex >= boundary) {
+    console.log('[COMPOSITE-WORKER] At boundary (currentFrameIndex=%d >= boundary=%d), resetting to start', currentFrameIndex, boundary);
+    currentFrameIndex = 0;
+  }
+
   // 流式播放：即使没有帧也可以开始播放循环，等待帧到来
   isPlaying = true;
-  console.log('[progress] VideoComposite - starting playback loop, current frames:', decodedFrames.length);
-  const fps = 30;
+  console.log('[progress] VideoComposite - starting playback loop, current frames:', decodedFrames.length, 'currentFrameIndex:', currentFrameIndex);
+  // Use the actual videoFrameRate for scheduling to avoid time drift/jumps in zoom intervals
+  const fps = Math.max(1, Math.floor(videoFrameRate || 30));
   const frameInterval = 1000 / fps;
   let lastFrameTime = 0;
 
@@ -937,6 +1092,8 @@ function startPlayback() {
           data: { totalFrames: boundary, lastFrameIndex: Math.max(0, currentFrameIndex - 1) }
         });
         isPlaying = false;
+        // 🔧 修复：重置 currentFrameIndex，确保下次播放从头开始
+        currentFrameIndex = 0;
         return;
       }
 
@@ -944,7 +1101,8 @@ function startPlayback() {
         const frame = decodedFrames[currentFrameIndex];
 
         // 使用固定布局，避免每帧重新计算
-        const bitmap = renderCompositeFrame(frame, fixedVideoLayout!, currentConfig!);
+        // 🔧 修复：传递 currentFrameIndex 以支持 Zoom 时间计算
+        const bitmap = renderCompositeFrame(frame, fixedVideoLayout!, currentConfig!, currentFrameIndex);
         if (bitmap) {
           // 发送渲染结果给主线程
           self.postMessage({
@@ -1102,6 +1260,16 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         // 记录本窗口边界帧数（用于按窗口触发 windowComplete）
         windowBoundaryFrames = data.chunks.length;
         console.log('[COMPOSITE-WORKER] Window boundary set to', windowBoundaryFrames, 'frames')
+
+        // 🆕 存储窗口起始帧索引和帧率（用于计算时间）
+        windowStartFrameIndex = data.startGlobalFrame ?? 0;
+        if (data.frameRate) {
+          videoFrameRate = data.frameRate;
+        }
+        console.log('🔍 [COMPOSITE-WORKER] Window info:', {
+          startFrameIndex: windowStartFrameIndex,
+          frameRate: videoFrameRate
+        })
 
         lowWatermarkNotified = false;
         criticalWatermarkNotified = false;
@@ -1290,7 +1458,8 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
             if (currentConfig && decodedFrames[currentFrameIndex] && fixedVideoLayout) {
               const frame = decodedFrames[currentFrameIndex];
               console.log('✅ [COMPOSITE-WORKER] Rendering frame', currentFrameIndex);
-              const bitmap = renderCompositeFrame(frame, fixedVideoLayout, currentConfig);
+              // 🔧 修复：传递 currentFrameIndex 以支持 Zoom 时间计算
+              const bitmap = renderCompositeFrame(frame, fixedVideoLayout, currentConfig, currentFrameIndex);
               if (bitmap) {
                 self.postMessage({
                   type: 'frame',
@@ -1317,7 +1486,7 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
             currentFrameIndex = last;
             if (currentConfig && decodedFrames[last] && fixedVideoLayout) {
               const frame = decodedFrames[last];
-              const bitmap = renderCompositeFrame(frame, fixedVideoLayout, currentConfig);
+              const bitmap = renderCompositeFrame(frame, fixedVideoLayout, currentConfig, last);
               if (bitmap) {
                 self.postMessage({
                   type: 'frame',
@@ -1338,7 +1507,8 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
 
           if (previewFrameIndex < decodedFrames.length && currentConfig && fixedVideoLayout) {
             const frame = decodedFrames[previewFrameIndex];
-            const bitmap = renderCompositeFrame(frame, fixedVideoLayout, currentConfig);
+            // 🆕 传递帧索引以支持 Zoom 计算
+            const bitmap = renderCompositeFrame(frame, fixedVideoLayout, currentConfig, previewFrameIndex);
 
             if (bitmap) {
               self.postMessage({
@@ -1370,7 +1540,7 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
             const frame = decodedFrames[frameIndex];
 
             // 渲染合成帧
-            const bitmap = renderCompositeFrame(frame, fixedVideoLayout, currentConfig);
+            const bitmap = renderCompositeFrame(frame, fixedVideoLayout, currentConfig, frameIndex);
 
             if (bitmap) {
               self.postMessage({
@@ -1394,6 +1564,25 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         if (data.backgroundConfig) {
           const oldConfig = currentConfig;
           currentConfig = data.backgroundConfig;
+
+          // 🔧 修复：更新窗口信息，确保 Zoom 时间计算正确
+          if (typeof data.startGlobalFrame === 'number') {
+            windowStartFrameIndex = data.startGlobalFrame;
+            console.log('🔍 [COMPOSITE-WORKER] Updated windowStartFrameIndex:', windowStartFrameIndex);
+          }
+          if (data.frameRate) {
+            videoFrameRate = data.frameRate;
+            console.log('🔍 [COMPOSITE-WORKER] Updated videoFrameRate:', videoFrameRate);
+          }
+
+          // 🔍 调试：输出 Zoom 配置（详细）
+          console.log('🔍 [COMPOSITE-WORKER] Config update received:', {
+            hasVideoZoom: !!currentConfig.videoZoom,
+            videoZoom: currentConfig.videoZoom,
+            windowStartFrameIndex,
+            videoFrameRate,
+            fullConfig: currentConfig
+          })
 
           // 检查是否需要重新计算输出尺寸
           const needsCanvasResize = !oldConfig ||
@@ -1441,7 +1630,8 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
             const frame = decodedFrames[currentFrameIndex];
             console.log('✅ [COMPOSITE-WORKER] Rendering frame for config update:', currentFrameIndex);
 
-            const bitmap = renderCompositeFrame(frame, fixedVideoLayout, currentConfig);
+            // 🔧 修复：传递 currentFrameIndex 以支持 Zoom 时间计算
+            const bitmap = renderCompositeFrame(frame, fixedVideoLayout, currentConfig, currentFrameIndex);
             console.log('🖼️ [COMPOSITE-WORKER] renderCompositeFrame returned:', {
               hasBitmap: !!bitmap,
               bitmapWidth: bitmap?.width,

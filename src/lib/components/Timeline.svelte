@@ -27,8 +27,9 @@
     onTrimStartChange?: (timeMs: number) => void
     onTrimEndChange?: (timeMs: number) => void
     onTrimToggle?: () => void              // 切换裁剪开关
-    onZoomChange?: (startMs: number, endMs: number) => boolean  // Zoom 变化（返回是否成功）
-    onZoomRemove?: (index: number) => void // 删除 Zoom 区间
+    onZoomChange?: (startMs: number, endMs: number) => Promise<boolean>  // ✅ P0 修复：返回 Promise
+    onZoomRemove?: (index: number) => Promise<void> // ✅ P0 修复：返回 Promise
+    onZoomIntervalMove?: (index: number, newStartMs: number, newEndMs: number) => Promise<boolean>  // ✅ P0 修复：返回 Promise
     onHoverPreview?: (timeMs: number) => void      // 鼠标悬停预览
     onHoverPreviewEnd?: () => void                 // 预览结束
   }
@@ -49,6 +50,7 @@
     onTrimToggle,
     onZoomChange,
     onZoomRemove,
+    onZoomIntervalMove,
     onHoverPreview,
     onHoverPreviewEnd
   }: Props = $props()
@@ -61,14 +63,26 @@
   let isDraggingPlayhead = $state(false)
   let isDraggingTrimStart = $state(false)
   let isDraggingTrimEnd = $state(false)
-  let isDraggingZoom = $state(false)
-  let isDraggingZoomStart = $state(false)
-  let isDraggingZoomEnd = $state(false)
 
-  // Zoom 状态
-  let zoomActive = $state(false)
-  let zoomStartMs = $state(0)
-  let zoomEndMs = $state(0)
+  // 🆕 Zoom 区间拖拽状态
+  let draggingZoomIndex = $state<number | null>(null)
+  let draggingZoomStartMs = $state(0)
+  let draggingZoomEndMs = $state(0)
+  let draggingZoomType = $state<'move' | 'resize-start' | 'resize-end' | null>(null) // 拖拽类型
+
+  // 🔍 调试：监听拖拽状态变化（可选，用于调试）
+  // $effect(() => {
+  //   if (draggingZoomIndex !== null) {
+  //     console.log('🔍 [Timeline] Dragging state changed:', {
+  //       index: draggingZoomIndex,
+  //       type: draggingZoomType,
+  //       startMs: draggingZoomStartMs,
+  //       endMs: draggingZoomEndMs
+  //     })
+  //   } else {
+  //     console.log('🔍 [Timeline] Dragging state cleared')
+  //   }
+  // })
 
   // 🆕 预览状态
   let isHoveringTimeline = $state(false)
@@ -105,10 +119,6 @@
     const end = trimEndMs > 0 ? trimEndMs : timelineMaxMs
     return (end / timelineMaxMs) * 100
   })
-
-  // 计算 Zoom 选区百分比
-  const zoomStartPercent = $derived(timelineMaxMs > 0 ? (zoomStartMs / timelineMaxMs) * 100 : 0)
-  const zoomEndPercent = $derived(timelineMaxMs > 0 ? (zoomEndMs / timelineMaxMs) * 100 : 100)
 
   // 🆕 计算预览位置百分比
   const hoverPreviewPercent = $derived(timelineMaxMs > 0 ? (hoverPreviewTimeMs / timelineMaxMs) * 100 : 0)
@@ -368,8 +378,7 @@
 
   // 🆕 Zoom 轨道鼠标移动处理（预览）
   function handleZoomTrackMouseMove(e: MouseEvent) {
-    // 🔧 拖拽创建区间时不触发预览
-    if (!zoomTrackEl || isDraggingZoom || isProcessing) {
+    if (!zoomTrackEl || isProcessing) {
       return
     }
 
@@ -430,7 +439,7 @@
 
   // 🆕 Zoom 轨道鼠标离开处理
   function handleZoomTrackMouseLeave() {
-    if (!isHoveringTimeline || isDraggingZoom) return
+    if (!isHoveringTimeline) return
 
     isHoveringTimeline = false
     onHoverPreviewEnd?.()
@@ -529,55 +538,108 @@
 
   // ========== Zoom 功能 ==========
 
-  function handleZoomTrackMouseDown(e: MouseEvent) {
+  // 默认 Zoom 时长（500ms）
+  const DEFAULT_ZOOM_DURATION_MS = 500
+  // 最小 Zoom 时长（100ms，约 3 帧 @ 30fps）
+  const MIN_ZOOM_DURATION_MS = 100
+
+  // 点击创建默认 500ms 的 Zoom 区间
+  async function handleZoomTrackClick(e: MouseEvent) {
     if (!zoomTrackEl) return
+
+    // 🔧 区分点击和拖拽：如果是在已有区间上，不创建新区间
+    const target = e.target as HTMLElement
+    if (target.closest('.zoom-interval')) {
+      return  // 点击在区间上，由区间的拖拽处理
+    }
+
     e.preventDefault()
 
+    // ✅ 使用当前 hover 的对齐时间（已经是帧边界）
+    const startMs = hoverPreviewTimeMs
+    const endMs = Math.min(startMs + DEFAULT_ZOOM_DURATION_MS, timelineMaxMs)
+
+    // 边界检查
+    if (endMs > timelineMaxMs) {
+      console.warn('⚠️ [Timeline] Cannot create zoom interval: exceeds timeline duration')
+      return
+    }
+
+    // ✅ P0 修复：等待配置更新完成
+    const success = await onZoomChange?.(startMs, endMs)
+
+    if (success) {
+      console.log(`✅ [Timeline] Zoom interval created: ${formatTimeSec(startMs / 1000)} - ${formatTimeSec(endMs / 1000)}`)
+    } else {
+      console.warn('⚠️ [Timeline] Zoom interval rejected (overlap)')
+    }
+  }
+
+  // 🆕 拖拽整个 Zoom 区间（移动位置）
+  function handleZoomIntervalDrag(e: MouseEvent, intervalIndex: number) {
+    e.preventDefault()
+    e.stopPropagation()
+
+    const interval = zoomIntervals[intervalIndex]
+    const duration = interval.endMs - interval.startMs
     const startX = e.clientX
-    const startMs = pixelToTimeMs(startX, zoomTrackEl)
+    const initialStartMs = interval.startMs
 
-    isDraggingZoom = true
-    zoomStartMs = startMs
-    zoomEndMs = startMs
+    // 🆕 设置拖拽状态（用于实时 UI 更新）
+    draggingZoomIndex = intervalIndex
+    draggingZoomType = 'move'
+    draggingZoomStartMs = initialStartMs
+    draggingZoomEndMs = interval.endMs
 
     const handleMove = (moveEvent: MouseEvent) => {
-      const currentMs = pixelToTimeMs(moveEvent.clientX, zoomTrackEl)
+      if (!zoomTrackEl) return
 
-      // 确保开始和结束位置正确排序
-      if (currentMs >= startMs) {
-        zoomStartMs = startMs
-        zoomEndMs = currentMs
-      } else {
-        zoomStartMs = currentMs
-        zoomEndMs = startMs
+      const deltaX = moveEvent.clientX - startX
+      const trackWidth = zoomTrackEl.getBoundingClientRect().width
+      const deltaMs = (deltaX / trackWidth) * timelineMaxMs
+
+      let newStartMs = initialStartMs + deltaMs
+      let newEndMs = newStartMs + duration
+
+      // 边界检查
+      if (newStartMs < 0) {
+        newStartMs = 0
+        newEndMs = duration
       }
+      if (newEndMs > timelineMaxMs) {
+        newEndMs = timelineMaxMs
+        newStartMs = timelineMaxMs - duration
+      }
+
+      // 🆕 实时更新拖拽位置（UI 会响应式更新）
+      draggingZoomStartMs = newStartMs
+      draggingZoomEndMs = newEndMs
     }
 
-    const handleUp = () => {
-      isDraggingZoom = false
+    const handleUp = async () => {
+      // 🔧 先移除事件监听器，防止重复触发
+      cleanup()
 
-      // 验证选区有效性（至少1秒）
-      const duration = Math.abs(zoomEndMs - zoomStartMs)
-      if (duration >= 1000) {
-        // 🔧 调用回调并检查返回值
-        const success = onZoomChange?.(zoomStartMs, zoomEndMs)
+      // 🆕 然后处理拖拽结束逻辑
+      if (draggingZoomIndex !== null) {
+        // 🆕 帧对齐：对齐到最近的帧边界
+        const alignedStartMs = alignToFrameMs(draggingZoomStartMs)
+        const alignedEndMs = alignToFrameMs(draggingZoomEndMs)
 
+        // ✅ P0 修复：等待配置更新完成
+        const success = await onZoomIntervalMove?.(intervalIndex, alignedStartMs, alignedEndMs)
         if (success) {
-          console.log(`✅ [Timeline] Zoom interval created: ${formatTimeSec(zoomStartMs / 1000)} - ${formatTimeSec(zoomEndMs / 1000)}`)
+          console.log(`✅ [Timeline] Zoom interval moved: ${formatTimeSec(alignedStartMs / 1000)} - ${formatTimeSec(alignedEndMs / 1000)}`)
         } else {
-          console.warn('⚠️ [Timeline] Zoom interval rejected (overlap)')
+          console.warn('⚠️ [Timeline] Zoom interval move rejected (overlap)')
         }
-
-        // 重置选区
-        zoomStartMs = 0
-        zoomEndMs = timelineMaxMs
-      } else {
-        // 选区太小，重置
-        zoomStartMs = 0
-        zoomEndMs = timelineMaxMs
       }
 
-      cleanup()
+      // 🆕 最后清除拖拽状态
+      draggingZoomIndex = null
+      draggingZoomType = null
+      draggingZoomStartMs = 0
+      draggingZoomEndMs = 0
     }
 
     const cleanup = () => {
@@ -591,22 +653,63 @@
     activeCleanups.push(cleanup)
   }
 
-  // Zoom 手柄拖拽
-  function handleZoomStartDrag(e: MouseEvent) {
+  // 🆕 拖拽 Zoom 区间的开始边界（调整起始时间）
+  function handleZoomStartResize(e: MouseEvent, intervalIndex: number) {
     e.preventDefault()
     e.stopPropagation()
 
-    isDraggingZoomStart = true
+    const interval = zoomIntervals[intervalIndex]
+    const startX = e.clientX
+    const initialStartMs = interval.startMs
+    const fixedEndMs = interval.endMs
+
+    // 🆕 设置拖拽状态
+    draggingZoomIndex = intervalIndex
+    draggingZoomType = 'resize-start'
+    draggingZoomStartMs = initialStartMs
+    draggingZoomEndMs = fixedEndMs
 
     const handleMove = (moveEvent: MouseEvent) => {
-      const newMs = pixelToTimeMs(moveEvent.clientX, zoomTrackEl)
-      zoomStartMs = Math.min(newMs, zoomEndMs - 1000)  // 至少保持1秒间隔
+      if (!zoomTrackEl) return
+
+      const deltaX = moveEvent.clientX - startX
+      const trackWidth = zoomTrackEl.getBoundingClientRect().width
+      const deltaMs = (deltaX / trackWidth) * timelineMaxMs
+
+      let newStartMs = initialStartMs + deltaMs
+
+      // 边界检查：不能超过结束时间（保持最小时长）
+      const maxStartMs = fixedEndMs - MIN_ZOOM_DURATION_MS
+      newStartMs = Math.max(0, Math.min(newStartMs, maxStartMs))
+
+      // 实时更新
+      draggingZoomStartMs = newStartMs
+      draggingZoomEndMs = fixedEndMs
     }
 
-    const handleUp = () => {
-      isDraggingZoomStart = false
-      onZoomChange?.(zoomStartMs, zoomEndMs)
+    const handleUp = async () => {
       cleanup()
+
+      if (draggingZoomIndex !== null) {
+        const alignedStartMs = alignToFrameMs(draggingZoomStartMs)
+        const alignedEndMs = alignToFrameMs(draggingZoomEndMs)
+
+        // 确保最小时长
+        if (alignedEndMs - alignedStartMs >= MIN_ZOOM_DURATION_MS) {
+          // ✅ P0 修复：等待配置更新完成
+          const success = await onZoomIntervalMove?.(intervalIndex, alignedStartMs, alignedEndMs)
+          if (success) {
+            console.log(`✅ [Timeline] Zoom interval resized (start): ${formatTimeSec(alignedStartMs / 1000)} - ${formatTimeSec(alignedEndMs / 1000)}`)
+          }
+        } else {
+          console.warn('⚠️ [Timeline] Zoom interval too short, reverting')
+        }
+      }
+
+      draggingZoomIndex = null
+      draggingZoomType = null
+      draggingZoomStartMs = 0
+      draggingZoomEndMs = 0
     }
 
     const cleanup = () => {
@@ -620,21 +723,63 @@
     activeCleanups.push(cleanup)
   }
 
-  function handleZoomEndDrag(e: MouseEvent) {
+  // 🆕 拖拽 Zoom 区间的结束边界（调整结束时间）
+  function handleZoomEndResize(e: MouseEvent, intervalIndex: number) {
     e.preventDefault()
     e.stopPropagation()
 
-    isDraggingZoomEnd = true
+    const interval = zoomIntervals[intervalIndex]
+    const startX = e.clientX
+    const fixedStartMs = interval.startMs
+    const initialEndMs = interval.endMs
+
+    // 🆕 设置拖拽状态
+    draggingZoomIndex = intervalIndex
+    draggingZoomType = 'resize-end'
+    draggingZoomStartMs = fixedStartMs
+    draggingZoomEndMs = initialEndMs
 
     const handleMove = (moveEvent: MouseEvent) => {
-      const newMs = pixelToTimeMs(moveEvent.clientX, zoomTrackEl)
-      zoomEndMs = Math.max(newMs, zoomStartMs + 1000)  // 至少保持1秒间隔
+      if (!zoomTrackEl) return
+
+      const deltaX = moveEvent.clientX - startX
+      const trackWidth = zoomTrackEl.getBoundingClientRect().width
+      const deltaMs = (deltaX / trackWidth) * timelineMaxMs
+
+      let newEndMs = initialEndMs + deltaMs
+
+      // 边界检查：不能小于开始时间（保持最小时长）
+      const minEndMs = fixedStartMs + MIN_ZOOM_DURATION_MS
+      newEndMs = Math.min(timelineMaxMs, Math.max(newEndMs, minEndMs))
+
+      // 实时更新
+      draggingZoomStartMs = fixedStartMs
+      draggingZoomEndMs = newEndMs
     }
 
-    const handleUp = () => {
-      isDraggingZoomEnd = false
-      onZoomChange?.(zoomStartMs, zoomEndMs)
+    const handleUp = async () => {
       cleanup()
+
+      if (draggingZoomIndex !== null) {
+        const alignedStartMs = alignToFrameMs(draggingZoomStartMs)
+        const alignedEndMs = alignToFrameMs(draggingZoomEndMs)
+
+        // 确保最小时长
+        if (alignedEndMs - alignedStartMs >= MIN_ZOOM_DURATION_MS) {
+          // ✅ P0 修复：等待配置更新完成
+          const success = await onZoomIntervalMove?.(intervalIndex, alignedStartMs, alignedEndMs)
+          if (success) {
+            console.log(`✅ [Timeline] Zoom interval resized (end): ${formatTimeSec(alignedStartMs / 1000)} - ${formatTimeSec(alignedEndMs / 1000)}`)
+          }
+        } else {
+          console.warn('⚠️ [Timeline] Zoom interval too short, reverting')
+        }
+      }
+
+      draggingZoomIndex = null
+      draggingZoomType = null
+      draggingZoomStartMs = 0
+      draggingZoomEndMs = 0
     }
 
     const cleanup = () => {
@@ -649,17 +794,16 @@
   }
 
   // 🔧 重置 Zoom（清除所有区间）
-  function resetZoom() {
-    zoomActive = false
-    zoomStartMs = 0
-    zoomEndMs = timelineMaxMs
-    onZoomChange?.(0, 0)  // 🔧 传递 (0, 0) 表示清除所有区间
+  async function resetZoom() {
+    // ✅ P0 修复：等待配置更新完成
+    await onZoomChange?.(0, 0)  // 🔧 传递 (0, 0) 表示清除所有区间
     console.log('🔍 [Timeline] Zoom reset - all intervals cleared')
   }
 
   // 🆕 删除单个 Zoom 区间
-  function handleRemoveZoomInterval(index: number) {
-    onZoomRemove?.(index)
+  async function handleRemoveZoomInterval(index: number) {
+    // ✅ P0 修复：等待配置更新完成
+    await onZoomRemove?.(index)
     console.log('�️ [Timeline] Zoom interval removed:', index)
   }
 </script>
@@ -770,13 +914,13 @@
       <div
         class="zoom-hint"
         bind:this={zoomTrackEl}
-        onmousedown={handleZoomTrackMouseDown}
+        onclick={handleZoomTrackClick}
         role="button"
         tabindex="0"
-        aria-label="Click and drag to create zoom interval"
+        aria-label="Click to create zoom interval"
       >
         <ZoomIn class="w-4 h-4" />
-        <span>Click and drag to create zoom interval</span>
+        <span>Click to create zoom interval (500ms)</span>
       </div>
     {:else}
       <!-- Zoom 激活状态 - 显示区间列表 -->
@@ -803,35 +947,73 @@
         <div
           class="zoom-mini-timeline"
           bind:this={zoomTrackEl}
-
+          onclick={handleZoomTrackClick}
         >
           <!-- 全时间轴背景 -->
           <div class="zoom-full-range"></div>
 
           <!-- 🆕 显示所有 Zoom 区间 -->
           {#each zoomIntervals as interval, index}
-            {@const startPercent = (interval.startMs / timelineMaxMs) * 100}
-            {@const widthPercent = ((interval.endMs - interval.startMs) / timelineMaxMs) * 100}
+            <!-- 🆕 如果正在拖拽当前区间，使用拖拽位置；否则使用实际位置 -->
+            {@const isDragging = draggingZoomIndex === index}
+            {@const displayStartMs = isDragging ? draggingZoomStartMs : interval.startMs}
+            {@const displayEndMs = isDragging ? draggingZoomEndMs : interval.endMs}
+            {@const startPercent = (displayStartMs / timelineMaxMs) * 100}
+            {@const widthPercent = ((displayEndMs - displayStartMs) / timelineMaxMs) * 100}
+            {@const durationMs = displayEndMs - displayStartMs}
 
             <div
               class="zoom-interval"
+              class:dragging={isDragging}
+              class:moving={isDragging && draggingZoomType === 'move'}
+              class:resizing={isDragging && (draggingZoomType === 'resize-start' || draggingZoomType === 'resize-end')}
               style="left: {startPercent}%; width: {widthPercent}%"
-              title="{formatTimeSec(interval.startMs / 1000)} - {formatTimeSec(interval.endMs / 1000)}"
+              title="{formatTimeSec(displayStartMs / 1000)} - {formatTimeSec(displayEndMs / 1000)} ({durationMs}ms)"
+              onmousedown={(e) => handleZoomIntervalDrag(e, index)}
+              role="button"
+              tabindex="0"
+              aria-label="Zoom interval {index + 1}"
             >
-              <!-- 区间标签 -->
-              <span class="zoom-interval-label">
-                {index + 1}
-              </span>
+              <!-- 🆕 左侧调整手柄 -->
+              <div
+                class="zoom-resize-handle zoom-resize-handle-start"
+                onmousedown={(e) => handleZoomStartResize(e, index)}
+                role="button"
+                tabindex="0"
+                aria-label="Resize start of interval {index + 1}"
+                title="Drag to adjust start time"
+              ></div>
 
-              <!-- 删除按钮 -->
-              <button
-                class="zoom-interval-delete"
-                onclick={() => handleRemoveZoomInterval(index)}
-                aria-label="Remove zoom interval {index + 1}"
-                title="Remove this interval"
-              >
-                <X class="w-3 h-3" />
-              </button>
+              <!-- 区间内容 -->
+              <div class="zoom-interval-content">
+                <!-- 区间标签 -->
+                <span class="zoom-interval-label">
+                  {index + 1}
+                </span>
+
+                <!-- 删除按钮 -->
+                <button
+                  class="zoom-interval-delete"
+                  onclick={(e) => {
+                    e.stopPropagation()
+                    handleRemoveZoomInterval(index)
+                  }}
+                  aria-label="Remove zoom interval {index + 1}"
+                  title="Remove this interval"
+                >
+                  <X class="w-3 h-3" />
+                </button>
+              </div>
+
+              <!-- 🆕 右侧调整手柄 -->
+              <div
+                class="zoom-resize-handle zoom-resize-handle-end"
+                onmousedown={(e) => handleZoomEndResize(e, index)}
+                role="button"
+                tabindex="0"
+                aria-label="Resize end of interval {index + 1}"
+                title="Drag to adjust end time"
+              ></div>
             </div>
           {/each}
         </div>
@@ -1120,6 +1302,7 @@
     box-shadow:
       inset 0 2px 4px rgba(0, 0, 0, 0.3),
       inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    cursor: crosshair;
   }
 
   .zoom-full-range {
@@ -1128,45 +1311,6 @@
     background: linear-gradient(to bottom, #1f2937, #111827);
     opacity: 0.5;
     border-radius: 0.375rem;
-  }
-
-  .zoom-selected-range {
-    position: absolute;
-    top: 0;
-    height: 100%;
-    background: linear-gradient(to bottom, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.4));
-    border: 2px solid #60a5fa;
-    border-radius: 0.375rem;
-    cursor: move;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-  }
-
-  /* Zoom 手柄 */
-  .zoom-handle {
-    position: absolute;
-    top: 0;
-    width: 0.875rem; /* 稍微加宽 */
-    height: 100%;
-    background: linear-gradient(to bottom, #60a5fa, #3b82f6);
-    cursor: ew-resize;
-    transition: all 0.2s ease;
-    border: none;
-  }
-
-  .zoom-handle:hover,
-  .zoom-handle.dragging {
-    background: linear-gradient(to bottom, #3b82f6, #2563eb);
-    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.4);
-  }
-
-  .zoom-handle-start {
-    left: 0;
-    border-radius: 0.375rem 0 0 0.375rem;
-  }
-
-  .zoom-handle-end {
-    right: 0;
-    border-radius: 0 0.375rem 0.375rem 0;
   }
 
   /* 🆕 Zoom 区间块 */
@@ -1180,17 +1324,83 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 0.5rem;
-    gap: 0.5rem;
-    cursor: pointer;
+    padding: 0; /* 移除 padding，由内部元素控制 */
+    gap: 0;
+    cursor: grab;
     transition: all 0.2s ease;
-    overflow: hidden;
+    overflow: visible; /* 允许手柄超出边界 */
   }
 
   .zoom-interval:hover {
     background: linear-gradient(to bottom, rgba(59, 130, 246, 0.6), rgba(37, 99, 235, 0.7));
     border-color: #60a5fa;
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+  }
+
+  .zoom-interval:active {
+    cursor: grabbing;
+  }
+
+  /* 🆕 移动中的区间样式 */
+  .zoom-interval.moving {
+    cursor: grabbing;
+    background: linear-gradient(to bottom, rgba(59, 130, 246, 0.7), rgba(37, 99, 235, 0.8));
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: none;
+    z-index: 10;
+  }
+
+  /* 🆕 调整大小中的区间样式 */
+  .zoom-interval.resizing {
+    background: linear-gradient(to bottom, rgba(59, 130, 246, 0.7), rgba(37, 99, 235, 0.8));
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4);
+    transition: none;
+    z-index: 10;
+  }
+
+  /* 🆕 区间内容容器 */
+  .zoom-interval-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 0.5rem;
+    gap: 0.5rem;
+    min-width: 0; /* 允许内容收缩 */
+  }
+
+  /* 🆕 调整手柄 */
+  .zoom-resize-handle {
+    position: relative;
+    width: 8px;
+    height: 100%;
+    background: rgba(96, 165, 250, 0.8);
+    cursor: ew-resize;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+  }
+
+  .zoom-resize-handle:hover {
+    background: rgba(96, 165, 250, 1);
+    width: 10px;
+  }
+
+  .zoom-resize-handle-start {
+    border-radius: 0.25rem 0 0 0.25rem;
+    border-right: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .zoom-resize-handle-end {
+    border-radius: 0 0.25rem 0.25rem 0;
+    border-left: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  /* 调整大小时手柄高亮 */
+  .zoom-interval.resizing .zoom-resize-handle {
+    background: rgba(96, 165, 250, 1);
+    width: 10px;
   }
 
   .zoom-interval-label {

@@ -2,6 +2,7 @@
 
 import type { BackgroundConfig } from '$lib/types/background'
 import type { VideoCropStore } from '$lib/stores/video-crop.svelte'
+import { videoZoomStore } from '$lib/stores/video-zoom.svelte'
 
 /**
  * Extract source video information from encoded chunks
@@ -67,6 +68,8 @@ export function convertBackgroundConfigForExport(
     outputRatio: backgroundConfig.outputRatio,
     videoPosition: backgroundConfig.videoPosition,
     borderRadius: backgroundConfig.borderRadius,
+    // 🆕 include current video zoom configuration for export
+    videoZoom: videoZoomStore.getZoomConfig(),
     inset: backgroundConfig.inset,
     
     // Deep convert gradient object
