@@ -122,13 +122,13 @@ async function loadOpfsWindow(start: number, count: number): Promise<{ chunks: a
   // ✂️ 应用裁剪偏移：将逻辑帧索引转换为物理帧索引
   let physicalStart = start
   let physicalCount = count
-  
+
   if (isTrimEnabled) {
     physicalStart = trimStartFrame + start
     // 确保不超出裁剪结束位置
     const maxCount = Math.max(0, trimEndFrame - physicalStart + 1)
     physicalCount = Math.min(count, maxCount)
-    
+
     console.log(`✂️ [MP4-Export-Worker] Applying trim offset:`, {
       logicalStart: start,
       logicalCount: count,
@@ -181,13 +181,35 @@ function cleanupOpfsReader(): void {
   consumedGlobalFrames = 0
   lastEmittedGlobalEnd = 0
   isOpfsMode = false
-  
+
   // ✂️ 重置裁剪参数
   isTrimEnabled = false
   trimStartFrame = 0
   trimEndFrame = Number.MAX_SAFE_INTEGER
 }
 // ---- end OPFS data processing utilities ----
+
+// 调整 Zoom 区间以适配裁剪（trim）：将区间整体左移 trim.startMs 并裁剪到导出时长
+function adjustZoomForTrim(bg: any, trim?: { enabled?: boolean; startMs: number; endMs: number }) {
+  try {
+    if (!bg || !bg.videoZoom || !Array.isArray(bg.videoZoom.intervals)) return bg
+    if (!trim?.enabled) return bg
+    const start = Math.max(0, trim.startMs || 0)
+    const end = Math.max(start, trim.endMs || start)
+    const dur = Math.max(0, end - start)
+    const intervals = bg.videoZoom.intervals
+      .map((it: any) => ({ startMs: (it.startMs || 0) - start, endMs: (it.endMs || 0) - start }))
+      .map((it: any) => ({
+        startMs: Math.max(0, Math.min(it.startMs, dur)),
+        endMs: Math.max(0, Math.min(it.endMs, dur))
+      }))
+      .filter((it: any) => it.endMs > it.startMs)
+    return { ...bg, videoZoom: { ...bg.videoZoom, intervals, enabled: intervals.length > 0 } }
+  } catch {
+    return bg
+  }
+}
+
 
 // 合成状态
 let totalFrames = 0
@@ -450,6 +472,7 @@ self.onmessage = async (event) => {
       data: { error: (error as Error).message }
     })
   }
+
 }
 
 /**
@@ -468,9 +491,15 @@ async function handleExport(exportData: ExportData) {
     console.log('🎬 [Export-Worker] Starting export', { format: options?.format })
     console.log('📊 [Export-Worker] Input chunks:', chunks.length)
     console.log('⚙️ [Export-Worker] Export options:', options)
-    
+
     // 记录当前导出格式
     currentExportFormat = options?.format || ''
+
+    // ✂️ 将 Zoom 区间与裁剪时间对齐：平移并裁剪到导出区间
+    try {
+      (options as any).backgroundConfig = adjustZoomForTrim((options as any).backgroundConfig, (options as any).trim)
+    } catch {}
+
 
     // 分支：WebM 兼容路径（保持原 webm-export-worker 行为：不使用 OPFS 窗口/流式）
     if (options?.format === 'webm') {
@@ -1246,7 +1275,7 @@ async function exportToMP4(options: ExportOptions): Promise<any> {
     })
 
     // 计算帧参数（OPFS 模式下 videoInfo 可能尚未通过 ready 返回，优先使用 options 或默认值）
-    const frameRate = (options as any)?.frameRate || videoInfo?.frameRate || 30
+    const frameRate = (options as any)?.framerate || videoInfo?.frameRate || 30
     const totalTargetFrames = isOpfsMode ? totalOpfsFrames : totalFrames
     const duration = totalTargetFrames / frameRate
     const frameDuration = 1 / frameRate
@@ -1771,7 +1800,7 @@ async function exportToWEBMCompat(options: ExportOptions): Promise<any> {
   // 封装阶段进度
   updateProgress({ stage: 'muxing', progress: 80, currentFrame: 0, totalFrames })
 
-  const frameRate = videoInfo.frameRate
+  const frameRate = (options as any)?.framerate || videoInfo.frameRate
   const frameDuration = 1 / frameRate
 
   console.log(`📊 [WebM-Export-Worker] Export parameters: totalFrames=${totalFrames}, frameRate=${frameRate}`)
@@ -1826,6 +1855,10 @@ async function exportToGIF(options: ExportOptions): Promise<Blob> {
   const fps = gifOptions.fps || 10
   const quality = gifOptions.quality || 10
   const scale = gifOptions.scale || 1.0
+  // 以源帧率为时间基，按 gif fps 抽帧，保证时间轴一致
+  const sourceFps = videoInfo?.frameRate || 30
+  const stride = Math.max(1, Math.round(sourceFps / fps))
+  const expectedFrames = isOpfsMode ? Math.ceil(totalOpfsFrames / stride) : Math.ceil(totalFrames / stride)
 
   // 计算输出尺寸
   const outputWidth = Math.floor(offscreenCanvas.width * scale)
@@ -1866,10 +1899,10 @@ async function exportToGIF(options: ExportOptions): Promise<Blob> {
 
   if (isOpfsMode) {
     // OPFS 模式：窗口化处理
-    frames.push(...await collectFramesOpfs(gifStrategy, frameDelay, scale))
+    frames.push(...await collectFramesOpfs(gifStrategy, frameDelay, scale, stride, expectedFrames))
   } else {
     // 内存模式：逐帧请求
-    frames.push(...await collectFrames(gifStrategy, frameDelay, scale))
+    frames.push(...await collectFrames(gifStrategy, frameDelay, scale, stride, expectedFrames))
   }
 
   console.log(`✅ [GIF-Export-Worker] Collected ${frames.length} frames`)
@@ -1900,11 +1933,13 @@ async function exportToGIF(options: ExportOptions): Promise<Blob> {
 async function collectFrames(
   gifStrategy: GifStrategy,
   frameDelay: number,
-  scale: number
+  scale: number,
+  stride: number,
+  expectedFrames: number
 ): Promise<GifFrameData[]> {
   const frames: GifFrameData[] = []
 
-  for (let frameIndex = 0; frameIndex < totalFrames; frameIndex++) {
+  for (let frameIndex = 0; frameIndex < totalFrames; frameIndex += stride) {
     if (shouldCancel) break
 
     try {
@@ -1936,12 +1971,12 @@ async function collectFrames(
       }
 
       // 更新进度：帧收集阶段占总进度的5%-40%
-      const progress = 5 + ((frameIndex + 1) / totalFrames) * 35
+      const progress = 5 + (Math.min(frames.length, expectedFrames) / expectedFrames) * 35
       updateProgress({
         stage: 'encoding',
         progress,
-        currentFrame: frameIndex + 1,
-        totalFrames
+        currentFrame: frames.length,
+        totalFrames: expectedFrames
       })
 
     } catch (error) {
@@ -1958,7 +1993,9 @@ async function collectFrames(
 async function collectFramesOpfs(
   gifStrategy: GifStrategy,
   frameDelay: number,
-  scale: number
+  scale: number,
+  stride: number,
+  expectedFrames: number
 ): Promise<GifFrameData[]> {
   const frames: GifFrameData[] = []
   let nextRequestStart = 0
@@ -1985,6 +2022,10 @@ async function collectFramesOpfs(
       if (shouldCancel) break
 
       try {
+        // 按步长抽帧：仅在满足全局索引对齐时采样
+        if (stride > 1 && (globalFrameIndex % stride) !== 0) {
+          continue
+        }
         // 请求渲染帧
         await requestCompositeFrame(i)
 
@@ -2012,12 +2053,12 @@ async function collectFramesOpfs(
         }
 
         // 更新进度：帧收集阶段占总进度的5%-40%
-        const progress = 5 + (frames.length / totalOpfsFrames) * 35
+        const progress = 5 + (Math.min(frames.length, expectedFrames) / expectedFrames) * 35
         updateProgress({
           stage: 'encoding',
           progress,
           currentFrame: frames.length,
-          totalFrames: totalOpfsFrames
+          totalFrames: expectedFrames
         })
 
       } catch (error) {
@@ -2106,7 +2147,7 @@ async function encodeGifInMainThread(
     console.log('🎨 [GIF-Export-Worker] Initializing GIF encoder...')
     self.postMessage({
       type: 'gif-init',
-      data: { 
+      data: {
         options,
         totalFrames: frames.length
       }
