@@ -9,6 +9,7 @@
   import { videoCropStore } from '$lib/stores/video-crop.svelte'
   import { videoZoomStore } from '$lib/stores/video-zoom.svelte'
   import VideoCropPanel from './VideoCropPanel.svelte'
+  import VideoFocusPanel from './VideoFocusPanel.svelte'
   import Timeline from './Timeline.svelte'
 
   // Props
@@ -120,6 +121,14 @@
 
   // ✂️ 视频裁剪相关状态
   let isCropMode = $state(false)
+  // 🎯 焦点设置模式
+  let isFocusMode = $state(false)
+  let focusIntervalIndex = $state<number | null>(null)
+  let focusFrameBitmap = $state<ImageBitmap | null>(null)
+  let pendingFocusGlobalFrame: number | null = null
+
+  let pendingFocusIntervalIndex: number | null = null
+
   let currentFrameBitmap = $state<ImageBitmap | null>(null)
   let videoInfo = $state<{ width: number; height: number } | null>(null)
 
@@ -392,6 +401,31 @@
               pendingPreviewWindowSwitch = false
             } else {
               console.warn('⚠️ [Preview] Pending restore target still outside new window')
+
+          // 🎯 若存在挂起的焦点设置请求，优先处理
+          if (pendingFocusGlobalFrame != null && pendingFocusIntervalIndex != null) {
+            const targetWindowFrame = pendingFocusGlobalFrame - windowStartIndex
+            if (targetWindowFrame >= 0 && targetWindowFrame < data.totalFrames) {
+              (async () => {
+                try {
+                  const bitmap = await getRawSourceFrameBitmapForWindowIndex(targetWindowFrame)
+                  focusFrameBitmap = bitmap
+                  videoInfo = { width: bitmap.width, height: bitmap.height }
+                  focusIntervalIndex = pendingFocusIntervalIndex
+                  isFocusMode = true
+                  // 清理挂起状态
+                  pendingFocusGlobalFrame = null
+                  pendingFocusIntervalIndex = null
+                  pendingPreviewWindowSwitch = false
+                } catch (e) {
+                  console.error('❌ [VideoPreview] Failed to get focus frame after window ready:', e)
+                }
+              })()
+            } else {
+              console.warn('⚠️ [VideoPreview] Pending focus target still outside new window')
+            }
+          }
+
             }
           }
 
@@ -483,14 +517,16 @@
           break
 
         case 'frameBitmap':
-          // Worker 返回的当前帧 bitmap（用于裁剪）
-          console.log('✂️ [VideoPreview] Received frame bitmap for cropping', {
+        case 'frameBitmapRaw':
+          // Worker 返回的帧位图（frameBitmap: 合成后；frameBitmapRaw: 源帧）
+          console.log('🖼️ [VideoPreview] Received frame bitmap', {
+            type,
             waitingForFrameBitmap,
             hasResolver: !!frameBitmapResolver,
             hasBitmap: !!data.bitmap
           })
 
-          // 🔧 关键修复：在 onmessage 中处理 frameBitmap
+          // 统一解析等待中的 Promise
           if (waitingForFrameBitmap && frameBitmapResolver) {
             console.log('✅ [VideoPreview] Resolving frameBitmap promise')
             frameBitmapResolver(data.bitmap)
@@ -1790,6 +1826,131 @@
     return success
   }
 
+
+
+  // 🎯 请求任意窗口内帧的位图
+  function getFrameBitmapForWindowIndex(windowFrameIndex: number): Promise<ImageBitmap> {
+    return new Promise<ImageBitmap>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        console.error('❌ [VideoPreview] getCurrentFrameBitmap timeout')
+        waitingForFrameBitmap = false
+        frameBitmapResolver = null
+        frameBitmapRejecter = null
+        reject(new Error('Timeout waiting for frameBitmap'))
+      }, 3000)
+
+      waitingForFrameBitmap = true
+      frameBitmapResolver = (bitmap: ImageBitmap) => {
+        clearTimeout(timeout)
+        resolve(bitmap)
+      }
+      frameBitmapRejecter = (error: Error) => {
+        clearTimeout(timeout)
+        reject(error)
+      }
+
+      console.log('🎯 [VideoPreview] Requesting frame bitmap for window index', windowFrameIndex)
+      compositeWorker!.postMessage({
+        type: 'getCurrentFrameBitmap',
+        data: { frameIndex: windowFrameIndex }
+      })
+    })
+  }
+
+  // 🆕 获取“源帧”位图（不带任何缩放/平移/合成偏移），用于焦点设置面板
+  function getRawSourceFrameBitmapForWindowIndex(windowFrameIndex: number): Promise<ImageBitmap> {
+    return new Promise<ImageBitmap>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        console.error('❌ [VideoPreview] getSourceFrameBitmap timeout')
+        waitingForFrameBitmap = false
+        frameBitmapResolver = null
+        frameBitmapRejecter = null
+        reject(new Error('Timeout waiting for raw frameBitmap'))
+      }, 3000)
+
+      waitingForFrameBitmap = true
+      frameBitmapResolver = (bitmap: ImageBitmap) => {
+        clearTimeout(timeout)
+        resolve(bitmap)
+      }
+      frameBitmapRejecter = (error: Error) => {
+        clearTimeout(timeout)
+        reject(error)
+      }
+
+      console.log('🎯 [VideoPreview] Requesting RAW source frame bitmap for window index', windowFrameIndex)
+      compositeWorker!.postMessage({
+        type: 'getSourceFrameBitmap',
+        data: { frameIndex: windowFrameIndex }
+      })
+    })
+  }
+
+  // 🎯 进入焦点设置模式（针对某个区间的首帧）
+  async function handleZoomFocusSetup(intervalIndex: number) {
+    try {
+      if (isPlaying) pause()
+      const interval = videoZoomStore.intervals[intervalIndex]
+      if (!interval) {
+        console.warn('⚠️ [VideoPreview] Invalid interval index for focus setup:', intervalIndex)
+        return
+      }
+      const startMs = interval.startMs
+      const globalFrameIndex = Math.floor((startMs / 1000) * frameRate)
+      const windowFrameIndex = globalFrameIndex - windowStartIndex
+
+      // 若目标帧在当前窗口内，直接请求位图
+      if (compositeWorker && windowFrameIndex >= 0 && windowFrameIndex < totalFrames) {
+        const bitmap = await getRawSourceFrameBitmapForWindowIndex(windowFrameIndex)
+        focusFrameBitmap = bitmap
+        videoInfo = { width: bitmap.width, height: bitmap.height }
+        focusIntervalIndex = intervalIndex
+        isFocusMode = true
+        return
+      }
+
+      // 否则，触发切窗，待 ready 后再获取
+      pendingFocusGlobalFrame = globalFrameIndex
+      pendingFocusIntervalIndex = intervalIndex
+      // 复用预览的 pending 标志以避免 ready 时默认跳 0 帧
+      pendingPreviewWindowSwitch = true
+      console.log('🎯 [VideoPreview] Focus target outside window, requesting window switch', {
+        startMs,
+        globalFrameIndex,
+        windowStartIndex,
+        totalFrames
+      })
+      onRequestWindow?.({
+        centerMs: startMs,
+        beforeMs: 0,
+        afterMs: Math.min(1000, timelineMaxMs - startMs)
+      })
+    } catch (error) {
+      console.error('❌ [VideoPreview] Failed to start focus setup:', error)
+    }
+  }
+
+  // 🎯 退出焦点模式（可选择应用）
+  async function exitFocusMode(apply: boolean, focus?: { x: number; y: number; space: 'source' | 'layout' }) {
+    try {
+      if (apply && focus && focusIntervalIndex != null) {
+        videoZoomStore.setIntervalFocus(focusIntervalIndex, focus)
+        await updateBackgroundConfig(backgroundConfig)
+        if (!isPlaying) {
+          // 刷新当前帧，确保效果即时可见
+          seekToFrame(currentFrameIndex)
+        }
+      }
+    } finally {
+      isFocusMode = false
+      if (focusFrameBitmap) {
+        try { focusFrameBitmap.close() } catch {}
+        focusFrameBitmap = null
+      }
+      focusIntervalIndex = null
+    }
+  }
+
   $effect(() => {
     if (backgroundConfig && compositeWorker && totalFrames > 0) {
       updateBackgroundConfig(backgroundConfig)
@@ -1907,7 +2068,7 @@
 
   <!-- 🔧 普通预览模式区域 - 包含 Canvas 和时间轴 -->
   <!-- 在裁剪模式下整体隐藏，避免布局混乱 -->
-  <div class:hidden={isCropMode} class="flex-1 flex flex-col min-h-0">
+  <div class:hidden={isCropMode || isFocusMode} class="flex-1 flex flex-col min-h-0">
     <!-- Canvas display area - takes remaining space -->
     <div class="flex-1 flex items-center justify-center p-6 min-h-0">
       <div class="relative bg-black flex items-center justify-center rounded overflow-hidden" style="width: {previewWidth}px; height: {previewHeight}px;">
@@ -2002,6 +2163,7 @@
         onSeek={handleTimelineInput}
         onHoverPreview={handleHoverPreview}
         onHoverPreviewEnd={handleHoverPreviewEnd}
+        onZoomFocusSetup={handleZoomFocusSetup}
         onTrimStartChange={(newMs) => {
           trimStore.setTrimStart(newMs)
           trimStore.enable()
@@ -2038,5 +2200,24 @@
       {/if}
     </div>
   {/if}
+  <!-- 🎯 焦点设置模式 - 独立显示，不销毁 Canvas -->
+  {#if isFocusMode}
+    <div class="flex-1 flex items-center justify-center p-4 min-h-0">
+      {#if focusFrameBitmap && videoInfo}
+        <VideoFocusPanel
+          frameBitmap={focusFrameBitmap}
+          videoWidth={videoInfo.width}
+          videoHeight={videoInfo.height}
+          initialFocus={focusIntervalIndex !== null
+            ? (videoZoomStore.getIntervalFocus(focusIntervalIndex) ?? { x: videoZoomStore.focusX, y: videoZoomStore.focusY, space: 'source' })
+            : { x: videoZoomStore.focusX, y: videoZoomStore.focusY, space: 'source' }
+          }
+          onConfirm={(focus: { x: number; y: number; space: 'source' | 'layout' }) => exitFocusMode(true, focus)}
+          onCancel={() => exitFocusMode(false)}
+        />
+      {/if}
+    </div>
+  {/if}
+
 </div>
 

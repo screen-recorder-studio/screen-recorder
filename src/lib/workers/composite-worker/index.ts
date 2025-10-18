@@ -162,7 +162,7 @@ function calculateVideoLayout(
   // 🆕 如果启用裁剪，使用裁剪后的尺寸计算布局
   let effectiveWidth = videoWidth;
   let effectiveHeight = videoHeight;
-  
+
   if (config.videoCrop?.enabled) {
     const crop = config.videoCrop;
     if (crop.mode === 'percentage') {
@@ -172,7 +172,7 @@ function calculateVideoLayout(
       effectiveWidth = crop.width;
       effectiveHeight = crop.height;
     }
-    
+
     console.log('📐 [COMPOSITE-WORKER] Layout using cropped dimensions:', {
       original: { width: videoWidth, height: videoHeight },
       cropped: { width: effectiveWidth, height: effectiveHeight }
@@ -633,16 +633,91 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
       })
     }
 
-    // 🆕 计算实际布局（考虑 Zoom 缓动）
+    // 🆕 计算实际布局（考虑 Zoom 缓动聚焦到画布中心）
+    // 当前“放大点”取左上角（fx=0, fy=0），并在进入/退出过渡期将该点以缓动插值朝画布中心移动对齐
     let actualLayout = layout
-    if (zoomScale > 1.0) {
-      const zoomedWidth = layout.width * zoomScale
-      const zoomedHeight = layout.height * zoomScale
+    if (zoomScale > 1.0 && offscreenCanvas) {
+      const vz: any = (config as any).videoZoom
+
+      // 默认使用全局焦点
+      const clamp01 = (v: number) => Math.min(1, Math.max(0, v))
+      let fx = clamp01(vz?.focusX ?? 0)
+      let fy = clamp01(vz?.focusY ?? 0)
+
+      // 选出与当前缩放对应的区间（进入/内部/退出 任一阶段）
+      const intervals: any[] = Array.isArray(vz?.intervals) ? vz.intervals : []
+      const transitionMs = vz?.transitionDurationMs ?? 300
+      let active: any = null
+      for (const it of intervals) {
+        const s = it.startMs, e = it.endMs
+        if (typeof s !== 'number' || typeof e !== 'number' || s >= e) continue
+        if ((currentTimeMs >= s - transitionMs && currentTimeMs < s) ||
+            (currentTimeMs >= s && currentTimeMs <= e) ||
+            (currentTimeMs > e && currentTimeMs <= e + transitionMs)) {
+          active = it
+          break
+        }
+      }
+
+      // 若区间内定义了焦点，则优先使用
+      if (active && active.focusX != null && active.focusY != null) {
+        const space = active.focusSpace ?? 'source'
+        if (space === 'layout') {
+          fx = clamp01(active.focusX)
+          fy = clamp01(active.focusY)
+        } else {
+          // source 空间：需要考虑裁剪把源坐标映射到当前 layout 归一化
+          const crop: any = (config as any).videoCrop
+          const vw = frame.codedWidth
+          const vh = frame.codedHeight
+          let cropX = 0, cropY = 0, cropW = vw, cropH = vh
+          if (crop?.enabled) {
+            if (crop.mode === 'percentage') {
+              cropX = Math.floor((crop.xPercent ?? 0) * vw)
+              cropY = Math.floor((crop.yPercent ?? 0) * vh)
+              cropW = Math.floor((crop.widthPercent ?? 1) * vw)
+              cropH = Math.floor((crop.heightPercent ?? 1) * vh)
+            } else {
+              cropX = crop.x ?? 0
+              cropY = crop.y ?? 0
+              cropW = crop.width ?? vw
+              cropH = crop.height ?? vh
+            }
+          }
+          const srcPxX = clamp01(active.focusX) * vw
+          const srcPxY = clamp01(active.focusY) * vh
+          const denomW = Math.max(1, cropW)
+          const denomH = Math.max(1, cropH)
+          fx = clamp01((srcPxX - cropX) / denomW)
+          fy = clamp01((srcPxY - cropY) / denomH)
+        }
+      }
+
+      const targetScale = Math.max(1.0, (vz?.scale ?? 1.5))
+      const denom = Math.max(1e-6, targetScale - 1.0)
+      const t = Math.min(1, Math.max(0, (zoomScale - 1.0) / denom)) // 0→1：未放大→完全放大
+
+      const w = layout.width
+      const h = layout.height
+      const wPrime = w * zoomScale
+      const hPrime = h * zoomScale
+
+      // 原始焦点（未放大时）在画布坐标下的位置（fx/fy 已是 layout 归一化坐标）
+      const ax = layout.x + fx * w
+      const ay = layout.y + fy * h
+      const centerX = offscreenCanvas.width / 2
+      const centerY = offscreenCanvas.height / 2
+
+      // 将焦点位置从 ax/ay 缓动到画布中心（t=1 时完全对齐）
+      const anchorTargetX = ax + (centerX - ax) * t
+      const anchorTargetY = ay + (centerY - ay) * t
+
+      // 求放大后布局左上角，使放大后的焦点位于 anchorTargetX/Y
       actualLayout = {
-        x: layout.x - (zoomedWidth - layout.width) / 2,
-        y: layout.y - (zoomedHeight - layout.height) / 2,
-        width: zoomedWidth,
-        height: zoomedHeight
+        x: anchorTargetX - fx * wPrime,
+        y: anchorTargetY - fy * hPrime,
+        width: wPrime,
+        height: hPrime
       }
     }
 
@@ -760,7 +835,7 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
     // 计算渲染的缩放比例（基于裁剪后或原始尺寸）
     const effectiveSourceWidth = srcWidth;
     const effectiveSourceHeight = srcHeight;
-    
+
     const scaleX = layout.width / effectiveSourceWidth;
     const scaleY = layout.height / effectiveSourceHeight;
     const isProportional = Math.abs(scaleX - scaleY) < 0.01; // 允许1%误差
@@ -790,7 +865,7 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
       srcX, srcY, srcWidth, srcHeight,           // 源区域（用户裁剪区域）
       actualLayout.x, actualLayout.y, actualLayout.width, actualLayout.height  // 🆕 目标区域（包含 Zoom 放大）
     );
-    
+
     // 确认裁剪/Zoom 渲染成功
     if ((config.videoCrop?.enabled || zoomScale > 1.0) && frameIndex % 30 === 0) {
       console.log('✅ [COMPOSITE-WORKER] Video rendered:', {
@@ -1559,6 +1634,35 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         }
         break;
 
+      case 'getSourceFrameBitmap':
+        // 🆕 返回源视频帧位图（不应用任何缩放/平移/裁剪/背景等合成逻辑）
+        try {
+          if (data.frameIndex !== undefined) {
+            const frameIndex = data.frameIndex as number
+            if (frameIndex >= 0 && frameIndex < decodedFrames.length) {
+              const frame = decodedFrames[frameIndex]
+              const w = (frame as any).codedWidth ?? (frame as any).displayWidth ?? 1
+              const h = (frame as any).codedHeight ?? (frame as any).displayHeight ?? 1
+              const temp = new OffscreenCanvas(w, h)
+              const tctx = temp.getContext('2d', { alpha: false })!
+              // 直接绘制原始 VideoFrame 到临时画布
+              tctx.drawImage(frame as any, 0, 0, w, h)
+              const bitmap = temp.transferToImageBitmap()
+              self.postMessage({
+                type: 'frameBitmapRaw',
+                data: { bitmap, frameIndex, width: w, height: h }
+              }, { transfer: [bitmap] })
+              // 让临时画布可被 GC
+            } else {
+              console.warn('⚠️ [COMPOSITE-WORKER] getSourceFrameBitmap: index out of range', { frameIndex, total: decodedFrames.length })
+            }
+          }
+        } catch (e) {
+          console.error('❌ [COMPOSITE-WORKER] getSourceFrameBitmap error:', e)
+          self.postMessage({ type: 'error', data: (e as Error).message })
+        }
+        break;
+
       case 'config':
         console.log('⚙️ [COMPOSITE-WORKER] Updating config...');
         if (data.backgroundConfig) {
@@ -1625,7 +1729,7 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
             currentFrameIndex,
             decodedFramesLength: decodedFrames.length
           });
-          
+
           if (decodedFrames[currentFrameIndex] && fixedVideoLayout) {
             const frame = decodedFrames[currentFrameIndex];
             console.log('✅ [COMPOSITE-WORKER] Rendering frame for config update:', currentFrameIndex);
@@ -1637,7 +1741,7 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
               bitmapWidth: bitmap?.width,
               bitmapHeight: bitmap?.height
             });
-            
+
             if (bitmap) {
               console.log('📤 [COMPOSITE-WORKER] Sending frame bitmap to main thread...');
               self.postMessage({

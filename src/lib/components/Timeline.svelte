@@ -1,7 +1,7 @@
 <!-- Timeline Component - Professional video editing timeline with time markers, playhead, trim handles, and zoom -->
 <script lang="ts">
   import { onDestroy } from 'svelte'
-  import { Scissors, ZoomIn, X } from '@lucide/svelte'
+  import { Scissors, ZoomIn, X, Crosshair } from '@lucide/svelte'
 
   // Props Interface
   interface Props {
@@ -32,6 +32,8 @@
     onZoomIntervalMove?: (index: number, newStartMs: number, newEndMs: number) => Promise<boolean>  // ✅ P0 修复：返回 Promise
     onHoverPreview?: (timeMs: number) => void      // 鼠标悬停预览
     onHoverPreviewEnd?: () => void                 // 预览结束
+    onZoomFocusSetup?: (index: number) => void              // 🆕 设置区间焦点
+
   }
 
   let {
@@ -51,6 +53,8 @@
     onZoomChange,
     onZoomRemove,
     onZoomIntervalMove,
+    onZoomFocusSetup,
+
     onHoverPreview,
     onHoverPreviewEnd
   }: Props = $props()
@@ -986,6 +990,17 @@
 
               <!-- 区间内容 -->
               <div class="zoom-interval-content">
+
+	                <!-- 🆕 设置焦点按钮 -->
+	                <button
+	                  class="zoom-interval-focus"
+	                  onclick={(e) => { e.stopPropagation(); onZoomFocusSetup?.(index) }}
+	                  aria-label={`Set zoom focal point for interval ${index + 1}`}
+	                  title="Set zoom focal point"
+	                >
+	                  <Crosshair class="w-3 h-3" />
+	                </button>
+
                 <!-- 区间标签 -->
                 <span class="zoom-interval-label">
                   {index + 1}
@@ -1396,6 +1411,30 @@
     border-radius: 0 0.25rem 0.25rem 0;
     border-left: 1px solid rgba(255, 255, 255, 0.3);
   }
+
+	  .zoom-interval-focus {
+	    padding: 0.25rem;
+	    background: rgba(59, 130, 246, 0.8); /* blue-500 */
+	    border: none;
+	    border-radius: 0.25rem;
+	    color: white;
+	    cursor: pointer;
+	    display: inline-flex;
+	    align-items: center;
+	    justify-content: center;
+	    transition: background 0.15s ease;
+	    margin-right: 0.25rem;
+	    opacity: 0.9;
+	  }
+
+	  .zoom-interval:hover .zoom-interval-focus {
+	    opacity: 1;
+	  }
+
+	  .zoom-interval-focus:hover {
+	    background: rgba(37, 99, 235, 1); /* blue-600 */
+	  }
+
 
   /* 调整大小时手柄高亮 */
   .zoom-interval.resizing .zoom-resize-handle {
