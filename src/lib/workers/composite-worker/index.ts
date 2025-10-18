@@ -537,13 +537,13 @@ function calculateZoomScale(currentTimeMs: number, zoomConfig: any, debugLog: bo
     return 1.0
   }
 
-  const targetScale = zoomConfig.scale || 1.5
-  const transitionMs = zoomConfig.transitionDurationMs || 300
+  const baseScale = zoomConfig.scale ?? 1.5
+  const transitionMs = zoomConfig.transitionDurationMs ?? 300
 
   if (debugLog) {
     console.log('🔍 [calculateZoomScale] Checking intervals:', {
       currentTimeMs,
-      targetScale,
+      baseScale,
       transitionMs,
       intervals: zoomConfig.intervals
     })
@@ -559,13 +559,15 @@ function calculateZoomScale(currentTimeMs: number, zoomConfig: any, debugLog: bo
       continue
     }
 
+    const intervalScale = Math.max(1.0, interval.scale ?? baseScale)
+
     // 1. 进入过渡阶段（区间开始前 transitionMs 到区间开始）
     if (currentTimeMs >= startMs - transitionMs && currentTimeMs < startMs) {
       const progress = (currentTimeMs - (startMs - transitionMs)) / transitionMs
       const easedProgress = easeInOutCubic(progress)
-      const scale = 1.0 + (targetScale - 1.0) * easedProgress
+      const scale = 1.0 + (intervalScale - 1.0) * easedProgress
       if (debugLog) {
-        console.log('🔍 [calculateZoomScale] In transition (entering):', { interval, progress, easedProgress, scale })
+        console.log('🔍 [calculateZoomScale] In transition (entering):', { interval, progress, easedProgress, scale, intervalScale })
       }
       return scale
     }
@@ -573,18 +575,18 @@ function calculateZoomScale(currentTimeMs: number, zoomConfig: any, debugLog: bo
     // 2. 完全放大阶段（区间内）
     if (currentTimeMs >= startMs && currentTimeMs <= endMs) {
       if (debugLog) {
-        console.log('🔍 [calculateZoomScale] In zoom interval:', { interval, scale: targetScale })
+        console.log('🔍 [calculateZoomScale] In zoom interval:', { interval, scale: intervalScale })
       }
-      return targetScale
+      return intervalScale
     }
 
     // 3. 退出过渡阶段（区间结束到区间结束后 transitionMs）
     if (currentTimeMs > endMs && currentTimeMs <= endMs + transitionMs) {
       const progress = (currentTimeMs - endMs) / transitionMs
       const easedProgress = easeInOutCubic(progress)
-      const scale = targetScale - (targetScale - 1.0) * easedProgress
+      const scale = intervalScale - (intervalScale - 1.0) * easedProgress
       if (debugLog) {
-        console.log('🔍 [calculateZoomScale] In transition (exiting):', { interval, progress, easedProgress, scale })
+        console.log('🔍 [calculateZoomScale] In transition (exiting):', { interval, progress, easedProgress, scale, intervalScale })
       }
       return scale
     }
@@ -693,7 +695,7 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
         }
       }
 
-      const targetScale = Math.max(1.0, (vz?.scale ?? 1.5))
+      const targetScale = Math.max(1.0, (active?.scale ?? (vz?.scale ?? 1.5)))
       const denom = Math.max(1e-6, targetScale - 1.0)
       const t = Math.min(1, Math.max(0, (zoomScale - 1.0) / denom)) // 0→1：未放大→完全放大
 
@@ -759,7 +761,7 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
         globalFrameIndex,
         currentTimeMs: currentTimeMs.toFixed(0) + 'ms',
         zoomScale: zoomScale.toFixed(3),
-        isTransitioning: zoomScale > 1.0 && zoomScale < (config.videoZoom?.scale || 1.5),
+
         originalLayout: layout,
         zoomedLayout: actualLayout
       })

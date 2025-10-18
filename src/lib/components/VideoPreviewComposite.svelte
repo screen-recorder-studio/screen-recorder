@@ -1931,10 +1931,13 @@
   }
 
   // 🎯 退出焦点模式（可选择应用）
-  async function exitFocusMode(apply: boolean, focus?: { x: number; y: number; space: 'source' | 'layout' }) {
+  async function exitFocusMode(apply: boolean, payload?: { focus: { x: number; y: number; space: 'source' | 'layout' }; scale?: number }) {
     try {
-      if (apply && focus && focusIntervalIndex != null) {
-        videoZoomStore.setIntervalFocus(focusIntervalIndex, focus)
+      if (apply && payload && focusIntervalIndex != null) {
+        videoZoomStore.setIntervalFocus(focusIntervalIndex, payload.focus)
+        if (payload.scale != null) {
+          videoZoomStore.setIntervalScale(focusIntervalIndex, payload.scale)
+        }
         await updateBackgroundConfig(backgroundConfig)
         if (!isPlaying) {
           // 刷新当前帧，确保效果即时可见
@@ -2212,7 +2215,8 @@
             ? (videoZoomStore.getIntervalFocus(focusIntervalIndex) ?? { x: videoZoomStore.focusX, y: videoZoomStore.focusY, space: 'source' })
             : { x: videoZoomStore.focusX, y: videoZoomStore.focusY, space: 'source' }
           }
-          onConfirm={(focus: { x: number; y: number; space: 'source' | 'layout' }) => exitFocusMode(true, focus)}
+          initialScale={focusIntervalIndex !== null ? videoZoomStore.getIntervalScale(focusIntervalIndex) : videoZoomStore.scale}
+          onConfirm={(payload: { focus: { x: number; y: number; space: 'source' | 'layout' }; scale: number }) => exitFocusMode(true, payload)}
           onCancel={() => exitFocusMode(false)}
         />
       {/if}
