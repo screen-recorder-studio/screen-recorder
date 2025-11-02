@@ -104,6 +104,17 @@
   function onPointerUp() {
     dragging = false
   }
+  function onStagePointerDown(e: PointerEvent) {
+    // 允许点击舞台任意位置放置/移动焦点，解决在某些情况下初始焦点未显示导致无法拖拽的问题
+    const rect = containerEl!.getBoundingClientRect()
+    const sx = e.clientX - rect.left
+    const sy = e.clientY - rect.top
+    const { x, y } = screenToSource(sx, sy)
+    focus.x = clamp01(x / videoWidth)
+    focus.y = clamp01(y / videoHeight)
+    dragging = true
+    ;(e.currentTarget as HTMLElement)?.setPointerCapture?.(e.pointerId)
+  }
 
   function handleConfirm() {
     onConfirm?.({ focus: { x: focus.x, y: focus.y, space: focus.space }, scale: selectedScale })
@@ -205,7 +216,7 @@
 </style>
 
 <div class="panel">
-  <div class="stage" bind:this={containerEl} onpointermove={onPointerMove} onpointerup={onPointerUp}>
+  <div class="stage" bind:this={containerEl} onpointerdown={onStagePointerDown} onpointermove={onPointerMove} onpointerup={onPointerUp}>
     <div class="canvas-wrap" style={`width:${display.width}px;height:${display.height}px;left:${offset.x}px;top:${offset.y}px`}>
       <canvas bind:this={canvasEl}></canvas>
 
