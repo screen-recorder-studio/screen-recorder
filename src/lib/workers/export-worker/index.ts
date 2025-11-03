@@ -3,6 +3,7 @@
 import type { EncodedChunk, ExportOptions, BackgroundConfig, GradientConfig, ImageBackgroundConfig } from '../../types/background'
 import { Mp4Strategy } from './strategies/mp4'
 import { WebmStrategy } from './strategies/webm'
+import { GifStrategy, type GifFrameData } from './strategies/gif'
 
 import { Output, Mp4OutputFormat, BufferTarget, CanvasSource } from 'mediabunny'
 
@@ -32,6 +33,8 @@ let canvasCtx: OffscreenCanvasRenderingContext2D | null = null
 let exportBgColor: string = '#000000'
 // 当前背景配置（用于渐变背景处理）
 let currentBackgroundConfig: BackgroundConfig | null = null
+// 当前导出格式，用于控制进度更新逻辑
+let currentExportFormat: string = ''
 
 // ---- OPFS data processing utilities ----
 function onceFromWorker<T = any>(worker: Worker, type: string): Promise<T> {
@@ -59,7 +62,12 @@ let warnedCanvasSizeMismatch = false
 
 let isOpfsMode = false
 
-async function initializeOpfsReader(dirId: string, windowSize?: number): Promise<void> {
+// 裁剪参数
+let trimStartFrame = 0
+let trimEndFrame = Number.MAX_SAFE_INTEGER
+let isTrimEnabled = false
+
+async function initializeOpfsReader(dirId: string, windowSize?: number, trimOptions?: { startFrame: number, endFrame: number }): Promise<void> {
   try {
     console.log('🗂️ [MP4-Export-Worker] Initializing OPFS reader for dirId:', dirId)
 
@@ -73,6 +81,20 @@ async function initializeOpfsReader(dirId: string, windowSize?: number): Promise
     opfsSummary = ready?.summary || { totalChunks: 0 }
     totalOpfsFrames = Number(opfsSummary.totalChunks) || 0
 
+    // ✂️ 应用裁剪范围
+    if (trimOptions) {
+      isTrimEnabled = true
+      trimStartFrame = Math.max(0, trimOptions.startFrame)
+      trimEndFrame = Math.min(totalOpfsFrames - 1, trimOptions.endFrame)
+      totalOpfsFrames = Math.max(0, trimEndFrame - trimStartFrame + 1)
+      console.log('✂️ [MP4-Export-Worker] Trim applied:', {
+        originalTotalFrames: opfsSummary.totalChunks,
+        trimStartFrame,
+        trimEndFrame,
+        trimmedTotalFrames: totalOpfsFrames
+      })
+    }
+
     consumedGlobalFrames = 0
     lastEmittedGlobalEnd = 0
     isOpfsMode = true
@@ -82,7 +104,8 @@ async function initializeOpfsReader(dirId: string, windowSize?: number): Promise
       windowSize: opfsWindowSize,
       durationMs: opfsSummary.durationMs,
       fps: ready?.meta?.fps || 30,
-      keyframes: opfsSummary.keyframeCount
+      keyframes: opfsSummary.keyframeCount,
+      trimEnabled: isTrimEnabled
     })
 
   } catch (error) {
@@ -96,18 +119,41 @@ async function loadOpfsWindow(start: number, count: number): Promise<{ chunks: a
     throw new Error('OPFS reader not initialized')
   }
 
-  console.log(`📦 [MP4-Export-Worker] Loading OPFS window: request start=${start}, count=${count}`)
+  // ✂️ 应用裁剪偏移：将逻辑帧索引转换为物理帧索引
+  let physicalStart = start
+  let physicalCount = count
 
-  opfsReader.postMessage({ type: 'getRange', start, count })
+  if (isTrimEnabled) {
+    physicalStart = trimStartFrame + start
+    // 确保不超出裁剪结束位置
+    const maxCount = Math.max(0, trimEndFrame - physicalStart + 1)
+    physicalCount = Math.min(count, maxCount)
+
+    console.log(`✂️ [MP4-Export-Worker] Applying trim offset:`, {
+      logicalStart: start,
+      logicalCount: count,
+      physicalStart,
+      physicalCount,
+      trimStartFrame,
+      trimEndFrame
+    })
+  }
+
+  console.log(`📦 [MP4-Export-Worker] Loading OPFS window: request start=${physicalStart}, count=${physicalCount}`)
+
+  opfsReader.postMessage({ type: 'getRange', start: physicalStart, count: physicalCount })
   const range: any = await onceFromWorker(opfsReader, 'range')
 
   const chunks = range?.chunks || []
-  const actualStart = Number(range?.start ?? start)
+  // 返回逻辑帧索引（相对于裁剪区间的偏移）
+  const actualStart = isTrimEnabled ? Number(range?.start ?? physicalStart) - trimStartFrame : Number(range?.start ?? start)
   const actualCount = Number(range?.count ?? chunks.length ?? 0)
 
   console.log(`✅ [MP4-Export-Worker] OPFS window loaded:`, {
-    requestedStart: start,
-    requestedCount: count,
+    requestedLogicalStart: start,
+    requestedLogicalCount: count,
+    physicalStart,
+    physicalCount,
     actualStart,
     actualCount,
     chunksReceived: chunks.length,
@@ -135,8 +181,35 @@ function cleanupOpfsReader(): void {
   consumedGlobalFrames = 0
   lastEmittedGlobalEnd = 0
   isOpfsMode = false
+
+  // ✂️ 重置裁剪参数
+  isTrimEnabled = false
+  trimStartFrame = 0
+  trimEndFrame = Number.MAX_SAFE_INTEGER
 }
 // ---- end OPFS data processing utilities ----
+
+// 调整 Zoom 区间以适配裁剪（trim）：将区间整体左移 trim.startMs 并裁剪到导出时长
+function adjustZoomForTrim(bg: any, trim?: { enabled?: boolean; startMs: number; endMs: number }) {
+  try {
+    if (!bg || !bg.videoZoom || !Array.isArray(bg.videoZoom.intervals)) return bg
+    if (!trim?.enabled) return bg
+    const start = Math.max(0, trim.startMs || 0)
+    const end = Math.max(start, trim.endMs || start)
+    const dur = Math.max(0, end - start)
+    const intervals = bg.videoZoom.intervals
+      .map((it: any) => ({ startMs: (it.startMs || 0) - start, endMs: (it.endMs || 0) - start }))
+      .map((it: any) => ({
+        startMs: Math.max(0, Math.min(it.startMs, dur)),
+        endMs: Math.max(0, Math.min(it.endMs, dur))
+      }))
+      .filter((it: any) => it.endMs > it.startMs)
+    return { ...bg, videoZoom: { ...bg.videoZoom, intervals, enabled: intervals.length > 0 } }
+  } catch {
+    return bg
+  }
+}
+
 
 // 合成状态
 let totalFrames = 0
@@ -399,6 +472,7 @@ self.onmessage = async (event) => {
       data: { error: (error as Error).message }
     })
   }
+
 }
 
 /**
@@ -418,6 +492,15 @@ async function handleExport(exportData: ExportData) {
     console.log('📊 [Export-Worker] Input chunks:', chunks.length)
     console.log('⚙️ [Export-Worker] Export options:', options)
 
+    // 记录当前导出格式
+    currentExportFormat = options?.format || ''
+
+    // ✂️ 将 Zoom 区间与裁剪时间对齐：平移并裁剪到导出区间
+    try {
+      (options as any).backgroundConfig = adjustZoomForTrim((options as any).backgroundConfig, (options as any).trim)
+    } catch {}
+
+
     // 分支：WebM 兼容路径（保持原 webm-export-worker 行为：不使用 OPFS 窗口/流式）
     if (options?.format === 'webm') {
       // 更新进度：准备阶段
@@ -432,7 +515,12 @@ async function handleExport(exportData: ExportData) {
       // 2) 处理视频合成（OPFS/内存）
       console.log('🎨 [WebM-Export-Worker] Starting video composition')
       if ((options as any)?.source === 'opfs' && (options as any)?.opfsDirId) {
-        await initializeOpfsReader((options as any).opfsDirId, (options as any).windowSize)
+        // ✂️ 准备裁剪参数
+        const trimOptions = options.trim?.enabled ? {
+          startFrame: options.trim.startFrame,
+          endFrame: options.trim.endFrame
+        } : undefined
+        await initializeOpfsReader((options as any).opfsDirId, (options as any).windowSize, trimOptions)
         const { chunks: firstChunks, actualStart } = await loadOpfsWindow(0, opfsWindowSize)
         await processVideoCompositionOpfs(firstChunks, options, actualStart)
       } else {
@@ -454,6 +542,44 @@ async function handleExport(exportData: ExportData) {
       return
     }
 
+    // 分支：GIF 导出路径
+    if (options?.format === 'gif') {
+      console.log('🎨 [GIF-Export-Worker] Starting GIF export')
+
+      // 更新进度：准备阶段
+      updateProgress({ stage: 'preparing', progress: 5, currentFrame: 0, totalFrames: chunks.length })
+      if (shouldCancel) return
+
+      // 1) 创建并初始化 composite worker
+      console.log('🔄 [GIF-Export-Worker] Creating composite worker')
+      await createCompositeWorker()
+      if (shouldCancel) return
+
+      // 2) 处理视频合成
+      console.log('🎨 [GIF-Export-Worker] Starting video composition')
+      if ((options as any)?.source === 'opfs' && (options as any)?.opfsDirId) {
+        const trimOptions = options.trim?.enabled ? {
+          startFrame: options.trim.startFrame,
+          endFrame: options.trim.endFrame
+        } : undefined
+        await initializeOpfsReader((options as any).opfsDirId, (options as any).windowSize, trimOptions)
+        const { chunks: firstChunks, actualStart } = await loadOpfsWindow(0, opfsWindowSize)
+        await processVideoCompositionOpfs(firstChunks, options, actualStart)
+      } else {
+        await processVideoComposition(chunks, options)
+      }
+      if (shouldCancel) return
+
+      // 3) 导出 GIF
+      console.log('📦 [GIF-Export-Worker] Starting GIF export')
+      const gifResult = await exportToGIF(options)
+      if (shouldCancel) return
+
+      console.log('✅ [GIF-Export-Worker] GIF export completed')
+      self.postMessage({ type: 'complete', data: { blob: gifResult as Blob } })
+      return
+    }
+
     // 默认：MP4 路径（保留现有 MP4 行为）
     console.log('🎬 [MP4-Export-Worker] Starting MP4 export')
     console.log('📊 [MP4-Export-Worker] Input chunks:', chunks.length)
@@ -461,7 +587,12 @@ async function handleExport(exportData: ExportData) {
 
     // 当来源为 OPFS 时，初始化 OPFS 读取器（用于实际导出）
     if ((options as any)?.source === 'opfs' && (options as any)?.opfsDirId) {
-      await initializeOpfsReader((options as any).opfsDirId, (options as any).windowSize)
+      // ✂️ 准备裁剪参数
+      const trimOptions = options.trim?.enabled ? {
+        startFrame: options.trim.startFrame,
+        endFrame: options.trim.endFrame
+      } : undefined
+      await initializeOpfsReader((options as any).opfsDirId, (options as any).windowSize, trimOptions)
     }
 
     // 更新进度：准备阶段
@@ -652,13 +783,16 @@ async function processVideoComposition(chunks: EncodedChunk[], options: ExportOp
       return
     }
 
-    // 更新进度
-    updateProgress({
-      stage: 'compositing',
-      progress: 10,
-      currentFrame: 0,
-      totalFrames: chunks.length
-    })
+    // GIF 导出时不在这里更新进度，由帧收集控制
+    // 其他格式（MP4/WebM）仍然需要更新
+    if (options.format !== 'gif') {
+      updateProgress({
+        stage: 'compositing',
+        progress: 10,
+        currentFrame: 0,
+        totalFrames: chunks.length
+      })
+    }
 
     // 准备可传输的数据块（兼容 Uint8Array / ArrayBuffer）
     const transferableChunks = chunks.map((chunk: any) => {
@@ -691,7 +825,9 @@ async function processVideoComposition(chunks: EncodedChunk[], options: ExportOp
           padding: 0,
           outputRatio: '16:9',
           videoPosition: 'center'
-        }
+        },
+        // propagate export framerate for consistent zoom timing
+        frameRate: (options as any)?.framerate || 30
       }
     }, { transfer: transferList })
 
@@ -732,12 +868,15 @@ async function processVideoCompositionOpfs(wireChunks: any[], options: ExportOpt
       return
     }
 
-    updateProgress({
-      stage: 'compositing',
-      progress: 10,
-      currentFrame: isOpfsMode ? lastEmittedGlobalEnd : consumedGlobalFrames,
-      totalFrames: (totalOpfsFrames > 0 ? totalOpfsFrames : wireChunks.length)
-    })
+    // GIF 导出时不在这里更新进度，由帧收集控制
+    if (options.format !== 'gif') {
+      updateProgress({
+        stage: 'compositing',
+        progress: 10,
+        currentFrame: isOpfsMode ? lastEmittedGlobalEnd : consumedGlobalFrames,
+        totalFrames: (totalOpfsFrames > 0 ? totalOpfsFrames : wireChunks.length)
+      })
+    }
 
     const transferable = wireChunks.map((c: any) => ({
       data: c.data as ArrayBuffer,
@@ -781,7 +920,9 @@ async function processVideoCompositionOpfs(wireChunks: any[], options: ExportOpt
         backgroundConfig: options.backgroundConfig || {
           type: 'solid-color', color: '#000000', padding: 0, outputRatio: '16:9', videoPosition: 'center'
         },
-        startGlobalFrame
+        startGlobalFrame,
+        // prefer provided framerate, fallback to OPFS meta fps, finally 30
+        frameRate: (options as any)?.framerate || (opfsSummary?.meta?.fps) || 30
       }
     }, { transfer: transferList })
   })
@@ -791,9 +932,23 @@ async function processVideoCompositionOpfs(wireChunks: any[], options: ExportOpt
  * 处理合成帧
  */
 function handleCompositeFrame(bitmap: ImageBitmap, frameIndex: number) {
+  // 🔧 优化：确保 bitmap 在所有路径都被释放
+  let bitmapClosed = false
+
+  const closeBitmap = () => {
+    if (!bitmapClosed && bitmap) {
+      try {
+        bitmap.close()
+        bitmapClosed = true
+      } catch (e) {
+        console.warn('[MP4-Export-Worker] Failed to close bitmap:', e)
+      }
+    }
+  }
+
   if (!canvasCtx || !offscreenCanvas) {
     console.error('❌ [MP4-Export-Worker] Canvas not available')
-    try { bitmap.close() } catch {}
+    closeBitmap()
     return
   }
 
@@ -858,14 +1013,17 @@ function handleCompositeFrame(bitmap: ImageBitmap, frameIndex: number) {
 
     processedFrames++
 
-    // 更新进度
-    const progress = 20 + (processedFrames / totalFrames) * 50 // 20%-70%
-    updateProgress({
-      stage: 'compositing',
-      progress,
-      currentFrame: processedFrames,
-      totalFrames: isOpfsMode ? totalOpfsFrames : totalFrames
-    })
+    // GIF 导出时不在这里更新进度，由帧收集控制
+    // 其他格式（MP4/WebM）仍然需要更新
+    if (currentExportFormat !== 'gif') {
+      const progress = 20 + (processedFrames / totalFrames) * 50 // 20%-70%
+      updateProgress({
+        stage: 'compositing',
+        progress,
+        currentFrame: processedFrames,
+        totalFrames: isOpfsMode ? totalOpfsFrames : totalFrames
+      })
+    }
 
     const totalForLog = isOpfsMode ? totalOpfsFrames : totalFrames
     console.log(`🎨 [MP4-Export-Worker] Frame ${frameIndex} composited (${processedFrames}/${totalForLog})`)
@@ -873,8 +1031,8 @@ function handleCompositeFrame(bitmap: ImageBitmap, frameIndex: number) {
   } catch (error) {
     console.error('❌ [MP4-Export-Worker] Error handling composite frame:', error)
   } finally {
-    // 释放 GPU 侧的 ImageBitmap 资源，避免长视频导出内存飙升
-    try { bitmap.close() } catch {}
+    // 🔧 优化：确保 bitmap 在所有路径都被释放，避免内存泄漏
+    closeBitmap()
   }
 }
 
@@ -1117,7 +1275,7 @@ async function exportToMP4(options: ExportOptions): Promise<any> {
     })
 
     // 计算帧参数（OPFS 模式下 videoInfo 可能尚未通过 ready 返回，优先使用 options 或默认值）
-    const frameRate = (options as any)?.frameRate || videoInfo?.frameRate || 30
+    const frameRate = (options as any)?.framerate || videoInfo?.frameRate || 30
     const totalTargetFrames = isOpfsMode ? totalOpfsFrames : totalFrames
     const duration = totalTargetFrames / frameRate
     const frameDuration = 1 / frameRate
@@ -1437,6 +1595,7 @@ function cleanup() {
   processedFrames = 0
   videoInfo = null
   isExporting = false
+  currentExportFormat = ''
 }
 
 // Worker 初始化检查
@@ -1641,7 +1800,7 @@ async function exportToWEBMCompat(options: ExportOptions): Promise<any> {
   // 封装阶段进度
   updateProgress({ stage: 'muxing', progress: 80, currentFrame: 0, totalFrames })
 
-  const frameRate = videoInfo.frameRate
+  const frameRate = (options as any)?.framerate || videoInfo.frameRate
   const frameDuration = 1 / frameRate
 
   console.log(`📊 [WebM-Export-Worker] Export parameters: totalFrames=${totalFrames}, frameRate=${frameRate}`)
@@ -1678,6 +1837,328 @@ async function exportToWEBMCompat(options: ExportOptions): Promise<any> {
   try { strategy.closeVideoSource?.(videoSource) } catch {}
 
   return webmBlob
+}
+
+/**
+ * GIF 导出
+ * 由于 gif.js 需要在主线程运行，这里收集所有帧数据后发送到主线程处理
+ */
+async function exportToGIF(options: ExportOptions): Promise<Blob> {
+  if (!offscreenCanvas || !videoInfo) {
+    throw new Error('Canvas or video info not available')
+  }
+
+  console.log('🎨 [GIF-Export-Worker] Starting GIF export')
+
+  // 获取 GIF 配置
+  const gifOptions = (options as any).gifOptions || {}
+  const fps = gifOptions.fps || 10
+  const quality = gifOptions.quality || 10
+  const scale = gifOptions.scale || 1.0
+  // 以源帧率为时间基，按 gif fps 抽帧，保证时间轴一致
+  const sourceFps = videoInfo?.frameRate || 30
+  const stride = Math.max(1, Math.round(sourceFps / fps))
+  const expectedFrames = isOpfsMode ? Math.ceil(totalOpfsFrames / stride) : Math.ceil(totalFrames / stride)
+
+  // 计算输出尺寸
+  const outputWidth = Math.floor(offscreenCanvas.width * scale)
+  const outputHeight = Math.floor(offscreenCanvas.height * scale)
+
+  console.log('📊 [GIF-Export-Worker] GIF settings:', {
+    fps,
+    quality,
+    scale,
+    outputSize: `${outputWidth}x${outputHeight}`,
+    totalFrames: isOpfsMode ? totalOpfsFrames : totalFrames
+  })
+
+  // 创建 GIF 策略
+  const gifStrategy = new GifStrategy({
+    width: outputWidth,
+    height: outputHeight,
+    quality,
+    fps,
+    workers: gifOptions.workers || 2,
+    repeat: gifOptions.repeat ?? 0,
+    dither: gifOptions.dither || false,
+    background: options.backgroundConfig?.color || '#000000',
+    transparent: gifOptions.transparent || null,
+    debug: gifOptions.debug || false
+  })
+
+  // 不在这里更新进度，因为在 handleExport 中已经更新过了
+  // 避免进度倒退
+
+  const frameDelay = 1000 / fps // 毫秒
+  const targetFrameCount = isOpfsMode ? totalOpfsFrames : totalFrames
+
+  console.log(`🎬 [GIF-Export-Worker] Extracting ${targetFrameCount} frames for GIF`)
+
+  // 收集帧数据
+  const frames: GifFrameData[] = []
+
+  if (isOpfsMode) {
+    // OPFS 模式：窗口化处理
+    frames.push(...await collectFramesOpfs(gifStrategy, frameDelay, scale, stride, expectedFrames))
+  } else {
+    // 内存模式：逐帧请求
+    frames.push(...await collectFrames(gifStrategy, frameDelay, scale, stride, expectedFrames))
+  }
+
+  console.log(`✅ [GIF-Export-Worker] Collected ${frames.length} frames`)
+
+  // 不在这里更新进度，由主线程的 ExportManager 统一管理
+  // 避免 Worker 和主线程同时更新导致进度跳变
+  console.log(`📦 [GIF-Export-Worker] Frames collected, ready to encode in main thread`)
+
+  // 发送帧数据到主线程进行 GIF 编码
+  // 由于 gif.js 需要在主线程运行，我们通过消息传递帧数据
+  console.log('📦 [GIF-Export-Worker] Starting GIF encoding in main thread...')
+  const gifBlob = await encodeGifInMainThread(frames, gifStrategy.getOptions())
+
+  // 清理
+  gifStrategy.cleanup()
+
+  console.log('✅ [GIF-Export-Worker] GIF export completed, size:', gifBlob.size)
+
+  // 不在这里更新进度，由主线程完成后自然达到100%
+  console.log(`✅ [GIF-Export-Worker] GIF export finished, blob size: ${gifBlob.size}`)
+
+  return gifBlob
+}
+
+/**
+ * 收集帧数据（内存模式）
+ */
+async function collectFrames(
+  gifStrategy: GifStrategy,
+  frameDelay: number,
+  scale: number,
+  stride: number,
+  expectedFrames: number
+): Promise<GifFrameData[]> {
+  const frames: GifFrameData[] = []
+
+  for (let frameIndex = 0; frameIndex < totalFrames; frameIndex += stride) {
+    if (shouldCancel) break
+
+    try {
+      // 请求 composite worker 渲染指定帧
+      await requestCompositeFrame(frameIndex)
+
+      // 提取帧数据
+      if (offscreenCanvas) {
+        // 如果需要缩放，创建缩放后的 canvas
+        let sourceCanvas = offscreenCanvas
+        if (scale !== 1.0) {
+          const scaledCanvas = new OffscreenCanvas(
+            Math.floor(offscreenCanvas.width * scale),
+            Math.floor(offscreenCanvas.height * scale)
+          )
+          const scaledCtx = scaledCanvas.getContext('2d')
+          if (scaledCtx) {
+            scaledCtx.drawImage(offscreenCanvas, 0, 0, scaledCanvas.width, scaledCanvas.height)
+            sourceCanvas = scaledCanvas
+          }
+        }
+
+        const imageData = gifStrategy.extractImageData(sourceCanvas)
+        frames.push({
+          imageData,
+          delay: frameDelay,
+          dispose: 2
+        })
+      }
+
+      // 更新进度：帧收集阶段占总进度的5%-40%
+      const progress = 5 + (Math.min(frames.length, expectedFrames) / expectedFrames) * 35
+      updateProgress({
+        stage: 'encoding',
+        progress,
+        currentFrame: frames.length,
+        totalFrames: expectedFrames
+      })
+
+    } catch (error) {
+      console.error(`❌ [GIF-Export-Worker] Failed to collect frame ${frameIndex}:`, error)
+    }
+  }
+
+  return frames
+}
+
+/**
+ * 收集帧数据（OPFS 模式）
+ */
+async function collectFramesOpfs(
+  gifStrategy: GifStrategy,
+  frameDelay: number,
+  scale: number,
+  stride: number,
+  expectedFrames: number
+): Promise<GifFrameData[]> {
+  const frames: GifFrameData[] = []
+  let nextRequestStart = 0
+
+  while (nextRequestStart < totalOpfsFrames) {
+    if (shouldCancel) break
+
+    // 加载窗口
+    const { chunks, actualStart, actualCount } = await loadOpfsWindow(nextRequestStart, opfsWindowSize)
+
+    if (actualCount <= 0 || chunks.length === 0) {
+      console.warn('⚠️ [GIF-Export-Worker] Empty OPFS window, stopping')
+      break
+    }
+
+    // 处理窗口
+    await processVideoCompositionOpfs(chunks, { backgroundConfig: currentBackgroundConfig } as any, actualStart)
+
+    // 提取窗口中的帧
+    for (let i = 0; i < actualCount; i++) {
+      const globalFrameIndex = actualStart + i
+
+      if (globalFrameIndex >= totalOpfsFrames) break
+      if (shouldCancel) break
+
+      try {
+        // 按步长抽帧：仅在满足全局索引对齐时采样
+        if (stride > 1 && (globalFrameIndex % stride) !== 0) {
+          continue
+        }
+        // 请求渲染帧
+        await requestCompositeFrame(i)
+
+        // 提取帧数据
+        if (offscreenCanvas) {
+          let sourceCanvas = offscreenCanvas
+          if (scale !== 1.0) {
+            const scaledCanvas = new OffscreenCanvas(
+              Math.floor(offscreenCanvas.width * scale),
+              Math.floor(offscreenCanvas.height * scale)
+            )
+            const scaledCtx = scaledCanvas.getContext('2d')
+            if (scaledCtx) {
+              scaledCtx.drawImage(offscreenCanvas, 0, 0, scaledCanvas.width, scaledCanvas.height)
+              sourceCanvas = scaledCanvas
+            }
+          }
+
+          const imageData = gifStrategy.extractImageData(sourceCanvas)
+          frames.push({
+            imageData,
+            delay: frameDelay,
+            dispose: 2
+          })
+        }
+
+        // 更新进度：帧收集阶段占总进度的5%-40%
+        const progress = 5 + (Math.min(frames.length, expectedFrames) / expectedFrames) * 35
+        updateProgress({
+          stage: 'encoding',
+          progress,
+          currentFrame: frames.length,
+          totalFrames: expectedFrames
+        })
+
+      } catch (error) {
+        console.error(`❌ [GIF-Export-Worker] Failed to collect OPFS frame ${globalFrameIndex}:`, error)
+      }
+    }
+
+    nextRequestStart += actualCount
+  }
+
+  return frames
+}
+
+/**
+ * 在主线程中编码 GIF（流式处理）
+ * 逐帧发送数据以避免内存溢出
+ */
+async function encodeGifInMainThread(
+  frames: GifFrameData[],
+  options: any
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    let currentFrameIndex = 0
+
+    const handler = (event: MessageEvent) => {
+      const { type, data } = event.data
+
+      if (type === 'gif-encoder-ready') {
+        // 编码器已准备好，开始发送帧
+        console.log('✅ [GIF-Export-Worker] Encoder initialized, sending frames...')
+        sendNextFrame()
+
+      } else if (type === 'gif-frame-added') {
+        // 帧已添加，发送下一帧
+        currentFrameIndex++
+        // 进度已经在主线程的 ExportManager 中更新，这里不重复更新
+        sendNextFrame()
+
+      } else if (type === 'gif-encode-complete') {
+        // 编码完成
+        self.removeEventListener('message', handler)
+        console.log('✅ [GIF-Export-Worker] Encoding complete')
+        resolve(data.blob)
+
+      } else if (type === 'gif-encode-error') {
+        // 编码失败
+        self.removeEventListener('message', handler)
+        reject(new Error(data.error || 'GIF encoding failed'))
+
+      } else if (type === 'gif-encode-progress') {
+        // 进度更新已经在主线程处理，这里只记录日志
+        console.log(`🎨 [GIF-Export-Worker] Received render progress: ${(data.progress * 100).toFixed(1)}%`)
+      }
+    }
+
+    function sendNextFrame() {
+      if (currentFrameIndex < frames.length) {
+        const frame = frames[currentFrameIndex]
+
+        // 发送单帧数据
+        self.postMessage({
+          type: 'gif-add-frame',
+          data: {
+            imageData: frame.imageData,
+            delay: frame.delay,
+            dispose: frame.dispose,
+            frameIndex: currentFrameIndex,
+            totalFrames: frames.length
+          }
+        })
+      } else {
+        // 所有帧已发送，请求渲染
+        console.log('📦 [GIF-Export-Worker] All frames sent, requesting render...')
+        self.postMessage({
+          type: 'gif-render',
+          data: {
+            totalFrames: frames.length  // 添加总帧数信息
+          }
+        })
+      }
+    }
+
+    self.addEventListener('message', handler)
+
+    // 初始化编码器
+    console.log('🎨 [GIF-Export-Worker] Initializing GIF encoder...')
+    self.postMessage({
+      type: 'gif-init',
+      data: {
+        options,
+        totalFrames: frames.length
+      }
+    })
+
+    // 设置超时
+    setTimeout(() => {
+      self.removeEventListener('message', handler)
+      reject(new Error('GIF encoding timeout'))
+    }, 300000) // 5分钟超时
+  })
 }
 
 /**

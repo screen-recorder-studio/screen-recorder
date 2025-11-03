@@ -221,12 +221,18 @@ if (__isIframeSink) {
           }
           case 'end':
           case 'end-request':
-            console.log('[IframeSink] end received');
-            if (!writerReady || pendingChunks.length > 0) {
-              endPending = true;
-            } else {
-              void finalizeOpfsWriter();
-            }
+            console.log(`[IframeSink] end received, pending: ${pendingChunks.length}`);
+
+            // ✅ 延迟200ms确保所有chunks到达
+            setTimeout(() => {
+              if (!writerReady || pendingChunks.length > 0) {
+                console.log(`[IframeSink] Deferring finalize (ready: ${writerReady}, pending: ${pendingChunks.length})`);
+                endPending = true;
+              } else {
+                console.log('[IframeSink] Finalizing OPFS writer');
+                void finalizeOpfsWriter();
+              }
+            }, 200);
             break;
         }
       });

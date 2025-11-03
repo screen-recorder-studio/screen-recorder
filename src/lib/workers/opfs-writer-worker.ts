@@ -53,6 +53,10 @@ let chunksWritten = 0
 let recordingId = ''
 let initialMeta: any = {}
 
+// ✅ 追踪实际时间戳
+let firstTimestamp = -1
+let lastTimestamp = -1
+
 // Fallback buffers when SyncAccessHandle is unavailable; we flush to file on finalize
 let fallbackDataParts: Uint8Array[] = []
 
@@ -165,10 +169,16 @@ self.onmessage = async (e: MessageEvent<InitMessage | AppendMessage | FlushMessa
       if (!dataHandle) throw new Error('writer not initialized')
       const u8 = new Uint8Array(msg.buffer)
       await appendData(u8)
+
+      // ✅ 追踪时间戳
+      const ts = msg.timestamp ?? 0
+      if (firstTimestamp === -1) firstTimestamp = ts
+      lastTimestamp = ts
+
       await appendIndexLine(JSON.stringify({
         offset: dataOffset - u8.byteLength,
         size: u8.byteLength,
-        timestamp: msg.timestamp ?? 0,
+        timestamp: ts,
         type: msg.chunkType === 'key' ? 'key' : 'delta',
         codedWidth: msg.codedWidth,
         codedHeight: msg.codedHeight,
@@ -194,7 +204,28 @@ self.onmessage = async (e: MessageEvent<InitMessage | AppendMessage | FlushMessa
     if (msg.type === 'finalize') {
       await flushIndexToFile()
       await closeData()
-      await writeMeta({ ...initialMeta, completed: true, totalBytes: dataOffset, totalChunks: chunksWritten })
+
+      // ✅ 使用实际时长（最后chunk的timestamp）
+      const actualDuration = lastTimestamp >= 0 ? lastTimestamp : 0
+
+      console.log(`[OPFS] Finalize:`, {
+        chunks: chunksWritten,
+        bytes: dataOffset,
+        firstTs: firstTimestamp,
+        lastTs: lastTimestamp,
+        duration: actualDuration
+      })
+
+      await writeMeta({
+        ...initialMeta,
+        completed: true,
+        totalBytes: dataOffset,
+        totalChunks: chunksWritten,
+        duration: actualDuration,  // ✅ 实际时长
+        firstTimestamp,
+        lastTimestamp
+      })
+
       self.postMessage({ type: 'finalized', id: recordingId } as FinalizedEvent)
       return
     }

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>GIF.js 测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        canvas {
+            border: 1px solid #ddd;
+            margin: 10px 0;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+        #gifImage {
+            max-width: 100%;
+            margin: 10px 0;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .status.info { background: #e3f2fd; color: #1976d2; }
+        .status.success { background: #e8f5e9; color: #388e3c; }
+        .status.error { background: #ffebee; color: #d32f2f; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>GIF.js 简单测试</h1>
+        
+        <canvas id="canvas" width="200" height="200"></canvas>
+        
+        <div>
+            <button id="testBtn">测试 GIF 生成</button>
+            <button id="downloadBtn" disabled>下载 GIF</button>
+        </div>
+        
+        <div id="status" class="status info">准备就绪</div>
+        
+        <div id="result">
+            <h3>结果：</h3>
+            <img id="gifImage" style="display:none;">
+        </div>
+    </div>
+
+    <script src="gif.js"></script>
+    <script>
+        // 检查 GIF 是否已加载
+        console.log('GIF 对象是否存在:', typeof GIF !== 'undefined');
+        
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const status = document.getElementById('status');
+        const testBtn = document.getElementById('testBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const gifImage = document.getElementById('gifImage');
+        let gifBlob = null;
+
+        // 绘制一些简单的内容
+        function drawFrame(offset) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, 200, 200);
+            
+            ctx.fillStyle = '#4CAF50';
+            ctx.beginPath();
+            ctx.arc(100 + offset, 100, 30, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = '#2196F3';
+            ctx.beginPath();
+            ctx.arc(100, 100 + offset, 20, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = '#333';
+            ctx.font = '20px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Frame ' + (offset/10), 100, 180);
+        }
+
+        // 生成 GIF
+        testBtn.addEventListener('click', function() {
+            if (typeof GIF === 'undefined') {
+                status.className = 'status error';
+                status.textContent = '错误: GIF.js 未加载';
+                return;
+            }
+
+            testBtn.disabled = true;
+            status.className = 'status info';
+            status.textContent = '正在生成 GIF...';
+
+            const gif = new GIF({
+                workers: 2,
+                quality: 10,  // 像素采样间隔 (1-30, 越小质量越好)
+                width: 200,
+                height: 200,
+                workerScript: 'gif.worker.js'
+            });
+
+            // 添加几帧动画
+            for (let i = 0; i < 5; i++) {
+                drawFrame(i * 10);
+                gif.addFrame(ctx, { 
+                    copy: true,
+                    delay: 200 
+                });
+            }
+
+            gif.on('finished', function(blob) {
+                gifBlob = blob;
+                const url = URL.createObjectURL(blob);
+                gifImage.src = url;
+                gifImage.style.display = 'block';
+                
+                status.className = 'status success';
+                status.textContent = '成功! GIF 大小: ' + (blob.size / 1024).toFixed(2) + ' KB';
+                
+                testBtn.disabled = false;
+                downloadBtn.disabled = false;
+            });
+
+            gif.on('progress', function(p) {
+                status.textContent = '处理中... ' + Math.round(p * 100) + '%';
+            });
+
+            gif.render();
+        });
+
+        // 下载 GIF
+        downloadBtn.addEventListener('click', function() {
+            if (gifBlob) {
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(gifBlob);
+                link.download = 'test.gif';
+                link.click();
+            }
+        });
+
+        // 初始绘制
+        drawFrame(0);
+    </script>
+</body>
+</html>

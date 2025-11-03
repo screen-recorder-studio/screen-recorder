@@ -85,6 +85,31 @@ export interface BackgroundConfig {
     blur: number
     color: string
   }
+  // 视频源裁剪配置
+  videoCrop?: {
+    enabled: boolean
+    mode: 'pixels' | 'percentage'
+    // 像素模式（视频像素坐标）
+    x: number
+    y: number
+    width: number
+    height: number
+    // 百分比模式（0-1）
+    xPercent: number
+    yPercent: number
+    widthPercent: number
+    heightPercent: number
+  }
+  // 视频 Zoom 配置
+  videoZoom?: {
+    enabled: boolean
+    scale: number  // 放大倍数（例如 1.5）
+    transitionDurationMs: number  // 过渡时长（暂不使用）
+    intervals: Array<{
+      startMs: number
+      endMs: number
+    }>
+  }
 }
 
 // 预设渐变配置类型
@@ -146,7 +171,7 @@ export type GradientDirection =
   | 'to-top-left'      // 315deg
 
 export interface ExportOptions {
-  format: 'webm' | 'mp4'
+  format: 'webm' | 'mp4' | 'gif'
   includeBackground: boolean
   backgroundConfig?: BackgroundConfig
   quality: 'high' | 'medium' | 'low'
@@ -166,10 +191,29 @@ export interface ExportOptions {
   saveToOpfs?: boolean
   // 指定写入 OPFS 的文件名（不含路径），缺省时自动生成
   opfsFileName?: string
+  // 视频裁剪配置
+  trim?: {
+    enabled: boolean
+    startMs: number
+    endMs: number
+    startFrame: number
+    endFrame: number
+  }
+  // GIF 专用选项
+  gifOptions?: {
+    fps?: number // 帧率 (默认 10)
+    quality?: number // 质量 1-30 (默认 10)
+    scale?: number // 缩放比例 0-1 (默认 1.0)
+    workers?: number // Worker 线程数 (默认 2)
+    repeat?: number // 重复次数 (-1=不重复, 0=永远, 默认 0)
+    dither?: boolean | string // 抖动算法 (默认 false)
+    transparent?: string | null // 透明色 (默认 null)
+    debug?: boolean // 调试模式 (默认 false)
+  }
 }
 
 export interface ExportProgress {
-  type: 'webm' | 'mp4'
+  type: 'webm' | 'mp4' | 'gif'
   stage: 'preparing' | 'compositing' | 'encoding' | 'muxing' | 'finalizing'
   progress: number
   currentFrame: number

@@ -1,10 +1,16 @@
 <!-- Video preview component - using VideoComposite Worker for background composition -->
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { Play, Pause, LoaderCircle, Monitor, Info } from '@lucide/svelte'
+  import { Play, Pause, LoaderCircle, Monitor, Info, Scissors, Crop } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import { DataFormatValidator } from '$lib/utils/data-format-validator'
   import { imageBackgroundManager } from '$lib/services/image-background-manager'
+  import { trimStore } from '$lib/stores/trim.svelte'
+  import { videoCropStore } from '$lib/stores/video-crop.svelte'
+  import { videoZoomStore } from '$lib/stores/video-zoom.svelte'
+  import VideoCropPanel from './VideoCropPanel.svelte'
+  import VideoFocusPanel from './VideoFocusPanel.svelte'
+  import Timeline from './Timeline.svelte'
 
   // Props
   interface Props {
@@ -19,6 +25,12 @@
     windowEndMs?: number
     totalFramesAll?: number
     windowStartIndex?: number
+    keyframeInfo?: {
+      indices: number[]
+      timestamps: number[]
+      count: number
+      avgInterval: number
+    } | null
     onRequestWindow?: (args: { centerMs: number; beforeMs: number; afterMs: number }) => void
     // Optional: only fetch data, don't switch window, used for prefetch cache
     fetchWindowData?: (args: { centerMs: number; beforeMs: number; afterMs: number }) => Promise<{ chunks: any[]; windowStartIndex: number }>
@@ -37,6 +49,7 @@
     windowEndMs = 0,
     totalFramesAll = 0,
     windowStartIndex = 0,
+    keyframeInfo = null,
     onRequestWindow,
     fetchWindowData,
     className = ''
@@ -85,12 +98,55 @@
   let totalFrames = $state(0)
   let currentTime = $state(0)
   let duration = $state(0)
-  let frameRate = 30
+  let frameRate = $state(30)
+
+  // 🆕 自动推断真实帧率（优先使用全局帧数和时长），避免 Zoom 时间漂移/跳出
+  $effect(() => {
+    if (totalFramesAll > 0 && durationMs > 0) {
+      const fps = Math.max(1, Math.round(totalFramesAll / (durationMs / 1000)))
+      if (fps !== frameRate) {
+        console.log('[VideoPreview] Adjusting frameRate from', frameRate, 'to', fps, { totalFramesAll, durationMs })
+        frameRate = fps
+      }
+    }
+  })
   let isPlaying = $state(false)
   let shouldContinuePlayback = $state(false) // 🔧 Continuous playback flag
   let continueFromGlobalFrame = $state(0) // 🔧 Record which global frame to continue playback from
   // Rendered frame corresponding window start point (for stable timing display/log, avoid false jumps caused by props changing first)
   let lastFrameWindowStartIndex = $state(windowStartIndex)
+
+  // ✂️ 时间裁剪相关状态
+  let hasInitializedTrim = $state(false)
+
+  // ✂️ 视频裁剪相关状态
+  let isCropMode = $state(false)
+  // 🎯 焦点设置模式
+  let isFocusMode = $state(false)
+  let focusIntervalIndex = $state<number | null>(null)
+  let focusFrameBitmap = $state<ImageBitmap | null>(null)
+  let pendingFocusGlobalFrame: number | null = null
+
+  let pendingFocusIntervalIndex: number | null = null
+
+  let currentFrameBitmap = $state<ImageBitmap | null>(null)
+  let videoInfo = $state<{ width: number; height: number } | null>(null)
+
+  // 🆕 预览相关状态
+  let isPreviewMode = $state(false)
+  let previewTimeMs = $state(0)
+  let previewFrameIndex = $state<number | null>(null)  // 🆕 预览帧索引（独立于播放位置）
+  let savedPlaybackState = $state<{ frameIndex: number; isPlaying: boolean } | null>(null)
+  let hoverPreviewThrottleTimer: number | null = null
+  let windowSwitchThrottleTimer: number | null = null  // 🆕 窗口切换节流
+  const HOVER_PREVIEW_THROTTLE_MS = 50  // 50ms 节流
+  const WINDOW_SWITCH_THROTTLE_MS = 300  // 300ms 窗口切换节流
+
+  // 🆕 标记：是否有因预览触发的待处理窗口切换，避免 ready 时误跳到 0 帧
+  let pendingPreviewWindowSwitch = false
+  //  Pending restore target after hover ends and window switch is required
+  let pendingRestoreGlobalFrameIndex: number | null = null
+
 
   // UI display duration: prioritize using global frame count/frame rate (consistent with timeline), then durationMs, finally fallback to internal duration
   const uiDurationSec = $derived.by(() => {
@@ -105,8 +161,14 @@
 
     // Priority 1: Use global duration (based on global frame count)
     if (totalFramesAll > 0 && frameRate > 0) {
+      // 使用总时长，不是最后一帧的时间戳
+      // 这样时间轴会显示完整的视频时长
       result = Math.max(1, Math.floor((totalFramesAll / frameRate) * 1000))
-      console.log('[progress] timelineMaxMs: using global frames:', { totalFramesAll, frameRate, result })
+      console.log('[progress] timelineMaxMs: using global frames:', {
+        totalFramesAll,
+        frameRate,
+        result
+      })
     }
     // Priority 2: Use passed real duration
     else if (durationMs > 0) {
@@ -116,7 +178,11 @@
     // Priority 3: Use current window frame count calculation
     else if (totalFrames > 0 && frameRate > 0) {
       result = Math.max(1, Math.floor((totalFrames / frameRate) * 1000))
-      console.log('[progress] timelineMaxMs: using window frames:', { totalFrames, frameRate, result })
+      console.log('[progress] timelineMaxMs: using window frames:', {
+        totalFrames,
+        frameRate,
+        result
+      })
     }
     // Priority 4: Use window duration
     else if (windowEndMs > windowStartMs) {
@@ -160,8 +226,10 @@
     // Calculate available space - consider control bar and timeline height
     const headerHeight = 60  // Preview info bar height
     const controlsHeight = showControls && totalFrames > 0 ? 56 : 0  // Play control bar height
-    const timelineHeight = showTimeline && totalFrames > 0 ? 48 : 0  // Timeline height
-    const padding = 32  // Canvas area padding (p-4 = 16px * 2)
+    // 🔧 更新：新 Timeline 组件包含时间刻度、轨道和 Zoom 控制区，总高度约 200-232px
+    // 保守估计使用 232px 以确保不会溢出
+    const timelineHeight = showTimeline && totalFrames > 0 ? 232 : 0  // New Timeline component height (with zoom control)
+    const padding = 48  // Canvas area padding (p-6 = 24px * 2)
 
     const availableWidth = displayWidth - padding
     const availableHeight = displayHeight - headerHeight - controlsHeight - timelineHeight - padding
@@ -232,6 +300,16 @@
     console.log('🎨 [VideoPreview] Canvas initialized for bitmap rendering')
   }
 
+  // 🔧 消息计数器（诊断用）
+  // 🔧 优化：使用模运算防止计数器溢出
+  let workerMessageCount = 0
+  const MAX_MESSAGE_COUNT = 1000000 // 100万次后重置
+
+  // 🔧 frameBitmap 等待标志（用于 enterCropMode）
+  let waitingForFrameBitmap = false
+  let frameBitmapResolver: ((bitmap: ImageBitmap) => void) | null = null
+  let frameBitmapRejecter: ((error: Error) => void) | null = null
+
   // Initialize VideoComposite Worker
   function initializeWorker() {
     if (compositeWorker) return
@@ -245,6 +323,13 @@
 
     // Worker message handling
     compositeWorker.onmessage = (event) => {
+      // 🔧 优化：防止计数器溢出
+      workerMessageCount = (workerMessageCount + 1) % MAX_MESSAGE_COUNT
+      console.log(`📨 [VideoPreview] Worker message #${workerMessageCount} received:`, event.data.type, {
+        type: event.data.type,
+        hasData: !!event.data.data,
+        hasBitmap: !!event.data.data?.bitmap
+      })
       const { type, data } = event.data
 
       switch (type) {
@@ -259,6 +344,10 @@
           duration = totalFrames / frameRate
           outputWidth = data.outputSize.width
           outputHeight = data.outputSize.height
+          // 保存视频信息用于裁剪
+          videoInfo = { width: outputWidth, height: outputHeight }
+          // 🆕 设置裁剪 store 的原始尺寸
+          videoCropStore.setOriginalSize(outputWidth, outputHeight)
           console.log('[progress] Worker ready - internal state updated:', {
             totalFrames,
             duration,
@@ -278,9 +367,66 @@
             cutoverTimerLabel = null
           }
 
-          // Default preview first frame (not automatically play); continuous playback cut window skip, avoid double seek cause re-skip
-          if (!shouldContinuePlayback) {
+          // 🔧 检查是否在预览模式
+          if (isPreviewMode && previewTimeMs > 0) {
+            // 窗口切换完成后，继续预览
+            const globalFrameIndex = Math.floor((previewTimeMs / 1000) * frameRate)
+            const windowFrameIndex = globalFrameIndex - windowStartIndex
+
+            if (windowFrameIndex >= 0 && windowFrameIndex < totalFrames) {
+              console.log('🔍 [Preview] Window switched, requesting preview frame:', {
+                previewTimeMs,
+                globalFrameIndex,
+                windowFrameIndex
+              })
+
+              compositeWorker?.postMessage({
+                type: 'preview-frame',
+                data: { frameIndex: windowFrameIndex }
+              })
+            } else {
+              console.warn('⚠️ [Preview] Preview frame still outside new window')
+            }
+          } else if (!shouldContinuePlayback && !isPreviewMode && !pendingPreviewWindowSwitch) {
+            // 默认：就绪后跳到第 0 帧（仅在没有任何 pending 操作时）
             seekToFrame(0)
+          }
+
+          // 🆕 如果存在悬而未决的“恢复到保存位置”的请求，则优先恢复
+          if (pendingRestoreGlobalFrameIndex != null) {
+            const targetWindowFrame = pendingRestoreGlobalFrameIndex - windowStartIndex
+            if (targetWindowFrame >= 0 && targetWindowFrame < data.totalFrames) {
+              compositeWorker?.postMessage({ type: 'seek', data: { frameIndex: targetWindowFrame } })
+              pendingRestoreGlobalFrameIndex = null
+              pendingPreviewWindowSwitch = false
+            } else {
+              console.warn('⚠️ [Preview] Pending restore target still outside new window')
+
+          // 🎯 若存在挂起的焦点设置请求，优先处理
+          if (pendingFocusGlobalFrame != null && pendingFocusIntervalIndex != null) {
+            const targetWindowFrame = pendingFocusGlobalFrame - windowStartIndex
+            if (targetWindowFrame >= 0 && targetWindowFrame < data.totalFrames) {
+              (async () => {
+                try {
+                  const bitmap = await getRawSourceFrameBitmapForWindowIndex(targetWindowFrame)
+                  focusFrameBitmap = bitmap
+                  videoInfo = { width: bitmap.width, height: bitmap.height }
+                  focusIntervalIndex = pendingFocusIntervalIndex
+                  isFocusMode = true
+                  // 清理挂起状态
+                  pendingFocusGlobalFrame = null
+                  pendingFocusIntervalIndex = null
+                  pendingPreviewWindowSwitch = false
+                } catch (e) {
+                  console.error('❌ [VideoPreview] Failed to get focus frame after window ready:', e)
+                }
+              })()
+            } else {
+              console.warn('⚠️ [VideoPreview] Pending focus target still outside new window')
+            }
+          }
+
+            }
           }
 
           // 🔧 Check if new window is prepared to continue playback
@@ -314,9 +460,80 @@
           }
           break
 
+        case 'preview-frame':
+          // 🆕 处理预览帧（不更新播放位置）
+          console.log('🔍 [VideoPreview] Received preview frame:', {
+            frameIndex: data.frameIndex,
+            hasBitmap: !!data.bitmap
+          })
+
+          if (data.bitmap) {
+            // 直接显示预览帧，不更新 currentFrameIndex
+            displayFrame(data.bitmap)
+            previewFrameIndex = data.frameIndex
+            pendingPreviewWindowSwitch = false
+
+            console.log('✅ [VideoPreview] Preview frame displayed:', data.frameIndex)
+          }
+          break
+
         case 'frame':
           // Display composite after frame
-          displayFrame(data.bitmap, data.frameIndex, data.timestamp)
+          console.log('📺 [VideoPreview] Received frame from worker:', {
+            frameIndex: data.frameIndex,
+            timestamp: data.timestamp,
+            hasBitmap: !!data.bitmap,
+            isCropMode
+          })
+
+          // 如果存在挂起的恢复目标，则优先跳到目标帧，避免短暂显示错误帧（如 0 帧）
+          if (pendingRestoreGlobalFrameIndex != null) {
+            const desired = pendingRestoreGlobalFrameIndex - windowStartIndex
+            if (desired >= 0 && desired < totalFrames && data.frameIndex !== desired) {
+              console.log('[progress] Skipping displayed frame and seeking to desired pending restore frame', {
+                received: data.frameIndex,
+                desired,
+                windowStartIndex
+              })
+              compositeWorker?.postMessage({ type: 'seek', data: { frameIndex: desired } })
+              break
+            }
+          }
+
+          // 🔧 关键修复：只在非裁剪模式下显示帧
+          if (!isCropMode) {
+            displayFrame(data.bitmap, data.frameIndex, data.timestamp)
+            // any normal frame displayed means cutover/restoration completed
+            pendingPreviewWindowSwitch = false
+          } else {
+            console.log('⚠️ [VideoPreview] Skipping displayFrame - in crop mode')
+            // 裁剪模式下不显示，直接释放 bitmap
+            try {
+              data.bitmap.close()
+            } catch (e) {
+              console.warn('⚠️ [VideoPreview] Failed to close bitmap:', e)
+            }
+          }
+          break
+
+        case 'frameBitmap':
+        case 'frameBitmapRaw':
+          // Worker 返回的帧位图（frameBitmap: 合成后；frameBitmapRaw: 源帧）
+          console.log('🖼️ [VideoPreview] Received frame bitmap', {
+            type,
+            waitingForFrameBitmap,
+            hasResolver: !!frameBitmapResolver,
+            hasBitmap: !!data.bitmap
+          })
+
+          // 统一解析等待中的 Promise
+          if (waitingForFrameBitmap && frameBitmapResolver) {
+            console.log('✅ [VideoPreview] Resolving frameBitmap promise')
+            frameBitmapResolver(data.bitmap)
+            waitingForFrameBitmap = false
+            frameBitmapResolver = null
+            frameBitmapRejecter = null
+          }
           break
 
         case 'bufferStatus':
@@ -365,10 +582,22 @@
               }
 
 
-                // Discard expired prefetch cache: if cache start<=current window start, invalidate (possibly self prefetch)
-                if (prefetchCache && prefetchCache.targetGlobalFrame <= windowStartIndex) {
-                  console.log('[prefetch] Discard stale cache for start:', prefetchCache.targetGlobalFrame, 'current windowStartIndex:', windowStartIndex)
-                  prefetchCache = null
+                // 🔧 优化：更智能的缓存失效逻辑
+                // 1. 如果缓存起点 <= 当前窗口起点，说明缓存已过期
+                // 2. 如果缓存起点远超下一窗口起点（超过2个窗口大小），也视为过期
+                if (prefetchCache) {
+                  const cacheIsStale = prefetchCache.targetGlobalFrame <= windowStartIndex
+                  const cacheIsTooFar = prefetchCache.targetGlobalFrame > (windowStartIndex + totalFrames * 2)
+
+                  if (cacheIsStale || cacheIsTooFar) {
+                    console.log('[prefetch] Discard cache:', {
+                      reason: cacheIsStale ? 'stale' : 'too far',
+                      cacheStart: prefetchCache.targetGlobalFrame,
+                      windowStart: windowStartIndex,
+                      windowSize: totalFrames
+                    })
+                    prefetchCache = null
+                  }
                 }
 
               //  kick off prefetch build (data only, no window switch)
@@ -484,26 +713,56 @@
   }
 
   // Display frame (core display logic)
-  function displayFrame(bitmap: ImageBitmap, frameIndex: number, timestamp: number) {
+  function displayFrame(bitmap: ImageBitmap, frameIndex?: number, timestamp?: number) {
+    console.log('📀 [VideoPreview] displayFrame called:', {
+      frameIndex,
+      timestamp,
+      hasBitmap: !!bitmap,
+      bitmapWidth: bitmap.width,
+      bitmapHeight: bitmap.height,
+      hasBitmapCtx: !!bitmapCtx,
+      hasCanvas: !!canvas,
+      canvasWidth: canvas?.width,
+      canvasHeight: canvas?.height
+    })
+
     if (!bitmapCtx) {
-      console.error('❌ [VideoPreview] Bitmap context not available')
+      console.error('❌ [VideoPreview] Bitmap context not available', {
+        hasCanvas: !!canvas,
+        canvasWidth: canvas?.width,
+        canvasHeight: canvas?.height
+      })
       return
     }
 
     // consume unused param to satisfy TS/linters
     void timestamp
 
-
     try {
       // Efficiently display ImageBitmap
+      console.log('🎨 [VideoPreview] Transferring bitmap to canvas...')
       bitmapCtx.transferFromImageBitmap(bitmap)
+      console.log('✅ [VideoPreview] Frame displayed successfully:', frameIndex)
 
-      // Update playback state
-      currentFrameIndex = frameIndex
-      // Bind this frame to corresponding window start point, stable display/log of global frame
-      lastFrameWindowStartIndex = windowStartIndex
-      // Use global frame index calculation relative video start time, avoid absolute timestamp (like epoch/us) causing huge value
-      currentTime = (lastFrameWindowStartIndex + frameIndex) / frameRate
+      // Update playback state only when a valid frameIndex is provided (i.e., not in hover preview)
+      if (typeof frameIndex === 'number') {
+        currentFrameIndex = frameIndex
+        // Bind this frame to corresponding window start point, stable display/log of global frame
+        lastFrameWindowStartIndex = windowStartIndex
+        // Use global frame index calculation relative video start time, avoid absolute timestamp (like epoch/us) causing huge value
+        currentTime = (lastFrameWindowStartIndex + frameIndex) / frameRate
+
+        // 🔧 裁剪检查：如果启用了裁剪且到达裁剪终点，自动停止播放
+        if (trimStore.enabled && isPlaying) {
+          const currentGlobalFrame = lastFrameWindowStartIndex + frameIndex
+          const currentGlobalMs = (currentGlobalFrame / frameRate) * 1000
+
+          if (currentGlobalMs >= trimStore.trimEndMs) {
+            console.log('✂️ [VideoPreview] Reached trim end point, stopping playback')
+            pause()
+          }
+        }
+      }
 
       // Debug: reduce per-frame log cost, only development environment and every 60 frames output once
       // if (import.meta.env.DEV && frameIndex % 60 === 0) {
@@ -613,8 +872,8 @@
     const plainBackgroundConfig = {
       type: backgroundConfig.type,
 
-    //    
-    // : 
+    //
+    // :
 
       color: backgroundConfig.color,
       padding: backgroundConfig.padding,
@@ -671,7 +930,11 @@
         scale: backgroundConfig.wallpaper.scale,
         offsetX: backgroundConfig.wallpaper.offsetX,
         offsetY: backgroundConfig.wallpaper.offsetY
-      } : undefined
+      } : undefined,
+      // 🆕 添加视频裁剪配置
+      videoCrop: videoCropStore.getCropConfig(),
+      // 🆕 添加视频 Zoom 配置（与 config 路径保持一致）
+      videoZoom: videoZoomStore.getZoomConfig()
     }
 
     // If image background, get new ImageBitmap
@@ -730,7 +993,8 @@
       data: {
         chunks: transferableChunks,
         backgroundConfig: plainBackgroundConfig,
-        startGlobalFrame: windowStartIndex
+        startGlobalFrame: windowStartIndex,
+        frameRate: frameRate  // 🆕 传递帧率
       }
     }, { transfer: transferObjects })
 
@@ -746,9 +1010,127 @@
 
   }
 
+  // ✂️ 视频裁剪模式函数
+  // 进入裁剪模式
+  async function enterCropMode() {
+    // 暂停播放
+    if (isPlaying) {
+      pause()
+    }
+
+    // 获取当前帧的 ImageBitmap
+    if (!compositeWorker || currentFrameIndex >= totalFrames) {
+      console.warn('⚠️ [VideoPreview] Cannot enter crop mode: no frame available')
+      return
+    }
+
+    try {
+      // 🔧 关键修复：使用全局标志位代替 addEventListener
+      // 先设置 Promise，再发送消息（避免竞态）
+      const bitmap = await new Promise<ImageBitmap>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          console.error('❌ [VideoPreview] getCurrentFrameBitmap timeout')
+          waitingForFrameBitmap = false
+          frameBitmapResolver = null
+          frameBitmapRejecter = null
+          reject(new Error('Timeout waiting for frameBitmap'))
+        }, 3000)
+
+        // 设置全局标志，由 onmessage 处理器调用
+        waitingForFrameBitmap = true
+        frameBitmapResolver = (bitmap: ImageBitmap) => {
+          clearTimeout(timeout)
+          resolve(bitmap)
+        }
+        frameBitmapRejecter = (error: Error) => {
+          clearTimeout(timeout)
+          reject(error)
+        }
+
+        console.log('✂️ [VideoPreview] Set up frameBitmap waiting, sending request...')
+
+        // 🔧 关键：在 Promise 内部发送消息，确保 resolver 已经设置
+        compositeWorker!.postMessage({
+          type: 'getCurrentFrameBitmap',
+          data: { frameIndex: currentFrameIndex }
+        })
+      })
+
+      currentFrameBitmap = bitmap
+      isCropMode = true
+
+      console.log('✂️ [VideoPreview] Entered crop mode with frame', currentFrameIndex)
+    } catch (error) {
+      console.error('❌ [VideoPreview] Failed to enter crop mode:', error)
+    }
+  }
+
+  // 退出裁剪模式
+  function exitCropMode(applied: boolean) {
+    console.log('✂️ [VideoPreview] Exiting crop mode, applied:', applied)
+
+    isCropMode = false
+
+    // 清理 ImageBitmap
+    if (currentFrameBitmap) {
+      currentFrameBitmap.close()
+      currentFrameBitmap = null
+    }
+
+    if (applied) {
+      console.log('✂️ [VideoPreview] Applying crop, current config:', videoCropStore.getCropConfig())
+
+      // 🔧 应用裁剪：更新配置后强制刷新显示
+      if (compositeWorker) {
+        // 保存当前帧位置
+        const savedFrameIndex = currentFrameIndex
+
+        // 更新 Worker 配置
+        updateBackgroundConfig(backgroundConfig).then(() => {
+          console.log('✅ [VideoPreview] Crop config updated, forcing frame refresh...')
+
+          // 🔧 关键修复：强制 seek 到当前帧，确保帧被重新渲染和显示
+          requestAnimationFrame(() => {
+            seekToFrame(savedFrameIndex)
+          })
+        }).catch(error => {
+          console.error('❌ [VideoPreview] Failed to apply crop:', error)
+        })
+      } else {
+        console.warn('⚠️ [VideoPreview] Cannot apply crop: missing worker', {
+          hasWorker: !!compositeWorker
+        })
+      }
+    }
+  }
+
   // Playback control
   function play() {
     if (!compositeWorker || totalFrames === 0) return
+
+    // 🔧 如果在预览模式，退出预览
+    if (isPreviewMode) {
+      isPreviewMode = false
+      savedPlaybackState = null
+      console.log('🔍 [Preview] Exited preview mode due to play')
+    }
+
+    // 🔧 裁剪检查：如果启用了裁剪且当前位置超出裁剪范围，则跳转到裁剪开始位置
+    if (trimStore.enabled) {
+      const currentGlobalFrame = windowStartIndex + currentFrameIndex
+      const currentGlobalMs = (currentGlobalFrame / frameRate) * 1000
+
+      if (currentGlobalMs < trimStore.trimStartMs || currentGlobalMs >= trimStore.trimEndMs) {
+        console.log('⚠️ [VideoPreview] Current position outside trim range, seeking to trim start')
+        seekToGlobalTime(trimStore.trimStartMs)
+        // 等待 seek 完成后再播放
+        requestAnimationFrame(() => {
+          compositeWorker!.postMessage({ type: 'play' })
+        })
+        isPlaying = true
+        return
+      }
+    }
 
     console.log('▶️ [VideoPreview] Starting playback')
     isPlaying = true
@@ -794,6 +1176,38 @@
     const ss = total % 60
     return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
   }
+
+  // ✂️ 裁剪相关函数
+  // 初始化 trimStore
+  $effect(() => {
+    if (timelineMaxMs > 0 && totalFramesAll > 0 && !hasInitializedTrim) {
+      trimStore.initialize(timelineMaxMs, frameRate, totalFramesAll)
+      hasInitializedTrim = true
+      console.log('✂️ [VideoPreview] Trim store initialized')
+    } else if (timelineMaxMs > 0 && totalFramesAll > 0 && hasInitializedTrim) {
+      trimStore.updateParameters(timelineMaxMs, frameRate, totalFramesAll)
+    }
+  })
+
+  // 计算当前播放时间（毫秒）
+  const currentTimeMs = $derived.by(() => {
+    // 🔧 预览模式下，显示保存的播放位置（蓝色播放头不动）
+    if (isPreviewMode && savedPlaybackState) {
+      return Math.floor((savedPlaybackState.frameIndex) / frameRate * 1000)
+    }
+    // 正常模式，显示当前播放位置
+    return Math.floor((windowStartIndex + currentFrameIndex) / frameRate * 1000)
+  })
+
+  // 🆕 计算当前帧号（用于显示）
+  const currentFrameNumber = $derived.by(() => {
+    // 🔧 预览模式下，显示保存的播放位置的帧号
+    if (isPreviewMode && savedPlaybackState) {
+      return savedPlaybackState.frameIndex + 1
+    }
+    // 正常模式，显示当前播放位置的帧号
+    return windowStartIndex + currentFrameIndex + 1
+  })
 
   // ===== Debug logging for timer and frame jumps =====
   // Print timer under progress bar and detect frame skips
@@ -879,7 +1293,11 @@
         scale: newConfig.wallpaper.scale,
         offsetX: newConfig.wallpaper.offsetX,
         offsetY: newConfig.wallpaper.offsetY
-      } : undefined
+      } : undefined,
+      // 🆕 添加视频裁剪配置
+      videoCrop: videoCropStore.getCropConfig(),
+      // 🆕 添加视频 Zoom 配置
+      videoZoom: videoZoomStore.getZoomConfig()
     }
 
     console.log('⚙️ [VideoPreview] Updating background config:', plainConfig)
@@ -927,10 +1345,20 @@
       }
     }
 
+    // 🔧 修复：包含窗口信息，确保 Zoom 时间计算正确
     compositeWorker.postMessage({
       type: 'config',
-      data: { backgroundConfig: plainConfig }
+      data: {
+        backgroundConfig: plainConfig,
+        startGlobalFrame: windowStartIndex,  // 🔧 添加窗口起始帧
+        frameRate: frameRate  // 🔧 添加帧率
+      }
     }, transferObjects.length > 0 ? { transfer: transferObjects } : undefined)
+
+    console.log('🔍 [VideoPreview] Config update with window info:', {
+      startGlobalFrame: windowStartIndex,
+      frameRate: frameRate
+    })
   }
 
   // Reactive processing - only process once after recording is complete
@@ -989,12 +1417,18 @@
       if (isRecordingComplete && encodedChunks.length > 0 && isInitialized && compositeWorker) {
         console.log('[progress] Immediately processing new window data')
 
-        // Reset current frame index: only reset in non-continuous playback/non-resume scenarios
-        if (!shouldContinuePlayback) {
+        // Reset current frame index only when truly idle (no preview/restore pending)
+        const hasPending = isPreviewMode || pendingPreviewWindowSwitch || (pendingRestoreGlobalFrameIndex != null)
+        if (!shouldContinuePlayback && !hasPending) {
           currentFrameIndex = 0
-          console.log('[progress] Reset currentFrameIndex to 0 for new window (no resume)')
+          console.log('[progress] Reset currentFrameIndex to 0 for new window (no resume, no pending)')
         } else {
-          console.log('[progress] Keep currentFrameIndex for resume playback')
+          console.log('[progress] Preserve currentFrameIndex due to resume or pending restore/preview', {
+            shouldContinuePlayback,
+            isPreviewMode,
+            pendingPreviewWindowSwitch,
+            pendingRestoreGlobalFrameIndex
+          })
         }
 
         hasProcessed = true
@@ -1105,7 +1539,8 @@
       console.log('[progress] Frame outside current window, requesting new window')
       const targetTimeMs = (globalFrameIndex / frameRate) * 1000
 
-
+      // guard default ready behavior while switching
+      pendingPreviewWindowSwitch = true
       onRequestWindow?.({
         centerMs: targetTimeMs,
         beforeMs: 1500,
@@ -1121,6 +1556,13 @@
 
   // Timeline input handling (based on milliseconds)
   function handleTimelineInput(timeMs: number) {
+    // 🔧 如果在预览模式，退出预览并清除保存状态
+    if (isPreviewMode) {
+      isPreviewMode = false
+      savedPlaybackState = null
+      console.log('🔍 [Preview] Exited preview mode due to timeline click')
+    }
+
     const clampedMs = Math.max(0, Math.min(timeMs, timelineMaxMs))
     console.log('[progress] Timeline input:', {
       timeMs,
@@ -1132,6 +1574,384 @@
 
     // 🔧 Use global time positioning
     seekToGlobalTime(clampedMs)
+  }
+
+  // 🆕 处理鼠标悬停预览
+  function handleHoverPreview(timeMs: number) {
+    // 🔧 防御性检查：确保时间值有效
+    if (typeof timeMs !== 'number' || isNaN(timeMs) || timeMs < 0) {
+      console.warn('⚠️ [Preview] Invalid timeMs:', timeMs)
+      return
+    }
+
+    // 节流控制
+    if (hoverPreviewThrottleTimer) return
+
+    hoverPreviewThrottleTimer = window.setTimeout(() => {
+      hoverPreviewThrottleTimer = null
+    }, HOVER_PREVIEW_THROTTLE_MS)
+
+    if (!isPreviewMode) {
+      // 进入预览模式
+      isPreviewMode = true
+
+      // 保存当前播放状态
+      savedPlaybackState = {
+        frameIndex: windowStartIndex + currentFrameIndex,  // 当前播放位置
+        isPlaying: isPlaying
+      }
+
+      // 暂停播放（如果正在播放）
+      if (isPlaying) {
+        pause()
+      }
+
+      console.log('🔍 [Preview] Entered preview mode, saved state:', savedPlaybackState)
+    }
+
+    // 计算预览帧索引（全局 → 窗口内）
+    const globalFrameIndex = Math.floor((timeMs / 1000) * frameRate)
+    const windowFrameIndex = globalFrameIndex - windowStartIndex
+
+    previewTimeMs = timeMs
+
+    if (windowFrameIndex >= 0 && windowFrameIndex < totalFrames) {
+      // 🔧 在当前窗口内，请求预览帧
+      if (compositeWorker) {
+        compositeWorker.postMessage({
+          type: 'preview-frame',
+          data: { frameIndex: windowFrameIndex }
+        })
+
+        console.log('🔍 [Preview] Requesting preview frame:', {
+          timeMs,
+          globalFrameIndex,
+          windowFrameIndex,
+          windowStartIndex,
+          totalFrames
+        })
+      } else {
+        console.warn('⚠️ [Preview] Worker not available')
+      }
+    } else {
+      // 🔧 不在当前窗口，触发窗口切换（带节流）
+      if (!windowSwitchThrottleTimer) {
+        windowSwitchThrottleTimer = window.setTimeout(() => {
+          windowSwitchThrottleTimer = null
+        }, WINDOW_SWITCH_THROTTLE_MS)
+
+        console.log('🔍 [Preview] Frame outside current window, switching window:', {
+          globalFrameIndex,
+          windowStartIndex,
+          totalFrames,
+          targetTimeMs: timeMs
+        })
+
+        // 触发窗口切换
+        const targetTimeMs = (globalFrameIndex / frameRate) * 1000
+        pendingPreviewWindowSwitch = true
+        onRequestWindow?.({
+          centerMs: targetTimeMs,
+          beforeMs: 1500,
+          afterMs: 1500
+        })
+      }
+    }
+  }
+
+  // 🆕 处理预览结束
+  function handleHoverPreviewEnd() {
+    if (!isPreviewMode) {
+      console.log('🔍 [Preview] Already exited preview mode, skipping')
+      return
+    }
+
+    console.log('🔍 [Preview] Exiting preview mode...')
+
+    // 🔧 清理预览状态
+    isPreviewMode = false
+    previewFrameIndex = null
+
+    // 🔧 清理节流定时器
+    if (hoverPreviewThrottleTimer) {
+      clearTimeout(hoverPreviewThrottleTimer)
+      hoverPreviewThrottleTimer = null
+    }
+    if (windowSwitchThrottleTimer) {
+      clearTimeout(windowSwitchThrottleTimer)
+      windowSwitchThrottleTimer = null
+    }
+
+    // 🔧 关键：恢复到保存的播放位置
+    if (savedPlaybackState) {
+      const savedGlobalFrameIndex = savedPlaybackState.frameIndex
+      const savedWindowFrameIndex = savedGlobalFrameIndex - windowStartIndex
+
+      console.log('🔍 [Preview] Restoring to saved playback position:', {
+        savedGlobalFrameIndex,
+        savedWindowFrameIndex,
+        windowStartIndex,
+        currentFrameIndex,
+        wasPlaying: savedPlaybackState.isPlaying
+      })
+
+      // 🔧 恢复到保存的帧位置（窗口内索引）
+      if (savedWindowFrameIndex >= 0 && savedWindowFrameIndex < totalFrames) {
+        // 在当前窗口内，直接 seek
+        if (compositeWorker) {
+          compositeWorker.postMessage({
+            type: 'seek',
+            data: { frameIndex: savedWindowFrameIndex }
+          })
+          currentFrameIndex = savedWindowFrameIndex
+        }
+        // 无窗口切换，安全清除 pending 状态
+        pendingPreviewWindowSwitch = false
+        pendingRestoreGlobalFrameIndex = null
+      } else {
+        // 不在当前窗口，需要跳转到保存的全局位置，标记恢复目标并触发切窗
+        console.warn('⚠️ [Preview] Saved position outside current window, seeking to global frame')
+        pendingRestoreGlobalFrameIndex = savedGlobalFrameIndex
+        pendingPreviewWindowSwitch = true
+        seekToGlobalFrame(savedGlobalFrameIndex)
+      }
+
+      // 恢复播放状态
+      if (savedPlaybackState.isPlaying) {
+        requestAnimationFrame(() => {
+          console.log('🔍 [Preview] Resuming playback...')
+          play()
+        })
+      }
+
+      savedPlaybackState = null
+    } else {
+      // 🔧 防御性：即使没有保存状态，也清理 pending 标志
+      console.warn('⚠️ [Preview] No saved playback state found')
+      pendingPreviewWindowSwitch = false
+      pendingRestoreGlobalFrameIndex = null
+    }
+
+    console.log('🔍 [Preview] Hover preview ended, restore handled')
+  }
+
+  // 🆕 处理 Zoom 区间变化
+  async function handleZoomChange(startMs: number, endMs: number): Promise<boolean> {
+    console.log('🔍 [VideoPreview] handleZoomChange called:', { startMs, endMs })
+
+    // 特殊情况：(0, 0) 表示清除所有 Zoom
+    if (startMs === 0 && endMs === 0) {
+      videoZoomStore.clearAll()
+      // ✅ P0 修复：等待配置更新完成
+      await updateBackgroundConfig(backgroundConfig)
+
+      // 🆕 强制刷新当前帧（如果暂停状态）
+      if (!isPlaying) {
+        seekToFrame(currentFrameIndex)
+      }
+
+      console.log('✅ [VideoPreview] Zoom cleared and config updated')
+      return true
+    }
+
+    // 尝试添加区间
+    const success = videoZoomStore.addInterval(startMs, endMs)
+
+    console.log('🔍 [VideoPreview] addInterval result:', success)
+    console.log('🔍 [VideoPreview] videoZoomStore state:', {
+      enabled: videoZoomStore.enabled,
+      intervals: videoZoomStore.intervals,
+      zoomConfig: videoZoomStore.getZoomConfig()
+    })
+
+    if (success) {
+      // ✅ P0 修复：等待配置更新完成
+      await updateBackgroundConfig(backgroundConfig)
+
+      // 🆕 强制刷新当前帧（如果暂停状态）
+      if (!isPlaying) {
+        seekToFrame(currentFrameIndex)
+      }
+
+      console.log('✅ [VideoPreview] Zoom interval added and config updated')
+    }
+
+    return success
+  }
+
+  // 🆕 处理删除 Zoom 区间
+  async function handleZoomRemove(index: number): Promise<void> {
+    videoZoomStore.removeInterval(index)
+
+    // ✅ P0 修复：等待配置更新完成
+    await updateBackgroundConfig(backgroundConfig)
+
+    // 🆕 强制刷新当前帧（如果暂停状态）
+    if (!isPlaying) {
+      seekToFrame(currentFrameIndex)
+    }
+
+    console.log('✅ [VideoPreview] Zoom interval removed and config updated')
+  }
+
+  // 🆕 处理移动 Zoom 区间
+  async function handleZoomIntervalMove(index: number, newStartMs: number, newEndMs: number): Promise<boolean> {
+    console.log('🔍 [VideoPreview] handleZoomIntervalMove called:', { index, newStartMs, newEndMs })
+    console.log('🔍 [VideoPreview] Before moveInterval - videoZoomStore state:', {
+      enabled: videoZoomStore.enabled,
+      intervals: videoZoomStore.intervals
+    })
+
+    const success = videoZoomStore.moveInterval(index, newStartMs, newEndMs)
+
+    console.log('🔍 [VideoPreview] After moveInterval - success:', success)
+    console.log('🔍 [VideoPreview] After moveInterval - videoZoomStore state:', {
+      enabled: videoZoomStore.enabled,
+      intervals: videoZoomStore.intervals,
+      zoomConfig: videoZoomStore.getZoomConfig()
+    })
+
+    if (success) {
+      // ✅ P0 修复：等待配置更新完成
+      await updateBackgroundConfig(backgroundConfig)
+
+      // 🆕 强制刷新当前帧（如果暂停状态）
+      if (!isPlaying) {
+        seekToFrame(currentFrameIndex)
+      }
+
+      console.log('✅ [VideoPreview] Zoom interval moved and config updated')
+    }
+
+    return success
+  }
+
+
+
+  // 🎯 请求任意窗口内帧的位图
+  function getFrameBitmapForWindowIndex(windowFrameIndex: number): Promise<ImageBitmap> {
+    return new Promise<ImageBitmap>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        console.error('❌ [VideoPreview] getCurrentFrameBitmap timeout')
+        waitingForFrameBitmap = false
+        frameBitmapResolver = null
+        frameBitmapRejecter = null
+        reject(new Error('Timeout waiting for frameBitmap'))
+      }, 3000)
+
+      waitingForFrameBitmap = true
+      frameBitmapResolver = (bitmap: ImageBitmap) => {
+        clearTimeout(timeout)
+        resolve(bitmap)
+      }
+      frameBitmapRejecter = (error: Error) => {
+        clearTimeout(timeout)
+        reject(error)
+      }
+
+      console.log('🎯 [VideoPreview] Requesting frame bitmap for window index', windowFrameIndex)
+      compositeWorker!.postMessage({
+        type: 'getCurrentFrameBitmap',
+        data: { frameIndex: windowFrameIndex }
+      })
+    })
+  }
+
+  // 🆕 获取“源帧”位图（不带任何缩放/平移/合成偏移），用于焦点设置面板
+  function getRawSourceFrameBitmapForWindowIndex(windowFrameIndex: number): Promise<ImageBitmap> {
+    return new Promise<ImageBitmap>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        console.error('❌ [VideoPreview] getSourceFrameBitmap timeout')
+        waitingForFrameBitmap = false
+        frameBitmapResolver = null
+        frameBitmapRejecter = null
+        reject(new Error('Timeout waiting for raw frameBitmap'))
+      }, 3000)
+
+      waitingForFrameBitmap = true
+      frameBitmapResolver = (bitmap: ImageBitmap) => {
+        clearTimeout(timeout)
+        resolve(bitmap)
+      }
+      frameBitmapRejecter = (error: Error) => {
+        clearTimeout(timeout)
+        reject(error)
+      }
+
+      console.log('🎯 [VideoPreview] Requesting RAW source frame bitmap for window index', windowFrameIndex)
+      compositeWorker!.postMessage({
+        type: 'getSourceFrameBitmap',
+        data: { frameIndex: windowFrameIndex }
+      })
+    })
+  }
+
+  // 🎯 进入焦点设置模式（针对某个区间的首帧）
+  async function handleZoomFocusSetup(intervalIndex: number) {
+    try {
+      if (isPlaying) pause()
+      const interval = videoZoomStore.intervals[intervalIndex]
+      if (!interval) {
+        console.warn('⚠️ [VideoPreview] Invalid interval index for focus setup:', intervalIndex)
+        return
+      }
+      const startMs = interval.startMs
+      const globalFrameIndex = Math.floor((startMs / 1000) * frameRate)
+      const windowFrameIndex = globalFrameIndex - windowStartIndex
+
+      // 若目标帧在当前窗口内，直接请求位图
+      if (compositeWorker && windowFrameIndex >= 0 && windowFrameIndex < totalFrames) {
+        const bitmap = await getRawSourceFrameBitmapForWindowIndex(windowFrameIndex)
+        focusFrameBitmap = bitmap
+        videoInfo = { width: bitmap.width, height: bitmap.height }
+        focusIntervalIndex = intervalIndex
+        isFocusMode = true
+        return
+      }
+
+      // 否则，触发切窗，待 ready 后再获取
+      pendingFocusGlobalFrame = globalFrameIndex
+      pendingFocusIntervalIndex = intervalIndex
+      // 复用预览的 pending 标志以避免 ready 时默认跳 0 帧
+      pendingPreviewWindowSwitch = true
+      console.log('🎯 [VideoPreview] Focus target outside window, requesting window switch', {
+        startMs,
+        globalFrameIndex,
+        windowStartIndex,
+        totalFrames
+      })
+      onRequestWindow?.({
+        centerMs: startMs,
+        beforeMs: 0,
+        afterMs: Math.min(1000, timelineMaxMs - startMs)
+      })
+    } catch (error) {
+      console.error('❌ [VideoPreview] Failed to start focus setup:', error)
+    }
+  }
+
+  // 🎯 退出焦点模式（可选择应用）
+  async function exitFocusMode(apply: boolean, payload?: { focus: { x: number; y: number; space: 'source' | 'layout' }; scale?: number }) {
+    try {
+      if (apply && payload && focusIntervalIndex != null) {
+        videoZoomStore.setIntervalFocus(focusIntervalIndex, payload.focus)
+        if (payload.scale != null) {
+          videoZoomStore.setIntervalScale(focusIntervalIndex, payload.scale)
+        }
+        await updateBackgroundConfig(backgroundConfig)
+        if (!isPlaying) {
+          // 刷新当前帧，确保效果即时可见
+          seekToFrame(currentFrameIndex)
+        }
+      }
+    } finally {
+      isFocusMode = false
+      if (focusFrameBitmap) {
+        try { focusFrameBitmap.close() } catch {}
+        focusFrameBitmap = null
+      }
+      focusIntervalIndex = null
+    }
   }
 
   $effect(() => {
@@ -1232,105 +2052,176 @@
       <Monitor class="w-4 h-4 text-gray-400" />
       <span class="text-sm font-semibold text-gray-100">Video Preview</span>
     </div>
-    <span class="text-xs font-medium text-purple-400 bg-purple-500/10 px-2 py-1 rounded border border-purple-500/20">
-      {backgroundConfig.outputRatio === 'custom' ? `${outputWidth}×${outputHeight}` : backgroundConfig.outputRatio}
-    </span>
-  </div>
 
-  <!-- Canvas display area - takes remaining space -->
-  <div class="flex-1 flex items-center justify-center p-4 min-h-0">
-    <div class="relative bg-black flex items-center justify-center rounded overflow-hidden" style="width: {previewWidth}px; height: {previewHeight}px;">
-      <canvas
-        bind:this={canvas}
-        class="block rounded transition-opacity duration-300"
-        class:opacity-50={isProcessing}
-        style="width: {previewWidth}px; height: {previewHeight}px;"
-      ></canvas>
-
-      {#if isProcessing}
-        <div class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white">
-          <LoaderCircle class="w-8 h-8 text-blue-500 animate-spin mb-2" />
-          <span class="text-sm">Processing video...</span>
-        </div>
+    <!-- Crop button -->
+    <button
+      class="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium rounded border transition-all duration-200 {videoCropStore.enabled ? 'border-blue-500 bg-blue-500/10' : 'border-gray-600'}"
+      onclick={enterCropMode}
+      disabled={isProcessing || !hasEverProcessed}
+      title={videoCropStore.enabled ? 'Cropped - Click to edit' : 'Crop video'}
+    >
+      <Crop class="w-3.5 h-3.5" />
+      {#if videoCropStore.enabled}
+        Cropped
+      {:else}
+        Crop
       {/if}
-    </div>
+    </button>
   </div>
 
+  <!-- 🔧 普通预览模式区域 - 包含 Canvas 和时间轴 -->
+  <!-- 在裁剪模式下整体隐藏，避免布局混乱 -->
+  <div class:hidden={isCropMode || isFocusMode} class="flex-1 flex flex-col min-h-0">
+    <!-- Canvas display area - takes remaining space -->
+    <div class="flex-1 flex items-center justify-center p-6 min-h-0">
+      <div class="relative bg-black flex items-center justify-center rounded overflow-hidden" style="width: {previewWidth}px; height: {previewHeight}px;">
+        <canvas
+          bind:this={canvas}
+          class="block rounded transition-opacity duration-300"
+          class:opacity-50={isProcessing}
+          style="width: {previewWidth}px; height: {previewHeight}px;"
+        ></canvas>
 
-  <!-- Time axis - fixed height (based on real duration, milliseconds) -->
-  {#if showTimeline && timelineMaxMs > 0}
-    <div class="flex-shrink-0 p-3 bg-gray-800">
-      <input
-        type="range"
-        class="w-full h-1 bg-gray-600 rounded-sm outline-none cursor-pointer timeline-slider"
-        min="0"
-        max={timelineMaxMs}
-        value={Math.min(timelineMaxMs, Math.floor((windowStartIndex + currentFrameIndex) / frameRate * 1000))}
-        oninput={(e) => handleTimelineInput(parseInt((e.target as HTMLInputElement).value))}
-        disabled={isProcessing}
-      />
-      <div class="flex justify-between items-center mt-1">
-        <div class="flex items-center gap-2 text-white text-sm">
-          <button
-            class="flex items-center justify-center w-8 h-8 border border-gray-600 text-white rounded cursor-pointer transition-all duration-200 hover:bg-gray-700 hover:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            onclick={isPlaying ? pause : play}
-            disabled={isProcessing}
-          >
-            {#if isPlaying}
-              <Pause class="w-4 h-4" />
-            {:else}
-              <Play class="w-4 h-4" />
-            {/if}
-          </button>
-          <span class="font-mono text-sm text-gray-300 ml-2">
-            {formatTimeSec((windowStartIndex + currentFrameIndex) / frameRate)} / {formatTimeSec(uiDurationSec)}
-          </span>
-        </div>
-        <div class="flex items-center gap-4 text-xs text-gray-400">
-          <span>Frame: {windowStartIndex + currentFrameIndex + 1}/{totalFramesAll > 0 ? totalFramesAll : (totalFrames > 0 ? totalFrames : encodedChunks.length)}</span>
-          <span>Window: {windowStartIndex + 1}-{windowStartIndex + totalFrames}/{totalFramesAll}</span>
-          <span>Resolution: {outputWidth}×{outputHeight}</span>
-          <span>Duration: {Math.floor(timelineMaxMs / 1000)}s</span>
-        </div>
+        {#if isProcessing}
+          <div class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white">
+            <LoaderCircle class="w-8 h-8 text-blue-500 animate-spin mb-2" />
+            <span class="text-sm">Processing video...</span>
+          </div>
+        {/if}
       </div>
     </div>
+
+    <!-- Time axis with controls - using new Timeline component -->
+    {#if showTimeline && timelineMaxMs > 0}
+    <div class="flex-shrink-0 px-6 py-3 bg-gray-800">
+      <!-- 控制按钮和信息 - 三栏布局 -->
+      <div class="flex justify-between items-center mb-3">
+        <!-- 左侧：裁剪按钮和裁剪信息 -->
+        <div class="flex items-center gap-3 text-sm flex-1">
+          <!-- 启用/禁用裁剪按钮 -->
+          <button
+            class="flex items-center justify-center gap-1 px-2 py-1 text-xs rounded transition-all duration-200"
+            class:bg-blue-500={trimStore.enabled}
+            class:text-white={trimStore.enabled}
+            class:hover:bg-blue-600={trimStore.enabled}
+            class:bg-gray-700={!trimStore.enabled}
+            class:text-gray-300={!trimStore.enabled}
+            class:hover:bg-gray-600={!trimStore.enabled}
+            onclick={() => trimStore.toggle()}
+            disabled={isProcessing}
+            title={trimStore.enabled ? 'Disable trim' : 'Enable trim'}
+          >
+            <Scissors class="w-3 h-3" />
+            {trimStore.enabled ? 'Trim On' : 'Trim Off'}
+          </button>
+
+          <!-- 裁剪信息 -->
+          {#if trimStore.enabled}
+            <span class="text-xs text-blue-400 font-semibold">
+              ✂️ {formatTimeSec(trimStore.trimDurationMs / 1000)} ({trimStore.trimFrameCount} frames)
+            </span>
+          {/if}
+        </div>
+
+        <!-- 中间：播放按钮 + 时间显示 -->
+        <div class="flex items-center gap-3 flex-shrink-0">
+          <!-- 播放/暂停按钮 -->
+          <button
+            class="flex items-center justify-center w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-600"
+            onclick={isPlaying ? pause : play}
+            disabled={isProcessing}
+            title={isPlaying ? 'Pause' : 'Play'}
+          >
+            {#if isPlaying}
+              <Pause class="w-5 h-5" />
+            {:else}
+              <Play class="w-5 h-5 ml-0.5" />
+            {/if}
+          </button>
+
+          <!-- 时间显示 -->
+          <span class="font-mono text-sm text-gray-300 whitespace-nowrap">
+            {formatTimeSec(currentTimeMs / 1000)} / {formatTimeSec(uiDurationSec)}
+          </span>
+        </div>
+
+        <!-- 右侧：帧信息和分辨率 -->
+        <div class="flex items-center justify-end gap-4 text-xs text-gray-400 flex-1">
+          <span>Frame: {currentFrameNumber}/{totalFramesAll > 0 ? totalFramesAll : (totalFrames > 0 ? totalFrames : encodedChunks.length)}</span>
+          <span>Resolution: {outputWidth}×{outputHeight}</span>
+        </div>
+      </div>
+
+      <!-- New Timeline Component -->
+      <Timeline
+        {timelineMaxMs}
+        currentTimeMs={currentTimeMs}
+        {frameRate}
+        {isPlaying}
+        {isProcessing}
+        trimEnabled={trimStore.enabled}
+        trimStartMs={trimStore.trimStartMs}
+        trimEndMs={trimStore.trimEndMs}
+        zoomIntervals={videoZoomStore.intervals}
+        onSeek={handleTimelineInput}
+        onHoverPreview={handleHoverPreview}
+        onHoverPreviewEnd={handleHoverPreviewEnd}
+        onZoomFocusSetup={handleZoomFocusSetup}
+        onTrimStartChange={(newMs) => {
+          trimStore.setTrimStart(newMs)
+          trimStore.enable()
+          seekToGlobalTime(newMs)
+        }}
+        onTrimEndChange={(newMs) => {
+          trimStore.setTrimEnd(newMs)
+          trimStore.enable()
+          seekToGlobalTime(newMs)
+        }}
+        onTrimToggle={() => trimStore.toggle()}
+        onZoomChange={handleZoomChange}
+        onZoomRemove={handleZoomRemove}
+        onZoomIntervalMove={handleZoomIntervalMove}
+      />
+    </div>
   {/if}
+  </div>
+  <!-- 🔧 普通预览模式区域结束 -->
+
+  <!-- 🆕 裁剪模式 - 独立显示，不销毁 Canvas -->
+  {#if isCropMode}
+    <div class="flex-1 flex items-center justify-center p-4 min-h-0">
+      {#if currentFrameBitmap && videoInfo}
+        <VideoCropPanel
+          frameBitmap={currentFrameBitmap}
+          videoWidth={videoInfo.width}
+          videoHeight={videoInfo.height}
+          displayWidth={previewWidth}
+          displayHeight={previewHeight}
+          onConfirm={() => exitCropMode(true)}
+          onCancel={() => exitCropMode(false)}
+        />
+      {/if}
+    </div>
+  {/if}
+  <!-- 🎯 焦点设置模式 - 独立显示，不销毁 Canvas -->
+  {#if isFocusMode}
+    <div class="flex-1 flex items-center justify-center p-4 min-h-0">
+      {#if focusFrameBitmap && videoInfo}
+        <VideoFocusPanel
+          frameBitmap={focusFrameBitmap}
+          videoWidth={videoInfo.width}
+          videoHeight={videoInfo.height}
+          initialFocus={focusIntervalIndex !== null
+            ? (videoZoomStore.getIntervalFocus(focusIntervalIndex) ?? { x: videoZoomStore.focusX, y: videoZoomStore.focusY, space: 'source' })
+            : { x: videoZoomStore.focusX, y: videoZoomStore.focusY, space: 'source' }
+          }
+          initialScale={focusIntervalIndex !== null ? videoZoomStore.getIntervalScale(focusIntervalIndex) : videoZoomStore.scale}
+          onConfirm={(payload: { focus: { x: number; y: number; space: 'source' | 'layout' }; scale: number }) => exitFocusMode(true, payload)}
+          onCancel={() => exitFocusMode(false)}
+        />
+      {/if}
+    </div>
+  {/if}
+
 </div>
 
-<style>
-  /* Custom timeline slider styles - using blue theme */
-  .timeline-slider::-webkit-slider-thumb {
-    appearance: none;
-    width: 16px;
-    height: 16px;
-    background: #3b82f6;
-    border-radius: 50%;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .timeline-slider::-webkit-slider-thumb:hover {
-    background: #2563eb;
-    transform: scale(1.1);
-  }
-
-  .timeline-slider::-moz-range-thumb {
-    width: 16px;
-    height: 16px;
-    background: #3b82f6;
-    border-radius: 50%;
-    cursor: pointer;
-    border: none;
-    transition: all 0.2s ease;
-  }
-
-  .timeline-slider::-moz-range-thumb:hover {
-    background: #2563eb;
-    transform: scale(1.1);
-  }
-
-  .timeline-slider:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-</style>

@@ -1,8 +1,13 @@
 <!-- Video export panel component -->
 <script lang="ts">
-  import { Download, Video, Film, LoaderCircle, Info, TriangleAlert, CircleCheck, Clock } from '@lucide/svelte'
+  import { Download, Video, Film, LoaderCircle, Info, TriangleAlert } from '@lucide/svelte'
   import { ExportManager } from '$lib/services/export-manager'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
+  import { trimStore } from '$lib/stores/trim.svelte'
+  import { videoCropStore } from '$lib/stores/video-crop.svelte'
+  import GifExportDialog, { type GifExportOptions } from './GifExportDialog.svelte'
+  import VideoExportDialog, { type VideoExportOptions, type SourceVideoInfo } from './VideoExportDialog.svelte'
+  import { extractSourceInfo, convertBackgroundConfigForExport } from '$lib/utils/export-utils'
 
   // Props
   interface Props {
@@ -30,8 +35,16 @@
   // Export status
   let isExportingWebM = $state(false)
   let isExportingMP4 = $state(false)
+  let isExportingGIF = $state(false)
+  let isGifLibReady = $state(false)
+
+  // Export dialogs
+  let showGifDialog = $state(false)
+  let showMp4Dialog = $state(false)
+  let showWebmDialog = $state(false)
+  
   let exportProgress = $state<{
-    type: 'webm' | 'mp4'
+    type: 'webm' | 'mp4' | 'gif'
     stage: 'preparing' | 'compositing' | 'encoding' | 'muxing' | 'finalizing'
     progress: number
     currentFrame: number
@@ -39,11 +52,151 @@
     estimatedTimeRemaining: number
   } | null>(null)
 
+  // Source video information for export dialogs
+  const sourceInfo = $derived<SourceVideoInfo>(
+    extractSourceInfo(encodedChunks, totalFramesAll)
+  )
+
 
   // Smooth display export progress, avoid UI flicker caused by high-frequency updates
   let displayedProgress = $state(0)
   let targetProgress = $state(0)
   let rafId: number | null = null
+
+  // Lazy-load gif.js from /gif/gif.js and verify availability
+  async function ensureGifLibLoaded(): Promise<boolean> {
+    if (typeof window === 'undefined') return false
+    // already loaded
+    if ((window as any).GIF) {
+      return true
+    }
+    return await new Promise<boolean>((resolve) => {
+      const script = document.createElement('script')
+      script.src = '/gif/gif.js'
+      script.async = true
+      script.onload = () => {
+        const ok = Boolean((window as any).GIF)
+        if (ok) {
+          console.log('✅ [Export] gif.js loaded, GIF constructor available')
+        } else {
+          console.warn('⚠️ [Export] gif.js loaded but GIF constructor not found')
+        }
+        resolve(ok)
+      }
+      script.onerror = () => {
+        console.error('❌ [Export] Failed to load /gif/gif.js')
+        resolve(false)
+      }
+      document.head.appendChild(script)
+    })
+  }
+
+  // 打开 GIF 导出对话框
+  function openGifExportDialog() {
+    if (!canExport) return
+    showGifDialog = true
+  }
+
+  // 执行 GIF 导出
+  async function performGifExport(options: GifExportOptions) {
+    if (!canExport) return
+
+    try {
+      isExportingGIF = true
+      exportProgress = {
+        type: 'gif',
+        stage: 'preparing',
+        progress: 0,
+        currentFrame: 0,
+        totalFrames: encodedChunks.length,
+        estimatedTimeRemaining: 0
+      }
+
+      console.log('🎨 [Export] Starting GIF export with', encodedChunks.length, 'chunks')
+      console.log('🎨 [Export] GIF options:', options)
+
+      // 确保 gif.js 已加载
+      const gifLibLoaded = await ensureGifLibLoaded()
+      if (!gifLibLoaded) {
+        throw new Error('Failed to load gif.js library')
+      }
+      isGifLibReady = true
+
+      // Convert Svelte 5 Proxy objects to plain objects using utility
+      const plainBackgroundConfig = convertBackgroundConfigForExport(backgroundConfig, videoCropStore)
+
+      console.log('🎨 [Export] GIF export config:', {
+        hasBackgroundConfig: !!plainBackgroundConfig,
+        videoCrop: plainBackgroundConfig?.videoCrop,
+        videoCropEnabled: plainBackgroundConfig?.videoCrop?.enabled
+      })
+
+      // 使用对话框中的 GIF 导出选项
+      const gifOptions = {
+        fps: options.fps,
+        quality: options.quality,
+        scale: options.scale,
+        workers: options.workers,
+        repeat: options.repeat,
+        dither: options.dither,
+        transparent: options.transparent
+      }
+
+      const gifBlob = await exportManager.exportEditedVideo(
+        encodedChunks,
+        {
+          format: 'gif',
+          includeBackground: !!plainBackgroundConfig,
+          backgroundConfig: plainBackgroundConfig as any,
+          quality: 'medium',
+          source: opfsDirId ? 'opfs' : 'chunks',
+          opfsDirId: opfsDirId || undefined,
+          trim: trimStore.enabled ? {
+            enabled: true,
+            startMs: trimStore.trimStartMs,
+            endMs: trimStore.trimEndMs,
+            startFrame: trimStore.trimStartFrame,
+            endFrame: trimStore.trimEndFrame
+          } : undefined,
+          gifOptions
+        },
+        (progress) => {
+          console.log(`📊 [VideoExportPanel] Progress callback: stage=${progress.stage}, progress=${progress.progress}%`)
+          pendingProgress = {
+            stage: progress.stage,
+            currentFrame: progress.currentFrame,
+            totalFrames: progress.totalFrames,
+            estimatedTimeRemaining: progress.estimatedTimeRemaining || 0
+          }
+          // 使用实际的进度值，不基于帧数计算（因为GIF渲染阶段不是线性的）
+          setProgressTarget(progress.progress)
+          scheduleProgressFieldsUpdate()
+        }
+      )
+
+      // Download file
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+      const filename = `edited-video-${timestamp}.gif`
+
+      // 不要过早设置100%，让实际进度自然达到100%
+      // setProgressTarget(100) // 移除这行，避免过早显示100%
+
+      await downloadBlob(gifBlob, filename)
+
+      console.log('✅ [Export] GIF export completed:', filename)
+
+      // 导出成功，关闭对话框
+      showGifDialog = false
+
+    } catch (error) {
+      console.error('❌ [Export] GIF export failed:', error)
+      // TODO: Show error message
+    } finally {
+      isExportingGIF = false
+      resetProgressAnimation()
+      exportProgress = null
+    }
+  }
 
   function resetProgressAnimation() {
     if (rafId) {
@@ -55,7 +208,10 @@
   }
 
   function animateProgress() {
-    if (rafId) return
+    if (rafId) {
+      cancelAnimationFrame(rafId)
+      rafId = null
+    }
     const step = () => {
       const diff = targetProgress - displayedProgress
       if (Math.abs(diff) < 0.5) {
@@ -63,20 +219,18 @@
         rafId = null
         return
       }
-      // Ease to target, reduce redraw frequency, reduce flicker
-      displayedProgress += diff * 0.25
+      // 更快的响应速度用于进度更新
+      displayedProgress += diff * 0.4
       rafId = requestAnimationFrame(step)
     }
     rafId = requestAnimationFrame(step)
   }
 
   function setProgressTarget(p: number) {
-    // Prevent visual jumps caused by progress rollback
+    // 允许进度值更新（GIF导出时进度可能会因为阶段切换而变化）
     const clamped = Math.max(0, Math.min(100, p))
-    if (clamped >= targetProgress) {
-      targetProgress = clamped
-      animateProgress()
-    }
+    targetProgress = clamped
+    animateProgress()
   }
 
   // Throttle export progress field updates, reduce template re-render frequency
@@ -116,11 +270,18 @@
     isRecordingComplete &&
     encodedChunks.length > 0 &&
     !isExportingWebM &&
-    !isExportingMP4
+    !isExportingMP4 &&
+    !isExportingGIF
   )
 
-  // Export WebM
-  async function exportWebM() {
+  // Open WebM export dialog
+  function openWebmExportDialog() {
+    if (!canExport) return
+    showWebmDialog = true
+  }
+
+  // Perform WebM export
+  async function performWebMExport(options: VideoExportOptions) {
     if (!canExport) return
 
     try {
@@ -135,67 +296,16 @@
       }
 
       console.log('🎬 [Export] Starting WebM export with', encodedChunks.length, 'chunks')
+      console.log('⚙️ [Export] WebM options:', options)
 
-      // Convert Svelte 5 Proxy objects to plain objects
-      const plainBackgroundConfig = backgroundConfig ? {
-        type: backgroundConfig.type,
-        color: backgroundConfig.color,
-        padding: backgroundConfig.padding,
-        outputRatio: backgroundConfig.outputRatio,
-        videoPosition: backgroundConfig.videoPosition,
-        borderRadius: backgroundConfig.borderRadius,
-        inset: backgroundConfig.inset,
-        // Deep convert gradient object
-        gradient: backgroundConfig.gradient ? {
-          type: backgroundConfig.gradient.type,
-          ...(backgroundConfig.gradient.type === 'linear' && 'angle' in backgroundConfig.gradient ? { angle: backgroundConfig.gradient.angle } : {}),
-          ...(backgroundConfig.gradient.type === 'radial' && 'centerX' in backgroundConfig.gradient ? {
-            centerX: backgroundConfig.gradient.centerX,
-            centerY: backgroundConfig.gradient.centerY,
-            radius: backgroundConfig.gradient.radius
-          } : {}),
-          ...(backgroundConfig.gradient.type === 'conic' && 'centerX' in backgroundConfig.gradient ? {
-            centerX: backgroundConfig.gradient.centerX,
-            centerY: backgroundConfig.gradient.centerY,
-            angle: 'angle' in backgroundConfig.gradient ? backgroundConfig.gradient.angle : 0
-          } : {}),
-          stops: backgroundConfig.gradient.stops.map(stop => ({
-            color: stop.color,
-            position: stop.position
-          }))
-        } : undefined,
-        // Deep convert shadow object
-        shadow: backgroundConfig.shadow ? {
-          offsetX: backgroundConfig.shadow.offsetX,
-          offsetY: backgroundConfig.shadow.offsetY,
-          blur: backgroundConfig.shadow.blur,
-          color: backgroundConfig.shadow.color
-        } : undefined,
-        // Deep convert image object
-        image: backgroundConfig.image ? {
-          imageId: backgroundConfig.image.imageId,
-          imageBitmap: backgroundConfig.image.imageBitmap,
-          fit: backgroundConfig.image.fit,
-          position: backgroundConfig.image.position,
-          opacity: backgroundConfig.image.opacity,
-          blur: backgroundConfig.image.blur,
-          scale: backgroundConfig.image.scale,
-          offsetX: backgroundConfig.image.offsetX,
-          offsetY: backgroundConfig.image.offsetY
-        } : undefined,
-        // Deep convert wallpaper object
-        wallpaper: backgroundConfig.wallpaper ? {
-          imageId: backgroundConfig.wallpaper.imageId,
-          imageBitmap: backgroundConfig.wallpaper.imageBitmap,
-          fit: backgroundConfig.wallpaper.fit,
-          position: backgroundConfig.wallpaper.position,
-          opacity: backgroundConfig.wallpaper.opacity,
-          blur: backgroundConfig.wallpaper.blur,
-          scale: backgroundConfig.wallpaper.scale,
-          offsetX: backgroundConfig.wallpaper.offsetX,
-          offsetY: backgroundConfig.wallpaper.offsetY
-        } : undefined
-      } : undefined
+      // Convert Svelte 5 Proxy objects to plain objects using utility
+      const plainBackgroundConfig = convertBackgroundConfigForExport(backgroundConfig, videoCropStore)
+
+      console.log('🎬 [Export] WebM export config:', {
+        hasBackgroundConfig: !!plainBackgroundConfig,
+        videoCrop: plainBackgroundConfig?.videoCrop,
+        videoCropEnabled: plainBackgroundConfig?.videoCrop?.enabled
+      })
 
       const videoResult = await exportManager.exportEditedVideo(
         encodedChunks,
@@ -203,7 +313,9 @@
           format: 'webm',
           includeBackground: !!plainBackgroundConfig,
           backgroundConfig: plainBackgroundConfig as any,
-          quality: 'medium',
+          quality: options.quality,
+          bitrate: options.bitrate,
+          framerate: options.framerate,
           source: opfsDirId ? 'opfs' : 'chunks',
           opfsDirId: opfsDirId || undefined,
           saveToOpfs: !!opfsDirId,
@@ -211,7 +323,14 @@
             if (!opfsDirId) return undefined
             const ts = new Date().toISOString().replace(/[:.]/g, '-')
             return `edited-video-${ts}.webm`
-          })()
+          })(),
+          trim: trimStore.enabled ? {
+            enabled: true,
+            startMs: trimStore.trimStartMs,
+            endMs: trimStore.trimEndMs,
+            startFrame: trimStore.trimStartFrame,
+            endFrame: trimStore.trimEndFrame
+          } : undefined
         },
         (progress) => {
           // Cache and throttle update non-critical fields, avoid high-frequency re-rendering of entire block area
@@ -255,6 +374,9 @@
         console.log('✅ [Export] WebM export completed:', fallbackFilename)
       }
 
+      // Close dialog on success
+      showWebmDialog = false
+
     } catch (error) {
       console.error('❌ [Export] WebM export failed:', error)
       // TODO: Show error message
@@ -265,8 +387,14 @@
     }
   }
 
-  // Export MP4
-  async function exportMP4() {
+  // Open MP4 export dialog
+  function openMp4ExportDialog() {
+    if (!canExport) return
+    showMp4Dialog = true
+  }
+
+  // Perform MP4 export
+  async function performMP4Export(options: VideoExportOptions) {
     if (!canExport) return
 
     try {
@@ -281,67 +409,16 @@
       }
 
       console.log('🎬 [Export] Starting MP4 export with', encodedChunks.length, 'chunks')
+      console.log('⚙️ [Export] MP4 options:', options)
 
-      // Convert Svelte 5 Proxy objects to plain objects
-      const plainBackgroundConfig = backgroundConfig ? {
-        type: backgroundConfig.type,
-        color: backgroundConfig.color,
-        padding: backgroundConfig.padding,
-        outputRatio: backgroundConfig.outputRatio,
-        videoPosition: backgroundConfig.videoPosition,
-        borderRadius: backgroundConfig.borderRadius,
-        inset: backgroundConfig.inset,
-        // Deep convert gradient object
-        gradient: backgroundConfig.gradient ? {
-          type: backgroundConfig.gradient.type,
-          ...(backgroundConfig.gradient.type === 'linear' && 'angle' in backgroundConfig.gradient ? { angle: backgroundConfig.gradient.angle } : {}),
-          ...(backgroundConfig.gradient.type === 'radial' && 'centerX' in backgroundConfig.gradient ? {
-            centerX: backgroundConfig.gradient.centerX,
-            centerY: backgroundConfig.gradient.centerY,
-            radius: backgroundConfig.gradient.radius
-          } : {}),
-          ...(backgroundConfig.gradient.type === 'conic' && 'centerX' in backgroundConfig.gradient ? {
-            centerX: backgroundConfig.gradient.centerX,
-            centerY: backgroundConfig.gradient.centerY,
-            angle: 'angle' in backgroundConfig.gradient ? backgroundConfig.gradient.angle : 0
-          } : {}),
-          stops: backgroundConfig.gradient.stops.map(stop => ({
-            color: stop.color,
-            position: stop.position
-          }))
-        } : undefined,
-        // Deep convert shadow object
-        shadow: backgroundConfig.shadow ? {
-          offsetX: backgroundConfig.shadow.offsetX,
-          offsetY: backgroundConfig.shadow.offsetY,
-          blur: backgroundConfig.shadow.blur,
-          color: backgroundConfig.shadow.color
-        } : undefined,
-        // Deep convert image object
-        image: backgroundConfig.image ? {
-          imageId: backgroundConfig.image.imageId,
-          imageBitmap: backgroundConfig.image.imageBitmap,
-          fit: backgroundConfig.image.fit,
-          position: backgroundConfig.image.position,
-          opacity: backgroundConfig.image.opacity,
-          blur: backgroundConfig.image.blur,
-          scale: backgroundConfig.image.scale,
-          offsetX: backgroundConfig.image.offsetX,
-          offsetY: backgroundConfig.image.offsetY
-        } : undefined,
-        // Deep convert wallpaper object
-        wallpaper: backgroundConfig.wallpaper ? {
-          imageId: backgroundConfig.wallpaper.imageId,
-          imageBitmap: backgroundConfig.wallpaper.imageBitmap,
-          fit: backgroundConfig.wallpaper.fit,
-          position: backgroundConfig.wallpaper.position,
-          opacity: backgroundConfig.wallpaper.opacity,
-          blur: backgroundConfig.wallpaper.blur,
-          scale: backgroundConfig.wallpaper.scale,
-          offsetX: backgroundConfig.wallpaper.offsetX,
-          offsetY: backgroundConfig.wallpaper.offsetY
-        } : undefined
-      } : undefined
+      // Convert Svelte 5 Proxy objects to plain objects using utility
+      const plainBackgroundConfig = convertBackgroundConfigForExport(backgroundConfig, videoCropStore)
+
+      console.log('🎬 [Export] MP4 export config:', {
+        hasBackgroundConfig: !!plainBackgroundConfig,
+        videoCrop: plainBackgroundConfig?.videoCrop,
+        videoCropEnabled: plainBackgroundConfig?.videoCrop?.enabled
+      })
 
       const videoBlob = await exportManager.exportEditedVideo(
         encodedChunks,
@@ -349,9 +426,18 @@
           format: 'mp4',
           includeBackground: !!plainBackgroundConfig,
           backgroundConfig: plainBackgroundConfig as any,
-          quality: 'medium',
+          quality: options.quality,
+          bitrate: options.bitrate,
+          framerate: options.framerate,
           source: opfsDirId ? 'opfs' : 'chunks',
-          opfsDirId: opfsDirId || undefined
+          opfsDirId: opfsDirId || undefined,
+          trim: trimStore.enabled ? {
+            enabled: true,
+            startMs: trimStore.trimStartMs,
+            endMs: trimStore.trimEndMs,
+            startFrame: trimStore.trimStartFrame,
+            endFrame: trimStore.trimEndFrame
+          } : undefined
         },
         (progress) => {
           // Cache and throttle update non-critical fields, avoid high-frequency re-rendering of entire block area
@@ -387,6 +473,9 @@
       await downloadBlob(videoBlob, filename)
 
       console.log('✅ [Export] MP4 export completed:', filename)
+
+      // Close dialog on success
+      showMp4Dialog = false
 
     } catch (error) {
       console.error('❌ [Export] MP4 export failed:', error)
@@ -463,6 +552,7 @@
 </script>
 
 <!-- Video export panel component -->
+
 <div class="flex flex-col gap-4 p-4 bg-slate-50 border border-slate-200 rounded-lg {className}">
   <div class="flex justify-between items-center">
     <div class="flex items-center gap-2">
@@ -475,80 +565,51 @@
         {#if backgroundConfig}
           <span class="bg-emerald-500 text-white px-2 py-1 rounded">With Background</span>
         {/if}
+        {#if trimStore.enabled}
+          <span class="bg-orange-500 text-white px-2 py-1 rounded">✂️ Trimmed ({trimStore.trimFrameCount} frames)</span>
+        {/if}
       {:else}
         <span class="text-slate-500">No recording data</span>
       {/if}
     </div>
   </div>
 
-  <!-- Export button -->
+  <!-- Export buttons -->
   <div class="flex gap-3">
     <button
       class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-500 text-white text-sm font-medium rounded-md cursor-pointer transition-all duration-200 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
-
       disabled={!canExport}
-      onclick={() => { resetProgressAnimation(); exportWebM() }}
+      onclick={openWebmExportDialog}
     >
-      {#if isExportingWebM}
-        <LoaderCircle class="w-4 h-4 animate-spin" />
-        Exporting WebM...
-      {:else}
-        <Video class="w-4 h-4" />
-        Export WebM
-      {/if}
+      <Video class="w-4 h-4" />
+      Export WebM
     </button>
 
     <button
       class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-emerald-500 text-white text-sm font-medium rounded-md cursor-pointer transition-all duration-200 hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
-      class:opacity-80={isExportingMP4}
       disabled={!canExport}
-      onclick={() => { resetProgressAnimation(); exportMP4() }}
+      onclick={openMp4ExportDialog}
     >
-      {#if isExportingMP4}
+      <Film class="w-4 h-4" />
+      Export MP4
+    </button>
+
+    <!-- Export GIF -->
+    <button
+      class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-purple-500 text-white text-sm font-medium rounded-md cursor-pointer transition-all duration-200 hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
+      disabled={!canExport}
+      onclick={openGifExportDialog}
+    >
+      {#if isExportingGIF}
         <LoaderCircle class="w-4 h-4 animate-spin" />
-        Exporting MP4...
+        Exporting GIF...
       {:else}
-        <Film class="w-4 h-4" />
-        Export MP4
+        <Download class="w-4 h-4" />
+        Export GIF
       {/if}
     </button>
   </div>
 
-  <!-- Export progress -->
-  {#if exportProgress}
-    <div class="bg-white border border-slate-200 rounded-md p-3">
-      <div class="flex justify-between items-center mb-2">
-        <span class="text-sm font-medium text-gray-700">
-          Exporting {exportProgress.type.toUpperCase()} - {formatStage(exportProgress.stage)}
-        </span>
-        <span class="text-sm font-semibold text-gray-900">
-          {Math.round(displayedProgress)}%
-        </span>
-      </div>
-
-      <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mb-2">
-        <div
-          class="h-full origin-left transition-transform duration-300 rounded-full will-change-transform"
-          class:bg-blue-500={exportProgress.type === 'webm'}
-          class:bg-emerald-500={exportProgress.type === 'mp4'}
-          style="transform: scaleX({displayedProgress / 100})"
-        ></div>
-      </div>
-
-      <div class="flex justify-between text-xs text-slate-600">
-        <span class="flex items-center gap-1">
-          <CircleCheck class="w-3 h-3" />
-          {exportProgress.currentFrame} / {displayTotalFrames} frames
-        </span>
-        {#if exportProgress.estimatedTimeRemaining > 0}
-          <span class="flex items-center gap-1">
-            <Clock class="w-3 h-3" />
-            Remaining {formatTime(exportProgress.estimatedTimeRemaining)}
-          </span>
-        {/if}
-      </div>
-    </div>
-  {/if}
 
   <!-- Notification messages -->
   {#if !isRecordingComplete}
@@ -564,4 +625,53 @@
   {/if}
 </div>
 
-<!-- All styles have been migrated to Tailwind CSS -->
+<!-- MP4 Export Dialog -->
+<VideoExportDialog
+  bind:open={showMp4Dialog}
+  format="mp4"
+  onClose={() => { showMp4Dialog = false }}
+  onConfirm={performMP4Export}
+  sourceInfo={sourceInfo}
+  isExporting={isExportingMP4}
+  exportProgress={exportProgress?.type === 'mp4' ? {
+    stage: exportProgress.stage,
+    progress: displayedProgress,
+    currentFrame: exportProgress.currentFrame,
+    totalFrames: exportProgress.totalFrames,
+    estimatedTimeRemaining: exportProgress.estimatedTimeRemaining
+  } : null}
+/>
+
+<!-- WebM Export Dialog -->
+<VideoExportDialog
+  bind:open={showWebmDialog}
+  format="webm"
+  onClose={() => { showWebmDialog = false }}
+  onConfirm={performWebMExport}
+  sourceInfo={sourceInfo}
+  isExporting={isExportingWebM}
+  exportProgress={exportProgress?.type === 'webm' ? {
+    stage: exportProgress.stage,
+    progress: displayedProgress,
+    currentFrame: exportProgress.currentFrame,
+    totalFrames: exportProgress.totalFrames,
+    estimatedTimeRemaining: exportProgress.estimatedTimeRemaining
+  } : null}
+/>
+
+<!-- GIF Export Dialog -->
+<GifExportDialog
+  bind:open={showGifDialog}
+  onClose={() => { showGifDialog = false }}
+  onConfirm={performGifExport}
+  videoDuration={displayTotalFrames / 30}
+  videoWidth={sourceInfo.width}
+  videoHeight={sourceInfo.height}
+  isExporting={isExportingGIF}
+  exportProgress={exportProgress?.type === 'gif' ? {
+    stage: exportProgress.stage,
+    progress: displayedProgress,
+    currentFrame: exportProgress.currentFrame,
+    totalFrames: exportProgress.totalFrames
+  } : null}
+/>

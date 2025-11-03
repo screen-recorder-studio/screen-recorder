@@ -4,8 +4,8 @@
 import { tryConfigureBestEncoder } from '../utils/webcodecs-config'
 
 let encoder: VideoEncoder | null = null
-let chunks: Uint8Array[] = []
 let currentEncoderConfig: VideoEncoderConfig | null = null
+const BACKPRESSURE_MAX = 8  // 背压控制：最大队列长度
 
 // 处理主线程消息
 self.onmessage = async (event) => {
@@ -102,7 +102,15 @@ async function configureEncoder(config: any) {
 async function encodeFrame(frame: VideoFrame, forceKey: boolean = false) {
   try {
     if (!encoder) {
+      frame.close()
       throw new Error('Encoder not configured')
+    }
+
+    // ✅ 背压控制：如果队列过长则丢帧
+    if (encoder.encodeQueueSize != null && encoder.encodeQueueSize > BACKPRESSURE_MAX) {
+      console.warn(`⚠️ [WORKER] Backpressure: dropping frame (queue: ${encoder.encodeQueueSize})`)
+      frame.close()
+      return
     }
 
     // 调试：检查源帧与编码器配置的宽高/比例是否匹配
@@ -140,10 +148,9 @@ function handleEncodedChunk(chunk: EncodedVideoChunk, metadata?: any) {
     // 将编码数据复制到 Uint8Array
     const data = new Uint8Array(chunk.byteLength)
     chunk.copyTo(data)
-    
-    chunks.push(data)
-    
-    // 通知主线程收到数据块（包含实际数据和分辨率信息）
+
+    // ✅ 流式输出，不在 Worker 内累积
+    // 直接发送给主线程，由 OPFS Writer 处理
     self.postMessage({
       type: 'chunk',
       data: {
@@ -151,7 +158,6 @@ function handleEncodedChunk(chunk: EncodedVideoChunk, metadata?: any) {
         size: chunk.byteLength,
         timestamp: chunk.timestamp,
         type: chunk.type,
-        totalChunks: chunks.length,
         // 添加分辨率信息
         codedWidth: currentEncoderConfig?.width || 1920,
         codedHeight: currentEncoderConfig?.height || 1080,
@@ -183,32 +189,32 @@ function handleEncodingError(error: Error) {
 async function stopEncoding() {
   try {
     if (encoder) {
-      // 刷新编码器
+      const queueBefore = encoder.encodeQueueSize
+      console.log(`🛑 [WORKER] Flushing encoder (queue: ${queueBefore})...`)
+
+      // 刷新编码器，等待所有pending帧编码完成
       await encoder.flush()
+
+      const queueAfter = encoder.encodeQueueSize
+      console.log(`✅ [WORKER] Encoder flushed (queue: ${queueAfter})`)
+
+      if (queueAfter > 0) {
+        console.warn(`⚠️ [WORKER] Queue not empty after flush: ${queueAfter}`)
+      }
+
       encoder.close()
       encoder = null
     }
 
-    // 合并所有数据块
-    const totalSize = chunks.reduce((sum, chunk) => sum + chunk.length, 0)
-    const finalData = new Uint8Array(totalSize)
-    
-    let offset = 0
-    for (const chunk of chunks) {
-      finalData.set(chunk, offset)
-      offset += chunk.length
-    }
+    // ✅ 不再合并数据块，所有chunks已流式发送到主线程
+    // 主线程通过OPFS Writer实时写入，无需在此累积
 
-    // 通知主线程编码完成
-    ;(self as any).postMessage({
-      type: 'complete',
-      data: finalData
-    }, [finalData.buffer])
+    // 通知主线程编码完成（不再发送finalData）
+    self.postMessage({
+      type: 'complete'
+    })
 
-    console.log('✅ WebCodecs encoding completed')
-    
-    // 清理
-    chunks = []
+    console.log('✅ [WORKER] WebCodecs encoding completed')
 
   } catch (error) {
     console.error('❌ [WORKER] Stop encoding failed:', error)

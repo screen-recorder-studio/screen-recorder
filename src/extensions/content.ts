@@ -724,7 +724,7 @@
     // 添加到页面
     root.appendChild(container);
     clearHighlight();
-    report({ selectedDesc: `元素 ${getElDesc(el)}` });
+    report({ selectedDesc: `Element ${getElDesc(el)}` });
   }
 
 
@@ -751,7 +751,9 @@
       // After user grants capture (stream available), open centralized countdown via background
       const requestedCountdown = (window as any).__mcpRequestedCountdown;
       const totalCountdown = (typeof requestedCountdown === 'number' && requestedCountdown >= 1 && requestedCountdown <= 5) ? requestedCountdown : 3;
-      try { chrome.runtime.sendMessage({ type: 'STREAM_META', meta: { preparing: true, countdown: totalCountdown } }); } catch {}
+      // Include mode in meta for focus management
+      const contentMode = state.mode === 'region' ? 'area' : (state.mode === 'element' ? 'element' : 'tab');
+      try { chrome.runtime.sendMessage({ type: 'STREAM_META', meta: { preparing: true, countdown: totalCountdown, mode: contentMode } }); } catch {}
       // Then wait for unified countdown gate from background (use dynamic timeout based on configured countdown)
       await new Promise((resolve) => {
         const to = setTimeout(resolve, (totalCountdown + 2) * 1000);
@@ -975,7 +977,7 @@
               break;
           }
         };
-        state.worker.postMessage({ type: 'configure', codec: 'auto', width, height, framerate, bitrate: 4_000_000 });
+        state.worker.postMessage({ type: 'configure', codec: 'auto', width, height, framerate, bitrate: 8_000_000 });
 
         // 建立逐帧处理，逐帧转交给 worker 编码（转移所有权零拷贝）
         state.processor = new MediaStreamTrackProcessor({ track: state.track });
@@ -1192,7 +1194,7 @@
     const box = document.createElement('div');
     box.className = 'mcp-preview';
     const bar = document.createElement('div'); bar.className = 'bar';
-    const title = document.createElement('div'); title.className = 'title'; title.textContent = '录制预览';
+    const title = document.createElement('div'); title.className = 'title'; title.textContent = 'Recording Preview';
     const btns = document.createElement('div'); btns.className = 'btns';
     const btnMin = document.createElement('div'); btnMin.className = 'btn'; btnMin.textContent = '—';
     const btnClose = document.createElement('div'); btnClose.className = 'btn'; btnClose.textContent = '×';

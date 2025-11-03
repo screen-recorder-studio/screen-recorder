@@ -155,24 +155,6 @@
   // Recording mode configuration
   const recordingModes = [
     {
-      id: 'area' as const,
-      name: 'Area',
-      icon: MousePointer,
-      description: 'Select screen area to record'
-    },
-    {
-      id: 'element' as const,
-      name: 'Element',
-      icon: Monitor,
-      description: 'Select page element to record'
-    },
-    {
-      id: 'camera' as const,
-      name: 'Camera',
-      icon: Camera,
-      description: 'Record camera feed'
-    },
-    {
       id: 'tab' as const,
       name: 'Tab',
       icon: FileText,
@@ -189,6 +171,24 @@
       name: 'Screen',
       icon: ScreenShare,
       description: 'Record entire screen'
+    },
+    {
+      id: 'area' as const,
+      name: 'Area',
+      icon: MousePointer,
+      description: 'Select screen area to record'
+    },
+    {
+      id: 'element' as const,
+      name: 'Element',
+      icon: Monitor,
+      description: 'Select page element to record'
+    },
+    {
+      id: 'camera' as const,
+      name: 'Camera',
+      icon: Camera,
+      description: 'Record camera feed'
     }
   ]
 
@@ -505,7 +505,7 @@
       {#if !isRecording}
       <div class="flex items-center gap-2 mt-3 p-2 bg-white border border-gray-200 rounded-lg">
         <label class="text-xs font-medium text-gray-600 flex items-center gap-1">
-          <Clock class="w-3 h-3 text-gray-500" /> 倒计时
+          <Clock class="w-3 h-3 text-gray-500" /> Countdown
         </label>
         <div class="flex items-center gap-1">
           {#each [1,2,3,4,5] as v}

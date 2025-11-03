@@ -3,7 +3,6 @@
   import { Palette, Layers, Image, Mountain, Upload, CircleAlert } from '@lucide/svelte'
   import {
     backgroundConfigStore,
-    PRESET_COLORS,
     PRESET_SOLID_COLORS,
     PRESET_GRADIENTS
   } from '$lib/stores/background-config.svelte'
@@ -126,7 +125,6 @@
 
   // Color search functionality
   let colorSearchQuery = $state('')
-  let showColorSearch = $state(false)
 
   // Sync custom color input value
   $effect(() => {
@@ -613,54 +611,36 @@
               {#if category.description}
                 <p class="text-xs text-gray-500 m-0">{category.description}</p>
               {/if}
-              <div class="grid grid-cols-2 gap-3">
+              <!-- 4 wallpapers per row using 4-column grid layout, matching gradient style -->
+              <div class="grid grid-cols-4 gap-2 mb-4">
                 {#each category.wallpapers as wallpaper}
-                  <button
-                    class="relative group border-3 rounded-lg overflow-hidden cursor-pointer transition-all duration-200 {selectedWallpaper === wallpaper.id ? 'border-blue-500 shadow-lg ring-2 ring-blue-200' : 'border-gray-300 hover:border-gray-400'}"
-                    onclick={() => selectWallpaper(wallpaper)}
-                    type="button"
-                    title={wallpaper.description}
-                  >
-                    <div class="aspect-video bg-gray-100">
+                  <div class="relative group">
+                    <button
+                      class="w-full h-12 rounded-md border-3 cursor-pointer transition-all duration-200 overflow-hidden {selectedWallpaper === wallpaper.id ? 'border-blue-500 shadow-lg ring-2 ring-blue-200' : 'border-gray-300 hover:border-gray-400 hover:scale-105'}"
+                      onclick={() => selectWallpaper(wallpaper)}
+                      type="button"
+                      aria-label="{wallpaper.name}"
+                      tabindex="0"
+                    >
                       <img
                         src={wallpaper.imageUrl}
                         alt={wallpaper.name}
                         loading="lazy"
                         class="w-full h-full object-cover"
                       />
+                    </button>
+                    <!-- Show wallpaper name on hover - moved to top to avoid being covered -->
+                    <div class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-20">
+                      {wallpaper.name}
                     </div>
-                    <div class="p-2 bg-white">
-                      <div class="text-xs font-medium text-gray-700 truncate">{wallpaper.name}</div>
-                      {#if wallpaper.tags && wallpaper.tags.length > 0}
-                        <div class="text-xs text-gray-500 truncate">
-                          {wallpaper.tags.slice(0, 2).join(', ')}
-                        </div>
-                      {/if}
-                    </div>
-                  </button>
+                  </div>
                 {/each}
               </div>
             </div>
           {/if}
         {/each}
 
-        <!-- Current wallpaper preview -->
-        {#if activeTab === 'wallpaper' && currentType === 'wallpaper' && currentConfig.wallpaper}
-          <div class="mt-4 p-3 bg-gray-50 rounded-lg border">
-            <h4 class="text-sm font-medium text-gray-700 mb-2 m-0">Current wallpaper</h4>
-            <div class="flex gap-3">
-              <div
-                class="w-20 h-15 bg-gray-200 rounded-md overflow-hidden flex-shrink-0"
-                style="background-image: url({backgroundConfigStore.getCurrentBackgroundStyle().replace('url(', '').replace(')', '')}); background-size: cover; background-position: center;"
-              ></div>
-              <div class="flex flex-col gap-1 text-xs text-gray-600">
-                <div>ID: {currentConfig.wallpaper.imageId}</div>
-                <div>Fit: {currentConfig.wallpaper.fit}</div>
-                <div>Position: {currentConfig.wallpaper.position}</div>
-              </div>
-            </div>
-          </div>
-        {/if}
+
       </div>
     {:else if activeTab === 'gradient'}
       <!-- Gradient background selector -->
@@ -756,31 +736,7 @@
     {/if}
   </div>
 
-  <!-- Current selection status display -->
-  <div class="mt-4 p-3 bg-gray-50 rounded-lg border flex items-center gap-3">
-    <span class="text-sm font-medium text-gray-700">Current setting:</span>
-    <div class="flex items-center gap-2">
-      {#if currentType === 'solid-color'}
-        <div class="w-6 h-6 rounded border border-gray-300" style="background-color: {currentColor}"></div>
-        <span class="text-sm text-gray-600">
-          {PRESET_COLORS.find(p => p.color === currentColor)?.name || currentColor}
-        </span>
-      {:else if currentType === 'gradient'}
-        <div
-          class="w-6 h-6 rounded border border-gray-300"
-          style="background: {getCurrentGradientPreview()}"
-        ></div>
-        <span class="text-sm text-gray-600">
-          {#if currentConfig.gradient}
-            {currentConfig.gradient.type === 'linear' ? 'Linear' :
-             currentConfig.gradient.type === 'radial' ? 'Radial' : 'Conic'} Gradient
-          {:else}
-            Gradient Background
-          {/if}
-        </span>
-      {/if}
-    </div>
-  </div>
+
 </div>
 
 <style>
