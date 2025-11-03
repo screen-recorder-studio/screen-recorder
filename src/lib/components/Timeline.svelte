@@ -579,6 +579,27 @@
     }
   }
 
+	  // 键盘创建 Zoom 区间（Enter / Space）
+	  async function handleZoomTrackKeydown(e: KeyboardEvent) {
+	    if (isProcessing) return
+	    if (e.key === 'Enter' || e.key === ' ') {
+	      e.preventDefault()
+	      // 使用悬停预览时间（若不可用则回退到当前时间），并做帧对齐
+	      const base = hoverPreviewTimeMs > 0 ? hoverPreviewTimeMs : currentTimeMs
+	      const startMs = alignToFrameMs(base)
+	      const endMs = Math.min(startMs + DEFAULT_ZOOM_DURATION_MS, timelineMaxMs)
+	      if (endMs <= timelineMaxMs) {
+	        const success = await onZoomChange?.(startMs, endMs)
+	        if (success) {
+	          console.log(`✅ [Timeline] Zoom interval created via keyboard: ${formatTimeSec(startMs / 1000)} - ${formatTimeSec(endMs / 1000)}`)
+	        } else {
+	          console.warn('⚠️ [Timeline] Zoom interval rejected (overlap)')
+	        }
+	      }
+	    }
+	  }
+
+
   // 🆕 拖拽整个 Zoom 区间（移动位置）
   function handleZoomIntervalDrag(e: MouseEvent, intervalIndex: number) {
     e.preventDefault()
@@ -919,6 +940,7 @@
         class="zoom-hint"
         bind:this={zoomTrackEl}
         onclick={handleZoomTrackClick}
+        onkeydown={handleZoomTrackKeydown}
         role="button"
         tabindex="0"
         aria-label="Click to create zoom interval"
@@ -952,6 +974,10 @@
           class="zoom-mini-timeline"
           bind:this={zoomTrackEl}
           onclick={handleZoomTrackClick}
+          onkeydown={handleZoomTrackKeydown}
+          role="button"
+          tabindex="0"
+          aria-label="Click to create zoom interval"
         >
           <!-- 全时间轴背景 -->
           <div class="zoom-full-range"></div>
