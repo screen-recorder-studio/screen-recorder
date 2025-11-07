@@ -1,52 +1,52 @@
-# 贡献指南（Contributing）
+# Contributing Guide
 
-感谢你对 Screen Recorder Studio 的关注与贡献！为了保持项目的质量与协作效率，请在提交 Issue 或 Pull Request 前阅读本指南。
+Thank you for your interest in contributing to Screen Recorder Studio! To keep quality high and collaboration efficient, please read this guide before filing Issues or Pull Requests.
 
-## 如何开始
-- 提交 Issue：清晰描述问题或需求，附带复现步骤、预期与实际结果、环境信息（浏览器/版本/平台）
-- 提交 PR：基于最新 `main` 分支开发，确保可构建并通过基本检查（见下）
+## Getting Started
+- Issues: Provide a clear description, repro steps, expected vs. actual behavior, and environment details (browser/version/platform).
+- Pull Requests: Branch from the latest `main`, ensure the project builds and passes basic checks (see below).
 
-## 开发环境
-- 包管理器：`pnpm`
-- 语言与框架：TypeScript、Svelte 5、Vite、Chrome MV3
-- 本地运行：
+## Development Setup
+- Package manager: `pnpm`
+- Stack: TypeScript, Svelte 5, Vite, Chrome MV3
+- Local commands:
   - `pnpm install`
-  - `pnpm dev`（调试站点与组件）
-  - `pnpm build:extension`（生成扩展产物到 `build/`）
+  - `pnpm dev` (develop site and components)
+  - `pnpm build:extension` (build extension artifacts into `build/`)
 
-## 代码规范
-- TypeScript 类型完善，避免 `any`（确需使用时加注释说明）
-- 保持模块边界清晰：UI（routes）、后台/内容/离屏（extensions）、Worker（lib/workers）
-- 消息常量/类型统一：建议集中到 `src/lib/types`（如新增）并复用
-- 日志：避免过多 `console.log`；为调试输出增加开关或等级
-- 样式：遵循现有 Svelte/Tailwind 约定，减少内联样式
+## Code Standards
+- TypeScript: strong typing; avoid `any` unless justified with comments.
+- Clear module boundaries: UI (`src/routes/*`), background/content/offscreen (`src/extensions/*`), workers (`src/lib/workers/*`).
+- Message constants/types: centralize in `src/lib/types` where possible and reuse.
+- Logging: avoid excessive `console.log`; add flags or levels for debug output.
+- Styles: follow existing Svelte/Tailwind conventions; minimize inline styles.
 
-## 提交与评审
-- 提交信息：简洁明确，建议格式 `feat: ...` / `fix: ...` / `docs: ...` / `refactor: ...`
-- PR 内容：
-  - 变更摘要与动机
-  - 技术方案与影响范围（尤其权限与隐私相关）
-  - 测试或验证步骤（本地复现、构建、扩展加载操作截图等）
-- 评审标准：正确性、可维护性、文档与注释质量、对现有功能的影响
+## Submission & Review
+- Commit messages: concise and structured — `feat: ...`, `fix: ...`, `docs: ...`, `refactor: ...`.
+- PR content:
+  - Summary and motivation.
+  - Technical approach and impact (especially permissions and privacy).
+  - Tests or validation steps (local repro, build success, extension load screenshots, etc.).
+- Review criteria: correctness, maintainability, documentation/comments quality, impact on existing features.
 
-## 测试与构建
-- 基本检查：
-  - `pnpm check`（类型检查）
-  - `pnpm build:extension`（构建扩展）
-- 测试建议：
-  - Worker 层（OPFS 读/写、索引、范围读取）的单测或轻量集成测试
-  - E2E：后续可引入 Playwright 模拟 UI 操作与消息流
+## Testing & Build
+- Basic checks:
+  - `pnpm check` (type checking)
+  - `pnpm build:extension` (extension build)
+- Suggested tests:
+  - Workers: OPFS read/write, indexing, range reads (unit or light integration).
+  - E2E: Playwright for UI flows and message routing (start/pause/stop, Studio open/trim/export).
 
-## 分支与发布
-- 主分支：`main`
-- 功能分支：`feature/<topic>`；修复分支：`fix/<topic>`
-- 变更日志：`CHANGELOG.md`
+## Branching & Releases
+- Main branch: `main`
+- Feature branches: `feature/<topic>`; fix branches: `fix/<topic>`
+- Changelog: `CHANGELOG.md`
 
-## 行为准则
-- 参与者需遵守 `CODE_OF_CONDUCT.md`（Contributor Covenant）
+## Code of Conduct
+- All contributors must follow `CODE_OF_CONDUCT.md` (Contributor Covenant).
 
-## 权限与隐私变更
-- 若 PR 引入或调整浏览器权限、数据处理方式，请在 PR 描述中突出说明并更新 `README.md/ docs/` 相应章节
+## Permissions & Privacy Changes
+- If your PR introduces or alters browser permissions or data handling, call it out prominently in the PR description and update relevant sections in `README.md` and `docs/`.
 
-## 联系与支持
-- 如需讨论复杂设计或安全问题，请通过 Issue 或安全披露渠道（见 `SECURITY.md`）与维护者联系
+## Contact & Support
+- For complex design questions or security topics, use Issues or the responsible disclosure channel described in `SECURITY.md`.

@@ -44,4 +44,14 @@ The format loosely follows Keep a Changelog and Semantic Versioning (the project
 
 ---
 
+## [Unreleased]
+### Documentation
+- Initialize open-source documentation: add `LICENSE` (MIT), `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`.
+- README: English default with `README.ZH.md` for Chinese; add Roadmap/TODO (stability, UX, testing, CI).
+- Remove descriptions of automatic fallback to MediaRecorder; documentation now states failure notice when WebCodecs is unavailable or fails.
+
+### Notes
+- Implementation may still contain MediaRecorder code paths for compatibility, but no automatic switch is promised in docs.
+
+
 If you need a backfilled historical log prior to 0.5.0 or want Conventional Commits automation, that can be introduced in a future release.
