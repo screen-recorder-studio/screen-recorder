@@ -1,27 +1,27 @@
-# 安全披露（Security Policy）
+# Security Policy
 
-我们非常重视用户安全与隐私。若你在本项目中发现安全问题或潜在漏洞，请按照以下流程进行负责任披露。
+We take user security and privacy seriously. If you discover a vulnerability or security issue, please follow the responsible disclosure process below.
 
-## 支持版本
-- 我们主要维护 `main` 分支与最近发布的扩展版本（`static/manifest.json` 中的版本号）。
-- 旧版本可能不再接受安全修复，建议升级到最新版本。
+## Supported Versions
+- We primarily maintain the `main` branch and the most recent extension release (see version in `static/manifest.json`).
+- Older versions may not receive security fixes; please upgrade to the latest release.
 
-## 披露方式
-- 优先使用 GitHub 的「Private Vulnerability Report」（安全私密报告）或「Security Advisories」（安全通告）。
-- 如果无法使用上述渠道，可以在仓库创建一个仅包含最小信息的 Issue，并在描述中说明这是安全问题，维护者会联系你迁移到私密通道。
-- 请避免在公共渠道发布漏洞细节，直到我们完成修复与公告。
+## How to Disclose
+- Prefer GitHub “Private Vulnerability Report” or “Security Advisories”.
+- If those are not available, create a minimal public Issue indicating it is a security problem; maintainers will move the discussion to a private channel.
+- Please avoid publishing details publicly until we fix the issue and release an advisory.
 
-## 期望内容
-- 问题简述与影响范围（例如：导致录制数据泄露、权限被滥用等）
-- 复现步骤或 PoC（不要附带个人隐私数据）
-- 受影响的环境信息（浏览器版本、平台、扩展版本等）
+## What to Include
+- A short description and impact (e.g., data leakage, permission misuse).
+- Reproduction steps or a minimal PoC (do not include personal data).
+- Affected environment details (browser version, platform, extension version).
 
-## 响应流程
-- 我们通常会在 7 天内确认问题并开始修复，复杂问题可能需要更长时间
-- 修复完成后会发布新版本并在发布说明中致谢报告者（如你愿意）
+## Our Response
+- We aim to acknowledge within 7 days and begin remediation; complex issues may take longer.
+- After a fix is released, we will publish notes and credit the reporter (if you wish).
 
-## 范围说明
-- 本项目不上传任何录制数据到远端；数据仅保存在本地 OPFS 与用户下载文件中
-- 若未来引入云同步或在线服务，我们会更新隐私政策与安全披露范围
+## Scope
+- This project does not upload recordings to any server; data remains in local OPFS or user-downloaded files.
+- If cloud sync or online services are introduced in the future, we will update the privacy policy and security scope accordingly.
 
-感谢你帮助提升本项目的安全性与可靠性！
+Thank you for helping improve the security and reliability of this project!
