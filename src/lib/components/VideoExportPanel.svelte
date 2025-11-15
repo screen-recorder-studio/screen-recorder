@@ -16,6 +16,12 @@
     totalFramesAll?: number
     opfsDirId?: string
     className?: string
+    /**
+     * Source frames-per-second for this recording.
+     * When provided, it should match the preview timeline FPS so that
+     * export duration and preview duration stay consistent.
+     */
+    sourceFps?: number
   }
 
   let {
@@ -23,7 +29,8 @@
     isRecordingComplete = false,
     totalFramesAll = 0,
     opfsDirId = '',
-    className = ''
+    className = '',
+    sourceFps = 30
   }: Props = $props()
 
   // Display total frames: prioritize using total frames (totalFramesAll), otherwise fallback to current window (encodedChunks.length)
@@ -54,7 +61,7 @@
 
   // Source video information for export dialogs
   const sourceInfo = $derived<SourceVideoInfo>(
-    extractSourceInfo(encodedChunks, totalFramesAll)
+    extractSourceInfo(encodedChunks, totalFramesAll, sourceFps)
   )
 
 
@@ -632,6 +639,7 @@
   onClose={() => { showMp4Dialog = false }}
   onConfirm={performMP4Export}
   sourceInfo={sourceInfo}
+  sourceFps={sourceFps}
   isExporting={isExportingMP4}
   exportProgress={exportProgress?.type === 'mp4' ? {
     stage: exportProgress.stage,
@@ -649,6 +657,7 @@
   onClose={() => { showWebmDialog = false }}
   onConfirm={performWebMExport}
   sourceInfo={sourceInfo}
+  sourceFps={sourceFps}
   isExporting={isExportingWebM}
   exportProgress={exportProgress?.type === 'webm' ? {
     stage: exportProgress.stage,
@@ -664,7 +673,7 @@
   bind:open={showGifDialog}
   onClose={() => { showGifDialog = false }}
   onConfirm={performGifExport}
-  videoDuration={displayTotalFrames / 30}
+  videoDuration={displayTotalFrames / sourceFps}
   videoWidth={sourceInfo.width}
   videoHeight={sourceInfo.height}
   isExporting={isExportingGIF}

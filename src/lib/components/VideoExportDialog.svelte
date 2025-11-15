@@ -1,14 +1,14 @@
 <script lang="ts">
-  import { 
-    X, 
-    LoaderCircle, 
-    Film, 
+  import {
+    X,
+    LoaderCircle,
+    Film,
     Video,
-    Target, 
-    Gem, 
-    Scale, 
-    FileDown, 
-    Waves, 
+    Target,
+    Gem,
+    Scale,
+    FileDown,
+    Waves,
     Zap,
     Settings,
     BarChart3,
@@ -23,6 +23,11 @@
     onClose: () => void
     onConfirm: (options: VideoExportOptions) => void
     sourceInfo: SourceVideoInfo
+    /**
+     * Source frames-per-second for the input recording.
+     * Used to initialize and label the default export framerate.
+     */
+    sourceFps?: number
     isExporting?: boolean
     exportProgress?: {
       stage: string
@@ -39,6 +44,7 @@
     onClose,
     onConfirm,
     sourceInfo,
+    sourceFps = 30,
     isExporting = false,
     exportProgress = null
   }: Props = $props()
@@ -66,12 +72,21 @@
   // Default settings
   let resolution = $state<string>('source')
   let quality = $state<string>('high')
-  let framerate = $state<number>(30)
+  let framerate = $state<number>(sourceFps || 30)
   let bitrateMode = $state<'auto' | 'manual'>('auto')
   let manualBitrate = $state<number>(8)
   let encodingSpeed = $state<string>('balanced')
   let limitFileSize = $state<boolean>(false)
   let maxFileSize = $state<number>(100)
+
+	  // Keep framerate in sync with sourceFps whenever the dialog is closed
+	  // so that each time user opens the dialog, the default matches source.
+	  $effect(() => {
+	    if (!open) {
+	      framerate = sourceFps || 30
+	    }
+	  })
+
 
   // Preset templates
   const presets = {
@@ -80,7 +95,7 @@
       icon: Gem,
       resolution: 'source',
       quality: 'high',
-      framerate: 30,
+      framerate: sourceFps || 30,
       bitrate: 'auto',
       encodingSpeed: 'balanced'
     },
@@ -142,8 +157,28 @@
     { value: 'best', label: 'Best', description: 'Maximum quality, slowest' }
   ]
 
-  // Framerate options
-  const framerateOptions = [24, 30, 60]
+  // Framerate options (include source FPS when available)
+  const framerateOptions = $derived.by<{ value: number; label: string }[]>(() => {
+    const base = [24, 30, 60]
+    const options: { value: number; label: string }[] = base.map((fps) => ({
+      value: fps,
+      label: `${fps} fps`
+    }))
+
+    if (sourceFps && sourceFps > 0) {
+      const rounded = Math.round(sourceFps)
+      const existingIndex = options.findIndex((opt) => opt.value === rounded)
+      const sourceLabel = `${rounded} fps (Source)`
+
+      if (existingIndex >= 0) {
+        options[existingIndex] = { value: rounded, label: sourceLabel }
+      } else {
+        options.unshift({ value: rounded, label: sourceLabel })
+      }
+    }
+
+    return options
+  })
 
   // Encoding speed options
   const encodingSpeedOptions = [
@@ -174,7 +209,7 @@
 
   function handleConfirm() {
     const selectedResolution = resolutionOptions.find(r => r.value === resolution)!
-    
+
     const options: VideoExportOptions = {
       resolution,
       resolutionWidth: selectedResolution.width,
@@ -198,7 +233,7 @@
   function calculateAutoBitrate(): number {
     const selectedResolution = resolutionOptions.find(r => r.value === resolution)!
     const pixels = selectedResolution.width * selectedResolution.height
-    
+
     // Bitrate formula: pixels * framerate * quality_factor
     const qualityFactors = {
       'draft': 0.05,
@@ -206,7 +241,7 @@
       'high': 0.15,
       'best': 0.2
     }
-    
+
     const factor = qualityFactors[quality as keyof typeof qualityFactors] || 0.1
     return Math.round(pixels * framerate * factor)
   }
@@ -226,11 +261,11 @@
     const bitrate = bitrateMode === 'auto' ? calculateAutoBitrate() : manualBitrate * 1_000_000
     const durationSeconds = sourceInfo.duration
     const bytes = (bitrate / 8) * durationSeconds
-    
+
     if (limitFileSize && bytes > maxFileSize * 1024 * 1024) {
       return `~${maxFileSize} MB (limited)`
     }
-    
+
     if (bytes < 1024 * 1024) {
       return `~${Math.round(bytes / 1024)} KB`
     } else {
@@ -249,7 +284,7 @@
     const factor = speedFactors[encodingSpeed as keyof typeof speedFactors] || 1.0
     const baseTime = sourceInfo.duration * 0.3 // Rough estimate: 30% of video duration
     const seconds = Math.round(baseTime * factor)
-    
+
     if (seconds < 60) return `~${seconds}s`
     const minutes = Math.floor(seconds / 60)
     const remainingSeconds = seconds % 60
@@ -380,13 +415,13 @@
             <Settings class="w-4 h-4" />
             Export Settings
           </h3>
-          
+
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <!-- Resolution -->
             <div>
               <label class="block text-sm text-gray-600 mb-2">
                 Resolution
-              
+
               <select
                 bind:value={resolution}
                 disabled={isExporting}
@@ -403,7 +438,7 @@
             <div>
               <label class="block text-sm text-gray-600 mb-2">
                 Quality
-              
+
               <select
                 bind:value={quality}
                 disabled={isExporting}
@@ -420,14 +455,14 @@
             <div>
               <label class="block text-sm text-gray-600 mb-2">
                 Frame Rate
-              
+
               <select
                 bind:value={framerate}
                 disabled={isExporting}
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {#each framerateOptions as fps}
-                  <option value={fps}>{fps} fps</option>
+                {#each framerateOptions as option}
+                  <option value={option.value}>{option.label}</option>
                 {/each}
               </select>
               </label>
@@ -437,7 +472,7 @@
             <div>
               <label class="block text-sm text-gray-600 mb-2">
                 Encoding Speed
-              
+
               <select
                 bind:value={encodingSpeed}
                 disabled={isExporting}
@@ -455,7 +490,7 @@
         <!-- Advanced Settings -->
         <div class="space-y-4">
           <h3 class="text-sm font-semibold text-gray-700">Advanced Settings</h3>
-          
+
           <div class="space-y-3">
             <!-- Bitrate Control -->
             <div>
