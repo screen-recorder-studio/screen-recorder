@@ -1,26 +1,18 @@
 {
   "manifest_version": 3,
   "name": "Screen Recorder Studio for SAAS",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "A Chrome extension for recording tabs, windows, screens, page regions, and elements",
   "permissions": [
     "desktopCapture",
     "downloads",
     "storage",
     "unlimitedStorage",
-    "sidePanel",
     "activeTab",
     "scripting",
     "tabs",
     "offscreen"
   ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
-
-  "side_panel": {
-    "default_path": "sidepanel.html"
-  },
   "background": {
     "service_worker": "background.js",
     "type": "module"
@@ -35,18 +27,5 @@
     "48": "assets/icon48.png",
     "128": "assets/icon128.png"
   },
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "encoder-worker.js",
-        "opfs-writer.html",
-        "opfs-writer.js"
-      ],
-      "matches": ["<all_urls>"]
-    }
-  ],
-
-
-
   "minimum_chrome_version": "116"
 }

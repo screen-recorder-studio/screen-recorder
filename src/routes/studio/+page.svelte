@@ -32,6 +32,14 @@
   let globalTotalFrames = $state(0)
   let windowStartIndex = $state(0)
 
+	  // Derived source FPS based on global total frames and duration
+	  const sourceFps = $derived(
+	    globalTotalFrames > 0 && durationMs > 0
+	      ? Math.max(1, Math.round(globalTotalFrames / (durationMs / 1000)))
+	      : 30
+	  )
+
+
   // 🔧 智能窗口管理：关键帧信息
   let keyframeInfo = $state<{
     indices: number[]
@@ -291,12 +299,12 @@
             PRO TRIAL
           </span>
         </div>
-        
+
         <!-- Center video aspect ratio control -->
         <div class="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2">
           <AspectRatioControl />
         </div>
-        
+
         <!-- Right Drive button -->
         <button
           class="p-2 rounded-lg border border-gray-300 hover:border-blue-400 hover:bg-white/70 hover:shadow-sm transition-all duration-200 group"
@@ -425,6 +433,7 @@
           isRecordingComplete={workerStatus === 'completed' || workerStatus === 'idle'}
           totalFramesAll={globalTotalFrames}
           opfsDirId={opfsDirId}
+          sourceFps={sourceFps}
           className="export-panel"
         />
     </div>

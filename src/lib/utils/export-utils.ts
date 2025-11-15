@@ -7,7 +7,11 @@ import { videoZoomStore } from '$lib/stores/video-zoom.svelte'
 /**
  * Extract source video information from encoded chunks
  */
-export function extractSourceInfo(encodedChunks: any[], totalFramesAll?: number): {
+export function extractSourceInfo(
+  encodedChunks: any[],
+  totalFramesAll?: number,
+  fps: number = 30
+): {
   width: number
   height: number
   frameCount: number
@@ -35,8 +39,9 @@ export function extractSourceInfo(encodedChunks: any[], totalFramesAll?: number)
   // Frame count: use totalFramesAll if available, otherwise use chunks length
   const frameCount = totalFramesAll && totalFramesAll > 0 ? totalFramesAll : encodedChunks.length
 
-  // Calculate duration (assume 30fps)
-  const duration = frameCount / 30
+  // Calculate duration using provided fps (fallback to 30fps for safety)
+  const effectiveFps = fps > 0 ? fps : 30
+  const duration = frameCount / effectiveFps
 
   // Estimate file size (very rough estimate)
   const estimatedSize = encodedChunks.reduce((sum, chunk) => sum + (chunk.size || 0), 0)
