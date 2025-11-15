@@ -172,24 +172,24 @@
       icon: ScreenShare,
       description: 'Record entire screen'
     },
-    {
-      id: 'area' as const,
-      name: 'Area',
-      icon: MousePointer,
-      description: 'Select screen area to record'
-    },
-    {
-      id: 'element' as const,
-      name: 'Element',
-      icon: Monitor,
-      description: 'Select page element to record'
-    },
-    {
-      id: 'camera' as const,
-      name: 'Camera',
-      icon: Camera,
-      description: 'Record camera feed'
-    }
+    // {
+    //   id: 'area' as const,
+    //   name: 'Area',
+    //   icon: MousePointer,
+    //   description: 'Select screen area to record'
+    // },
+    // {
+    //   id: 'element' as const,
+    //   name: 'Element',
+    //   icon: Monitor,
+    //   description: 'Select page element to record'
+    // },
+    // {
+    //   id: 'camera' as const,
+    //   name: 'Camera',
+    //   icon: Camera,
+    //   description: 'Record camera feed'
+    // }
   ]
 
   // Handle mode selection
