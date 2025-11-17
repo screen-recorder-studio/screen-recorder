@@ -118,7 +118,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // 处理 lab 功能的消息类型
   if (message.type) {
     const tabId = sender.tab?.id ?? message.tabId;
-    const globalTypes = new Set(['REQUEST_START_RECORDING','REQUEST_STOP_RECORDING','REQUEST_RECORDING_STATE','REQUEST_TOGGLE_PAUSE','OFFSCREEN_START_RECORDING','OFFSCREEN_STOP_RECORDING','REQUEST_OFFSCREEN_PING','GET_RECORDING_STATE','RECORDING_COMPLETE','OPFS_RECORDING_READY','STREAM_START','STREAM_META','STREAM_END','STREAM_ERROR']);
+    const globalTypes = new Set(['REQUEST_START_RECORDING','REQUEST_STOP_RECORDING','REQUEST_RECORDING_STATE','REQUEST_TOGGLE_PAUSE','OFFSCREEN_START_RECORDING','OFFSCREEN_STOP_RECORDING','REQUEST_OFFSCREEN_PING','GET_RECORDING_STATE','RECORDING_COMPLETE','OPFS_RECORDING_READY','STREAM_START','STREAM_META','STREAM_END','STREAM_ERROR','BADGE_TICK']);
     let state: any;
     if (!globalTypes.has(message.type)) {
       if (!tabId) return;
@@ -298,7 +298,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Dual-path handling: tab-scoped (content pipeline) vs global (offscreen pipeline)
         console.log('[stop-share] background: STREAM_START', { tabId, from: tabId ? 'tab' : 'offscreen' })
         try { currentRecording.isRecording = true; currentRecording.isPaused = false } catch {}
-        try { if (!badgeInterval) { void startBadgeTimer() } else { void resumeBadgeTimer() } } catch {}
+        try { void updateBadgeFromElapsed(0) } catch {}
         if (tabId) {
           try { state.recording = true } catch {}
           broadcastToTab(tabId, { ...message, tabId });
@@ -342,7 +342,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
         if (meta && typeof meta.paused === 'boolean') {
           try { currentRecording.isPaused = !!meta.paused } catch {}
-          try { meta.paused ? void pauseBadgeTimer() : void resumeBadgeTimer() } catch {}
+          // Badge elapsed time is now driven by BADGE_TICK messages from producers; no local timer adjustments
         }
         if (tabId) {
           broadcastToTab(tabId, { ...message, tabId });
@@ -350,6 +350,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           try { chrome.runtime.sendMessage({ ...message }).catch(() => {}) } catch {}
         }
         try { sendResponse({ ok: true }); } catch (e) {}
+        return true;
+      }
+      case 'BADGE_TICK': {
+        const elapsed = typeof message?.elapsedMs === 'number'
+          ? message.elapsedMs
+          : (typeof message?.elapsed === 'number' ? message.elapsed : null);
+        if (typeof elapsed === 'number' && elapsed >= 0) {
+          void updateBadgeFromElapsed(elapsed);
+        }
+        try { sendResponse({ ok: true }) } catch (e) {}
         return true;
       }
       case 'STREAM_END_REQUEST': {
@@ -448,7 +458,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
             await sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_TOGGLE_PAUSE', payload: { paused: newPaused } })
             currentRecording.isPaused = newPaused
-            try { newPaused ? await pauseBadgeTimer() : await resumeBadgeTimer() } catch {}
             try { sendResponse({ ok: true, paused: newPaused }) } catch (e) {}
           } catch (e) {
             try { sendResponse({ ok: false, error: String(e) }) } catch (_) {}
@@ -805,10 +814,6 @@ let currentRecording = {
 }
 
 // --- Badge timer for recording duration on action button ---
-let badgeInterval: any = null
-let badgeAccumMs = 0
-let badgeLastStart: number | null = null
-
 function formatElapsed(ms: number): string {
   const totalSec = Math.max(0, Math.floor(ms / 1000))
   const h = Math.floor(totalSec / 3600)
@@ -820,42 +825,14 @@ function formatElapsed(ms: number): string {
   return `${m}:${s.toString().padStart(2,'0')}`
 }
 
-async function updateBadgeText() {
-  try {
-    const extra = (currentRecording.isRecording && !currentRecording.isPaused && badgeLastStart != null)
-      ? Date.now() - badgeLastStart
-      : 0
-    const text = formatElapsed(badgeAccumMs + extra)
-    await chrome.action.setBadgeText({ text })
-  } catch {}
-}
-
-async function startBadgeTimer() {
+async function updateBadgeFromElapsed(ms: number) {
+  const safeMs = (typeof ms === 'number' && isFinite(ms) && ms >= 0) ? ms : 0
+  const text = formatElapsed(safeMs)
   try { await chrome.action.setBadgeBackgroundColor({ color: '#d32f2f' }) } catch {}
-  badgeAccumMs = 0
-  badgeLastStart = Date.now()
-  if (badgeInterval) clearInterval(badgeInterval)
-  badgeInterval = setInterval(updateBadgeText, 1000)
-  await updateBadgeText()
-}
-
-async function pauseBadgeTimer() {
-  if (badgeLastStart != null) {
-    badgeAccumMs += Date.now() - badgeLastStart
-    badgeLastStart = null
-  }
-  await updateBadgeText()
-}
-
-async function resumeBadgeTimer() {
-  if (badgeLastStart == null) badgeLastStart = Date.now()
-  await updateBadgeText()
+  try { await chrome.action.setBadgeText({ text }) } catch {}
 }
 
 async function stopBadgeTimer() {
-  if (badgeInterval) { try { clearInterval(badgeInterval) } catch {} badgeInterval = null }
-  badgeAccumMs = 0
-  badgeLastStart = null
   try { await chrome.action.setBadgeText({ text: '' }) } catch {}
 }
 

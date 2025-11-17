@@ -17,6 +17,46 @@
   let isPaused = false
   let recordingStartTime: number | null = null
 
+  // Badge elapsed timer for action button (drives BADGE_TICK for background)
+  let badgeTicker: any = null
+  let badgeAccumMs = 0
+  let badgeLastStart: number | null = null
+
+  function resetBadgeTicker() {
+    try { if (badgeTicker) clearInterval(badgeTicker) } catch {}
+    badgeTicker = null
+    badgeAccumMs = 0
+    badgeLastStart = null
+  }
+
+  function startBadgeTicker() {
+    resetBadgeTicker()
+    badgeLastStart = Date.now()
+    try { chrome.runtime?.sendMessage({ type: 'BADGE_TICK', elapsedMs: 0, source: 'offscreen' }) } catch {}
+    badgeTicker = setInterval(() => {
+      if (!isRecording) return
+      const extra = (!isPaused && badgeLastStart != null) ? Date.now() - badgeLastStart : 0
+      const elapsedMs = badgeAccumMs + extra
+      try { chrome.runtime?.sendMessage({ type: 'BADGE_TICK', elapsedMs, source: 'offscreen' }) } catch {}
+    }, 1000)
+  }
+
+  function pauseBadgeTicker() {
+    if (badgeLastStart != null) {
+      badgeAccumMs += Date.now() - badgeLastStart
+      badgeLastStart = null
+    }
+  }
+
+  function resumeBadgeTicker() {
+    if (badgeLastStart == null) badgeLastStart = Date.now()
+  }
+
+  function stopBadgeTicker() {
+    resetBadgeTicker()
+  }
+
+
   // WebCodecs pipeline state
   let wcWorker: Worker | null = null
   let wcReader: ReadableStreamDefaultReader<VideoFrame> | null = null
@@ -389,6 +429,9 @@
       wcFrameLoopActive = true
       isRecording = true
 
+      // Start badge elapsed ticker for action button
+      startBadgeTicker()
+
       // Notify service worker (engine: webcodecs)
       try {
         chrome.runtime.sendMessage({
@@ -440,6 +483,8 @@
     log('[stop-share] offscreen: stopRecordingInternal invoked')
 
     try {
+      // Stop badge ticker first so background stops updating time
+      try { stopBadgeTicker() } catch {}
       // Stop WebCodecs pipeline (if active)
       try { wcFrameLoopActive = false; wcWorker?.postMessage({ type: 'stop' }) } catch (e) { log('❌ Error posting stop to WebCodecs worker:', e) }
       wcWorker = null
@@ -485,6 +530,7 @@
       }
     } finally {
       // Reset state
+      try { stopBadgeTicker() } catch {}
       isRecording = false
       isPaused = false
       recordingStartTime = null
@@ -606,6 +652,11 @@
             ? !!msg.payload.paused
             : !isPaused
           isPaused = desired
+          if (isPaused) {
+            pauseBadgeTicker()
+          } else {
+            resumeBadgeTicker()
+          }
           try { chrome.runtime.sendMessage({ type: 'STREAM_META', meta: { paused: isPaused } }) } catch {}
           try { sendResponse?.({ ok: true, paused: isPaused }) } catch {}
           return true

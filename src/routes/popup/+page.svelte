@@ -109,6 +109,13 @@
   onMount(() => {
     const handler = (msg: any) => {
       try {
+        // Fallback: if we see BADGE_TICKs, we know some recording is in progress (offscreen or content)
+        // This makes the popup button reflect recording state even if STREAM_START/STATE_UPDATE is missed.
+        if (msg?.type === 'BADGE_TICK') {
+          if (!isRecording) {
+            isRecording = true
+          }
+        }
         if (msg?.type === 'STREAM_META' && msg?.meta && typeof msg.meta.paused === 'boolean') {
           console.log('[stop-share] popup: STREAM_META', msg.meta)
           isPaused = !!msg.meta.paused
