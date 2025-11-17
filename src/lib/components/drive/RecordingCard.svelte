@@ -48,19 +48,12 @@
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
   }
 
-  // Format time
+  // Format time: unify as mm:ss (e.g. 00:07, 01:23), consistent with Studio timeline
   function formatTime(seconds: number): string {
-    if (seconds < 60) {
-      return `${Math.round(seconds)}s`
-    } else if (seconds < 3600) {
-      const minutes = Math.floor(seconds / 60)
-      const remainingSeconds = Math.round(seconds % 60)
-      return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`
-    } else {
-      const hours = Math.floor(seconds / 3600)
-      const minutes = Math.floor((seconds % 3600) / 60)
-      return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`
-    }
+    const total = Math.max(0, Math.floor(seconds))
+    const minutes = Math.floor(total / 60)
+    const remainingSeconds = total % 60
+    return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`
   }
 
   // Format date
