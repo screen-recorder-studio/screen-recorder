@@ -125,7 +125,36 @@
     const height = Number(meta.height) || 1080
     const totalChunks = Number(meta.totalChunks) || 0
     const fps = Number(meta.fps) || 30
-    const duration = typeof meta.duration === 'number' ? Number(meta.duration) : (totalChunks && fps ? Math.round(totalChunks / fps) : 0)
+
+    // 优先使用时间戳差值计算真实时长（与 Studio 时间线保持一致）
+    let duration = 0
+    const firstTimestamp = typeof meta.firstTimestamp === 'number' ? Number(meta.firstTimestamp) : null
+    const lastTimestamp = typeof meta.lastTimestamp === 'number' ? Number(meta.lastTimestamp) : null
+
+    if (firstTimestamp != null && lastTimestamp != null && lastTimestamp > firstTimestamp) {
+      // writer 以微秒存储时间戳，这里转换为秒
+      duration = Math.round((lastTimestamp - firstTimestamp) / 1_000_000)
+    } else if (typeof meta.duration === 'number' && !Number.isNaN(meta.duration)) {
+      const raw = Number(meta.duration)
+      if (raw > 0) {
+        const daySec = 24 * 60 * 60
+        if (raw < daySec) {
+          // 旧版本：直接存秒
+          duration = Math.round(raw)
+        } else if (raw < daySec * 1000) {
+          // 旧版本：毫秒
+          duration = Math.round(raw / 1000)
+        } else {
+          // 新版本：微秒（或更大的时间戳），统一按微秒处理
+          duration = Math.round(raw / 1_000_000)
+        }
+      }
+    }
+
+    // 最后兜底：根据总帧数和 fps 估算（用于极少数缺失时间戳的旧录制）
+    if (!duration && totalChunks && fps) {
+      duration = Math.round(totalChunks / fps)
+    }
 
     const displayName = generateDisplayName(createdAt)
 
