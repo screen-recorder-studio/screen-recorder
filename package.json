@@ -1,7 +1,7 @@
 {
 	"name": "screen-recorder-studio",
 	"private": true,
-	"version": "0.6.1",
+	"version": "0.6.2",
 	"type": "module",
 	"description": "A Chrome extension for recording tabs, windows, screens, page regions, and elements",
 	"scripts": {

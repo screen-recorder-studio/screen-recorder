@@ -304,12 +304,97 @@
       if (transfer && transfer.length) { state.sinkWin?.postMessage(msg, '*', transfer); }
       else { state.sinkWin?.postMessage(msg, '*'); }
     } catch (e) { console.warn('[Stream][Content] sink post failed', e); }
+
+	  // Badge elapsed timer for element/region recording; drives BADGE_TICK for background
+	  let badgeTicker: any = null;
+	  let badgeAccumMs = 0;
+	  let badgeLastStart: number | null = null;
+
+	  function resetBadgeTicker() {
+	    try { if (badgeTicker) clearInterval(badgeTicker); } catch {}
+	    badgeTicker = null;
+	    badgeAccumMs = 0;
+	    badgeLastStart = null;
+	  }
+
+	  function startBadgeTicker() {
+	    resetBadgeTicker();
+	    badgeLastStart = Date.now();
+	    try { safePortPost({ type: 'BADGE_TICK', elapsedMs: 0, source: 'content', mode: state.mode }); } catch {}
+	    badgeTicker = setInterval(() => {
+	      if (!state.recording) return;
+	      const extra = (!state.paused && badgeLastStart != null) ? Date.now() - badgeLastStart : 0;
+	      const elapsedMs = badgeAccumMs + extra;
+	      try { safePortPost({ type: 'BADGE_TICK', elapsedMs, source: 'content', mode: state.mode }); } catch {}
+	    }, 1000);
+	  }
+
+	  function pauseBadgeTicker() {
+	    if (badgeLastStart != null) {
+	      badgeAccumMs += Date.now() - badgeLastStart;
+	      badgeLastStart = null;
+	    }
+	  }
+
+	  function resumeBadgeTicker() {
+	    if (badgeLastStart == null) badgeLastStart = Date.now();
+	  }
+
+	  function stopBadgeTicker() {
+	    resetBadgeTicker();
+	  }
+
   }
+
+  // Badge elapsed timer for element/region recording; drives BADGE_TICK for background
+  let badgeTickerContent: any = null;
+  let badgeAccumMsContent = 0;
+  let badgeLastStartContent: number | null = null;
+
+  function resetBadgeTimerContent() {
+    try { if (badgeTickerContent) clearInterval(badgeTickerContent); } catch {}
+    badgeTickerContent = null;
+    badgeAccumMsContent = 0;
+    badgeLastStartContent = null;
+  }
+
+  function startBadgeTimerContent() {
+    resetBadgeTimerContent();
+    badgeLastStartContent = Date.now();
+    try { safePortPost({ type: 'BADGE_TICK', elapsedMs: 0, source: 'content', mode: state.mode }); } catch {}
+    badgeTickerContent = setInterval(() => {
+      if (!state.recording) return;
+      const extra = (!state.paused && badgeLastStartContent != null) ? Date.now() - badgeLastStartContent : 0;
+      const elapsedMs = badgeAccumMsContent + extra;
+      try { safePortPost({ type: 'BADGE_TICK', elapsedMs, source: 'content', mode: state.mode }); } catch {}
+    }, 1000);
+  }
+
+  function pauseBadgeTimerContent() {
+    if (badgeLastStartContent != null) {
+      badgeAccumMsContent += Date.now() - badgeLastStartContent;
+      badgeLastStartContent = null;
+    }
+  }
+
+  function resumeBadgeTimerContent() {
+    if (badgeLastStartContent == null) badgeLastStartContent = Date.now();
+  }
+
+  function stopBadgeTimerContent() {
+    resetBadgeTimerContent();
+  }
+
   // Pause/Resume helper for element/region recording
   function setPaused(p) {
     try {
       if (!state.recording) return;
       state.paused = !!p;
+      if (state.paused) {
+        pauseBadgeTimerContent();
+      } else {
+        resumeBadgeTimerContent();
+      }
       // Control MediaRecorder path if used
       if (!state.usingWebCodecs && state.mediaRecorder) {
         try {
@@ -688,6 +773,46 @@
     document.removeEventListener('mouseover', onHover, true);
     document.removeEventListener('mouseout', onOut, true);
     document.removeEventListener('click', onClick, true);
+
+	  // Badge elapsed timer for element/region recording; drives BADGE_TICK for background
+	  let badgeTickerContent: any = null;
+	  let badgeAccumMsContent = 0;
+	  let badgeLastStartContent: number | null = null;
+
+	  function resetBadgeTimerContent() {
+	    try { if (badgeTickerContent) clearInterval(badgeTickerContent); } catch {}
+	    badgeTickerContent = null;
+	    badgeAccumMsContent = 0;
+	    badgeLastStartContent = null;
+	  }
+
+	  function startBadgeTimerContent() {
+	    resetBadgeTimerContent();
+	    badgeLastStartContent = Date.now();
+	    try { safePortPost({ type: 'BADGE_TICK', elapsedMs: 0, source: 'content', mode: state.mode }); } catch {}
+	    badgeTickerContent = setInterval(() => {
+	      if (!state.recording) return;
+	      const extra = (!state.paused && badgeLastStartContent != null) ? Date.now() - badgeLastStartContent : 0;
+	      const elapsedMs = badgeAccumMsContent + extra;
+	      try { safePortPost({ type: 'BADGE_TICK', elapsedMs, source: 'content', mode: state.mode }); } catch {}
+	    }, 1000);
+	  }
+
+	  function pauseBadgeTimerContent() {
+	    if (badgeLastStartContent != null) {
+	      badgeAccumMsContent += Date.now() - badgeLastStartContent;
+	      badgeLastStartContent = null;
+	    }
+	  }
+
+	  function resumeBadgeTimerContent() {
+	    if (badgeLastStartContent == null) badgeLastStartContent = Date.now();
+	  }
+
+	  function stopBadgeTimerContent() {
+	    resetBadgeTimerContent();
+	  }
+
     report({ selecting: false });
     // 显示底部控制条，便于直接开始/暂停/停止
     try { showControlBar(true); } catch {}
@@ -734,6 +859,7 @@
     if (state.recording) return;
     try {
       state.recording = true;
+      startBadgeTimerContent();
       // Show control bar and update state during recording (no auto-hide)
       try { showControlBar(true); updateControlBar(); } catch {}
 
@@ -1077,6 +1203,7 @@
 
   function stopCapture() {
     console.log('[Stream][Content] stopCapture called', { usingWebCodecs: state.usingWebCodecs, recording: state.recording, chunkCount: state.chunkCount, byteCount: state.byteCount });
+    stopBadgeTimerContent();
     try {
       if (state.usingWebCodecs) {
         try { state.reader?.cancel(); } catch {}
