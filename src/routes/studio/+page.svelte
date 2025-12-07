@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { HardDrive, Video } from "@lucide/svelte";
+  import { HardDrive, Video, Github, MessageCircle, BookOpen } from "@lucide/svelte";
 
   import { recordingStore } from "$lib/stores/recording.svelte";
   import VideoPreviewComposite from "$lib/components/VideoPreviewComposite.svelte";
@@ -558,16 +558,55 @@
           <AspectRatioControl />
         </div>
 
-        <!-- Right Drive button -->
-        <button
-          class="p-2 rounded-lg border border-gray-300 hover:border-blue-400 hover:bg-white/70 hover:shadow-sm transition-all duration-200 group"
-          onclick={() => window.open("/drive.html", "_blank")}
-          title="Open Recording File Manager"
-        >
-          <HardDrive
-            class="w-5 h-5 text-gray-600 group-hover:text-blue-600 transition-colors duration-200"
-          />
-        </button>
+        <!-- Right action buttons -->
+        <div class="flex items-center gap-2">
+          <a
+            href="https://github.com/screen-recorder-studio/screen-recorder"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-300 hover:border-blue-400 hover:bg-white/70 hover:shadow-sm transition-all duration-200 group text-sm"
+            title="View source on GitHub"
+          >
+            <Github
+              class="w-4 h-4 text-gray-600 group-hover:text-blue-600 transition-colors duration-200"
+            />
+            <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">GitHub</span>
+          </a>
+          <a
+            href="https://github.com/screen-recorder-studio/screen-recorder/issues"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-300 hover:border-blue-400 hover:bg-white/70 hover:shadow-sm transition-all duration-200 group text-sm"
+            title="Report bugs or suggest features"
+          >
+            <MessageCircle
+              class="w-4 h-4 text-gray-600 group-hover:text-blue-600 transition-colors duration-200"
+            />
+            <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">Feedback</span>
+          </a>
+          <a
+            href="https://www.screenrecorder.studio/"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-300 hover:border-blue-400 hover:bg-white/70 hover:shadow-sm transition-all duration-200 group text-sm"
+            title="Help & Documentation"
+          >
+            <BookOpen
+              class="w-4 h-4 text-gray-600 group-hover:text-blue-600 transition-colors duration-200"
+            />
+            <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">Help</span>
+          </a>
+          <button
+            class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-300 hover:border-blue-400 hover:bg-white/70 hover:shadow-sm transition-all duration-200 group text-sm"
+            onclick={() => window.open("/drive.html", "_blank")}
+            title="Open Recording File Manager"
+          >
+            <HardDrive
+              class="w-4 h-4 text-gray-600 group-hover:text-blue-600 transition-colors duration-200"
+            />
+            <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">Drive</span>
+          </button>
+        </div>
       </div>
     </div>
 
