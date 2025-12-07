@@ -2052,21 +2052,6 @@
       <Monitor class="w-4 h-4 text-gray-400" />
       <span class="text-sm font-semibold text-gray-100">Video Preview</span>
     </div>
-
-    <!-- Crop button -->
-    <button
-      class="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium rounded border transition-all duration-200 {videoCropStore.enabled ? 'border-blue-500 bg-blue-500/10' : 'border-gray-600'}"
-      onclick={enterCropMode}
-      disabled={isProcessing || !hasEverProcessed}
-      title={videoCropStore.enabled ? 'Cropped - Click to edit' : 'Crop video'}
-    >
-      <Crop class="w-3.5 h-3.5" />
-      {#if videoCropStore.enabled}
-        Cropped
-      {:else}
-        Crop
-      {/if}
-    </button>
   </div>
 
   <!-- 🔧 普通预览模式区域 - 包含 Canvas 和时间轴 -->
@@ -2100,18 +2085,21 @@
         <div class="flex items-center gap-3 text-sm flex-1">
           <!-- 启用/禁用裁剪按钮 -->
           <button
-            class="flex items-center justify-center gap-1 px-2 py-1 text-xs rounded transition-all duration-200"
+            class="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             class:bg-blue-500={trimStore.enabled}
+            class:border-blue-600={trimStore.enabled}
             class:text-white={trimStore.enabled}
             class:hover:bg-blue-600={trimStore.enabled}
             class:bg-gray-700={!trimStore.enabled}
-            class:text-gray-300={!trimStore.enabled}
+            class:border-gray-600={!trimStore.enabled}
+            class:text-gray-200={!trimStore.enabled}
             class:hover:bg-gray-600={!trimStore.enabled}
+            class:hover:border-gray-500={!trimStore.enabled}
             onclick={() => trimStore.toggle()}
             disabled={isProcessing}
             title={trimStore.enabled ? 'Disable trim' : 'Enable trim'}
           >
-            <Scissors class="w-3 h-3" />
+            <Scissors class="w-3.5 h-3.5" />
             {trimStore.enabled ? 'Trim On' : 'Trim Off'}
           </button>
 
@@ -2145,10 +2133,29 @@
           </span>
         </div>
 
-        <!-- 右侧：帧信息和分辨率 -->
+        <!-- 右侧：帧信息、分辨率和 Crop 按钮 -->
         <div class="flex items-center justify-end gap-4 text-xs text-gray-400 flex-1">
           <span>Frame: {currentFrameNumber}/{totalFramesAll > 0 ? totalFramesAll : (totalFrames > 0 ? totalFrames : encodedChunks.length)}</span>
           <span>Resolution: {outputWidth}×{outputHeight}</span>
+          <!-- Crop 按钮 -->
+          <button
+            class="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            class:bg-blue-500={videoCropStore.enabled}
+            class:border-blue-600={videoCropStore.enabled}
+            class:text-white={videoCropStore.enabled}
+            class:hover:bg-blue-600={videoCropStore.enabled}
+            class:bg-gray-700={!videoCropStore.enabled}
+            class:border-gray-600={!videoCropStore.enabled}
+            class:text-gray-200={!videoCropStore.enabled}
+            class:hover:bg-gray-600={!videoCropStore.enabled}
+            class:hover:border-gray-500={!videoCropStore.enabled}
+            onclick={enterCropMode}
+            disabled={isProcessing || !hasEverProcessed}
+            title={videoCropStore.enabled ? 'Cropped - Click to edit' : 'Crop video'}
+          >
+            <Crop class="w-3.5 h-3.5" />
+            {videoCropStore.enabled ? 'Cropped' : 'Crop'}
+          </button>
         </div>
       </div>
 

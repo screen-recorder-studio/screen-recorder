@@ -31,6 +31,7 @@
   // State management
   let thumbnailLoaded = $state(false)
   let thumbnailError = $state(false)
+  let isIncomplete = $state(false)  // Recording is incomplete (missing required files)
   let showPreview = $state(false)
   let previewComponent = $state<VideoPreview | null>(null)
   // New: complete data and loading status required for preview
@@ -93,37 +94,89 @@
       }
 
       const root = await navigator.storage.getDirectory()
-      const recordingDir = await root.getDirectoryHandle(recording.id)
-      
-      // Read first video chunk
-      const indexHandle = await recordingDir.getFileHandle('index.jsonl')
+
+      // Try to get recording directory
+      let recordingDir: FileSystemDirectoryHandle
+      try {
+        recordingDir = await root.getDirectoryHandle(recording.id)
+      } catch (e) {
+        throw new Error(`Recording directory "${recording.id}" not found`)
+      }
+
+      // Check if index.jsonl exists
+      let indexHandle: FileSystemFileHandle
+      try {
+        indexHandle = await recordingDir.getFileHandle('index.jsonl')
+      } catch (e) {
+        // Mark as incomplete recording
+        isIncomplete = true
+        throw new Error(`index.jsonl not found in ${recording.id}`)
+      }
+
       const indexFile = await indexHandle.getFile()
       const indexText = await indexFile.text()
       const lines = indexText.split('\n').filter(Boolean)
-      
+
       if (lines.length === 0) {
-        throw new Error('No video chunks found')
+        throw new Error('index.jsonl is empty - no video chunks')
       }
 
       const firstChunk = JSON.parse(lines[0])
-      
-      // Read data file
-      const dataHandle = await recordingDir.getFileHandle('data.bin')
+
+      // Check if data.bin exists
+      let dataHandle: FileSystemFileHandle
+      try {
+        dataHandle = await recordingDir.getFileHandle('data.bin')
+      } catch (e) {
+        // Mark as incomplete recording
+        isIncomplete = true
+        throw new Error(`data.bin not found in ${recording.id}`)
+      }
+
       const dataFile = await dataHandle.getFile()
+
+      // Validate chunk offset and size
+      if (typeof firstChunk.offset !== 'number' || typeof firstChunk.size !== 'number') {
+        throw new Error('Invalid chunk metadata: missing offset or size')
+      }
+
+      if (firstChunk.offset + firstChunk.size > dataFile.size) {
+        throw new Error(`Chunk data out of bounds: offset=${firstChunk.offset}, size=${firstChunk.size}, fileSize=${dataFile.size}`)
+      }
+
       const buffer = await dataFile.arrayBuffer()
-      
+
       // Extract first frame data
       const chunkData = buffer.slice(firstChunk.offset, firstChunk.offset + firstChunk.size)
-      
+
+      if (chunkData.byteLength === 0) {
+        throw new Error('First chunk data is empty')
+      }
+
       // Use VideoDecoder to decode first frame
       if ('VideoDecoder' in window) {
         return await decodeFirstFrame(chunkData, firstChunk)
       } else {
         throw new Error('WebCodecs not supported')
       }
-      
+
     } catch (error) {
-      console.warn('Failed to generate thumbnail:', error)
+      // Provide detailed error message for debugging
+      // For incomplete recordings (missing files), silently fail since UI already shows the state
+      if (isIncomplete) {
+        return null
+      }
+
+      // For other errors, log for debugging
+      let errorMsg = 'Unknown error'
+      if (error instanceof Error) {
+        errorMsg = error.message
+      } else if (error instanceof DOMException) {
+        errorMsg = `${error.name}: ${error.message}`
+      } else if (typeof error === 'object' && error !== null) {
+        errorMsg = JSON.stringify(error)
+      }
+      console.warn(`Failed to generate thumbnail for ${recording.id}:`, errorMsg)
       return null
     }
   }
@@ -135,15 +188,31 @@
   async function decodeFirstFrame(chunkData: ArrayBuffer, chunkInfo: any): Promise<string> {
     return new Promise((resolve, reject) => {
       let resolved = false
-      
-      const decoder = new VideoDecoder({
+      let decoder: VideoDecoder | null = null
+
+      // Timeout to prevent hanging if decoder never outputs a frame
+      const timeout = setTimeout(() => {
+        if (!resolved) {
+          resolved = true
+          try { decoder?.close() } catch {}
+          reject(new Error('Thumbnail generation timeout (5s)'))
+        }
+      }, 5000)
+
+      const cleanup = () => {
+        clearTimeout(timeout)
+        try { decoder?.close() } catch {}
+      }
+
+      decoder = new VideoDecoder({
         output: (frame: VideoFrame) => {
           if (resolved) {
             frame.close()
             return
           }
           resolved = true
-          
+          clearTimeout(timeout)
+
           try {
             // Scale size based on long edge limit to reduce storage and memory usage
             const srcW = frame.codedWidth
@@ -157,11 +226,11 @@
             canvas.width = dstW
             canvas.height = dstH
             const ctx = canvas.getContext('2d')!
-            
+
             // Draw directly at target size, browser will perform interpolation scaling
             ctx.drawImage(frame, 0, 0, dstW, dstH)
             frame.close()
-            
+
             // Prefer WEBP (smaller), fallback to JPEG if not supported
             let dataUrl = ''
             try {
@@ -170,27 +239,42 @@
             if (!dataUrl.startsWith('data:image/webp')) {
               dataUrl = canvas.toDataURL('image/jpeg', 0.75)
             }
+            try { decoder?.close() } catch {}
             resolve(dataUrl)
           } catch (error) {
             frame.close()
+            cleanup()
             reject(error)
           }
         },
-        error: (error: Error) => {
+        error: (error: DOMException) => {
           if (!resolved) {
             resolved = true
-            reject(error)
+            cleanup()
+            // Extract detailed error message from DOMException
+            const errorMsg = error.message || error.name || 'Unknown decoder error'
+            reject(new Error(`VideoDecoder error: ${errorMsg}`))
           }
         }
       })
 
       try {
+        const codec = chunkInfo.codec || 'vp8'
+        const codedWidth = chunkInfo.codedWidth || recording.meta?.width || 1920
+        const codedHeight = chunkInfo.codedHeight || recording.meta?.height || 1080
+
+        // Check if codec is supported before configuring
         // Configure decoder
         decoder.configure({
-          codec: chunkInfo.codec || 'vp8',
-          codedWidth: chunkInfo.codedWidth || recording.meta?.width || 1920,
-          codedHeight: chunkInfo.codedHeight || recording.meta?.height || 1080
+          codec,
+          codedWidth,
+          codedHeight
         })
+
+        // Verify decoder state after configure
+        if (decoder.state === 'closed') {
+          throw new Error('Decoder closed unexpectedly after configure')
+        }
 
         // Decode first frame
         const chunk = new EncodedVideoChunk({
@@ -200,11 +284,26 @@
         })
 
         decoder.decode(chunk)
-        decoder.flush()
+
+        // Properly await flush to ensure decode completes
+        decoder.flush().catch((flushError: DOMException) => {
+          if (!resolved) {
+            resolved = true
+            cleanup()
+            const errorMsg = flushError.message || flushError.name || 'Flush failed'
+            reject(new Error(`VideoDecoder flush error: ${errorMsg}`))
+          }
+        })
       } catch (error) {
         if (!resolved) {
           resolved = true
-          reject(error)
+          cleanup()
+          // Handle DOMException with better error message
+          if (error instanceof DOMException) {
+            reject(new Error(`VideoDecoder config error: ${error.message || error.name}`))
+          } else {
+            reject(error)
+          }
         }
       }
     })
@@ -464,11 +563,17 @@
   >
     
    {#if thumbnailLoaded && recording.thumbnail}
-      <img 
-        src={recording.thumbnail} 
+      <img
+        src={recording.thumbnail}
         alt="Recording thumbnail"
         class="thumbnail"
       />
+    {:else if isIncomplete}
+      <div class="thumbnail-placeholder incomplete">
+        <span class="icon">⚠️</span>
+        <span class="text">Incomplete Recording</span>
+        <span class="subtext">Missing video data</span>
+      </div>
     {:else if thumbnailError}
       <div class="thumbnail-placeholder error">
         <span class="icon">📹</span>
@@ -497,7 +602,12 @@
   </div>
 
   <div class="card-actions">
-    <button class="btn btn-primary" onclick={editRecording}>
+    <button
+      class="btn btn-primary"
+      onclick={editRecording}
+      disabled={isIncomplete}
+      title={isIncomplete ? 'Cannot edit incomplete recording' : 'Edit recording'}
+    >
       <Edit class="w-4 h-4" />
       Edit
     </button>
@@ -614,12 +724,20 @@
     @apply bg-red-50 text-red-600;
   }
 
+  .thumbnail-placeholder.incomplete {
+    @apply bg-amber-50 text-amber-600;
+  }
+
   .thumbnail-placeholder .icon {
     @apply text-3xl;
   }
 
   .thumbnail-placeholder .text {
-    @apply text-sm;
+    @apply text-sm font-medium;
+  }
+
+  .thumbnail-placeholder .subtext {
+    @apply text-xs opacity-75;
   }
 
   .spinner {
@@ -678,8 +796,12 @@
     @apply bg-blue-500 text-white;
   }
 
-  .btn-primary:hover {
+  .btn-primary:hover:not(:disabled) {
     @apply bg-blue-600;
+  }
+
+  .btn-primary:disabled {
+    @apply opacity-50 cursor-not-allowed;
   }
 
   /* Preview modal */
