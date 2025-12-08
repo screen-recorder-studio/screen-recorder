@@ -417,8 +417,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         })()
         return true;
       }
-      case 'REQUEST_STOP_RECORDING':
-      case 'OFFSCREEN_STOP_RECORDING': {
+      case 'REQUEST_STOP_RECORDING': {
+        // Only handle stop requests from popup, not OFFSCREEN_STOP_RECORDING
+        // OFFSCREEN_STOP_RECORDING is sent TO offscreen, not FROM it
         (async () => {
           console.log('[stop-share] background: REQUEST_STOP_RECORDING received')
           await stopRecordingViaOffscreen()
@@ -444,16 +445,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'REQUEST_TOGGLE_PAUSE': {
         (async () => {
           try {
-            const tgtTabId = sender.tab?.id ?? message.tabId;
-            const tabState = tgtTabId != null ? tabStates.get(tgtTabId) : undefined;
-            const isElementOrRegion = !!tabState && (tabState.mode === 'element' || tabState.mode === 'region');
-            if (tgtTabId != null && isElementOrRegion) {
-              // Route pause toggle to content script for element/region pipeline
-              try { chrome.tabs.sendMessage(tgtTabId, { type: 'TOGGLE_PAUSE' }); } catch {}
-              try { sendResponse({ ok: true }) } catch {}
-              return;
-            }
-            // Default: control offscreen recording pause
+            // Control offscreen recording pause for Tab/Window/Screen modes
             const newPaused = !currentRecording.isPaused
             await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
             await sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_TOGGLE_PAUSE', payload: { paused: newPaused } })

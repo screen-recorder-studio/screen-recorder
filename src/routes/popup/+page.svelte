@@ -1,16 +1,13 @@
 <script lang="ts">
   import {
     Monitor,
-    MousePointer,
-    Camera,
-    FileText,
     AppWindow,
     ScreenShare,
     Play,
     Pause,
     Square,
-    Loader2,
-    AlertCircle,
+    LoaderCircle,
+    CircleAlert,
     HardDrive,
     Clock
   } from '@lucide/svelte'
@@ -19,7 +16,7 @@
   // Recording state management
   let isRecording = $state(false)
   let isPaused = $state(false)
-  let selectedMode = $state<'area' | 'element' | 'camera' | 'tab' | 'window' | 'screen'>('tab')
+  let selectedMode = $state<'tab' | 'window' | 'screen'>('tab')
   let isLoading = $state(false)
   // Countdown seconds (1-5)
   let countdownSeconds = $state(3)
@@ -40,16 +37,9 @@
     }
   }
 
-  // Capability state: whether the current page allows content script injection (affects element/area mode availability)
-  let contentScriptAvailable = $state<boolean | null>(null)
-  let capabilityReason = $state<string | undefined>(undefined)
-  let currentTabId = $state<number | null>(null)
-
+  // Disable switching modes during recording
   function isModeDisabledLocal(modeId: typeof selectedMode) {
-    const restricted = (modeId === 'element' || modeId === 'area') && contentScriptAvailable === false
-    const blockedByRecording = isRecording && selectedMode !== modeId
-    const comingSoon = modeId === 'camera' // Disable camera mode
-    return restricted || blockedByRecording || comingSoon
+    return isRecording && selectedMode !== modeId
   }
 
   // Initialize: sync background state
@@ -61,58 +51,29 @@
         const v = stored?.settings?.countdownSeconds;
         if (typeof v === 'number') countdownSeconds = clampCountdown(v);
       } catch {}
+      // Get current recording state from background
       const resp = await chrome.runtime.sendMessage({ type: 'REQUEST_RECORDING_STATE' })
       isRecording = !!resp?.state?.isRecording
       isPaused = !!resp?.state?.isPaused
     } catch (e) {
       console.warn('Failed to initialize recording state', e)
     }
-    // Initialize current tab capabilities
-    try {
-      const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-      currentTabId = (tabs && tabs[0] && typeof tabs[0].id === 'number') ? tabs[0].id : null
-      if (currentTabId != null) {
-        const st = await chrome.runtime.sendMessage({ type: 'GET_STATE', tabId: currentTabId })
-        const caps = st?.state?.capabilities
-        if (caps) {
-          contentScriptAvailable = !!caps.contentScriptAvailable
-          capabilityReason = caps.reason
-        }
-        // Restore previously selected mode
-        const uiMode = st?.state?.uiSelectedMode
-        const legacyMode = st?.state?.mode
-        if (uiMode === 'element' || uiMode === 'area' || uiMode === 'camera' || uiMode === 'tab' || uiMode === 'window' || uiMode === 'screen') {
-          selectedMode = uiMode
-        } else if (legacyMode === 'region' || legacyMode === 'element') {
-          selectedMode = legacyMode === 'region' ? 'area' : 'element'
-        }
-        
-        // Check if currently selected mode is disabled, if so switch to available tab mode
-        if (isModeDisabledLocal(selectedMode)) {
-          selectedMode = 'tab'
-          // Sync update to background
-          try { 
-            await chrome.runtime.sendMessage({ type: 'SET_SELECTED_MODE', uiMode: 'tab', tabId: currentTabId }) 
-          } catch {}
-        }
-        // If not recording globally but tab level records as recording (element/area pipeline), sync as recording
-        if (!isRecording && typeof st?.state?.recording === 'boolean' && st.state.recording) {
-          isRecording = true
-        }
-      }
-    } catch (e) {
-      // ignore init errors
-    }
   })
+
+  // Track if user manually triggered stop to ignore stale BADGE_TICKs
+  let stopRequested = $state(false)
 
   // Listen for stream status from background/offscreen to ensure sync stop when browser "Stop sharing"
   onMount(() => {
     const handler = (msg: any) => {
       try {
-        // Fallback: if we see BADGE_TICKs, we know some recording is in progress (offscreen or content)
-        // This makes the popup button reflect recording state even if STREAM_START/STATE_UPDATE is missed.
+        // BADGE_TICK: sync recording state, but respect user's stop request
+        // This ensures popup shows correct state when opened during recording
         if (msg?.type === 'BADGE_TICK') {
-          if (!isRecording) {
+          // Only set isRecording = true if user hasn't requested stop
+          // This avoids race condition where stale BADGE_TICKs override stop request
+          if (!stopRequested && !isRecording) {
+            console.log('[stop-share] popup: BADGE_TICK → syncing isRecording = true')
             isRecording = true
           }
         }
@@ -125,30 +86,28 @@
           isRecording = true
           isPaused = false
           isLoading = false
+          stopRequested = false
         }
         if (msg?.type === 'STREAM_END' || msg?.type === 'STREAM_ERROR' || msg?.type === 'RECORDING_COMPLETE' || msg?.type === 'OPFS_RECORDING_READY') {
           console.log('[stop-share] popup: received', msg?.type)
           isRecording = false
           isPaused = false
           isLoading = false
+          stopRequested = false
         }
         if (msg?.type === 'STATE_UPDATE' && msg?.state) {
           console.log('[stop-share] popup: STATE_UPDATE', msg.state)
           if (typeof msg.state.recording === 'boolean') {
             isRecording = !!msg.state.recording
-            if (!isRecording) isPaused = false
-          }
-          if (msg.state.capabilities) {
-            contentScriptAvailable = !!msg.state.capabilities.contentScriptAvailable
-            capabilityReason = msg.state.capabilities.reason
+            if (!isRecording) {
+              isPaused = false
+              stopRequested = false
+            }
           }
           // Sync selected mode (prioritize uiSelectedMode)
           const uiMode = msg.state.uiSelectedMode
-          const legacyMode = msg.state.mode
-          if (uiMode === 'element' || uiMode === 'area' || uiMode === 'camera' || uiMode === 'tab' || uiMode === 'window' || uiMode === 'screen') {
+          if (uiMode === 'tab' || uiMode === 'window' || uiMode === 'screen') {
             selectedMode = uiMode
-          } else if (legacyMode === 'region' || legacyMode === 'element') {
-            selectedMode = legacyMode === 'region' ? 'area' : 'element'
           }
         }
       } catch (e) {
@@ -164,7 +123,7 @@
     {
       id: 'tab' as const,
       name: 'Tab',
-      icon: FileText,
+      icon: Monitor,
       description: 'Record current tab'
     },
     {
@@ -200,40 +159,10 @@
   ]
 
   // Handle mode selection
-  async function selectMode(mode: typeof selectedMode) {
+  function selectMode(mode: typeof selectedMode) {
     if (isModeDisabledLocal(mode)) return
     if (!isRecording) {
-      const prev = selectedMode
       selectedMode = mode
-
-      // Get current active tabId
-      let tabId = currentTabId
-      try {
-        if (tabId == null) {
-          const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-          tabId = (tabs && tabs[0] && typeof tabs[0].id === 'number') ? tabs[0].id : null
-        }
-      } catch {}
-
-      // Record UI selected mode to background for restoration on next open
-      try { await chrome.runtime.sendMessage({ type: 'SET_SELECTED_MODE', uiMode: selectedMode, tabId }) } catch {}
-
-      // If switching from element/area to other types (tab/window/screen), clear page selection and exit selection state
-      const isElemOrArea = (m: typeof selectedMode) => m === 'element' || m === 'area'
-      if (isElemOrArea(prev) && !isElemOrArea(mode) && tabId != null) {
-        try {
-          await chrome.runtime.sendMessage({ type: 'CLEAR_SELECTION', tabId })
-          await chrome.runtime.sendMessage({ type: 'EXIT_SELECTION', tabId })
-        } catch {}
-      }
-
-      // If switching to element/area: clear old selection first (avoid cross-mode residue), then enter new mode selection
-      if (isElemOrArea(mode) && tabId != null) {
-        try { await chrome.runtime.sendMessage({ type: 'CLEAR_SELECTION', tabId }) } catch {}
-        const mapped = mode === 'area' ? 'region' : 'element'
-        await chrome.runtime.sendMessage({ type: 'SET_MODE', mode: mapped, tabId }).catch(() => {})
-        await chrome.runtime.sendMessage({ type: 'ENTER_SELECTION', tabId }).catch(() => {})
-      }
     }
   }
 
@@ -242,30 +171,12 @@
     if (isLoading) return
     isLoading = true
     try {
-      if (selectedMode === 'element' || selectedMode === 'area') {
-        // Element/area uses content script START_CAPTURE
-        let tabId = currentTabId
-        try {
-          if (tabId == null) {
-            const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-            tabId = (tabs && tabs[0] && typeof tabs[0].id === 'number') ? tabs[0].id : null
-          }
-        } catch {}
-        if (tabId != null) {
-            await chrome.runtime.sendMessage({ type: 'START_CAPTURE', tabId, countdown: countdownSeconds })
-          // Wait for STREAM_START/STATE_UPDATE confirmation before updating isRecording/isPaused
-        } else {
-          throw new Error('Failed to get active tab, cannot start recording')
-        }
-      } else {
-        // Other modes use offscreen pipeline
-        const mode = (['tab','window','screen'] as const).includes(selectedMode as any) ? (selectedMode as 'tab'|'window'|'screen') : 'screen'
-        await chrome.runtime.sendMessage({
-          type: 'REQUEST_START_RECORDING',
-          payload: { options: { mode, video: true, audio: false, countdown: countdownSeconds } }
-        })
-        // Wait for STREAM_START/STATE_UPDATE confirmation before updating isRecording/isPaused
-      }
+      // Use offscreen pipeline for Tab/Window/Screen modes
+      await chrome.runtime.sendMessage({
+        type: 'REQUEST_START_RECORDING',
+        payload: { options: { mode: selectedMode, video: true, audio: false, countdown: countdownSeconds } }
+      })
+      // Wait for STREAM_START/STATE_UPDATE confirmation before updating isRecording/isPaused
     } catch (error) {
       console.error('Failed to start recording:', error)
     } finally {
@@ -278,23 +189,11 @@
     if (!isRecording || isLoading) return
     isLoading = true
     try {
-      const payload: any = { type: 'REQUEST_TOGGLE_PAUSE' }
-      if (selectedMode === 'element' || selectedMode === 'area') {
-        let tabId = currentTabId
-        try {
-          if (tabId == null) {
-            const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-            tabId = (tabs && tabs[0] && typeof tabs[0].id === 'number') ? tabs[0].id : null
-          }
-        } catch {}
-        if (tabId != null) payload.tabId = tabId
-      }
-      const resp = await chrome.runtime.sendMessage(payload)
+      const resp = await chrome.runtime.sendMessage({ type: 'REQUEST_TOGGLE_PAUSE' })
       if (resp && typeof resp.paused === 'boolean') {
         // Offscreen path returns paused, use return value directly
         isPaused = resp.paused
       }
-      // Element/area path doesn't do optimistic update, wait for STREAM_META sync
     } catch (e) {
       console.warn('Failed to toggle pause', e)
     } finally {
@@ -304,28 +203,19 @@
 
   // Stop recording
   async function stopRecording() {
+    // Mark that stop was requested to ignore any stale BADGE_TICKs
+    stopRequested = true
     try {
-      if (selectedMode === 'element' || selectedMode === 'area') {
-        let tabId = currentTabId
-        try {
-          if (tabId == null) {
-            const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-            tabId = (tabs && tabs[0] && typeof tabs[0].id === 'number') ? tabs[0].id : null
-          }
-        } catch {}
-        if (tabId != null) {
-          await chrome.runtime.sendMessage({ type: 'STOP_CAPTURE', tabId })
-        } else {
-          console.warn('Failed to get active tab, cannot stop recording');
-        }
-      } else {
-        await chrome.runtime.sendMessage({ type: 'REQUEST_STOP_RECORDING' })
-      }
+      // For Tab/Window/Screen modes, send stop request to offscreen via background
+      await chrome.runtime.sendMessage({ type: 'REQUEST_STOP_RECORDING' })
+      // Don't optimistically set isRecording = false here
+      // Wait for STREAM_END or STATE_UPDATE from background to confirm stop
+      // This avoids race conditions with stale BADGE_TICKs
     } catch (e) {
       console.warn('Failed to send stop recording message', e)
+      // On error, reset stopRequested flag but don't change recording state
+      stopRequested = false
     }
-    isRecording = false
-    isPaused = false
   }
 
   // Get button text
@@ -339,7 +229,7 @@
 
   // Get button icon
   function getButtonIcon() {
-    if (isLoading) return Loader2
+    if (isLoading) return LoaderCircle
     if (isRecording) {
       return isPaused ? Play : Pause
     }
@@ -389,18 +279,11 @@
           class:cursor-not-allowed={isModeDisabledLocal(mode.id)}
           onclick={() => selectMode(mode.id)}
           disabled={isModeDisabledLocal(mode.id)}
-          title={mode.id === 'camera' ? 'Coming Soon' : (mode.id==='element'||mode.id==='area') && contentScriptAvailable===false ? 'This page is restricted, cannot use this mode' : mode.description}
+          title={mode.description}
         >
           <!-- Selection indicator -->
           {#if selectedMode === mode.id}
             <div class="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white"></div>
-          {/if}
-
-          <!-- Coming Soon label -->
-          {#if mode.id === 'camera'}
-            <div class="absolute -top-1 -right-1 bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full font-medium">
-              Coming Soon
-            </div>
           {/if}
 
           <!-- Icon -->
@@ -463,10 +346,9 @@
         disabled={isLoading}
       >
         <!-- Button icon -->
-        <!-- Button icon -->
         <div class="flex items-center justify-center w-5 h-5">
           {#if isLoading}
-            <Loader2 class="w-5 h-5 animate-spin" />
+            <LoaderCircle class="w-5 h-5 animate-spin" />
           {:else}
             {@const ButtonIcon = getButtonIcon()}
             <ButtonIcon class="w-5 h-5" />
@@ -494,7 +376,7 @@
     <!-- Tips -->
     <div class="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
       <div class="flex items-start gap-2">
-        <AlertCircle class="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+        <CircleAlert class="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
         <div class="text-xs text-blue-700">
           {#if !isRecording}
             <p class="font-medium mb-1">Recording Tips:</p>
