@@ -106,6 +106,60 @@ chrome.runtime.onInstalled.addListener((details) => {
   }
 })
 
+// Control window management - open control page when clicking extension icon
+let controlWinId: number | null = null;
+
+chrome.action.onClicked.addListener(async () => {
+  // If control window exists, focus it
+  if (controlWinId !== null) {
+    try {
+      await chrome.windows.update(controlWinId, { focused: true });
+      return;
+    } catch {
+      // Window no longer exists
+      controlWinId = null;
+    }
+  }
+
+  // Open new control window
+  const controlWidth = 360;
+  const controlHeight = 470;
+
+  try {
+    const current = await chrome.windows.getCurrent();
+    let left: number | undefined;
+    let top: number | undefined;
+
+    if (current && typeof current.left === 'number' && typeof current.top === 'number') {
+      left = current.left + Math.max(0, Math.round(((current.width || controlWidth) - controlWidth) / 2));
+      top = current.top + Math.max(0, Math.round(((current.height || controlHeight) - controlHeight) / 2));
+    }
+
+    const win = await chrome.windows.create({
+      url: chrome.runtime.getURL('control.html'),
+      type: 'popup',
+      width: controlWidth,
+      height: controlHeight,
+      left,
+      top,
+      focused: true
+    });
+
+    if (win?.id) {
+      controlWinId = win.id;
+    }
+  } catch (e) {
+    console.error('Failed to open control window:', e);
+  }
+});
+
+// Clean up control window ID when window is closed
+chrome.windows.onRemoved.addListener((windowId) => {
+  if (windowId === controlWinId) {
+    controlWinId = null;
+  }
+});
+
 // 处理来自 sidepanel 的消息
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('Received message:', message.action || message.type, message)
@@ -314,30 +368,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Handle preparing countdown for badge, and pause/resume meta
         const meta = message?.meta || {}
         if (meta && meta.preparing && typeof meta.countdown === 'number') {
-          // Wrap in async IIFE to allow await
-          (async () => {
-            // Determine mode hint for size adjustment
-            let kind: string | undefined;
-            let mode: string | undefined;
-            try {
-              if (state?.uiSelectedMode) kind = state.uiSelectedMode;
-              else if (state?.mode === 'region') kind = 'area';
-              else if (state?.mode === 'element') kind = 'element';
-              
-            // Extract recording mode from message or state
-            mode = meta.mode || state?.uiSelectedMode || (state?.mode === 'region' ? 'area' : state?.mode);
-            
-            // Store recording mode for focus restoration
-            recordingMode = mode || null;
+          // Broadcast STREAM_META to control page for inline countdown
+          // Control page will handle countdown display and send COUNTDOWN_DONE when finished
+          try {
+            chrome.runtime.sendMessage({
+              type: 'STREAM_META',
+              meta: { preparing: true, countdown: meta.countdown, mode: meta.mode }
+            }).catch(() => {})
           } catch {}
-          
-          // Always capture current window/tab before creating countdown
-          // Countdown window will take focus (for visibility), so we need to restore for all modes
-          try { await captureCurrentWindowAndTab() } catch {}
-            
-            try { await ensureCountdownWindow(Math.max(0, Math.floor(meta.countdown)), kind, mode) } catch {}
-            try { sendResponse({ ok: true }) } catch {}
-          })();
+          try { sendResponse({ ok: true }) } catch {}
           return true;
         }
         if (meta && typeof meta.paused === 'boolean') {
@@ -828,164 +867,18 @@ async function stopBadgeTimer() {
   try { await chrome.action.setBadgeText({ text: '' }) } catch {}
 }
 
-// Countdown popup management (unified for all recording modes)
-let countdownWinId: number | null = null;
-let lastCountdownValue: number | null = null;
-
-// Focus management for countdown window
-let recordingTargetWindowId: number | null = null;
-let recordingTargetTabId: number | null = null;
-let recordingMode: string | null = null; // 'tab', 'window', 'screen', 'area', 'element'
-
-// Capture current window and tab for focus restoration
-async function captureCurrentWindowAndTab() {
-  try {
-    // Get current window
-    const currentWindow = await chrome.windows.getCurrent();
-    if (currentWindow?.id != null) {
-      recordingTargetWindowId = currentWindow.id;
-    }
-    
-    // Get active tab in current window
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tabs?.[0]?.id != null) {
-      recordingTargetTabId = tabs[0].id;
-    }
-    
-    console.log('[Focus] Captured target:', { windowId: recordingTargetWindowId, tabId: recordingTargetTabId });
-  } catch (e) {
-    console.warn('[Focus] Failed to capture current window/tab:', e);
-  }
-}
-
-// Restore focus to recording target after countdown
-async function restoreFocusToRecordingTarget() {
-  try {
-    // Always restore focus for all modes to ensure correct recording target
-    // This is critical because countdown window always takes focus for visibility
-    
-    if (!recordingTargetWindowId && !recordingTargetTabId) {
-      console.log('[Focus] No target to restore');
-      return;
-    }
-    
-    console.log('[Focus] Restoring focus:', { 
-      mode: recordingMode, 
-      windowId: recordingTargetWindowId, 
-      tabId: recordingTargetTabId 
-    });
-    
-    // Try to restore window focus first
-    if (recordingTargetWindowId != null) {
-      try {
-        await chrome.windows.update(recordingTargetWindowId, { focused: true });
-        console.log('[Focus] Restored focus to window:', recordingTargetWindowId);
-      } catch (e) {
-        console.warn('[Focus] Failed to restore window focus:', e);
-      }
-    }
-    
-    // Then try to activate the tab (if we have one)
-    if (recordingTargetTabId != null) {
-      try {
-        await chrome.tabs.update(recordingTargetTabId, { active: true });
-        console.log('[Focus] Activated tab:', recordingTargetTabId);
-      } catch (e) {
-        console.warn('[Focus] Failed to activate tab:', e);
-      }
-    }
-  } catch (e) {
-    console.warn('[Focus] Error during focus restoration:', e);
-  } finally {
-    // Clean up focus management state
-    recordingTargetWindowId = null;
-    recordingTargetTabId = null;
-    recordingMode = null;
-  }
-}
-async function ensureCountdownWindow(value: number, kind?: string, mode?: string){
-  try {
-    // If value is 0 we keep window for final beep close by COUNTDOWN_DONE message
-    const popupWidth = 260;
-    const popupHeight = (kind === 'area' || kind === 'element') ? 240 : 180;
-    
-    // Clean up any existing countdown window
-    if (countdownWinId) {
-      try {
-        await chrome.windows.remove(countdownWinId);
-        countdownWinId = null;
-      } catch (e) {
-        console.warn('[Countdown] Failed to remove existing window:', e);
-      }
-    }
-    
-    // Always center countdown window for maximum visibility
-    // Countdown must be focused to ensure it's visible to the user
-    console.log('[Countdown] Creating window:', { value, kind, mode });
-    
-    // Get current window for positioning - always center for visibility
-    const current = await chrome.windows.getCurrent();
-    let left: number | undefined, top: number | undefined;
-    
-    if (current && typeof current.left === 'number' && typeof current.top === 'number') {
-      left = current.left + Math.max(0, Math.round(((current.width||popupWidth) - popupWidth) / 2));
-      top = current.top + Math.max(0, Math.round(((current.height||popupHeight) - popupHeight) / 2));
-    }
-    
-    // Create countdown window - always focused for visibility
-    chrome.windows.create({
-      url: chrome.runtime.getURL('countdown.html?s=' + value),
-      type: 'popup',
-      width: popupWidth,
-      height: popupHeight,
-      left,
-      top,
-      focused: true  // Always focus countdown to ensure visibility
-    }, win => {
-      if (win && win.id != null) {
-        countdownWinId = win.id;
-        console.log('[Countdown] Window created:', { id: countdownWinId, focused: true });
-      }
-    });
-  } catch (e) {
-    console.warn('[Countdown] ensureCountdownWindow error:', e);
-  }
-}
-
+// Handle COUNTDOWN_DONE from control page - broadcast to offscreen
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.type === 'COUNTDOWN_DONE') {
-    // Only broadcast after the window is actually closed to avoid capturing last-frame "0"
-    const doBroadcast = async () => {
-      try {
-        // First, restore focus to recording target if needed
-        await restoreFocusToRecordingTarget();
-        
-        // Then wait for compositor to stabilize
-        setTimeout(() => {
-          try { 
-            chrome.runtime.sendMessage({ 
-              type: 'COUNTDOWN_DONE_BROADCAST', 
-              ts: Date.now(), 
-              afterClose: true 
-            }) 
-          } catch {}
-        }, 140); // Increased from 120ms to 140ms to allow focus restoration
-      } catch (e) {
-        console.warn('[Countdown] Error in broadcast:', e);
-      }
-    };
-    
-    if (countdownWinId) {
-      const id = countdownWinId;
-      chrome.windows.remove(id, () => { 
-        countdownWinId = null; 
-        console.log('[Countdown] Window closed:', id);
-        doBroadcast(); 
-      });
-    } else {
-      console.warn('[Countdown] COUNTDOWN_DONE received but no window ID tracked');
-      doBroadcast();
-    }
+    // Inline countdown in control page - just broadcast to offscreen
+    console.log('[Countdown] COUNTDOWN_DONE received from control page');
+    try {
+      chrome.runtime.sendMessage({
+        type: 'COUNTDOWN_DONE_BROADCAST',
+        ts: Date.now(),
+        afterClose: true
+      })
+    } catch {}
   }
 });
 
@@ -1128,20 +1021,6 @@ chrome.tabs.onUpdated.addListener((tabId, info) => {
     }
   }
 });
-
-// Monitor countdown window closure (user manually closed it or system closed it)
-chrome.windows.onRemoved.addListener((windowId) => {
-  if (windowId === countdownWinId) {
-    console.log('[Countdown] Window was closed unexpectedly:', windowId);
-    countdownWinId = null;
-    
-    // Clean up focus management state
-    recordingTargetWindowId = null;
-    recordingTargetTabId = null;
-    recordingMode = null;
-  }
-});
-
 
 // 错误处理
 self.addEventListener('error', (event) => {

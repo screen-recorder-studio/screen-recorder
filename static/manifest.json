@@ -18,8 +18,7 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Open Recording Panel",
-    "default_popup": "popup.html"
+    "default_title": "Open Recording Panel"
   },
   "icons": {
     "16": "assets/icon16.png",

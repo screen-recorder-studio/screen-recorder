@@ -61,6 +61,7 @@
   let wcWorker: Worker | null = null
   let wcReader: ReadableStreamDefaultReader<VideoFrame> | null = null
   let wcFrameLoopActive = false
+  let wcWorkerPreloaded = false  // ✅ Track if worker was preloaded
 
   // OPFS writer (side-write) state
   const OPFS_WRITER_ENABLED = true
@@ -145,6 +146,43 @@
       })
     } catch (e) { log('[Offscreen][OPFS] finalize failed', e) }
     finally { try { w.terminate() } catch {}; if (opfsWriter === w) { opfsWriter = null; opfsWriterReady = false; opfsSessionId = null } }
+  }
+
+  // ✅ Preload WebCodecs Worker for faster recording start
+  function preloadWebCodecsWorker(): void {
+    if (wcWorker) {
+      log('⚡ [Preload] WebCodecs Worker already exists, skipping')
+      return
+    }
+    if (isRecording) {
+      log('⚡ [Preload] Recording in progress, skipping preload')
+      return
+    }
+
+    try {
+      log('⚡ [Preload] Creating WebCodecs Worker...')
+      wcWorker = new Worker(new URL('../lib/workers/webcodecs-worker.ts', import.meta.url), { type: 'module' })
+
+      wcWorker.onmessage = (evt: MessageEvent) => {
+        const { type } = evt.data || {}
+        if (type === 'initialized') {
+          log('⚡ [Preload] WebCodecs Worker initialized and ready')
+          wcWorkerPreloaded = true
+        }
+      }
+
+      wcWorker.onerror = (err) => {
+        log('⚡ [Preload] WebCodecs Worker preload error:', err)
+        wcWorker = null
+        wcWorkerPreloaded = false
+      }
+
+      log('⚡ [Preload] WebCodecs Worker created, waiting for initialization...')
+    } catch (e) {
+      log('⚡ [Preload] Failed to preload WebCodecs Worker:', e)
+      wcWorker = null
+      wcWorkerPreloaded = false
+    }
   }
 
   // Get supported MIME types for recording
@@ -304,8 +342,15 @@
       const reader: ReadableStreamDefaultReader<VideoFrame> = processor.readable.getReader()
       wcReader = reader
 
-      // 5) Create and configure WebCodecs Worker
-      wcWorker = new Worker(new URL('../lib/workers/webcodecs-worker.ts', import.meta.url), { type: 'module' })
+      // 5) Create or reuse preloaded WebCodecs Worker
+      const wasPreloaded = wcWorker !== null && wcWorkerPreloaded
+      if (!wcWorker) {
+        log('🔧 Creating new WebCodecs Worker (not preloaded)')
+        wcWorker = new Worker(new URL('../lib/workers/webcodecs-worker.ts', import.meta.url), { type: 'module' })
+      } else {
+        log('⚡ Reusing preloaded WebCodecs Worker')
+      }
+      wcWorkerPreloaded = false  // Reset preload flag as we're now using it for recording
 
       let configured = false
       let resolveConfigured: (() => void) | null = null
@@ -317,7 +362,7 @@
         const { type, data, config } = (evt.data || {})
         switch (type) {
           case 'initialized':
-            log('👷 WebCodecs worker initialized')
+            log(`👷 WebCodecs worker initialized${wasPreloaded ? ' (was preloaded)' : ''}`)
             break
           case 'configured':
             configured = true
@@ -573,6 +618,24 @@
             })
           } catch (e) {
             log('❌ Failed to send PING response:', e)
+          }
+          return true
+
+        // ✅ Preload WebCodecs Worker when popup opens (for faster recording start)
+        case 'OFFSCREEN_PRELOAD_WORKER':
+          log(`⚡ [${timestamp}] PRELOAD_WORKER request`)
+          try {
+            preloadWebCodecsWorker()
+            sendResponse?.({
+              ok: true,
+              preloaded: wcWorkerPreloaded || wcWorker !== null,
+              timestamp
+            })
+          } catch (e) {
+            log('❌ Failed to preload worker:', e)
+            try {
+              sendResponse?.({ ok: false, error: String(e), timestamp })
+            } catch {}
           }
           return true
 
