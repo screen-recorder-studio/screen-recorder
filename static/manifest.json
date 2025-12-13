@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Screen Recorder Studio for SAAS",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "A Chrome extension for recording tabs, windows, screens, page regions, and elements",
   "permissions": [
     "desktopCapture",
@@ -18,8 +18,7 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Open Recording Panel",
-    "default_popup": "popup.html"
+    "default_title": "Open Recording Panel"
   },
   "icons": {
     "16": "assets/icon16.png",
