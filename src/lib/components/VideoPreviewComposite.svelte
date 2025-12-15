@@ -1180,12 +1180,13 @@
     seekToFrame(frameIndex)
   }
 
-  // Format seconds as 00:00（mm:ss），supply time to bottom of timeline
+  // Format seconds as 00:00.xx（mm:ss.cs），显示百分秒精度
   function formatTimeSec(sec: number): string {
-    const total = Math.max(0, Math.floor(sec))
+    const total = Math.max(0, sec)
     const mm = Math.floor(total / 60)
-    const ss = total % 60
-    return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
+    const ss = Math.floor(total % 60)
+    const cs = Math.floor((total % 1) * 100)  // 百分秒 (centiseconds)
+    return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}.${String(cs).padStart(2, '0')}`
   }
 
   // ✂️ 裁剪相关函数
@@ -2159,25 +2160,25 @@
           {/if}
         </div>
 
-        <!-- 中间：播放按钮 + 时间显示 -->
-        <div class="flex items-center gap-3 flex-shrink-0">
+        <!-- 中间：播放按钮 + 时间显示 - 带圆角矩形背景（毛玻璃效果） -->
+        <div class="flex items-center gap-3 flex-shrink-0 px-4 py-2 bg-gray-700/90 rounded-full border border-gray-500/50 shadow-lg backdrop-blur-lg">
           <!-- 播放/暂停按钮 -->
           <button
-            class="flex items-center justify-center w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-600"
+            class="flex items-center justify-center w-9 h-9 bg-blue-600 hover:bg-blue-500 text-white rounded-full shadow-md cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-600 hover:scale-105"
             onclick={isPlaying ? pause : play}
             disabled={isProcessing}
             title={isPlaying ? 'Pause' : 'Play'}
           >
             {#if isPlaying}
-              <Pause class="w-5 h-5" />
+              <Pause class="w-4 h-4" />
             {:else}
-              <Play class="w-5 h-5 ml-0.5" />
+              <Play class="w-4 h-4 ml-0.5" />
             {/if}
           </button>
 
           <!-- 时间显示 -->
-          <span class="font-mono text-sm text-gray-300 whitespace-nowrap">
-            {formatTimeSec(currentTimeMs / 1000)} / {formatTimeSec(uiDurationSec)}
+          <span class="font-mono text-sm text-gray-200 whitespace-nowrap tracking-tight">
+            {formatTimeSec(currentTimeMs / 1000)} <span class="text-gray-500">/</span> {formatTimeSec(uiDurationSec)}
           </span>
         </div>
 
