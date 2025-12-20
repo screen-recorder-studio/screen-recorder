@@ -1,6 +1,6 @@
 <!-- Background Picker - Main container with tab navigation -->
 <script lang="ts">
-  import { Palette, Layers, Image, Mountain } from '@lucide/svelte'
+  import { Palette, Layers, Image, Mountain, PaintBucket } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import type { BackgroundConfig } from '$lib/types/background'
 
@@ -74,7 +74,10 @@
 <div class="p-4 border border-gray-200 rounded-lg bg-white flex flex-col gap-4">
   <!-- Header and Tab navigation -->
   <div class="flex flex-col gap-3">
-    <h3 class="text-sm font-semibold text-gray-700 m-0">Background</h3>
+    <div class="flex items-center gap-2">
+      <PaintBucket class="w-4 h-4 text-gray-600" />
+      <h3 class="text-sm font-semibold text-gray-700">Background</h3>
+    </div>
     <div class="flex bg-gray-100 rounded-md p-0.5 gap-0.5" role="tablist">
       {#each tabOptions as tab}
         <button
