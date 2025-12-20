@@ -537,18 +537,11 @@
     <div class="flex-shrink-0 p-6 border-b border-gray-200 bg-white">
       <div class="flex items-center justify-between relative">
         <!-- Left title -->
-        <div class="flex items-center gap-3">
-          <div class="flex items-center gap-2">
-            <Video class="w-6 h-6 text-blue-600" />
-            <h1 class="text-xl font-bold text-gray-800">
-              Screen Recorder Studio
-            </h1>
-          </div>
-          <span
-            class="px-2 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-sm"
-          >
-            PRO TRIAL
-          </span>
+        <div class="flex items-center gap-2">
+          <Video class="w-6 h-6 text-blue-600" />
+          <h1 class="text-xl font-bold text-gray-800">
+            Screen Recorder Studio
+          </h1>
         </div>
 
         <!-- Center video aspect ratio control -->
@@ -641,8 +634,8 @@
 
   <!-- Right editing panel - allows scrolling -->
   <div class="w-100 bg-white border-l border-gray-200 flex flex-col h-full">
-    <!-- Editing panel header -->
-    <div class="flex-shrink-0 p-6 border-b border-gray-200">
+    <!-- Editing panel header - license badge + export button -->
+    <div class="flex-shrink-0 px-4 py-3">
       <VideoExportPanel
         encodedChunks={workerEncodedChunks}
         isRecordingComplete={workerStatus === "completed" ||
@@ -650,13 +643,13 @@
         totalFramesAll={globalTotalFrames}
         {opfsDirId}
         {sourceFps}
-        className="export-panel"
+        licenseTier="pro-trial"
       />
     </div>
 
     <!-- Scrollable editing content area -->
     <div class="flex-1 overflow-y-auto">
-      <div class="p-6 space-y-6">
+      <div class="px-4 py-2 space-y-4">
         <!-- Video configuration blocks -->
 
         <!-- Background color selection -->

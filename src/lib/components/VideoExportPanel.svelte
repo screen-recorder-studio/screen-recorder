@@ -1,13 +1,20 @@
 <!-- Video export panel component -->
 <script lang="ts">
-  import { Download, Video, Film, LoaderCircle, Info, TriangleAlert } from '@lucide/svelte'
+  import { Download, LoaderCircle, TriangleAlert, Sparkles } from '@lucide/svelte'
   import { ExportManager } from '$lib/services/export-manager'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import { trimStore } from '$lib/stores/trim.svelte'
   import { videoCropStore } from '$lib/stores/video-crop.svelte'
-  import GifExportDialog, { type GifExportOptions } from './GifExportDialog.svelte'
-  import VideoExportDialog, { type VideoExportOptions, type SourceVideoInfo } from './VideoExportDialog.svelte'
+  import UnifiedExportDialog, {
+    type ExportFormat,
+    type VideoExportOptions,
+    type GifExportOptions,
+    type SourceVideoInfo
+  } from './UnifiedExportDialog.svelte'
   import { extractSourceInfo, convertBackgroundConfigForExport } from '$lib/utils/export-utils'
+
+  // License tier type
+  export type LicenseTier = 'free' | 'pro' | 'pro-trial'
 
   // Props
   interface Props {
@@ -22,6 +29,10 @@
      * export duration and preview duration stay consistent.
      */
     sourceFps?: number
+    /**
+     * Current license tier for the user
+     */
+    licenseTier?: LicenseTier
   }
 
   let {
@@ -30,8 +41,27 @@
     totalFramesAll = 0,
     opfsDirId = '',
     className = '',
-    sourceFps = 30
+    sourceFps = 30,
+    licenseTier = 'pro-trial'
   }: Props = $props()
+
+  // License tier labels and styles
+  const tierConfig: Record<LicenseTier, { label: string; classes: string }> = {
+    'free': {
+      label: 'FREE',
+      classes: 'bg-gray-100 text-gray-600 border border-gray-200'
+    },
+    'pro': {
+      label: 'PRO',
+      classes: 'bg-blue-600 text-white'
+    },
+    'pro-trial': {
+      label: 'PRO TRIAL',
+      classes: 'bg-blue-50 text-blue-600 border border-blue-200'
+    }
+  }
+
+  const currentTier = $derived(tierConfig[licenseTier] || tierConfig['free'])
 
   // Display total frames: prioritize using total frames (totalFramesAll), otherwise fallback to current window (encodedChunks.length)
   const displayTotalFrames = $derived(totalFramesAll > 0 ? totalFramesAll : encodedChunks.length)
@@ -45,10 +75,8 @@
   let isExportingGIF = $state(false)
   let isGifLibReady = $state(false)
 
-  // Export dialogs
-  let showGifDialog = $state(false)
-  let showMp4Dialog = $state(false)
-  let showWebmDialog = $state(false)
+  // Unified export dialog
+  let showExportDialog = $state(false)
   
   let exportProgress = $state<{
     type: 'webm' | 'mp4' | 'gif'
@@ -96,12 +124,6 @@
       }
       document.head.appendChild(script)
     })
-  }
-
-  // 打开 GIF 导出对话框
-  function openGifExportDialog() {
-    if (!canExport) return
-    showGifDialog = true
   }
 
   // 执行 GIF 导出
@@ -193,7 +215,7 @@
       console.log('✅ [Export] GIF export completed:', filename)
 
       // 导出成功，关闭对话框
-      showGifDialog = false
+      showExportDialog = false
 
     } catch (error) {
       console.error('❌ [Export] GIF export failed:', error)
@@ -281,10 +303,28 @@
     !isExportingGIF
   )
 
-  // Open WebM export dialog
-  function openWebmExportDialog() {
+  // Check if any export is in progress
+  const isExporting = $derived(isExportingWebM || isExportingMP4 || isExportingGIF)
+
+  // Open unified export dialog
+  function openExportDialog() {
     if (!canExport) return
-    showWebmDialog = true
+    showExportDialog = true
+  }
+
+  // Handle export from unified dialog
+  async function handleExport(format: ExportFormat, options: VideoExportOptions | GifExportOptions) {
+    switch (format) {
+      case 'webm':
+        await performWebMExport(options as VideoExportOptions)
+        break
+      case 'mp4':
+        await performMP4Export(options as VideoExportOptions)
+        break
+      case 'gif':
+        await performGifExport(options as GifExportOptions)
+        break
+    }
   }
 
   // Perform WebM export
@@ -314,14 +354,25 @@
         videoCropEnabled: plainBackgroundConfig?.videoCrop?.enabled
       })
 
+      // Map quality preset to export quality level
+      const qualityMap: Record<string, 'high' | 'medium' | 'low'> = {
+        draft: 'low',
+        balanced: 'medium',
+        high: 'high',
+        best: 'high'
+      }
+
+      // Convert bitrate from Mbps to bps (integer)
+      const bitrateInBps = Math.round(options.bitrate * 1000000)
+
       const videoResult = await exportManager.exportEditedVideo(
         encodedChunks,
         {
           format: 'webm',
           includeBackground: !!plainBackgroundConfig,
           backgroundConfig: plainBackgroundConfig as any,
-          quality: options.quality,
-          bitrate: options.bitrate,
+          quality: qualityMap[options.quality] || 'high',
+          bitrate: bitrateInBps,
           framerate: options.framerate,
           source: opfsDirId ? 'opfs' : 'chunks',
           opfsDirId: opfsDirId || undefined,
@@ -382,7 +433,7 @@
       }
 
       // Close dialog on success
-      showWebmDialog = false
+      showExportDialog = false
 
     } catch (error) {
       console.error('❌ [Export] WebM export failed:', error)
@@ -392,12 +443,6 @@
       resetProgressAnimation()
       exportProgress = null
     }
-  }
-
-  // Open MP4 export dialog
-  function openMp4ExportDialog() {
-    if (!canExport) return
-    showMp4Dialog = true
   }
 
   // Perform MP4 export
@@ -427,14 +472,25 @@
         videoCropEnabled: plainBackgroundConfig?.videoCrop?.enabled
       })
 
+      // Map quality preset to export quality level
+      const qualityMap: Record<string, 'high' | 'medium' | 'low'> = {
+        draft: 'low',
+        balanced: 'medium',
+        high: 'high',
+        best: 'high'
+      }
+
+      // Convert bitrate from Mbps to bps (integer)
+      const bitrateInBps = Math.round(options.bitrate * 1000000)
+
       const videoBlob = await exportManager.exportEditedVideo(
         encodedChunks,
         {
           format: 'mp4',
           includeBackground: !!plainBackgroundConfig,
           backgroundConfig: plainBackgroundConfig as any,
-          quality: options.quality,
-          bitrate: options.bitrate,
+          quality: qualityMap[options.quality] || 'high',
+          bitrate: bitrateInBps,
           framerate: options.framerate,
           source: opfsDirId ? 'opfs' : 'chunks',
           opfsDirId: opfsDirId || undefined,
@@ -482,7 +538,7 @@
       console.log('✅ [Export] MP4 export completed:', filename)
 
       // Close dialog on success
-      showMp4Dialog = false
+      showExportDialog = false
 
     } catch (error) {
       console.error('❌ [Export] MP4 export failed:', error)
@@ -537,150 +593,57 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
 
-  // Format progress stage
-  function formatStage(stage: string): string {
-    const stageMap = {
-      'preparing': 'Preparing',
-      'compositing': 'Compositing Background',
-      'encoding': 'Encoding',
-      'muxing': 'Muxing Container',
-      'finalizing': 'Finalizing'
-    }
-    return stageMap[stage as keyof typeof stageMap] || stage
-  }
-
-  // Format time
-  function formatTime(seconds: number): string {
-    if (seconds < 60) return `${Math.round(seconds)}s`
-    const minutes = Math.floor(seconds / 60)
-    const remainingSeconds = Math.round(seconds % 60)
-    return `${minutes}m ${remainingSeconds}s`
-  }
 </script>
 
-<!-- Video export panel component -->
+<!-- Video export panel component - License badge + Export button -->
+<div class="{className} flex items-center justify-between gap-3">
+  <!-- License tier badge -->
+  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md {currentTier.classes}">
+    <Sparkles class="w-3 h-3" />
+    {currentTier.label}
+  </span>
 
-<div class="flex flex-col gap-4 p-4 bg-slate-50 border border-slate-200 rounded-lg {className}">
-  <div class="flex justify-between items-center">
-    <div class="flex items-center gap-2">
-      <Download class="w-4 h-4 text-gray-600" />
-      <h3 class="text-base font-semibold text-slate-800 m-0">Export Video</h3>
-    </div>
-    <div class="flex gap-2 text-xs">
-      {#if encodedChunks.length > 0}
-        <span class="bg-blue-500 text-white px-2 py-1 rounded">{displayTotalFrames} frames</span>
-        {#if backgroundConfig}
-          <span class="bg-emerald-500 text-white px-2 py-1 rounded">With Background</span>
-        {/if}
-        {#if trimStore.enabled}
-          <span class="bg-orange-500 text-white px-2 py-1 rounded">✂️ Trimmed ({trimStore.trimFrameCount} frames)</span>
-        {/if}
-      {:else}
-        <span class="text-slate-500">No recording data</span>
-      {/if}
-    </div>
-  </div>
-
-  <!-- Export buttons -->
-  <div class="flex gap-3">
+  <!-- Export button or warning -->
+  {#if !isRecordingComplete || encodedChunks.length === 0}
     <button
-      class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-500 text-white text-sm font-medium rounded-md cursor-pointer transition-all duration-200 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
-      disabled={!canExport}
-      onclick={openWebmExportDialog}
+      class="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-400 text-sm font-medium rounded-lg border border-gray-200 cursor-not-allowed"
+      disabled
+      title={!isRecordingComplete ? 'Complete recording to export' : 'No video data'}
     >
-      <Video class="w-4 h-4" />
-      Export WebM
+      <TriangleAlert class="w-4 h-4" />
+      Export
     </button>
-
+  {:else}
     <button
-      class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-emerald-500 text-white text-sm font-medium rounded-md cursor-pointer transition-all duration-200 hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
-      disabled={!canExport}
-      onclick={openMp4ExportDialog}
+      class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      disabled={isExporting}
+      onclick={openExportDialog}
     >
-      <Film class="w-4 h-4" />
-      Export MP4
-    </button>
-
-    <!-- Export GIF -->
-    <button
-      class="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-purple-500 text-white text-sm font-medium rounded-md cursor-pointer transition-all duration-200 hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
-      disabled={!canExport}
-      onclick={openGifExportDialog}
-    >
-      {#if isExportingGIF}
+      {#if isExporting}
         <LoaderCircle class="w-4 h-4 animate-spin" />
-        Exporting GIF...
+        Exporting...
       {:else}
         <Download class="w-4 h-4" />
-        Export GIF
+        Export
       {/if}
     </button>
-  </div>
-
-
-  <!-- Notification messages -->
-  {#if !isRecordingComplete}
-    <div class="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md text-sm text-amber-800">
-      <Info class="w-4 h-4 text-amber-600" />
-      Please complete recording before exporting video
-    </div>
-  {:else if encodedChunks.length === 0}
-    <div class="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md text-sm text-amber-800">
-      <TriangleAlert class="w-4 h-4 text-amber-600" />
-      No video data available for export
-    </div>
   {/if}
 </div>
 
-<!-- MP4 Export Dialog -->
-<VideoExportDialog
-  bind:open={showMp4Dialog}
-  format="mp4"
-  onClose={() => { showMp4Dialog = false }}
-  onConfirm={performMP4Export}
+<!-- Unified Export Dialog -->
+<UnifiedExportDialog
+  bind:open={showExportDialog}
+  onClose={() => { showExportDialog = false }}
+  onExport={handleExport}
   sourceInfo={sourceInfo}
   sourceFps={sourceFps}
-  isExporting={isExportingMP4}
-  exportProgress={exportProgress?.type === 'mp4' ? {
+  isExporting={isExporting}
+  exportProgress={exportProgress ? {
     stage: exportProgress.stage,
     progress: displayedProgress,
     currentFrame: exportProgress.currentFrame,
     totalFrames: exportProgress.totalFrames,
     estimatedTimeRemaining: exportProgress.estimatedTimeRemaining
   } : null}
-/>
-
-<!-- WebM Export Dialog -->
-<VideoExportDialog
-  bind:open={showWebmDialog}
-  format="webm"
-  onClose={() => { showWebmDialog = false }}
-  onConfirm={performWebMExport}
-  sourceInfo={sourceInfo}
-  sourceFps={sourceFps}
-  isExporting={isExportingWebM}
-  exportProgress={exportProgress?.type === 'webm' ? {
-    stage: exportProgress.stage,
-    progress: displayedProgress,
-    currentFrame: exportProgress.currentFrame,
-    totalFrames: exportProgress.totalFrames,
-    estimatedTimeRemaining: exportProgress.estimatedTimeRemaining
-  } : null}
-/>
-
-<!-- GIF Export Dialog -->
-<GifExportDialog
-  bind:open={showGifDialog}
-  onClose={() => { showGifDialog = false }}
-  onConfirm={performGifExport}
-  videoDuration={displayTotalFrames / sourceFps}
-  videoWidth={sourceInfo.width}
-  videoHeight={sourceInfo.height}
-  isExporting={isExportingGIF}
-  exportProgress={exportProgress?.type === 'gif' ? {
-    stage: exportProgress.stage,
-    progress: displayedProgress,
-    currentFrame: exportProgress.currentFrame,
-    totalFrames: exportProgress.totalFrames
-  } : null}
+  hasBackground={!!backgroundConfig}
 />
