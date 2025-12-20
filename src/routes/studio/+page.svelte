@@ -5,7 +5,7 @@
   import { recordingStore } from "$lib/stores/recording.svelte";
   import VideoPreviewComposite from "$lib/components/VideoPreviewComposite.svelte";
   import VideoExportPanel from "$lib/components/VideoExportPanel.svelte";
-  import BackgroundColorPicker from "$lib/components/BackgroundColorPicker.svelte";
+  import BackgroundPicker from "$lib/components/BackgroundPicker/index.svelte";
   import BorderRadiusControl from "$lib/components/BorderRadiusControl.svelte";
   import PaddingControl from "$lib/components/PaddingControl.svelte";
   import AspectRatioControl from "$lib/components/AspectRatioControl.svelte";
@@ -654,7 +654,7 @@
 
         <!-- Background color selection -->
         <div class="col-span-2 lg:col-span-1">
-          <BackgroundColorPicker />
+          <BackgroundPicker />
         </div>
 
         <!-- Border radius configuration -->
