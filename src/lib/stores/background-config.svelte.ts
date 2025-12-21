@@ -21,106 +21,106 @@ const defaultBackgroundConfig: BackgroundConfig = {
   customHeight: 1080
 }
 
-// 预设纯色配置 - 每个分类16种颜色
+// Preset solid colors - 16 colors per category
 export const PRESET_SOLID_COLORS: SolidColorPreset[] = [
-  // 基础色系 (16种)
-  { id: 'white', name: '纯白', color: '#ffffff', category: 'basic' },
-  { id: 'snow', name: '雪白', color: '#fffafa', category: 'basic' },
-  { id: 'ivory', name: '象牙白', color: '#fffff0', category: 'basic' },
-  { id: 'beige', name: '米色', color: '#f5f5dc', category: 'basic' },
-  { id: 'light-gray-1', name: '极浅灰', color: '#f8f9fa', category: 'basic' },
-  { id: 'light-gray-2', name: '浅灰', color: '#e9ecef', category: 'basic' },
-  { id: 'light-gray-3', name: '淡灰', color: '#dee2e6', category: 'basic' },
-  { id: 'light-gray-4', name: '银灰', color: '#ced4da', category: 'basic' },
-  { id: 'gray-1', name: '中浅灰', color: '#adb5bd', category: 'basic' },
-  { id: 'gray-2', name: '中灰', color: '#6c757d', category: 'basic' },
-  { id: 'gray-3', name: '中深灰', color: '#495057', category: 'basic' },
-  { id: 'dark-gray-1', name: '深灰', color: '#343a40', category: 'basic' },
-  { id: 'dark-gray-2', name: '炭灰', color: '#2d3436', category: 'basic' },
-  { id: 'dark-gray-3', name: '石墨', color: '#212529', category: 'basic' },
-  { id: 'charcoal', name: '木炭色', color: '#1a1a1a', category: 'basic' },
-  { id: 'black', name: '纯黑', color: '#000000', category: 'basic' },
+  // Basic colors (16)
+  { id: 'white', name: 'White', color: '#ffffff', category: 'basic' },
+  { id: 'snow', name: 'Snow', color: '#fffafa', category: 'basic' },
+  { id: 'ivory', name: 'Ivory', color: '#fffff0', category: 'basic' },
+  { id: 'beige', name: 'Beige', color: '#f5f5dc', category: 'basic' },
+  { id: 'light-gray-1', name: 'Lightest Gray', color: '#f8f9fa', category: 'basic' },
+  { id: 'light-gray-2', name: 'Lighter Gray', color: '#e9ecef', category: 'basic' },
+  { id: 'light-gray-3', name: 'Light Gray', color: '#dee2e6', category: 'basic' },
+  { id: 'light-gray-4', name: 'Silver', color: '#ced4da', category: 'basic' },
+  { id: 'gray-1', name: 'Gray Light', color: '#adb5bd', category: 'basic' },
+  { id: 'gray-2', name: 'Gray', color: '#6c757d', category: 'basic' },
+  { id: 'gray-3', name: 'Gray Dark', color: '#495057', category: 'basic' },
+  { id: 'dark-gray-1', name: 'Dark Gray', color: '#343a40', category: 'basic' },
+  { id: 'dark-gray-2', name: 'Charcoal Gray', color: '#2d3436', category: 'basic' },
+  { id: 'dark-gray-3', name: 'Graphite', color: '#212529', category: 'basic' },
+  { id: 'charcoal', name: 'Charcoal', color: '#1a1a1a', category: 'basic' },
+  { id: 'black', name: 'Black', color: '#000000', category: 'basic' },
 
-  // 浅色系 (16种)
-  { id: 'light-blue-1', name: '天蓝', color: '#e3f2fd', category: 'light' },
-  { id: 'light-blue-2', name: '浅蓝', color: '#bbdefb', category: 'light' },
-  { id: 'light-green-1', name: '薄荷绿', color: '#e8f5e8', category: 'light' },
-  { id: 'light-green-2', name: '浅绿', color: '#c8e6c9', category: 'light' },
-  { id: 'light-yellow-1', name: '柠檬黄', color: '#fffde7', category: 'light' },
-  { id: 'light-yellow-2', name: '浅黄', color: '#fff9c4', category: 'light' },
-  { id: 'light-pink-1', name: '樱花粉', color: '#fce4ec', category: 'light' },
-  { id: 'light-pink-2', name: '浅粉', color: '#f8bbd9', category: 'light' },
-  { id: 'light-purple-1', name: '薰衣草', color: '#f3e5f5', category: 'light' },
-  { id: 'light-purple-2', name: '浅紫', color: '#e1bee7', category: 'light' },
-  { id: 'light-orange-1', name: '桃色', color: '#fff3e0', category: 'light' },
-  { id: 'light-orange-2', name: '浅橙', color: '#ffcc80', category: 'light' },
-  { id: 'light-cyan-1', name: '浅青', color: '#e0f2f1', category: 'light' },
-  { id: 'light-cyan-2', name: '水青', color: '#b2dfdb', category: 'light' },
-  { id: 'light-red-1', name: '浅红', color: '#ffebee', category: 'light' },
-  { id: 'light-red-2', name: '玫瑰粉', color: '#ffcdd2', category: 'light' },
+  // Light colors (16)
+  { id: 'light-blue-1', name: 'Sky Blue', color: '#e3f2fd', category: 'light' },
+  { id: 'light-blue-2', name: 'Light Blue', color: '#bbdefb', category: 'light' },
+  { id: 'light-green-1', name: 'Mint', color: '#e8f5e8', category: 'light' },
+  { id: 'light-green-2', name: 'Light Green', color: '#c8e6c9', category: 'light' },
+  { id: 'light-yellow-1', name: 'Lemon', color: '#fffde7', category: 'light' },
+  { id: 'light-yellow-2', name: 'Light Yellow', color: '#fff9c4', category: 'light' },
+  { id: 'light-pink-1', name: 'Cherry Blossom', color: '#fce4ec', category: 'light' },
+  { id: 'light-pink-2', name: 'Light Pink', color: '#f8bbd9', category: 'light' },
+  { id: 'light-purple-1', name: 'Lavender', color: '#f3e5f5', category: 'light' },
+  { id: 'light-purple-2', name: 'Light Purple', color: '#e1bee7', category: 'light' },
+  { id: 'light-orange-1', name: 'Peach', color: '#fff3e0', category: 'light' },
+  { id: 'light-orange-2', name: 'Light Orange', color: '#ffcc80', category: 'light' },
+  { id: 'light-cyan-1', name: 'Light Cyan', color: '#e0f2f1', category: 'light' },
+  { id: 'light-cyan-2', name: 'Aqua', color: '#b2dfdb', category: 'light' },
+  { id: 'light-red-1', name: 'Light Red', color: '#ffebee', category: 'light' },
+  { id: 'light-red-2', name: 'Rose', color: '#ffcdd2', category: 'light' },
 
-  // 深色系 (16种)
-  { id: 'dark-blue-1', name: '深蓝', color: '#0d47a1', category: 'dark' },
-  { id: 'dark-blue-2', name: '海军蓝', color: '#1a237e', category: 'dark' },
-  { id: 'dark-blue-3', name: '午夜蓝', color: '#191970', category: 'dark' },
-  { id: 'dark-blue-4', name: '钢蓝', color: '#1e3a8a', category: 'dark' },
-  { id: 'dark-green-1', name: '深绿', color: '#1b5e20', category: 'dark' },
-  { id: 'dark-green-2', name: '森林绿', color: '#2e7d32', category: 'dark' },
-  { id: 'dark-green-3', name: '橄榄绿', color: '#33691e', category: 'dark' },
-  { id: 'dark-green-4', name: '墨绿', color: '#1a4d3a', category: 'dark' },
-  { id: 'dark-red-1', name: '深红', color: '#b71c1c', category: 'dark' },
-  { id: 'dark-red-2', name: '酒红', color: '#880e4f', category: 'dark' },
-  { id: 'dark-red-3', name: '栗色', color: '#4a148c', category: 'dark' },
-  { id: 'dark-red-4', name: '暗红', color: '#8b0000', category: 'dark' },
-  { id: 'dark-purple-1', name: '深紫', color: '#4a148c', category: 'dark' },
-  { id: 'dark-purple-2', name: '茄紫', color: '#6a1b9a', category: 'dark' },
-  { id: 'dark-brown-1', name: '深棕', color: '#3e2723', category: 'dark' },
-  { id: 'dark-brown-2', name: '咖啡色', color: '#5d4037', category: 'dark' },
+  // Dark colors (16)
+  { id: 'dark-blue-1', name: 'Deep Blue', color: '#0d47a1', category: 'dark' },
+  { id: 'dark-blue-2', name: 'Navy', color: '#1a237e', category: 'dark' },
+  { id: 'dark-blue-3', name: 'Midnight Blue', color: '#191970', category: 'dark' },
+  { id: 'dark-blue-4', name: 'Steel Blue', color: '#1e3a8a', category: 'dark' },
+  { id: 'dark-green-1', name: 'Deep Green', color: '#1b5e20', category: 'dark' },
+  { id: 'dark-green-2', name: 'Forest Green', color: '#2e7d32', category: 'dark' },
+  { id: 'dark-green-3', name: 'Olive', color: '#33691e', category: 'dark' },
+  { id: 'dark-green-4', name: 'Dark Green', color: '#1a4d3a', category: 'dark' },
+  { id: 'dark-red-1', name: 'Deep Red', color: '#b71c1c', category: 'dark' },
+  { id: 'dark-red-2', name: 'Wine', color: '#880e4f', category: 'dark' },
+  { id: 'dark-red-3', name: 'Maroon', color: '#4a148c', category: 'dark' },
+  { id: 'dark-red-4', name: 'Dark Red', color: '#8b0000', category: 'dark' },
+  { id: 'dark-purple-1', name: 'Deep Purple', color: '#4a148c', category: 'dark' },
+  { id: 'dark-purple-2', name: 'Eggplant', color: '#6a1b9a', category: 'dark' },
+  { id: 'dark-brown-1', name: 'Dark Brown', color: '#3e2723', category: 'dark' },
+  { id: 'dark-brown-2', name: 'Coffee', color: '#5d4037', category: 'dark' },
 
-  // 商务色系 (16种)
-  { id: 'business-blue-1', name: '商务蓝', color: '#0066cc', category: 'business' },
-  { id: 'business-blue-2', name: '企业蓝', color: '#1976d2', category: 'business' },
-  { id: 'business-blue-3', name: '专业蓝', color: '#1565c0', category: 'business' },
-  { id: 'business-blue-4', name: '科技蓝', color: '#0277bd', category: 'business' },
-  { id: 'business-gray-1', name: '商务灰', color: '#455a64', category: 'business' },
-  { id: 'business-gray-2', name: '石板灰', color: '#475569', category: 'business' },
-  { id: 'business-gray-3', name: '钢铁灰', color: '#546e7a', category: 'business' },
-  { id: 'business-gray-4', name: '企业灰', color: '#37474f', category: 'business' },
-  { id: 'business-green-1', name: '商务绿', color: '#2e7d32', category: 'business' },
-  { id: 'business-green-2', name: '专业绿', color: '#388e3c', category: 'business' },
-  { id: 'business-navy-1', name: '海军蓝', color: '#1e3a8a', category: 'business' },
-  { id: 'business-navy-2', name: '深海蓝', color: '#1e40af', category: 'business' },
-  { id: 'business-teal-1', name: '商务青', color: '#00695c', category: 'business' },
-  { id: 'business-teal-2', name: '专业青', color: '#00796b', category: 'business' },
-  { id: 'business-brown-1', name: '商务棕', color: '#5d4037', category: 'business' },
-  { id: 'business-brown-2', name: '专业棕', color: '#6d4c41', category: 'business' },
+  // Business colors (16)
+  { id: 'business-blue-1', name: 'Corporate Blue', color: '#0066cc', category: 'business' },
+  { id: 'business-blue-2', name: 'Business Blue', color: '#1976d2', category: 'business' },
+  { id: 'business-blue-3', name: 'Professional Blue', color: '#1565c0', category: 'business' },
+  { id: 'business-blue-4', name: 'Tech Blue', color: '#0277bd', category: 'business' },
+  { id: 'business-gray-1', name: 'Business Gray', color: '#455a64', category: 'business' },
+  { id: 'business-gray-2', name: 'Slate', color: '#475569', category: 'business' },
+  { id: 'business-gray-3', name: 'Steel Gray', color: '#546e7a', category: 'business' },
+  { id: 'business-gray-4', name: 'Corporate Gray', color: '#37474f', category: 'business' },
+  { id: 'business-green-1', name: 'Business Green', color: '#2e7d32', category: 'business' },
+  { id: 'business-green-2', name: 'Professional Green', color: '#388e3c', category: 'business' },
+  { id: 'business-navy-1', name: 'Navy Blue', color: '#1e3a8a', category: 'business' },
+  { id: 'business-navy-2', name: 'Deep Navy', color: '#1e40af', category: 'business' },
+  { id: 'business-teal-1', name: 'Business Teal', color: '#00695c', category: 'business' },
+  { id: 'business-teal-2', name: 'Professional Teal', color: '#00796b', category: 'business' },
+  { id: 'business-brown-1', name: 'Business Brown', color: '#5d4037', category: 'business' },
+  { id: 'business-brown-2', name: 'Professional Brown', color: '#6d4c41', category: 'business' },
 
-  // 创意色系 (16种)
-  { id: 'creative-red-1', name: '活力红', color: '#ef4444', category: 'creative' },
-  { id: 'creative-red-2', name: '热情红', color: '#dc2626', category: 'creative' },
-  { id: 'creative-orange-1', name: '创意橙', color: '#f97316', category: 'creative' },
-  { id: 'creative-orange-2', name: '活力橙', color: '#ea580c', category: 'creative' },
-  { id: 'creative-yellow-1', name: '阳光黄', color: '#eab308', category: 'creative' },
-  { id: 'creative-yellow-2', name: '金黄', color: '#ca8a04', category: 'creative' },
-  { id: 'creative-green-1', name: '翡翠绿', color: '#10b981', category: 'creative' },
-  { id: 'creative-green-2', name: '生机绿', color: '#059669', category: 'creative' },
-  { id: 'creative-blue-1', name: '天空蓝', color: '#3b82f6', category: 'creative' },
-  { id: 'creative-blue-2', name: '海洋蓝', color: '#2563eb', category: 'creative' },
-  { id: 'creative-purple-1', name: '紫罗兰', color: '#8b5cf6', category: 'creative' },
-  { id: 'creative-purple-2', name: '梦幻紫', color: '#7c3aed', category: 'creative' },
-  { id: 'creative-pink-1', name: '粉红色', color: '#ec4899', category: 'creative' },
-  { id: 'creative-pink-2', name: '玫瑰红', color: '#db2777', category: 'creative' },
-  { id: 'creative-cyan-1', name: '青色', color: '#06b6d4', category: 'creative' },
-  { id: 'creative-cyan-2', name: '湖蓝', color: '#0891b2', category: 'creative' }
+  // Creative colors (16)
+  { id: 'creative-red-1', name: 'Vibrant Red', color: '#ef4444', category: 'creative' },
+  { id: 'creative-red-2', name: 'Passion Red', color: '#dc2626', category: 'creative' },
+  { id: 'creative-orange-1', name: 'Creative Orange', color: '#f97316', category: 'creative' },
+  { id: 'creative-orange-2', name: 'Vibrant Orange', color: '#ea580c', category: 'creative' },
+  { id: 'creative-yellow-1', name: 'Sunshine', color: '#eab308', category: 'creative' },
+  { id: 'creative-yellow-2', name: 'Gold', color: '#ca8a04', category: 'creative' },
+  { id: 'creative-green-1', name: 'Emerald', color: '#10b981', category: 'creative' },
+  { id: 'creative-green-2', name: 'Fresh Green', color: '#059669', category: 'creative' },
+  { id: 'creative-blue-1', name: 'Sky Blue', color: '#3b82f6', category: 'creative' },
+  { id: 'creative-blue-2', name: 'Ocean Blue', color: '#2563eb', category: 'creative' },
+  { id: 'creative-purple-1', name: 'Violet', color: '#8b5cf6', category: 'creative' },
+  { id: 'creative-purple-2', name: 'Dream Purple', color: '#7c3aed', category: 'creative' },
+  { id: 'creative-pink-1', name: 'Hot Pink', color: '#ec4899', category: 'creative' },
+  { id: 'creative-pink-2', name: 'Rose Red', color: '#db2777', category: 'creative' },
+  { id: 'creative-cyan-1', name: 'Cyan', color: '#06b6d4', category: 'creative' },
+  { id: 'creative-cyan-2', name: 'Lake Blue', color: '#0891b2', category: 'creative' }
 ]
 
-// 预设渐变配置 - 4种类别，每种8个渐变
+// Preset gradients - 4 categories, 8 gradients each
 export const PRESET_GRADIENTS: GradientPreset[] = [
-  // 线性渐变 (8个)
+  // Linear gradients (8)
   {
     id: 'linear-sunset',
-    name: '日落',
-    description: '温暖的橙红渐变',
+    name: 'Sunset',
+    description: 'Warm orange-red gradient',
     config: {
       type: 'linear',
       angle: 45,
@@ -134,8 +134,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'linear-ocean',
-    name: '海洋',
-    description: '深蓝到浅蓝的渐变',
+    name: 'Ocean',
+    description: 'Deep blue to light blue gradient',
     config: {
       type: 'linear',
       angle: 135,
@@ -149,8 +149,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'linear-forest',
-    name: '森林',
-    description: '自然绿色渐变',
+    name: 'Forest',
+    description: 'Natural green gradient',
     config: {
       type: 'linear',
       angle: 90,
@@ -164,8 +164,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'linear-purple-pink',
-    name: '紫粉',
-    description: '紫色到粉色的渐变',
+    name: 'Purple Pink',
+    description: 'Purple to pink gradient',
     config: {
       type: 'linear',
       angle: 45,
@@ -179,8 +179,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'linear-fire',
-    name: '烈火',
-    description: '火焰般的红橙渐变',
+    name: 'Fire',
+    description: 'Flame-like red-orange gradient',
     config: {
       type: 'linear',
       angle: 180,
@@ -194,8 +194,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'linear-sky',
-    name: '天空',
-    description: '清晨天空的蓝白渐变',
+    name: 'Sky',
+    description: 'Morning sky blue-white gradient',
     config: {
       type: 'linear',
       angle: 0,
@@ -209,8 +209,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'linear-mint',
-    name: '薄荷',
-    description: '清新的薄荷绿渐变',
+    name: 'Mint',
+    description: 'Fresh mint green gradient',
     config: {
       type: 'linear',
       angle: 315,
@@ -224,8 +224,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'linear-gold',
-    name: '黄金',
-    description: '奢华的金色渐变',
+    name: 'Gold',
+    description: 'Luxurious gold gradient',
     config: {
       type: 'linear',
       angle: 225,
@@ -238,11 +238,11 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
     category: 'linear'
   },
 
-  // 径向渐变 (8个)
+  // Radial gradients (8)
   {
     id: 'radial-blue',
-    name: '蓝色光晕',
-    description: '径向蓝色渐变',
+    name: 'Blue Glow',
+    description: 'Radial blue gradient',
     config: {
       type: 'radial',
       centerX: 0.5,
@@ -258,8 +258,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'radial-warm',
-    name: '暖色光晕',
-    description: '径向暖色渐变',
+    name: 'Warm Glow',
+    description: 'Radial warm color gradient',
     config: {
       type: 'radial',
       centerX: 0.5,
@@ -276,8 +276,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'radial-purple',
-    name: '紫色光环',
-    description: '神秘的紫色径向渐变',
+    name: 'Purple Halo',
+    description: 'Mysterious purple radial gradient',
     config: {
       type: 'radial',
       centerX: 0.3,
@@ -293,8 +293,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'radial-green',
-    name: '绿色光点',
-    description: '自然的绿色径向渐变',
+    name: 'Green Spot',
+    description: 'Natural green radial gradient',
     config: {
       type: 'radial',
       centerX: 0.7,
@@ -310,8 +310,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'radial-sunset',
-    name: '日落光环',
-    description: '温暖的日落径向渐变',
+    name: 'Sunset Halo',
+    description: 'Warm sunset radial gradient',
     config: {
       type: 'radial',
       centerX: 0.5,
@@ -328,8 +328,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'radial-cyan',
-    name: '青色波纹',
-    description: '清凉的青色径向渐变',
+    name: 'Cyan Ripple',
+    description: 'Cool cyan radial gradient',
     config: {
       type: 'radial',
       centerX: 0.2,
@@ -345,8 +345,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'radial-pink',
-    name: '粉色光晕',
-    description: '浪漫的粉色径向渐变',
+    name: 'Pink Glow',
+    description: 'Romantic pink radial gradient',
     config: {
       type: 'radial',
       centerX: 0.6,
@@ -363,8 +363,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'radial-dark',
-    name: '暗夜光环',
-    description: '深邃的暗色径向渐变',
+    name: 'Dark Halo',
+    description: 'Deep dark radial gradient',
     config: {
       type: 'radial',
       centerX: 0.5,
@@ -379,11 +379,11 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
     category: 'radial'
   },
 
-  // 圆锥渐变 (8个)
+  // Conic gradients (8)
   {
     id: 'conic-rainbow',
-    name: '彩虹',
-    description: '完整的彩虹色圆锥渐变',
+    name: 'Rainbow',
+    description: 'Full rainbow conic gradient',
     config: {
       type: 'conic',
       centerX: 0.5,
@@ -404,8 +404,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'conic-sunset',
-    name: '日落旋转',
-    description: '温暖的日落色圆锥渐变',
+    name: 'Sunset Spin',
+    description: 'Warm sunset conic gradient',
     config: {
       type: 'conic',
       centerX: 0.5,
@@ -422,8 +422,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'conic-ocean',
-    name: '海洋漩涡',
-    description: '蓝色系圆锥渐变',
+    name: 'Ocean Swirl',
+    description: 'Blue conic gradient',
     config: {
       type: 'conic',
       centerX: 0.3,
@@ -441,8 +441,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'conic-purple',
-    name: '紫色漩涡',
-    description: '神秘的紫色圆锥渐变',
+    name: 'Purple Swirl',
+    description: 'Mysterious purple conic gradient',
     config: {
       type: 'conic',
       centerX: 0.7,
@@ -459,8 +459,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'conic-fire',
-    name: '火焰旋转',
-    description: '火焰色圆锥渐变',
+    name: 'Fire Spin',
+    description: 'Flame conic gradient',
     config: {
       type: 'conic',
       centerX: 0.5,
@@ -478,8 +478,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'conic-green',
-    name: '绿色旋转',
-    description: '自然绿色圆锥渐变',
+    name: 'Green Spin',
+    description: 'Natural green conic gradient',
     config: {
       type: 'conic',
       centerX: 0.2,
@@ -497,8 +497,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'conic-gold',
-    name: '黄金旋转',
-    description: '奢华的金色圆锥渐变',
+    name: 'Gold Spin',
+    description: 'Luxurious gold conic gradient',
     config: {
       type: 'conic',
       centerX: 0.6,
@@ -515,8 +515,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'conic-cool',
-    name: '冷色旋转',
-    description: '清凉的冷色圆锥渐变',
+    name: 'Cool Spin',
+    description: 'Cool tones conic gradient',
     config: {
       type: 'conic',
       centerX: 0.4,
@@ -534,11 +534,11 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
     category: 'conic'
   },
 
-  // 多色渐变 (8个) - 复杂的多色线性渐变
+  // Multicolor gradients (8) - Complex multi-color linear gradients
   {
     id: 'multicolor-aurora',
-    name: '极光',
-    description: '绚烂的极光多色渐变',
+    name: 'Aurora',
+    description: 'Brilliant aurora multicolor gradient',
     config: {
       type: 'linear',
       angle: 45,
@@ -555,8 +555,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'multicolor-tropical',
-    name: '热带',
-    description: '热带风情多色渐变',
+    name: 'Tropical',
+    description: 'Tropical vibes multicolor gradient',
     config: {
       type: 'linear',
       angle: 135,
@@ -574,8 +574,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'multicolor-cosmic',
-    name: '宇宙',
-    description: '神秘的宇宙多色渐变',
+    name: 'Cosmic',
+    description: 'Mysterious cosmic multicolor gradient',
     config: {
       type: 'linear',
       angle: 90,
@@ -593,8 +593,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'multicolor-candy',
-    name: '糖果',
-    description: '甜美的糖果多色渐变',
+    name: 'Candy',
+    description: 'Sweet candy multicolor gradient',
     config: {
       type: 'linear',
       angle: 180,
@@ -613,8 +613,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'multicolor-neon',
-    name: '霓虹',
-    description: '炫酷的霓虹多色渐变',
+    name: 'Neon',
+    description: 'Cool neon multicolor gradient',
     config: {
       type: 'linear',
       angle: 270,
@@ -632,8 +632,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'multicolor-spring',
-    name: '春天',
-    description: '清新的春天多色渐变',
+    name: 'Spring',
+    description: 'Fresh spring multicolor gradient',
     config: {
       type: 'linear',
       angle: 315,
@@ -650,8 +650,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'multicolor-galaxy',
-    name: '银河',
-    description: '深邃的银河多色渐变',
+    name: 'Galaxy',
+    description: 'Deep galaxy multicolor gradient',
     config: {
       type: 'linear',
       angle: 225,
@@ -669,8 +669,8 @@ export const PRESET_GRADIENTS: GradientPreset[] = [
   },
   {
     id: 'multicolor-sunset',
-    name: '彩霞',
-    description: '绚烂的彩霞多色渐变',
+    name: 'Sunset Glow',
+    description: 'Brilliant sunset multicolor gradient',
     config: {
       type: 'linear',
       angle: 0,

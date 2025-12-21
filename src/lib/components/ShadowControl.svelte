@@ -1,6 +1,6 @@
 <!-- Shadow configuration control -->
 <script lang="ts">
-  import { Zap, Eye, Palette, Move, Focus, Sun, Moon, Sparkles, SlidersHorizontal } from '@lucide/svelte'
+  import { Zap, Palette, Move, Focus, Sun, Moon, Sparkles } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import type { BackgroundConfig } from '$lib/types/background'
 
@@ -259,24 +259,6 @@
             bind:value={opacity}
             oninput={handleParameterChange}
           />
-        </div>
-      </div>
-    </div>
-
-    <!-- Real-time preview -->
-    <div class="mt-4">
-      <div class="flex items-center gap-2 mb-2">
-        <Eye class="w-3 h-3 text-gray-600" />
-        <h4 class="text-xs font-semibold text-gray-600">Preview Effect</h4>
-      </div>
-      <div class="flex justify-center p-4 bg-gray-50 rounded-md">
-        <div
-          class="w-20 h-12 bg-amber-500 rounded flex items-center justify-center text-white text-xs font-semibold"
-          style="
-            box-shadow: {offsetX}px {offsetY}px {blur}px {hexToRgba(color, opacity)};
-          "
-        >
-          Video Area
         </div>
       </div>
     </div>

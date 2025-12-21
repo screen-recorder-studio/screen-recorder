@@ -143,41 +143,48 @@
   // 智能刻度间隔计算 - 确保刻度均匀分布
   function calculateTickInterval(durationSec: number): { major: number; minor: number } {
     // 候选刻度间隔（秒），按优先级排序
-    const candidates = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600]
+    // 🔧 修复：添加更细粒度的间隔支持短视频
+    const candidates = [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600]
 
-    // 目标：生成 5-10 个主刻度
-    const minTicks = 5
-    const maxTicks = 10
-    const idealTicks = 7
+    // 目标：生成 3-12 个主刻度（放宽范围，支持更多视频时长）
+    const minTicks = 3
+    const maxTicks = 12
+    const idealTicks = 6
 
     let bestMajor = 1
     let bestScore = -Infinity
 
     for (const interval of candidates) {
       // 计算该间隔会生成多少个刻度（包括起点和终点）
-      const tickCount = Math.ceil(durationSec / interval) + 1
+      const tickCount = Math.floor(durationSec / interval) + 1
 
-      // 跳过刻度数过少或过多的间隔
-      if (tickCount < minTicks || tickCount > maxTicks) continue
-
-      // 计算得分
+      // 🔧 修复：不再硬性跳过，而是用惩罚分数
       let score = 0
 
-      // 1. 刻度数接近理想值（权重：50%）
+      // 1. 刻度数接近理想值（权重：40%）
       const tickDiff = Math.abs(tickCount - idealTicks)
-      score += (1 - tickDiff / idealTicks) * 50
+      score += Math.max(0, (1 - tickDiff / idealTicks)) * 40
 
-      // 2. 能否整除视频时长（权重：30%）
-      const remainder = durationSec % interval
-      const divisibilityScore = (1 - remainder / interval) * 30
-      score += divisibilityScore
-
-      // 3. 间隔是否常见（权重：20%）
-      const commonIntervals = [1, 2, 5, 10, 30, 60]
-      if (commonIntervals.includes(interval)) {
-        score += 20
+      // 2. 刻度数在可接受范围内加分（权重：30%）
+      if (tickCount >= minTicks && tickCount <= maxTicks) {
+        score += 30
+      } else if (tickCount >= 2 && tickCount <= 15) {
+        // 稍微超出范围但仍可接受
+        score += 15
       }
 
+      // 3. 能否整除视频时长（权重：20%）
+      const remainder = durationSec % interval
+      const divisibilityScore = (1 - remainder / interval) * 20
+      score += divisibilityScore
+
+      // 4. 间隔是否常见（权重：10%）
+      const commonIntervals = [1, 2, 5, 10, 30, 60]
+      if (commonIntervals.includes(interval)) {
+        score += 10
+      }
+
+      // 🔧 修复：始终更新最佳选项（不再硬性跳过）
       if (score > bestScore) {
         bestScore = score
         bestMajor = interval
@@ -190,8 +197,10 @@
       bestMinor = bestMajor / 5  // 大间隔用 1/5
     } else if (bestMajor >= 5) {
       bestMinor = bestMajor / 5  // 5秒用 1/5 (1秒)
+    } else if (bestMajor >= 1) {
+      bestMinor = bestMajor / 2  // 1-2秒用 1/2
     } else {
-      bestMinor = bestMajor / 2  // 小间隔用 1/2
+      bestMinor = bestMajor / 2  // 0.5秒用 0.25秒
     }
 
     return { major: bestMajor, minor: bestMinor }
@@ -233,32 +242,54 @@
       }
     }
 
-    // 确保最后一个刻度（视频结束点）总是存在
+    // 🔧 处理结束点刻度 - 保持视觉韵律一致
+    // 策略：如果结束点距离最后一个常规刻度太近，替换它而非添加新刻度
     const endLabel = formatTimeSec(durationSec)
-    const endKey = `major-${endLabel}`
-
-    if (!markerMap.has(endKey)) {
-      // 检查是否有非常接近的刻度（容差 0.1 秒）
-      const TOLERANCE = 0.1
-      let hasSimilar = false
-
-      for (const marker of markerMap.values()) {
-        if (marker.isMajor && Math.abs(marker.timeSec - durationSec) < TOLERANCE) {
-          hasSimilar = true
-          break
+    const endPosition = 100
+    
+    // 找到最接近末尾的主刻度
+    let lastMajorKey: string | null = null
+    let lastMajorMarker: TimeMarker | null = null
+    
+    for (const [key, marker] of markerMap.entries()) {
+      if (marker.isMajor) {
+        if (!lastMajorMarker || marker.timeSec > lastMajorMarker.timeSec) {
+          lastMajorKey = key
+          lastMajorMarker = marker
         }
       }
-
-      if (!hasSimilar) {
-        markerMap.set(endKey, {
-          timeSec: durationSec,
-          timeMs: durationSec * 1000,
-          timeLabel: endLabel,
-          isMajor: true,
-          position: 100
-        })
-      }
     }
+    
+    // 计算结束点与最后一个主刻度的距离
+    const distanceToEnd = lastMajorMarker ? (durationSec - lastMajorMarker.timeSec) : durationSec
+    const threshold = major * 0.5  // 阈值：间隔的 50%
+    
+    if (lastMajorMarker && distanceToEnd < threshold && distanceToEnd > 0.01) {
+      // 🔧 距离太近（< 50% 间隔）：替换最后一个刻度为结束点刻度
+      // 这样保持刻度间距的视觉一致性
+      if (lastMajorKey) {
+        markerMap.delete(lastMajorKey)
+      }
+      const endKey = `end-marker-${durationSec.toFixed(3)}`
+      markerMap.set(endKey, {
+        timeSec: durationSec,
+        timeMs: durationSec * 1000,
+        timeLabel: endLabel,
+        isMajor: true,
+        position: endPosition
+      })
+    } else if (distanceToEnd >= threshold) {
+      // 🔧 距离足够远（>= 50% 间隔）：添加结束点刻度
+      const endKey = `end-marker-${durationSec.toFixed(3)}`
+      markerMap.set(endKey, {
+        timeSec: durationSec,
+        timeMs: durationSec * 1000,
+        timeLabel: endLabel,
+        isMajor: true,
+        position: endPosition
+      })
+    }
+    // 如果 distanceToEnd ≈ 0（结束点正好在刻度上），不需要添加
 
     // 生成次要刻度（不带标签）
     for (let t = minor; t < durationSec; t += minor) {
@@ -301,12 +332,25 @@
 
   // ========== 工具函数 ==========
 
-  // 格式化时间为 mm:ss（统一格式）
-  function formatTimeSec(sec: number): string {
+  // 格式化时间 - 智能格式（整秒用 MM:SS，非整秒用 MM:SS.s）
+  function formatTimeSec(sec: number, forceDecimal: boolean = false): string {
     const total = Math.max(0, sec)
     const mm = Math.floor(total / 60)
     const ss = Math.floor(total % 60)
-    return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
+    const decimal = total % 1
+    
+    const base = `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
+    
+    // 🔧 智能格式：非整秒时显示十分位
+    if (forceDecimal || decimal >= 0.05) {
+      // 四舍五入到十分位
+      const tenths = Math.round(decimal * 10)
+      if (tenths > 0 && tenths < 10) {
+        return `${base}.${tenths}`
+      }
+    }
+    
+    return base
   }
 
   // 像素位置转换为时间（主时间轴）

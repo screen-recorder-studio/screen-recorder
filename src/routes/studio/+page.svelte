@@ -1,15 +1,38 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { HardDrive, Video, Github, MessageCircle, BookOpen } from "@lucide/svelte";
+  import { HardDrive, Video, Github, MessageCircle, BookOpen, Maximize, Minimize } from "@lucide/svelte";
 
   import { recordingStore } from "$lib/stores/recording.svelte";
   import VideoPreviewComposite from "$lib/components/VideoPreviewComposite.svelte";
   import VideoExportPanel from "$lib/components/VideoExportPanel.svelte";
-  import BackgroundColorPicker from "$lib/components/BackgroundColorPicker.svelte";
+  import BackgroundPicker from "$lib/components/BackgroundPicker/index.svelte";
   import BorderRadiusControl from "$lib/components/BorderRadiusControl.svelte";
   import PaddingControl from "$lib/components/PaddingControl.svelte";
   import AspectRatioControl from "$lib/components/AspectRatioControl.svelte";
   import ShadowControl from "$lib/components/ShadowControl.svelte";
+
+  // Fullscreen control
+  let isFullscreen = $state(false);
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((e) => {
+        console.error("Fullscreen failed:", e);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  }
+
+  onMount(() => {
+    const handleFullscreenChange = () => {
+      isFullscreen = !!document.fullscreenElement;
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  });
 
   // 当前会话的 OPFS 目录 id（用于导出时触发只读日志）
   let opfsDirId = $state("");
@@ -537,18 +560,11 @@
     <div class="flex-shrink-0 p-6 border-b border-gray-200 bg-white">
       <div class="flex items-center justify-between relative">
         <!-- Left title -->
-        <div class="flex items-center gap-3">
-          <div class="flex items-center gap-2">
-            <Video class="w-6 h-6 text-blue-600" />
-            <h1 class="text-xl font-bold text-gray-800">
-              Screen Recorder Studio
-            </h1>
-          </div>
-          <span
-            class="px-2 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-sm"
-          >
-            PRO TRIAL
-          </span>
+        <div class="flex items-center gap-2">
+          <Video class="w-6 h-6 text-blue-600" />
+          <h1 class="text-xl font-bold text-gray-800">
+            Screen Recorder Studio
+          </h1>
         </div>
 
         <!-- Center video aspect ratio control -->
@@ -606,6 +622,23 @@
             />
             <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">Drive</span>
           </button>
+          <button
+            class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-300 hover:border-blue-400 hover:bg-white/70 hover:shadow-sm transition-all duration-200 group text-sm"
+            onclick={toggleFullscreen}
+            title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+          >
+            {#if isFullscreen}
+              <Minimize
+                class="w-4 h-4 text-gray-600 group-hover:text-blue-600 transition-colors duration-200"
+              />
+              <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">Exit</span>
+            {:else}
+              <Maximize
+                class="w-4 h-4 text-gray-600 group-hover:text-blue-600 transition-colors duration-200"
+              />
+              <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">Fullscreen</span>
+            {/if}
+          </button>
         </div>
       </div>
     </div>
@@ -641,8 +674,8 @@
 
   <!-- Right editing panel - allows scrolling -->
   <div class="w-100 bg-white border-l border-gray-200 flex flex-col h-full">
-    <!-- Editing panel header -->
-    <div class="flex-shrink-0 p-6 border-b border-gray-200">
+    <!-- Editing panel header - license badge + export button -->
+    <div class="flex-shrink-0 px-4 py-3">
       <VideoExportPanel
         encodedChunks={workerEncodedChunks}
         isRecordingComplete={workerStatus === "completed" ||
@@ -650,18 +683,18 @@
         totalFramesAll={globalTotalFrames}
         {opfsDirId}
         {sourceFps}
-        className="export-panel"
+        licenseTier="pro-trial"
       />
     </div>
 
     <!-- Scrollable editing content area -->
     <div class="flex-1 overflow-y-auto">
-      <div class="p-6 space-y-6">
+      <div class="px-4 py-2 space-y-4">
         <!-- Video configuration blocks -->
 
         <!-- Background color selection -->
         <div class="col-span-2 lg:col-span-1">
-          <BackgroundColorPicker />
+          <BackgroundPicker />
         </div>
 
         <!-- Border radius configuration -->

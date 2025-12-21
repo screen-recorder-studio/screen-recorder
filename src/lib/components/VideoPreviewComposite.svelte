@@ -136,7 +136,7 @@
   let isPreviewMode = $state(false)
   let previewTimeMs = $state(0)
   let previewFrameIndex = $state<number | null>(null)  // 🆕 预览帧索引（独立于播放位置）
-  let savedPlaybackState = $state<{ frameIndex: number; isPlaying: boolean } | null>(null)
+  let savedPlaybackState = $state<{ frameIndex: number; isPlaying: boolean; windowStartIndex?: number } | null>(null)
   let hoverPreviewThrottleTimer: number | null = null
   let windowSwitchThrottleTimer: number | null = null  // 🆕 窗口切换节流
   const HOVER_PREVIEW_THROTTLE_MS = 50  // 50ms 节流
@@ -144,8 +144,13 @@
 
   // 🆕 标记：是否有因预览触发的待处理窗口切换，避免 ready 时误跳到 0 帧
   let pendingPreviewWindowSwitch = false
-  //  Pending restore target after hover ends and window switch is required
+  // 🔧 Pending restore target after hover ends and window switch is required
   let pendingRestoreGlobalFrameIndex: number | null = null
+
+  // 🆕 #9 优化：预览加载状态指示器
+  let isLoadingPreview = $state(false)
+  let previewLoadingStartTime = 0
+  const PREVIEW_LOADING_DELAY_MS = 150  // 150ms 后才显示加载指示器，避免闪烁
 
 
   // UI display duration: prioritize using global frame count/frame rate (consistent with timeline), then durationMs, finally fallback to internal duration
@@ -447,6 +452,11 @@
             // 🔧 Immediately reset flag, avoid repeat trigger
             shouldContinuePlayback = false
 
+            // 🔧 修复时间线跳动：在继续播放前同步 lastFrameWindowStartIndex
+            // 这确保时间线立即反映新窗口的位置
+            lastFrameWindowStartIndex = windowStartIndex
+            currentFrameIndex = startFrame
+
             // 🔧 Use more reliable async scheduling
             requestAnimationFrame(() => {
               console.log('[progress] Starting playback in new window from frame', startFrame)
@@ -468,12 +478,13 @@
           })
 
           if (data.bitmap) {
+            // 🔧 #9 优化：收到预览帧，清除加载状态
+            isLoadingPreview = false
+            
             // 直接显示预览帧，不更新 currentFrameIndex
             displayFrame(data.bitmap)
             previewFrameIndex = data.frameIndex
             pendingPreviewWindowSwitch = false
-
-            console.log('✅ [VideoPreview] Preview frame displayed:', data.frameIndex)
           }
           break
 
@@ -1169,12 +1180,13 @@
     seekToFrame(frameIndex)
   }
 
-  // Format seconds as 00:00（mm:ss），supply time to bottom of timeline
+  // Format seconds as 00:00.xx（mm:ss.cs），显示百分秒精度
   function formatTimeSec(sec: number): string {
-    const total = Math.max(0, Math.floor(sec))
+    const total = Math.max(0, sec)
     const mm = Math.floor(total / 60)
-    const ss = total % 60
-    return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
+    const ss = Math.floor(total % 60)
+    const cs = Math.floor((total % 1) * 100)  // 百分秒 (centiseconds)
+    return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}.${String(cs).padStart(2, '0')}`
   }
 
   // ✂️ 裁剪相关函数
@@ -1190,13 +1202,15 @@
   })
 
   // 计算当前播放时间（毫秒）
+  // 🔧 修复：使用 lastFrameWindowStartIndex 而非 windowStartIndex
+  // 避免窗口切换期间 props 更新与帧渲染不同步导致的时间跳跃
   const currentTimeMs = $derived.by(() => {
     // 🔧 预览模式下，显示保存的播放位置（蓝色播放头不动）
     if (isPreviewMode && savedPlaybackState) {
       return Math.floor((savedPlaybackState.frameIndex) / frameRate * 1000)
     }
-    // 正常模式，显示当前播放位置
-    return Math.floor((windowStartIndex + currentFrameIndex) / frameRate * 1000)
+    // 正常模式：使用 lastFrameWindowStartIndex 确保与最后渲染的帧同步
+    return Math.floor((lastFrameWindowStartIndex + currentFrameIndex) / frameRate * 1000)
   })
 
   // 🆕 计算当前帧号（用于显示）
@@ -1205,8 +1219,8 @@
     if (isPreviewMode && savedPlaybackState) {
       return savedPlaybackState.frameIndex + 1
     }
-    // 正常模式，显示当前播放位置的帧号
-    return windowStartIndex + currentFrameIndex + 1
+    // 正常模式：使用 lastFrameWindowStartIndex 确保与最后渲染的帧同步
+    return lastFrameWindowStartIndex + currentFrameIndex + 1
   })
 
   // ===== Debug logging for timer and frame jumps =====
@@ -1461,17 +1475,30 @@
 
     // Check if there are more frames
     if (nextGlobalFrame < totalFramesAll) {
-      // Choose next window start point: prioritize consuming built prefetch cache, then use plan, avoid skipping cache causing discard
-      let plannedNext = nextGlobalFrame
+      // 🔧 #4 修复：简化窗口选择逻辑
+      // 核心原则：始终从 nextGlobalFrame 开始，保证帧连续性
+      // 预取缓存仅用于加速解码，不改变请求起点
+      
+      let plannedNext = nextGlobalFrame  // 🔧 始终从下一帧开始，不跳帧
       let windowSize = Math.min(90, totalFramesAll - nextGlobalFrame)
-      if (prefetchCache && prefetchCache.targetGlobalFrame >= nextGlobalFrame && prefetchCache.targetGlobalFrame > windowStartIndex) {
-        plannedNext = prefetchCache.targetGlobalFrame
-        windowSize = Math.min(prefetchCache.windowSize, totalFramesAll - plannedNext)
-        console.log('[prefetch] Using cached plan for next window:', { plannedNext, windowSize })
-      } else if (prefetchPlan && prefetchPlan.nextGlobalFrame >= nextGlobalFrame && prefetchPlan.nextGlobalFrame > windowStartIndex) {
-        plannedNext = prefetchPlan.nextGlobalFrame
-        windowSize = Math.min(prefetchPlan.windowSize, totalFramesAll - plannedNext)
-        console.log('[prefetch] Using planned next window:', { plannedNext, windowSize })
+      let usePrefetchCache = false
+      
+      // 🔧 #4 修复：预取缓存匹配检查
+      // 只有当缓存起点恰好等于 nextGlobalFrame 时才使用，否则丢弃
+      if (prefetchCache) {
+        if (prefetchCache.targetGlobalFrame === nextGlobalFrame) {
+          // ✅ 完美匹配：缓存正好是我们需要的
+          windowSize = Math.min(prefetchCache.windowSize, totalFramesAll - plannedNext)
+          usePrefetchCache = true
+          console.log('[prefetch] Cache hit: using prefetch for frame', nextGlobalFrame)
+        } else if (prefetchCache.targetGlobalFrame < nextGlobalFrame) {
+          // ❌ 缓存已过时：丢弃
+          console.log('[prefetch] Cache stale: expected', nextGlobalFrame, 'but cache starts at', prefetchCache.targetGlobalFrame)
+          prefetchCache = null
+        } else {
+          // ⚠️ 缓存是未来的：暂时保留，但不使用
+          console.log('[prefetch] Cache for future frame', prefetchCache.targetGlobalFrame, ', requesting', nextGlobalFrame)
+        }
       }
 
       // Guard: avoid requesting non-forward or out-of-range window at tail
@@ -1485,32 +1512,30 @@
       console.log('[progress] Requesting next window for continuous playback:', {
         nextGlobalFrame: plannedNext,
         totalFramesAll,
-        remainingFrames: totalFramesAll - plannedNext
+        remainingFrames: totalFramesAll - plannedNext,
+        usePrefetchCache
       })
-
-      // Mark need to continue playback after new window loads (set before request)
 
       // Observation: cutover time start point
       cutoverPlannedNext = plannedNext
       cutoverTimerLabel = `[cutover] to ${plannedNext}`
       try { console.time(cutoverTimerLabel) } catch {}
 
+      // 🔧 #4 修复：始终从 nextGlobalFrame 继续
       shouldContinuePlayback = true
       continueFromGlobalFrame = plannedNext
-      console.log('[progress] Set shouldContinuePlayback = true, continueFromGlobalFrame =', plannedNext)
 
       // 🔧 Directly use frame range request, avoid time conversion error
       if (onRequestWindow) {
-        // First try time method (maintain compatibility)
         const nextTimeMs = (plannedNext / frameRate) * 1000
         onRequestWindow({
           centerMs: nextTimeMs,
-          beforeMs: 0,      // Start from target frame
-          afterMs: (windowSize / frameRate) * 1000  // Based on window size calculation
+          beforeMs: 0,
+          afterMs: (windowSize / frameRate) * 1000
         })
       }
 
-      // Clear plan once after this request (avoid reusing expired plan)
+      // Clear plan once after this request
       prefetchPlan = null
     } else {
       console.log('[progress] Reached end of video, stopping playback')
@@ -1576,7 +1601,7 @@
     seekToGlobalTime(clampedMs)
   }
 
-  // 🆕 处理鼠标悬停预览
+  // 🆕 处理鼠标悬停预览 - #9 #10 优化版本
   function handleHoverPreview(timeMs: number) {
     // 🔧 防御性检查：确保时间值有效
     if (typeof timeMs !== 'number' || isNaN(timeMs) || timeMs < 0) {
@@ -1595,10 +1620,11 @@
       // 进入预览模式
       isPreviewMode = true
 
-      // 保存当前播放状态
+      // 🔧 #10 优化：保存当前播放状态（使用更安全的深拷贝）
       savedPlaybackState = {
-        frameIndex: windowStartIndex + currentFrameIndex,  // 当前播放位置
-        isPlaying: isPlaying
+        frameIndex: windowStartIndex + currentFrameIndex,  // 保存全局帧位置
+        isPlaying: isPlaying,
+        windowStartIndex: windowStartIndex  // 🆕 同时保存窗口信息
       }
 
       // 暂停播放（如果正在播放）
@@ -1616,58 +1642,60 @@
     previewTimeMs = timeMs
 
     if (windowFrameIndex >= 0 && windowFrameIndex < totalFrames) {
-      // 🔧 在当前窗口内，请求预览帧
+      // 🔧 #9 优化：在当前窗口内，立即清除加载状态
+      isLoadingPreview = false
+
+      // 请求预览帧
       if (compositeWorker) {
         compositeWorker.postMessage({
           type: 'preview-frame',
           data: { frameIndex: windowFrameIndex }
         })
-
-        console.log('🔍 [Preview] Requesting preview frame:', {
-          timeMs,
-          globalFrameIndex,
-          windowFrameIndex,
-          windowStartIndex,
-          totalFrames
-        })
-      } else {
-        console.warn('⚠️ [Preview] Worker not available')
       }
     } else {
-      // 🔧 不在当前窗口，触发窗口切换（带节流）
+      // 🔧 #9 优化：不在当前窗口，显示加载指示器并触发窗口切换
       if (!windowSwitchThrottleTimer) {
         windowSwitchThrottleTimer = window.setTimeout(() => {
           windowSwitchThrottleTimer = null
         }, WINDOW_SWITCH_THROTTLE_MS)
 
-        console.log('🔍 [Preview] Frame outside current window, switching window:', {
-          globalFrameIndex,
-          windowStartIndex,
-          totalFrames,
-          targetTimeMs: timeMs
-        })
+        // 🆕 #9：延迟显示加载指示器，避免快速滑动时闪烁
+        previewLoadingStartTime = performance.now()
+        setTimeout(() => {
+          // 仅在仍在等待且超过延迟阈值时显示
+          if (isPreviewMode && pendingPreviewWindowSwitch && 
+              performance.now() - previewLoadingStartTime >= PREVIEW_LOADING_DELAY_MS) {
+            isLoadingPreview = true
+          }
+        }, PREVIEW_LOADING_DELAY_MS)
 
         // 触发窗口切换
         const targetTimeMs = (globalFrameIndex / frameRate) * 1000
         pendingPreviewWindowSwitch = true
+        
+        // 🔧 #9 优化：使用更小的窗口减少加载时间
         onRequestWindow?.({
           centerMs: targetTimeMs,
-          beforeMs: 1500,
-          afterMs: 1500
+          beforeMs: 500,   // 减小：原 1500ms
+          afterMs: 1000    // 减小：原 1500ms
         })
       }
     }
   }
 
-  // 🆕 处理预览结束
+  // 🆕 处理预览结束 - #10 优化版本：修复恢复边界情况
   function handleHoverPreviewEnd() {
     if (!isPreviewMode) {
-      console.log('🔍 [Preview] Already exited preview mode, skipping')
+      // 🔧 #9：即使不在预览模式，也清理加载状态
+      isLoadingPreview = false
       return
     }
 
     console.log('🔍 [Preview] Exiting preview mode...')
 
+    // 🔧 #9：立即清理加载状态
+    isLoadingPreview = false
+    
     // 🔧 清理预览状态
     isPreviewMode = false
     previewFrameIndex = null
@@ -1682,46 +1710,61 @@
       windowSwitchThrottleTimer = null
     }
 
-    // 🔧 关键：恢复到保存的播放位置
+    // 🔧 #10 核心修复：恢复到保存的播放位置
     if (savedPlaybackState) {
       const savedGlobalFrameIndex = savedPlaybackState.frameIndex
+      const savedOriginalWindowStart = savedPlaybackState.windowStartIndex ?? savedGlobalFrameIndex
       const savedWindowFrameIndex = savedGlobalFrameIndex - windowStartIndex
+      const wasPlaying = savedPlaybackState.isPlaying
 
       console.log('🔍 [Preview] Restoring to saved playback position:', {
         savedGlobalFrameIndex,
+        savedOriginalWindowStart,
         savedWindowFrameIndex,
         windowStartIndex,
-        currentFrameIndex,
-        wasPlaying: savedPlaybackState.isPlaying
+        totalFrames,
+        wasPlaying
       })
 
-      // 🔧 恢复到保存的帧位置（窗口内索引）
-      if (savedWindowFrameIndex >= 0 && savedWindowFrameIndex < totalFrames) {
-        // 在当前窗口内，直接 seek
+      // 🔧 #10 修复：更宽容的边界判断
+      // 即使保存的帧在当前窗口边界外一点，也尝试 clamp 到有效范围
+      const clampedWindowFrameIndex = Math.max(0, Math.min(savedWindowFrameIndex, totalFrames - 1))
+      const isWithinWindow = savedWindowFrameIndex >= 0 && savedWindowFrameIndex < totalFrames
+      const isCloseEnough = Math.abs(savedWindowFrameIndex - clampedWindowFrameIndex) <= 5  // 允许 5 帧误差
+
+      if (isWithinWindow || isCloseEnough) {
+        // 在当前窗口内或接近边界，直接 seek 到 clamp 后的位置
         if (compositeWorker) {
           compositeWorker.postMessage({
             type: 'seek',
-            data: { frameIndex: savedWindowFrameIndex }
+            data: { frameIndex: clampedWindowFrameIndex }
           })
-          currentFrameIndex = savedWindowFrameIndex
+          currentFrameIndex = clampedWindowFrameIndex
         }
-        // 无窗口切换，安全清除 pending 状态
+        // 清除 pending 状态
         pendingPreviewWindowSwitch = false
         pendingRestoreGlobalFrameIndex = null
+
+        // 恢复播放状态
+        if (wasPlaying) {
+          requestAnimationFrame(() => {
+            play()
+          })
+        }
       } else {
-        // 不在当前窗口，需要跳转到保存的全局位置，标记恢复目标并触发切窗
-        console.warn('⚠️ [Preview] Saved position outside current window, seeking to global frame')
+        // 🔧 #10 修复：需要跳转到保存的全局位置
+        // 先标记恢复目标，再触发窗口切换
         pendingRestoreGlobalFrameIndex = savedGlobalFrameIndex
         pendingPreviewWindowSwitch = true
+        
+        // 🆕 保存是否需要恢复播放的标志
+        if (wasPlaying) {
+          // 使用 shouldContinuePlayback 复用连续播放逻辑
+          shouldContinuePlayback = true
+          continueFromGlobalFrame = savedGlobalFrameIndex
+        }
+        
         seekToGlobalFrame(savedGlobalFrameIndex)
-      }
-
-      // 恢复播放状态
-      if (savedPlaybackState.isPlaying) {
-        requestAnimationFrame(() => {
-          console.log('🔍 [Preview] Resuming playback...')
-          play()
-        })
       }
 
       savedPlaybackState = null
@@ -1731,8 +1774,6 @@
       pendingPreviewWindowSwitch = false
       pendingRestoreGlobalFrameIndex = null
     }
-
-    console.log('🔍 [Preview] Hover preview ended, restore handled')
   }
 
   // 🆕 处理 Zoom 区间变化
@@ -2073,6 +2114,14 @@
             <span class="text-sm">Processing video...</span>
           </div>
         {/if}
+        
+        {#if isLoadingPreview && !isProcessing}
+          <!-- 🆕 #9 优化：预览加载指示器 - 轻量级设计，不遮挡视频 -->
+          <div class="absolute top-3 right-3 flex items-center gap-2 px-3 py-1.5 bg-black/70 rounded-full backdrop-blur-sm">
+            <LoaderCircle class="w-4 h-4 text-blue-400 animate-spin" />
+            <span class="text-xs text-gray-200">Loading...</span>
+          </div>
+        {/if}
       </div>
     </div>
 
@@ -2111,25 +2160,25 @@
           {/if}
         </div>
 
-        <!-- 中间：播放按钮 + 时间显示 -->
-        <div class="flex items-center gap-3 flex-shrink-0">
+        <!-- 中间：播放按钮 + 时间显示 - 带圆角矩形背景（毛玻璃效果） -->
+        <div class="flex items-center gap-3 flex-shrink-0 px-4 py-2 bg-gray-700/90 rounded-full border border-gray-500/50 shadow-lg backdrop-blur-lg">
           <!-- 播放/暂停按钮 -->
           <button
-            class="flex items-center justify-center w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-600"
+            class="flex items-center justify-center w-9 h-9 bg-blue-600 hover:bg-blue-500 text-white rounded-full shadow-md cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-600 hover:scale-105"
             onclick={isPlaying ? pause : play}
             disabled={isProcessing}
             title={isPlaying ? 'Pause' : 'Play'}
           >
             {#if isPlaying}
-              <Pause class="w-5 h-5" />
+              <Pause class="w-4 h-4" />
             {:else}
-              <Play class="w-5 h-5 ml-0.5" />
+              <Play class="w-4 h-4 ml-0.5" />
             {/if}
           </button>
 
           <!-- 时间显示 -->
-          <span class="font-mono text-sm text-gray-300 whitespace-nowrap">
-            {formatTimeSec(currentTimeMs / 1000)} / {formatTimeSec(uiDurationSec)}
+          <span class="font-mono text-sm text-gray-200 whitespace-nowrap tracking-tight">
+            {formatTimeSec(currentTimeMs / 1000)} <span class="text-gray-500">/</span> {formatTimeSec(uiDurationSec)}
           </span>
         </div>
 
