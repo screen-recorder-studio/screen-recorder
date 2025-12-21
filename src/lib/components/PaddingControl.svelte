@@ -1,6 +1,6 @@
 <!-- Padding configuration control -->
 <script lang="ts">
-  import { Move, Minimize2, Maximize2, Eye, SlidersHorizontal } from '@lucide/svelte'
+  import { Move, Minimize2, Maximize2, SlidersHorizontal } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
 
   // Current padding value
@@ -32,13 +32,6 @@
   function isPresetSelected(value: number) {
     return currentPadding === value
   }
-
-  // Calculate preview padding - use smaller ratio and set maximum value
-  const previewPadding = $derived(Math.min(Math.round(currentPadding * 0.2), 40))
-
-  // Determine display text based on padding size
-  const displayText = $derived(currentPadding > 150 ? 'Video' : 'Video Area')
-  const showPaddingValue = $derived(currentPadding <= 120)
 </script>
 
 <!-- Padding configuration control -->
@@ -85,40 +78,6 @@
         <span>{preset.name}</span>
       </button>
     {/each}
-  </div>
-
-  <!-- Visual preview -->
-  <div class="mt-4">
-    <div class="flex items-center gap-2 mb-2">
-      <Eye class="w-3 h-3 text-gray-600" />
-      <div class="text-xs text-gray-600 font-medium">Preview Effect:</div>
-    </div>
-    <div class="flex flex-col gap-2">
-      <div class="flex items-center justify-center p-6 bg-gray-50 rounded-md">
-        <div
-          class="w-48 h-32 bg-gray-200 border-2 border-gray-300 rounded flex items-center justify-center transition-all duration-300"
-          style="padding: {previewPadding}px"
-        >
-          <div class="bg-emerald-500 text-white font-medium rounded flex items-center justify-center w-full h-full min-w-[60px] min-h-[40px]"
-               class:text-xs={currentPadding > 150}
-               class:text-sm={currentPadding <= 150}
-               class:p-1={currentPadding > 150}
-               class:p-2={currentPadding > 100 && currentPadding <= 150}
-               class:p-3={currentPadding <= 100}>
-            <span class="text-center leading-tight overflow-hidden">
-              {displayText}
-              {#if showPaddingValue}
-                <br>
-                <span class="text-xs opacity-90">{currentPadding}px</span>
-              {/if}
-            </span>
-          </div>
-        </div>
-      </div>
-      <div class="text-xs text-gray-600 text-center font-medium">
-        Padding: {currentPadding}px
-      </div>
-    </div>
   </div>
 </div>
 

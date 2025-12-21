@@ -1,7 +1,7 @@
 <!-- Border radius configuration control -->
 
 <script lang="ts">
-  import { Square, Circle, Eye, SlidersHorizontal } from '@lucide/svelte'
+  import { Square, Circle, SlidersHorizontal } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
 
   // Current border radius value
@@ -79,25 +79,6 @@
         <span>{preset.name}</span>
       </button>
     {/each}
-  </div>
-
-  <!-- Visual preview -->
-  <div class="mt-4">
-    <div class="flex items-center gap-2 mb-2">
-      <Eye class="w-3 h-3 text-gray-600" />
-      <div class="text-xs text-gray-600 font-medium">Preview Effect:</div>
-    </div>
-    <div class="flex items-center justify-center p-6 bg-gray-50 rounded-md">
-      <div
-        class="w-40 h-28 bg-gradient-to-br from-blue-100 to-purple-100 border-2 border-gray-300 flex items-center justify-center transition-all duration-300 overflow-hidden shadow-sm"
-        style="border-radius: {currentRadius}px"
-      >
-        <div class="text-sm text-gray-700 text-center font-medium">
-          Video Area<br>
-          <span class="text-xs text-gray-500">{currentRadius}px radius</span>
-        </div>
-      </div>
-    </div>
   </div>
 </div>
 
