@@ -1,13 +1,5 @@
 # Web 视频剪辑引擎 (1)：内存虚拟化与滑动窗口机制
 
-> 🌟 开源不易，觉得好用请给个 Star 支持一下：[GitHub](https://github.com/screen-recorder-studio/screen-recorder)
->
-> 🚀 立即去 Chrome 商店免费体验：[Chrome Web Store](https://chromewebstore.google.com/detail/screen-recorder-studio-fo/bondbeldfibfmdjlcnomlaooklacmfpa)
-
----
-
-## 1. 引言：当 5GB 视频遇见 2GB 内存
-
 想象一下，你刚录制完一场精彩的 10 分钟 4K 游戏对局，兴冲冲地把这个 5GB 的视频文件拖进浏览器准备剪辑。进度条刚走到一半，屏幕突然一白，弹出了那张熟悉的、令人心碎的脸——**"Aw, Snap!" (崩溃啦)**。
 
 这就是我们在开发 **Screen Recorder Studio** 时撞上的第一堵墙。
@@ -18,7 +10,12 @@
 
 这就是**内存虚拟化**与**滑动窗口**的故事。
 
-## 2. "滑动窗口" 架构设计
+> 🌟 **关于本项目**
+> Screen Recorder Studio 是一个基于 Web 技术的开源视频录制与编辑工具。如果你对其中的技术实现感兴趣，欢迎访问我们的 [GitHub](https://github.com/screen-recorder-studio/screen-recorder) 或直接在 [Chrome 商店](https://chromewebstore.google.com/detail/screen-recorder-studio-fo/bondbeldfibfmdjlcnomlaooklacmfpa) 体验。
+
+---
+
+## 1. "滑动窗口" 架构设计
 
 为了解决上述问题，我们设计了**滑动窗口（Sliding Window）**机制。
 
@@ -58,7 +55,7 @@ let globalTotalFrames = $state(0); // 总帧数
 let windowStartIndex = $state(0);  // 当前窗口第一帧在全局的索引
 ```
 
-## 3. 核心算法：智能窗口计算
+## 2. 核心算法：智能窗口计算
 
 如何决定窗口该“切”哪一部分？我们在 `computeFrameWindow` 函数中实现了这一逻辑。它不仅仅是简单的“前后各取 2 秒”，而是包含了一套基于用户行为的预测策略。
 
@@ -96,7 +93,7 @@ function computeFrameWindow(params: FrameWindowParams): FrameWindowResult {
 }
 ```
 
-## 4. 数据流与 Svelte 5 响应式驱动
+## 3. 数据流与 Svelte 5 响应式驱动
 
 Screen Recorder Studio 全面采用了 **Svelte 5 Runes** (`$state`, `$derived`, `$effect`) 来管理这套复杂的数据流。
 
@@ -123,11 +120,11 @@ Screen Recorder Studio 全面采用了 **Svelte 5 Runes** (`$state`, `$derived`,
     }
     ```
 
-## 5. 性能优化的两个关键点
+## 4. 性能优化的两个关键点
 
 在实现滑动窗口时，我们发现了两个决定成败的性能细节。
 
-### 5.1 内存策略："整窗替换" vs "追加缓冲"
+### 4.1 内存策略："整窗替换" vs "追加缓冲"
 在**数据层（Compressed Chunks）**，我们选择了**整窗替换**策略。
 - **追加缓冲 (Ring Buffer)**：虽然听起来更“复用”，但在 Web Worker 间频繁传递小块数据并维护复杂的环形指针极易出错（Off-by-one error），且容易产生内存碎片。
 - **整窗替换**：简单粗暴。每次窗口切换，旧的 `ArrayBuffer` 引用丢失，新的 `ArrayBuffer` 进场。
@@ -135,7 +132,7 @@ Screen Recorder Studio 全面采用了 **Svelte 5 Runes** (`$state`, `$derived`,
 
 > **注**：在**解码层（VideoFrames）**，由于 `VideoFrame` 对象持有显存资源且必须手动 `close()`，我们在 Worker 内部依然维护了一个严格限制大小的队列（例如最多 150 帧），这与数据层的策略有所不同。
 
-### 5.2 I/O 策略：批量读取 (Batch Read)
+### 4.2 I/O 策略：批量读取 (Batch Read)
 这是我们在性能分析中发现的 P0 级优化点。
 最初，我们的逻辑是“要 100 帧，就循环 100 次 `FileHandle.slice()`”。结果发现拖动时间轴时 I/O 延迟巨大。
 
@@ -158,7 +155,7 @@ const totalBuf = await totalSlice.arrayBuffer();
 
 这一改动将 I/O 耗时从 **50ms+** 降低到了 **2ms** 左右。
 
-## 6. 总结与悬念
+## 5. 总结与悬念
 
 通过**滑动窗口机制**与**批量 I/O 优化**，Screen Recorder Studio 成功地将“对文件大小的依赖”转化为了“对时间切片大小的依赖”。
 - 不管你录制了 10 分钟还是 10 小时，我们的编辑器内存占用始终保持在 **200MB 左右**。

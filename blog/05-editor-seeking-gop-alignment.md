@@ -1,13 +1,5 @@
 # Web 视频剪辑引擎 (2)：基于 OPFS 与 GOP 的帧级精准定位
 
-> 🌟 开源不易，觉得好用请给个 Star 支持一下：[GitHub](https://github.com/screen-recorder-studio/screen-recorder)
->
-> 🚀 立即去 Chrome 商店免费体验：[Chrome Web Store](https://chromewebstore.google.com/detail/screen-recorder-studio-fo/bondbeldfibfmdjlcnomlaooklacmfpa)
-
----
-
-## 1. 引言：从“虚拟内存”到“精准导航”
-
 在[上一篇文章](./04-editor-memory-sliding-window.md)中，我们成功构建了一套“滑动窗口”机制，像打地道战一样，让浏览器在毫不知情的情况下处理了几个 GB 的视频文件。内存崩溃的危机解除了。
 
 但是，新的挑战随之而来。
@@ -18,7 +10,12 @@
 
 今天，我们将深入 Screen Recorder Studio 的存储与读取引擎（`opfs-reader-worker.ts`），揭秘如何实现**帧级精准（Frame-Accurate）**的定位。
 
-## 2. 视频的物理定律：GOP 与依赖链
+> 🌟 **关于本项目**
+> Screen Recorder Studio 是一个基于 Web 技术的开源视频录制与编辑工具。如果你对其中的技术实现感兴趣，欢迎访问我们的 [GitHub](https://github.com/screen-recorder-studio/screen-recorder) 或直接在 [Chrome 商店](https://chromewebstore.google.com/detail/screen-recorder-studio-fo/bondbeldfibfmdjlcnomlaooklacmfpa) 体验。
+
+---
+
+## 1. 视频的物理定律：GOP 与依赖链
 
 要理解我们的代码逻辑，首先得理解视频编码的一个物理定律：**不是每一帧都是独立的**。
 
@@ -49,7 +46,7 @@ graph LR
 **由此引出我们的核心算法铁律：**
 > **无论用户请求哪一帧，读取操作都必须“回溯”到该帧所属 GOP 的开头（I 帧）。**
 
-## 3. 绘制地图：`index.jsonl`
+## 2. 绘制地图：`index.jsonl`
 
 为了在茫茫二进制数据中快速导航，我们在录制阶段就绘制了一张“地图”。
 
@@ -64,7 +61,7 @@ graph LR
 
 在 `opfs-reader-worker.ts` 初始化时，我们会将这个轻量级的索引加载进内存。这就是我们的**导航仪**。
 
-## 4. 核心算法：精准定位三步走
+## 3. 核心算法：精准定位三步走
 
 当 UI 线程请求 `centerMs: 5000`（5秒处）的数据时，Worker 内部发生了一场精密的手术：
 
@@ -132,14 +129,14 @@ for (let i = startIdx; i < endIdx; i++) {
 
 这种优化将 I/O 次数从 N 次降低到了 1 次，在 HDD 或低速 SSD 上性能提升尤为明显。
 
-## 5. 代价与挑战：解码器的“时间魔法”
+## 4. 代价与挑战：解码器的“时间魔法”
 
-### 5.1 精准的代价
+### 4.1 精准的代价
 GOP 对齐虽然保证了画面不花，但也带来了计算成本。
 **极端情况**：如果一个 GOP 长达 10 秒（比如录制静态画面时），用户只是想看第 9.9 秒的一帧，我们依然必须读取并解码前 9.9 秒的所有数据。
 这就是为什么我们在下一篇“渲染流水线”中需要引入复杂的**帧缓冲（Frame Buffer）**机制——解码过的帧必须缓存起来，不能用完即弃。
 
-### 5.2 微秒 vs 毫秒的归一化
+### 4.2 微秒 vs 毫秒的归一化
 - **WebCodecs 内核**：严格使用 **微秒 (μs)** (`timestamp`)。录制出的时间戳通常是相对于“系统启动时间”的单调递增值（例如 `13948200000`）。
 - **UI 显示**：使用 **毫秒 (ms)**，且必须从 `00:00` 开始。
 
@@ -151,7 +148,7 @@ const relativeMs = (chunk.timestamp - firstTimestamp) / 1000;
 
 这样做的好处是，无论录制时的系统时间是多少，在编辑器里，第一帧永远是 `00:00.000`，保证了时间轴显示的整洁与一致。
 
-## 6. 总结与悬念
+## 5. 总结与悬念
 
 通过 **index.jsonl 索引**、**二分查找**、**关键帧回溯** 和 **批量读取优化**，Screen Recorder Studio 实现了对 OPFS 文件的毫秒级随机访问。
 
