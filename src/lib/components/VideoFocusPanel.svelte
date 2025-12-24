@@ -1,7 +1,17 @@
 <script lang="ts">
   import { onMount } from 'svelte'
+  import type { ZoomMode, ZoomEasing } from '$lib/stores/video-zoom.svelte'
 
   interface FocusPoint { x: number; y: number; space?: 'source' | 'layout' }
+
+  // 🆕 P1: 扩展的 payload 类型，包含模式/缓动/过渡时长
+  interface ZoomPayload {
+    focus: Required<FocusPoint>
+    scale: number
+    mode: ZoomMode
+    easing: ZoomEasing
+    transitionDurationMs: number
+  }
 
   interface Props {
     frameBitmap: ImageBitmap
@@ -9,7 +19,11 @@
     videoHeight: number
     initialFocus?: FocusPoint
     initialScale?: number
-    onConfirm?: (payload: { focus: Required<FocusPoint>; scale: number }) => void
+    // 🆕 P1: 新增初始属性
+    initialMode?: ZoomMode
+    initialEasing?: ZoomEasing
+    initialTransitionDurationMs?: number
+    onConfirm?: (payload: ZoomPayload) => void
     onCancel?: () => void
   }
 
@@ -19,12 +33,35 @@
     videoHeight,
     initialFocus = { x: 0.5, y: 0.5, space: 'source' },
     initialScale = 1.5,
+    initialMode = 'dolly',
+    initialEasing = 'smooth',
+    initialTransitionDurationMs = 300,
     onConfirm,
     onCancel
   }: Props = $props()
 
+  // 缩放倍数选项
   const scaleOptions = [1.25, 1.5, 2.0, 2.5, 3.0]
   let selectedScale = $state(initialScale ?? 1.5)
+
+  // 🆕 P1: Zoom 模式选项
+  const modeOptions: { value: ZoomMode; label: string; description: string }[] = [
+    { value: 'dolly', label: 'Dolly', description: 'Moves focus point to center' },
+    { value: 'anchor', label: 'Anchor', description: 'Focus point stays fixed' }
+  ]
+  let selectedMode = $state<ZoomMode>(initialMode)
+
+  // 🆕 P1: 缓动类型选项
+  const easingOptions: { value: ZoomEasing; label: string; description: string }[] = [
+    { value: 'smooth', label: 'Smooth', description: 'Ease in-out' },
+    { value: 'linear', label: 'Linear', description: 'Constant speed' },
+    { value: 'punch', label: 'Instant', description: 'Immediate jump' }
+  ]
+  let selectedEasing = $state<ZoomEasing>(initialEasing)
+
+  // 🆕 P1: 过渡时长选项
+  const transitionOptions = [0, 100, 200, 300, 500, 800, 1000]
+  let selectedTransitionDurationMs = $state(initialTransitionDurationMs)
 
   // Canvas & layout
   let containerEl = $state<HTMLDivElement | null>(null)
@@ -117,7 +154,14 @@
   }
 
   function handleConfirm() {
-    onConfirm?.({ focus: { x: focus.x, y: focus.y, space: focus.space }, scale: selectedScale })
+    // 🆕 P1: 扩展 payload 包含模式/缓动/过渡时长
+    onConfirm?.({
+      focus: { x: focus.x, y: focus.y, space: focus.space },
+      scale: selectedScale,
+      mode: selectedMode,
+      easing: selectedEasing,
+      transitionDurationMs: selectedTransitionDurationMs
+    })
   }
   function handleCancel() {
     onCancel?.()
@@ -193,12 +237,42 @@
     left: 0;
     transform: translateY(-50%);
   }
-  .toolbar {
+  /* 🆕 P1: 扩展工具栏样式 */
+  .toolbar-extended {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    background: #111827;
+    border-radius: 0.5rem;
+    border: 1px solid #374151;
+  }
+  .toolbar-row {
     display: flex;
     align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .toolbar-actions {
+    justify-content: space-between;
+    margin-top: 0.25rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #374151;
+  }
+  .toolbar-buttons {
+    display: flex;
     gap: 0.5rem;
-    margin-top: 0.5rem;
-    justify-content: flex-end;
+  }
+  .opt-group {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+  .mode-hint {
+    color: #9ca3af;
+    font-size: 0.75rem;
+    font-style: italic;
   }
   .btn {
     padding: 0.35rem 0.6rem;
@@ -206,11 +280,13 @@
     border: none;
     cursor: pointer;
     color: white;
+    font-size: 0.875rem;
   }
   .btn-confirm { background: #2563eb; }
   .btn-cancel { background: #374151; }
-  .opt-label { color: #d1d5db; font-size: 0.875rem; }
-  .opt-select { background:#111827; color:#e5e7eb; border:1px solid #374151; border-radius:0.375rem; padding:0.25rem 0.5rem; }
+  .opt-label { color: #9ca3af; font-size: 0.75rem; white-space: nowrap; }
+  .opt-select { background:#1f2937; color:#e5e7eb; border:1px solid #4b5563; border-radius:0.375rem; padding:0.25rem 0.5rem; font-size: 0.875rem; }
+  .opt-select:focus { outline: none; border-color: #3b82f6; }
 
   .btn:hover { opacity: 0.9 }
 </style>
@@ -235,15 +311,62 @@
     </div>
 
   </div>
-  <div class="toolbar">
-    <label class="opt-label" for="scale-select">缩放倍数</label>
-    <select id="scale-select" class="opt-select" bind:value={selectedScale}>
-      {#each scaleOptions as s}
-        <option value={s}>{s}x</option>
-      {/each}
-    </select>
-    <button class="btn btn-cancel" onclick={handleCancel}>Cancel</button>
-    <button class="btn btn-confirm" onclick={handleConfirm}>Confirm</button>
+
+  <!-- 🆕 P1: 扩展的工具栏，包含模式/缓动/过渡时长选择器 -->
+  <div class="toolbar-extended">
+    <!-- 第一行：核心参数 -->
+    <div class="toolbar-row">
+      <div class="opt-group">
+        <label class="opt-label" for="mode-select">Mode</label>
+        <select id="mode-select" class="opt-select" bind:value={selectedMode} title={modeOptions.find(o => o.value === selectedMode)?.description}>
+          {#each modeOptions as opt}
+            <option value={opt.value}>{opt.label}</option>
+          {/each}
+        </select>
+      </div>
+
+      <div class="opt-group">
+        <label class="opt-label" for="scale-select">Scale</label>
+        <select id="scale-select" class="opt-select" bind:value={selectedScale}>
+          {#each scaleOptions as s}
+            <option value={s}>{s}x</option>
+          {/each}
+        </select>
+      </div>
+
+      <div class="opt-group">
+        <label class="opt-label" for="easing-select">Easing</label>
+        <select id="easing-select" class="opt-select" bind:value={selectedEasing} title={easingOptions.find(o => o.value === selectedEasing)?.description}>
+          {#each easingOptions as opt}
+            <option value={opt.value}>{opt.label}</option>
+          {/each}
+        </select>
+      </div>
+
+      <div class="opt-group">
+        <label class="opt-label" for="transition-select">Duration</label>
+        <select id="transition-select" class="opt-select" bind:value={selectedTransitionDurationMs}>
+          {#each transitionOptions as ms}
+            <option value={ms}>{ms === 0 ? 'None' : `${ms}ms`}</option>
+          {/each}
+        </select>
+      </div>
+    </div>
+
+    <!-- 第二行：操作按钮 -->
+    <div class="toolbar-row toolbar-actions">
+      <span class="mode-hint">
+        {#if selectedMode === 'dolly'}
+          Dolly: Focus point moves to center
+        {:else}
+          Anchor: Focus point stays fixed
+        {/if}
+      </span>
+      <div class="toolbar-buttons">
+        <button class="btn btn-cancel" onclick={handleCancel}>Cancel</button>
+        <button class="btn btn-confirm" onclick={handleConfirm}>Confirm</button>
+      </div>
+    </div>
   </div>
 </div>
 

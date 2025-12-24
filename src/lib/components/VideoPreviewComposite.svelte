@@ -7,7 +7,7 @@
   import { imageBackgroundManager } from '$lib/services/image-background-manager'
   import { trimStore } from '$lib/stores/trim.svelte'
   import { videoCropStore } from '$lib/stores/video-crop.svelte'
-  import { videoZoomStore } from '$lib/stores/video-zoom.svelte'
+  import { videoZoomStore, type ZoomMode, type ZoomEasing } from '$lib/stores/video-zoom.svelte'
   import VideoCropPanel from './VideoCropPanel.svelte'
   import VideoFocusPanel from './VideoFocusPanel.svelte'
   import Timeline from './Timeline.svelte'
@@ -125,6 +125,7 @@
   let isFocusMode = $state(false)
   let focusIntervalIndex = $state<number | null>(null)
   let focusFrameBitmap = $state<ImageBitmap | null>(null)
+  let focusFrameSize = $state<{ width: number; height: number } | null>(null)  // 🔧 独立的焦点帧尺寸
   let pendingFocusGlobalFrame: number | null = null
 
   let pendingFocusIntervalIndex: number | null = null
@@ -406,8 +407,10 @@
               pendingPreviewWindowSwitch = false
             } else {
               console.warn('⚠️ [Preview] Pending restore target still outside new window')
+            }
+          }
 
-          // 🎯 若存在挂起的焦点设置请求，优先处理
+          // 🎯 若存在挂起的焦点设置请求，优先处理（独立于恢复请求）
           if (pendingFocusGlobalFrame != null && pendingFocusIntervalIndex != null) {
             const targetWindowFrame = pendingFocusGlobalFrame - windowStartIndex
             if (targetWindowFrame >= 0 && targetWindowFrame < data.totalFrames) {
@@ -415,7 +418,7 @@
                 try {
                   const bitmap = await getRawSourceFrameBitmapForWindowIndex(targetWindowFrame)
                   focusFrameBitmap = bitmap
-                  videoInfo = { width: bitmap.width, height: bitmap.height }
+                  focusFrameSize = { width: bitmap.width, height: bitmap.height }  // 🔧 使用独立变量
                   focusIntervalIndex = pendingFocusIntervalIndex
                   isFocusMode = true
                   // 清理挂起状态
@@ -428,9 +431,6 @@
               })()
             } else {
               console.warn('⚠️ [VideoPreview] Pending focus target still outside new window')
-            }
-          }
-
             }
           }
 
@@ -1944,7 +1944,7 @@
       if (compositeWorker && windowFrameIndex >= 0 && windowFrameIndex < totalFrames) {
         const bitmap = await getRawSourceFrameBitmapForWindowIndex(windowFrameIndex)
         focusFrameBitmap = bitmap
-        videoInfo = { width: bitmap.width, height: bitmap.height }
+        focusFrameSize = { width: bitmap.width, height: bitmap.height }  // 🔧 使用独立变量
         focusIntervalIndex = intervalIndex
         isFocusMode = true
         return
@@ -1972,12 +1972,32 @@
   }
 
   // 🎯 退出焦点模式（可选择应用）
-  async function exitFocusMode(apply: boolean, payload?: { focus: { x: number; y: number; space: 'source' | 'layout' }; scale?: number }) {
+  // 🆕 P1: 扩展 payload 支持 mode, easing, transitionDurationMs
+  interface FocusModePayload {
+    focus: { x: number; y: number; space: 'source' | 'layout' }
+    scale?: number
+    mode?: ZoomMode
+    easing?: ZoomEasing
+    transitionDurationMs?: number
+  }
+
+  async function exitFocusMode(apply: boolean, payload?: FocusModePayload) {
     try {
       if (apply && payload && focusIntervalIndex != null) {
+        // 基础属性
         videoZoomStore.setIntervalFocus(focusIntervalIndex, payload.focus)
         if (payload.scale != null) {
           videoZoomStore.setIntervalScale(focusIntervalIndex, payload.scale)
+        }
+        // 🆕 P1: 新增属性
+        if (payload.mode != null) {
+          videoZoomStore.setIntervalMode(focusIntervalIndex, payload.mode)
+        }
+        if (payload.easing != null) {
+          videoZoomStore.setIntervalEasing(focusIntervalIndex, payload.easing)
+        }
+        if (payload.transitionDurationMs != null) {
+          videoZoomStore.setIntervalTransitionDuration(focusIntervalIndex, payload.transitionDurationMs)
         }
         await updateBackgroundConfig(backgroundConfig)
         if (!isPlaying) {
@@ -1991,6 +2011,7 @@
         try { focusFrameBitmap.close() } catch {}
         focusFrameBitmap = null
       }
+      focusFrameSize = null  // 🔧 清理焦点帧尺寸
       focusIntervalIndex = null
     }
   }
@@ -2262,17 +2283,20 @@
   <!-- 🎯 焦点设置模式 - 独立显示，不销毁 Canvas -->
   {#if isFocusMode}
     <div class="flex-1 flex items-center justify-center p-4 min-h-0">
-      {#if focusFrameBitmap && videoInfo}
+      {#if focusFrameBitmap && focusFrameSize}
         <VideoFocusPanel
           frameBitmap={focusFrameBitmap}
-          videoWidth={videoInfo.width}
-          videoHeight={videoInfo.height}
+          videoWidth={focusFrameSize.width}
+          videoHeight={focusFrameSize.height}
           initialFocus={focusIntervalIndex !== null
             ? (videoZoomStore.getIntervalFocus(focusIntervalIndex) ?? { x: videoZoomStore.focusX, y: videoZoomStore.focusY, space: 'source' })
             : { x: videoZoomStore.focusX, y: videoZoomStore.focusY, space: 'source' }
           }
           initialScale={focusIntervalIndex !== null ? videoZoomStore.getIntervalScale(focusIntervalIndex) : videoZoomStore.scale}
-          onConfirm={(payload: { focus: { x: number; y: number; space: 'source' | 'layout' }; scale: number }) => exitFocusMode(true, payload)}
+          initialMode={focusIntervalIndex !== null ? videoZoomStore.getIntervalMode(focusIntervalIndex) : 'dolly'}
+          initialEasing={focusIntervalIndex !== null ? videoZoomStore.getIntervalEasing(focusIntervalIndex) : 'smooth'}
+          initialTransitionDurationMs={focusIntervalIndex !== null ? videoZoomStore.getIntervalTransitionDuration(focusIntervalIndex) : 300}
+          onConfirm={(payload: FocusModePayload) => exitFocusMode(true, payload)}
           onCancel={() => exitFocusMode(false)}
         />
       {/if}

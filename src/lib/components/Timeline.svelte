@@ -586,12 +586,12 @@
 
   // ========== Zoom 功能 ==========
 
-  // 默认 Zoom 时长（500ms）
-  const DEFAULT_ZOOM_DURATION_MS = 500
+  // 默认 Zoom 时长（1500ms，足够宽以容纳按钮）
+  const DEFAULT_ZOOM_DURATION_MS = 1500
   // 最小 Zoom 时长（100ms，约 3 帧 @ 30fps）
   const MIN_ZOOM_DURATION_MS = 100
 
-  // 点击创建默认 500ms 的 Zoom 区间
+  // 点击创建默认 1500ms 的 Zoom 区间
   async function handleZoomTrackClick(e: MouseEvent) {
     if (!zoomTrackEl) return
 
