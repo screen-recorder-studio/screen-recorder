@@ -638,10 +638,7 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
     // 1. 清除画布
     ctx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
 
-    // 2. 绘制背景（支持渐变）
-    renderBackground(config);
-
-    // 🆕 6. 计算当前时间的 Zoom 缩放比例（包含缓动）
+    // 🆕 计算当前时间的 Zoom 缩放比例（包含缓动）- 移到背景渲染之前以支持 syncBackground
     // 使用帧索引计算时间（而不是 frame.timestamp，因为它可能是系统时间戳）
     const globalFrameIndex = windowStartFrameIndex + frameIndex  // 使用传入的 frameIndex
     const currentTimeMs = (globalFrameIndex / videoFrameRate) * 1000
@@ -658,14 +655,41 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
         globalFrameIndex,
         videoFrameRate,
         currentTimeMs: currentTimeMs.toFixed(0) + 'ms',
-        zoomIntervals: config.videoZoom.intervals,
+        zoomIntervals: config.videoZoom?.intervals,
         zoomScale: zoomScale.toFixed(3)
       })
     }
 
+    // 🆕 P2: 检查当前区间是否启用了 syncBackground
+    let syncBackground = false
+    let activeInterval: any = null
+    if (zoomScale > 1.0 && config.videoZoom?.enabled) {
+      const vz: any = (config as any).videoZoom
+      const intervals: any[] = Array.isArray(vz?.intervals) ? vz.intervals : []
+      const globalTransitionMs = vz?.transitionDurationMs ?? 300
+
+      for (const it of intervals) {
+        const s = it.startMs, e = it.endMs
+        const transitionMs = it.transitionDurationMs ?? globalTransitionMs
+        if (typeof s !== 'number' || typeof e !== 'number' || s >= e) continue
+        if ((currentTimeMs >= s - transitionMs && currentTimeMs < s) ||
+            (currentTimeMs >= s && currentTimeMs <= e) ||
+            (currentTimeMs > e && currentTimeMs <= e + transitionMs)) {
+          activeInterval = it
+          syncBackground = it.syncBackground ?? false
+          break
+        }
+      }
+    }
+
     // 🆕 计算实际布局（考虑 Zoom 缓动聚焦到画布中心）
     // 当前“放大点”取左上角（fx=0, fy=0），并在进入/退出过渡期将该点以缓动插值朝画布中心移动对齐
+    // 🆕 P2: 将 actualLayout 计算移到背景绘制之前，以便背景同步使用相同变换
     let actualLayout = layout
+    // 🆕 P2: 保存背景同步放大需要的变换参数
+    // originX/Y: 原始焦点位置，targetX/Y: 目标焦点位置（Dolly 模式下会移动）
+    let bgTransformParams: { originX: number; originY: number; targetX: number; targetY: number; scale: number } | null = null
+
     if (zoomScale > 1.0 && offscreenCanvas) {
       const vz: any = (config as any).videoZoom
 
@@ -674,20 +698,8 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
       let fx = clamp01(vz?.focusX ?? 0)
       let fy = clamp01(vz?.focusY ?? 0)
 
-      // 选出与当前缩放对应的区间（进入/内部/退出 任一阶段）
-      const intervals: any[] = Array.isArray(vz?.intervals) ? vz.intervals : []
-      const transitionMs = vz?.transitionDurationMs ?? 300
-      let active: any = null
-      for (const it of intervals) {
-        const s = it.startMs, e = it.endMs
-        if (typeof s !== 'number' || typeof e !== 'number' || s >= e) continue
-        if ((currentTimeMs >= s - transitionMs && currentTimeMs < s) ||
-            (currentTimeMs >= s && currentTimeMs <= e) ||
-            (currentTimeMs > e && currentTimeMs <= e + transitionMs)) {
-          active = it
-          break
-        }
-      }
+      // 🆕 P2: 复用已查找的 activeInterval（避免重复遍历）
+      const active = activeInterval
 
       // 若区间内定义了焦点，则优先使用
       if (active && active.focusX != null && active.focusY != null) {
@@ -752,6 +764,8 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
           width: wPrime,
           height: hPrime
         }
+        // 🆕 P2: Anchor 模式下，焦点位置保持不变，origin = target
+        bgTransformParams = { originX: ax, originY: ay, targetX: ax, targetY: ay, scale: zoomScale }
       } else {
         // Dolly 模式（默认）- 焦点移动到画面中心
         // 将焦点位置从 ax/ay 缓动到画布中心（t=1 时完全对齐）
@@ -765,7 +779,29 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
           width: wPrime,
           height: hPrime
         }
+        // 🆕 P2: Dolly 模式下，焦点从原始位置移动到目标位置
+        bgTransformParams = { originX: ax, originY: ay, targetX: anchorTargetX, targetY: anchorTargetY, scale: zoomScale }
       }
+    }
+
+    // 2. 绘制背景（支持渐变）- 🆕 P2: 支持背景同步放大
+    if (syncBackground && bgTransformParams && bgTransformParams.scale > 1.0) {
+      // 🆕 P2 修复：先绘制一层静态背景作为底层，防止变换后露出黑色空白区
+      renderBackground(config)
+
+      // 背景同步放大：使前景和背景保持相对位置不变
+      // 变换逻辑：背景上原本在 (originX, originY) 的点移动到 (targetX, targetY)，同时放大 scale 倍
+      ctx.save()
+      const { originX, originY, targetX, targetY, scale } = bgTransformParams
+      // 正确的变换顺序：先平移到目标位置，再以原始锚点为中心缩放
+      ctx.translate(targetX, targetY)
+      ctx.scale(scale, scale)
+      ctx.translate(-originX, -originY)
+      renderBackground(config)
+      ctx.restore()
+    } else {
+      // 默认：背景不跟随放大
+      renderBackground(config)
     }
 
     // 3. 绘制阴影（如果配置了阴影）

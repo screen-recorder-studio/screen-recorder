@@ -5,12 +5,14 @@
   interface FocusPoint { x: number; y: number; space?: 'source' | 'layout' }
 
   // 🆕 P1: 扩展的 payload 类型，包含模式/缓动/过渡时长
+  // 🆕 P2: 新增 syncBackground 字段
   interface ZoomPayload {
     focus: Required<FocusPoint>
     scale: number
     mode: ZoomMode
     easing: ZoomEasing
     transitionDurationMs: number
+    syncBackground: boolean
   }
 
   interface Props {
@@ -23,6 +25,8 @@
     initialMode?: ZoomMode
     initialEasing?: ZoomEasing
     initialTransitionDurationMs?: number
+    // 🆕 P2: 背景同步放大
+    initialSyncBackground?: boolean
     onConfirm?: (payload: ZoomPayload) => void
     onCancel?: () => void
   }
@@ -36,6 +40,7 @@
     initialMode = 'dolly',
     initialEasing = 'smooth',
     initialTransitionDurationMs = 300,
+    initialSyncBackground = false,
     onConfirm,
     onCancel
   }: Props = $props()
@@ -62,6 +67,9 @@
   // 🆕 P1: 过渡时长选项
   const transitionOptions = [0, 100, 200, 300, 500, 800, 1000]
   let selectedTransitionDurationMs = $state(initialTransitionDurationMs)
+
+  // 🆕 P2: 背景同步放大选项
+  let selectedSyncBackground = $state(initialSyncBackground)
 
   // Canvas & layout
   let containerEl = $state<HTMLDivElement | null>(null)
@@ -155,12 +163,14 @@
 
   function handleConfirm() {
     // 🆕 P1: 扩展 payload 包含模式/缓动/过渡时长
+    // 🆕 P2: 新增 syncBackground 字段
     onConfirm?.({
       focus: { x: focus.x, y: focus.y, space: focus.space },
       scale: selectedScale,
       mode: selectedMode,
       easing: selectedEasing,
-      transitionDurationMs: selectedTransitionDurationMs
+      transitionDurationMs: selectedTransitionDurationMs,
+      syncBackground: selectedSyncBackground
     })
   }
   function handleCancel() {
@@ -289,6 +299,29 @@
   .opt-select:focus { outline: none; border-color: #3b82f6; }
 
   .btn:hover { opacity: 0.9 }
+
+  /* 🆕 P2: 背景同步放大开关样式 */
+  .toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .sync-bg-label {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    color: #9ca3af;
+    cursor: pointer;
+    user-select: none;
+  }
+  .sync-bg-label input[type="checkbox"] {
+    accent-color: #3b82f6;
+    cursor: pointer;
+  }
+  .sync-bg-label:hover {
+    color: #e5e7eb;
+  }
 </style>
 
 <div class="panel">
@@ -353,15 +386,22 @@
       </div>
     </div>
 
-    <!-- 第二行：操作按钮 -->
+    <!-- 第二行：高级选项和操作按钮 -->
     <div class="toolbar-row toolbar-actions">
-      <span class="mode-hint">
-        {#if selectedMode === 'dolly'}
-          Dolly: Focus point moves to center
-        {:else}
-          Anchor: Focus point stays fixed
-        {/if}
-      </span>
+      <div class="toolbar-left">
+        <span class="mode-hint">
+          {#if selectedMode === 'dolly'}
+            Dolly: Focus point moves to center
+          {:else}
+            Anchor: Focus point stays fixed
+          {/if}
+        </span>
+        <!-- 🆕 P2: 背景同步放大开关 -->
+        <label class="sync-bg-label" title="When enabled, background zooms together with video">
+          <input type="checkbox" bind:checked={selectedSyncBackground} />
+          <span>Sync BG</span>
+        </label>
+      </div>
       <div class="toolbar-buttons">
         <button class="btn btn-cancel" onclick={handleCancel}>Cancel</button>
         <button class="btn btn-confirm" onclick={handleConfirm}>Confirm</button>

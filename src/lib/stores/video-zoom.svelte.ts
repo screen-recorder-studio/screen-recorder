@@ -34,6 +34,9 @@ export interface ZoomInterval {
   transitionDurationMs?: number
   // 🆕 P1: Easing type (default: smooth)
   easing?: ZoomEasing
+  // 🆕 P2: Sync background with foreground zoom (default: false)
+  // When enabled, background zooms together with video, creating a "push in" effect
+  syncBackground?: boolean
 }
 
 class VideoZoomStore {
@@ -289,7 +292,26 @@ class VideoZoomStore {
     return this.intervals[index].transitionDurationMs ?? this.transitionDurationMs
   }
 
-  // ==================== END P1 New Methods ====================
+  // ==================== P2 Sync Background Methods ====================
+
+  /**
+   * Set interval Sync Background
+   * @param syncBackground Whether to zoom background with foreground
+   */
+  setIntervalSyncBackground(index: number, syncBackground: boolean): boolean {
+    if (index < 0 || index >= this.intervals.length) return false
+    this.intervals[index] = { ...this.intervals[index], syncBackground }
+    console.log('🖼️ [VideoZoomStore] Interval syncBackground updated:', { index, syncBackground })
+    return true
+  }
+
+  /** Get interval Sync Background (default: false) */
+  getIntervalSyncBackground(index: number): boolean {
+    if (index < 0 || index >= this.intervals.length) return false
+    return this.intervals[index].syncBackground ?? false
+  }
+
+  // ==================== END P2 New Methods ====================
 
   /**
    * Clear all intervals
@@ -303,6 +325,7 @@ class VideoZoomStore {
   /**
    * Get configuration object (passed to worker)
    * 🆕 P1: Includes mode, transitionDurationMs, easing fields
+   * 🆕 P2: Includes syncBackground field
    */
   getZoomConfig() {
     if (!this.enabled || this.intervals.length === 0) {
@@ -328,7 +351,9 @@ class VideoZoomStore {
         // 🆕 P1: New properties
         mode: interval.mode ?? 'dolly',
         easing: interval.easing ?? 'smooth',
-        transitionDurationMs: interval.transitionDurationMs ?? this.transitionDurationMs
+        transitionDurationMs: interval.transitionDurationMs ?? this.transitionDurationMs,
+        // 🆕 P2: Sync background
+        syncBackground: interval.syncBackground ?? false
       }))
     }
   }

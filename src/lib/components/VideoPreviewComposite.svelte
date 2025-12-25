@@ -1973,12 +1973,14 @@
 
   // 🎯 退出焦点模式（可选择应用）
   // 🆕 P1: 扩展 payload 支持 mode, easing, transitionDurationMs
+  // 🆕 P2: 扩展 payload 支持 syncBackground
   interface FocusModePayload {
     focus: { x: number; y: number; space: 'source' | 'layout' }
     scale?: number
     mode?: ZoomMode
     easing?: ZoomEasing
     transitionDurationMs?: number
+    syncBackground?: boolean
   }
 
   async function exitFocusMode(apply: boolean, payload?: FocusModePayload) {
@@ -1998,6 +2000,10 @@
         }
         if (payload.transitionDurationMs != null) {
           videoZoomStore.setIntervalTransitionDuration(focusIntervalIndex, payload.transitionDurationMs)
+        }
+        // 🆕 P2: 背景同步放大
+        if (payload.syncBackground != null) {
+          videoZoomStore.setIntervalSyncBackground(focusIntervalIndex, payload.syncBackground)
         }
         await updateBackgroundConfig(backgroundConfig)
         if (!isPlaying) {
@@ -2296,6 +2302,7 @@
           initialMode={focusIntervalIndex !== null ? videoZoomStore.getIntervalMode(focusIntervalIndex) : 'dolly'}
           initialEasing={focusIntervalIndex !== null ? videoZoomStore.getIntervalEasing(focusIntervalIndex) : 'smooth'}
           initialTransitionDurationMs={focusIntervalIndex !== null ? videoZoomStore.getIntervalTransitionDuration(focusIntervalIndex) : 300}
+          initialSyncBackground={focusIntervalIndex !== null ? videoZoomStore.getIntervalSyncBackground(focusIntervalIndex) : false}
           onConfirm={(payload: FocusModePayload) => exitFocusMode(true, payload)}
           onCancel={() => exitFocusMode(false)}
         />
