@@ -557,7 +557,7 @@
   <!-- Left main preview player - no scrolling, full height 100vh -->
   <div class="flex-1 min-h-0 flex flex-col h-full overflow-hidden">
     <!-- Preview area header -->
-    <div class="flex-shrink-0 p-6 border-b border-gray-200 bg-white">
+    <div class="flex-shrink-0 px-4 py-2 border-b border-gray-200 bg-white">
       <div class="flex items-center justify-between relative">
         <!-- Left title -->
         <div class="flex items-center gap-2">

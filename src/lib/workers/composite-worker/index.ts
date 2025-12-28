@@ -153,7 +153,7 @@ function calculateVideoLayout(
   videoWidth: number,
   videoHeight: number
 ): VideoLayout {
-  const padding = config.padding || 60;
+  const padding = config.padding ?? 60;
   const inset = config.inset || 0; // 视频内缩距离
   const totalPadding = padding + inset;
   const availableWidth = outputWidth - totalPadding * 2;
@@ -510,15 +510,38 @@ function createRoundedRectPath(x: number, y: number, width: number, height: numb
   ctx.closePath();
 }
 
-// 🆕 缓动函数：easeInOutCubic（先加速后减速）
+// 🆕 缓动函数集合
+// smooth: easeInOutCubic（先加速后减速），平滑运镜
 function easeInOutCubic(t: number): number {
   return t < 0.5
     ? 4 * t * t * t
     : 1 - Math.pow(-2 * t + 2, 3) / 2
 }
 
+// 🆕 P1: linear 缓动（匀速），机械/精准演示
+function linearEasing(t: number): number {
+  return t
+}
+
+// 🆕 P1: punch 缓动（阶跃/Hold），瞬间放大，卡点/强调
+function stepEasing(t: number): number {
+  return t < 1 ? 0 : 1  // 直到最后一刻才跳变
+}
+
+// 🆕 P1: 根据缓动类型获取对应函数
+type ZoomEasing = 'smooth' | 'linear' | 'punch'
+function getEasingFunction(easing: ZoomEasing): (t: number) => number {
+  switch (easing) {
+    case 'linear': return linearEasing
+    case 'punch': return stepEasing
+    case 'smooth':
+    default: return easeInOutCubic
+  }
+}
+
 // 🆕 计算当前时间的 Zoom 缩放比例（包含缓动）
 // 返回值：1.0 = 无缩放，scale = 完全缩放
+// 🆕 P1: 支持区间级 transitionDurationMs 和 easing
 function calculateZoomScale(currentTimeMs: number, zoomConfig: any, debugLog: boolean = false): number {
   // 🔧 防御性检查：确保时间值有效
   if (typeof currentTimeMs !== 'number' || isNaN(currentTimeMs) || currentTimeMs < 0) {
@@ -538,13 +561,13 @@ function calculateZoomScale(currentTimeMs: number, zoomConfig: any, debugLog: bo
   }
 
   const baseScale = zoomConfig.scale ?? 1.5
-  const transitionMs = zoomConfig.transitionDurationMs ?? 300
+  const globalTransitionMs = zoomConfig.transitionDurationMs ?? 300
 
   if (debugLog) {
     console.log('🔍 [calculateZoomScale] Checking intervals:', {
       currentTimeMs,
       baseScale,
-      transitionMs,
+      globalTransitionMs,
       intervals: zoomConfig.intervals
     })
   }
@@ -559,15 +582,20 @@ function calculateZoomScale(currentTimeMs: number, zoomConfig: any, debugLog: bo
       continue
     }
 
+    // 🆕 P1: 读取区间级过渡时长和缓动类型
+    const transitionMs = interval.transitionDurationMs ?? globalTransitionMs
+    const easing: ZoomEasing = interval.easing ?? 'smooth'
+    const easingFn = getEasingFunction(easing)
+
     const intervalScale = Math.max(1.0, interval.scale ?? baseScale)
 
     // 1. 进入过渡阶段（区间开始前 transitionMs 到区间开始）
     if (currentTimeMs >= startMs - transitionMs && currentTimeMs < startMs) {
       const progress = (currentTimeMs - (startMs - transitionMs)) / transitionMs
-      const easedProgress = easeInOutCubic(progress)
+      const easedProgress = easingFn(progress)
       const scale = 1.0 + (intervalScale - 1.0) * easedProgress
       if (debugLog) {
-        console.log('🔍 [calculateZoomScale] In transition (entering):', { interval, progress, easedProgress, scale, intervalScale })
+        console.log('🔍 [calculateZoomScale] In transition (entering):', { interval, easing, progress, easedProgress, scale, intervalScale })
       }
       return scale
     }
@@ -583,10 +611,10 @@ function calculateZoomScale(currentTimeMs: number, zoomConfig: any, debugLog: bo
     // 3. 退出过渡阶段（区间结束到区间结束后 transitionMs）
     if (currentTimeMs > endMs && currentTimeMs <= endMs + transitionMs) {
       const progress = (currentTimeMs - endMs) / transitionMs
-      const easedProgress = easeInOutCubic(progress)
+      const easedProgress = easingFn(progress)
       const scale = intervalScale - (intervalScale - 1.0) * easedProgress
       if (debugLog) {
-        console.log('🔍 [calculateZoomScale] In transition (exiting):', { interval, progress, easedProgress, scale, intervalScale })
+        console.log('🔍 [calculateZoomScale] In transition (exiting):', { interval, easing, progress, easedProgress, scale, intervalScale })
       }
       return scale
     }
@@ -610,10 +638,7 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
     // 1. 清除画布
     ctx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
 
-    // 2. 绘制背景（支持渐变）
-    renderBackground(config);
-
-    // 🆕 6. 计算当前时间的 Zoom 缩放比例（包含缓动）
+    // 🆕 计算当前时间的 Zoom 缩放比例（包含缓动）- 移到背景渲染之前以支持 syncBackground
     // 使用帧索引计算时间（而不是 frame.timestamp，因为它可能是系统时间戳）
     const globalFrameIndex = windowStartFrameIndex + frameIndex  // 使用传入的 frameIndex
     const currentTimeMs = (globalFrameIndex / videoFrameRate) * 1000
@@ -630,14 +655,41 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
         globalFrameIndex,
         videoFrameRate,
         currentTimeMs: currentTimeMs.toFixed(0) + 'ms',
-        zoomIntervals: config.videoZoom.intervals,
+        zoomIntervals: config.videoZoom?.intervals,
         zoomScale: zoomScale.toFixed(3)
       })
     }
 
+    // 🆕 P2: 检查当前区间是否启用了 syncBackground
+    let syncBackground = false
+    let activeInterval: any = null
+    if (zoomScale > 1.0 && config.videoZoom?.enabled) {
+      const vz: any = (config as any).videoZoom
+      const intervals: any[] = Array.isArray(vz?.intervals) ? vz.intervals : []
+      const globalTransitionMs = vz?.transitionDurationMs ?? 300
+
+      for (const it of intervals) {
+        const s = it.startMs, e = it.endMs
+        const transitionMs = it.transitionDurationMs ?? globalTransitionMs
+        if (typeof s !== 'number' || typeof e !== 'number' || s >= e) continue
+        if ((currentTimeMs >= s - transitionMs && currentTimeMs < s) ||
+            (currentTimeMs >= s && currentTimeMs <= e) ||
+            (currentTimeMs > e && currentTimeMs <= e + transitionMs)) {
+          activeInterval = it
+          syncBackground = it.syncBackground ?? false
+          break
+        }
+      }
+    }
+
     // 🆕 计算实际布局（考虑 Zoom 缓动聚焦到画布中心）
     // 当前“放大点”取左上角（fx=0, fy=0），并在进入/退出过渡期将该点以缓动插值朝画布中心移动对齐
+    // 🆕 P2: 将 actualLayout 计算移到背景绘制之前，以便背景同步使用相同变换
     let actualLayout = layout
+    // 🆕 P2: 保存背景同步放大需要的变换参数
+    // originX/Y: 原始焦点位置，targetX/Y: 目标焦点位置（Dolly 模式下会移动）
+    let bgTransformParams: { originX: number; originY: number; targetX: number; targetY: number; scale: number } | null = null
+
     if (zoomScale > 1.0 && offscreenCanvas) {
       const vz: any = (config as any).videoZoom
 
@@ -646,20 +698,8 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
       let fx = clamp01(vz?.focusX ?? 0)
       let fy = clamp01(vz?.focusY ?? 0)
 
-      // 选出与当前缩放对应的区间（进入/内部/退出 任一阶段）
-      const intervals: any[] = Array.isArray(vz?.intervals) ? vz.intervals : []
-      const transitionMs = vz?.transitionDurationMs ?? 300
-      let active: any = null
-      for (const it of intervals) {
-        const s = it.startMs, e = it.endMs
-        if (typeof s !== 'number' || typeof e !== 'number' || s >= e) continue
-        if ((currentTimeMs >= s - transitionMs && currentTimeMs < s) ||
-            (currentTimeMs >= s && currentTimeMs <= e) ||
-            (currentTimeMs > e && currentTimeMs <= e + transitionMs)) {
-          active = it
-          break
-        }
-      }
+      // 🆕 P2: 复用已查找的 activeInterval（避免重复遍历）
+      const active = activeInterval
 
       // 若区间内定义了焦点，则优先使用
       if (active && active.focusX != null && active.focusY != null) {
@@ -710,17 +750,58 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
       const centerX = offscreenCanvas.width / 2
       const centerY = offscreenCanvas.height / 2
 
-      // 将焦点位置从 ax/ay 缓动到画布中心（t=1 时完全对齐）
-      const anchorTargetX = ax + (centerX - ax) * t
-      const anchorTargetY = ay + (centerY - ay) * t
+      // 🆕 P1: 读取区间级 mode，决定布局计算方式
+      const zoomMode: 'dolly' | 'anchor' = active?.mode ?? 'dolly'
 
-      // 求放大后布局左上角，使放大后的焦点位于 anchorTargetX/Y
-      actualLayout = {
-        x: anchorTargetX - fx * wPrime,
-        y: anchorTargetY - fy * hPrime,
-        width: wPrime,
-        height: hPrime
+      if (zoomMode === 'anchor') {
+        // 🆕 P1: Anchor 模式 - 焦点在屏幕上的绝对位置保持不变
+        // 焦点位置 (ax, ay) 在放大前后保持一致
+        // 公式：ax = layout.x + fx * w = actualLayout.x + fx * wPrime
+        //       => actualLayout.x = ax - fx * wPrime
+        actualLayout = {
+          x: ax - fx * wPrime,
+          y: ay - fy * hPrime,
+          width: wPrime,
+          height: hPrime
+        }
+        // 🆕 P2: Anchor 模式下，焦点位置保持不变，origin = target
+        bgTransformParams = { originX: ax, originY: ay, targetX: ax, targetY: ay, scale: zoomScale }
+      } else {
+        // Dolly 模式（默认）- 焦点移动到画面中心
+        // 将焦点位置从 ax/ay 缓动到画布中心（t=1 时完全对齐）
+        const anchorTargetX = ax + (centerX - ax) * t
+        const anchorTargetY = ay + (centerY - ay) * t
+
+        // 求放大后布局左上角，使放大后的焦点位于 anchorTargetX/Y
+        actualLayout = {
+          x: anchorTargetX - fx * wPrime,
+          y: anchorTargetY - fy * hPrime,
+          width: wPrime,
+          height: hPrime
+        }
+        // 🆕 P2: Dolly 模式下，焦点从原始位置移动到目标位置
+        bgTransformParams = { originX: ax, originY: ay, targetX: anchorTargetX, targetY: anchorTargetY, scale: zoomScale }
       }
+    }
+
+    // 2. 绘制背景（支持渐变）- 🆕 P2: 支持背景同步放大
+    if (syncBackground && bgTransformParams && bgTransformParams.scale > 1.0) {
+      // 🆕 P2 修复：先绘制一层静态背景作为底层，防止变换后露出黑色空白区
+      renderBackground(config)
+
+      // 背景同步放大：使前景和背景保持相对位置不变
+      // 变换逻辑：背景上原本在 (originX, originY) 的点移动到 (targetX, targetY)，同时放大 scale 倍
+      ctx.save()
+      const { originX, originY, targetX, targetY, scale } = bgTransformParams
+      // 正确的变换顺序：先平移到目标位置，再以原始锚点为中心缩放
+      ctx.translate(targetX, targetY)
+      ctx.scale(scale, scale)
+      ctx.translate(-originX, -originY)
+      renderBackground(config)
+      ctx.restore()
+    } else {
+      // 默认：背景不跟随放大
+      renderBackground(config)
     }
 
     // 3. 绘制阴影（如果配置了阴影）

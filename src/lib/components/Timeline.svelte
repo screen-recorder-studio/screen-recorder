@@ -1,7 +1,7 @@
 <!-- Timeline Component - Professional video editing timeline with time markers, playhead, trim handles, and zoom -->
 <script lang="ts">
   import { onDestroy } from 'svelte'
-  import { Scissors, ZoomIn, X, Crosshair } from '@lucide/svelte'
+  import { X, Crosshair } from '@lucide/svelte'
 
   // Props Interface
   interface Props {
@@ -67,9 +67,14 @@
   let isDraggingPlayhead = $state(false)
   let isDraggingTrimStart = $state(false)
   let isDraggingTrimEnd = $state(false)
+  
+  // 🆕 Local state for smoother trim dragging
+  let draggingTrimStartMs = $state(0)
+  let draggingTrimEndMs = $state(0)
 
   // 🆕 Zoom 区间拖拽状态
   let draggingZoomIndex = $state<number | null>(null)
+
   let draggingZoomStartMs = $state(0)
   let draggingZoomEndMs = $state(0)
   let draggingZoomType = $state<'move' | 'resize-start' | 'resize-end' | null>(null) // 拖拽类型
@@ -117,11 +122,15 @@
   })
 
   // 计算裁剪手柄位置百分比
-  const trimStartPercent = $derived(timelineMaxMs > 0 ? (trimStartMs / timelineMaxMs) * 100 : 0)
+  const trimStartPercent = $derived.by(() => {
+    const ms = isDraggingTrimStart ? draggingTrimStartMs : trimStartMs
+    return timelineMaxMs > 0 ? (ms / timelineMaxMs) * 100 : 0
+  })
+  
   const trimEndPercent = $derived.by(() => {
     if (timelineMaxMs <= 0) return 100
-    const end = trimEndMs > 0 ? trimEndMs : timelineMaxMs
-    return (end / timelineMaxMs) * 100
+    const ms = isDraggingTrimEnd ? draggingTrimEndMs : (trimEndMs > 0 ? trimEndMs : timelineMaxMs)
+    return (ms / timelineMaxMs) * 100
   })
 
   // 🆕 计算预览位置百分比
@@ -532,11 +541,35 @@
     e.stopPropagation()
 
     isDraggingTrimStart = true
+    // Initialize local state to current props
+    draggingTrimStartMs = trimStartMs
+    
+    // Snapshot initial values for delta calculation
+    const startX = e.clientX
+    const initialStartMs = trimStartMs
+    const currentEndMs = trimEndMs > 0 ? trimEndMs : timelineMaxMs
 
     const handleMove = (moveEvent: MouseEvent) => {
-      const newTimeMs = pixelToTimeMs(moveEvent.clientX)
-      onTrimStartChange?.(newTimeMs)
-      onSeek?.(newTimeMs)  // 实时预览
+      if (!timelineTrackEl) return
+      
+      const deltaX = moveEvent.clientX - startX
+      const trackWidth = timelineTrackEl.getBoundingClientRect().width
+      const deltaMs = (deltaX / trackWidth) * timelineMaxMs
+      
+      // Calculate new position based on initial + delta (prevents jumping)
+      let newStartMs = initialStartMs + deltaMs
+      
+      // Apply constraints
+      // Min: 0
+      // Max: currentEndMs - 100 (min duration)
+      newStartMs = Math.max(0, Math.min(newStartMs, currentEndMs - 100))
+      
+      // Update local state for smooth UI
+      draggingTrimStartMs = newStartMs
+      
+      // Notify parent for preview
+      onTrimStartChange?.(newStartMs)
+      onSeek?.(newStartMs)
     }
 
     const handleUp = () => {
@@ -561,11 +594,36 @@
     e.stopPropagation()
 
     isDraggingTrimEnd = true
+    // Initialize local state
+    const currentEndMs = trimEndMs > 0 ? trimEndMs : timelineMaxMs
+    draggingTrimEndMs = currentEndMs
+    
+    // Snapshot initial values
+    const startX = e.clientX
+    const initialEndMs = currentEndMs
+    const currentStartMs = trimStartMs
 
     const handleMove = (moveEvent: MouseEvent) => {
-      const newTimeMs = pixelToTimeMs(moveEvent.clientX)
-      onTrimEndChange?.(newTimeMs)
-      onSeek?.(newTimeMs)  // 实时预览
+      if (!timelineTrackEl) return
+
+      const deltaX = moveEvent.clientX - startX
+      const trackWidth = timelineTrackEl.getBoundingClientRect().width
+      const deltaMs = (deltaX / trackWidth) * timelineMaxMs
+      
+      // Calculate new position based on initial + delta
+      let newEndMs = initialEndMs + deltaMs
+      
+      // Apply constraints
+      // Min: currentStartMs + 100 (min duration)
+      // Max: timelineMaxMs
+      newEndMs = Math.min(timelineMaxMs, Math.max(newEndMs, currentStartMs + 100))
+      
+      // Update local state for smooth UI
+      draggingTrimEndMs = newEndMs
+      
+      // Notify parent for preview
+      onTrimEndChange?.(newEndMs)
+      onSeek?.(newEndMs)
     }
 
     const handleUp = () => {
@@ -584,14 +642,53 @@
     activeCleanups.push(cleanup)
   }
 
+  // 🆕 Keyboard Nudge for Trim Handles
+  function handleTrimStartKeydown(e: KeyboardEvent) {
+    if (isProcessing) return
+    
+    let step = 0
+    if (e.key === 'ArrowLeft') step = -1000 / frameRate // -1 frame
+    else if (e.key === 'ArrowRight') step = 1000 / frameRate // +1 frame
+    
+    if (step !== 0) {
+      e.preventDefault()
+      e.stopPropagation()
+      
+      if (e.shiftKey) step *= 10 // Shift = 10 frames
+      
+      const newStartMs = Math.max(0, Math.min(trimStartMs + step, trimEndMs - 100))
+      onTrimStartChange?.(newStartMs)
+      onSeek?.(newStartMs)
+    }
+  }
+
+  function handleTrimEndKeydown(e: KeyboardEvent) {
+    if (isProcessing) return
+    
+    let step = 0
+    if (e.key === 'ArrowLeft') step = -1000 / frameRate // -1 frame
+    else if (e.key === 'ArrowRight') step = 1000 / frameRate // +1 frame
+    
+    if (step !== 0) {
+      e.preventDefault()
+      e.stopPropagation()
+      
+      if (e.shiftKey) step *= 10 // Shift = 10 frames
+      
+      const newEndMs = Math.min(timelineMaxMs, Math.max(trimEndMs + step, trimStartMs + 100))
+      onTrimEndChange?.(newEndMs)
+      onSeek?.(newEndMs)
+    }
+  }
+
   // ========== Zoom 功能 ==========
 
-  // 默认 Zoom 时长（500ms）
-  const DEFAULT_ZOOM_DURATION_MS = 500
+  // 默认 Zoom 时长（1500ms，足够宽以容纳按钮）
+  const DEFAULT_ZOOM_DURATION_MS = 1500
   // 最小 Zoom 时长（100ms，约 3 帧 @ 30fps）
   const MIN_ZOOM_DURATION_MS = 100
 
-  // 点击创建默认 500ms 的 Zoom 区间
+  // 点击创建默认 1500ms 的 Zoom 区间
   async function handleZoomTrackClick(e: MouseEvent) {
     if (!zoomTrackEl) return
 
@@ -942,11 +1039,10 @@
           class:dragging={isDraggingTrimStart}
           style="left: {trimStartPercent}%"
           onmousedown={handleTrimStartDrag}
+          onkeydown={handleTrimStartKeydown}
           aria-label="Trim start"
           title="Drag to set trim start"
-        >
-          <Scissors class="w-4 h-4 text-white" />
-        </button>
+        ></button>
 
         <!-- 结束手柄 -->
         <button
@@ -954,11 +1050,10 @@
           class:dragging={isDraggingTrimEnd}
           style="left: {trimEndPercent}%"
           onmousedown={handleTrimEndDrag}
+          onkeydown={handleTrimEndKeydown}
           aria-label="Trim end"
           title="Drag to set trim end"
-        >
-          <Scissors class="w-4 h-4 text-white" />
-        </button>
+        ></button>
       {/if}
     </div>
   </div>
@@ -977,11 +1072,11 @@
   {/if}
 
   <!-- Zoom 控制区 -->
-  <div class="zoom-control">
-    {#if !hasZoomIntervals}
-      <!-- 默认提示状态 -->
+  {#if hasZoomIntervals}
+    <div class="zoom-active">
+      <!-- Zoom 缩略时间轴 -->
       <div
-        class="zoom-hint"
+        class="zoom-mini-timeline"
         bind:this={zoomTrackEl}
         onclick={handleZoomTrackClick}
         onkeydown={handleZoomTrackKeydown}
@@ -989,122 +1084,103 @@
         tabindex="0"
         aria-label="Click to create zoom interval"
       >
-        <ZoomIn class="w-4 h-4" />
-        <span>Click to create zoom interval (500ms)</span>
-      </div>
-    {:else}
-      <!-- Zoom 激活状态 - 显示区间列表 -->
-      <div class="zoom-active">
-        <!-- 标题栏 -->
-        <div class="zoom-header">
-          <div class="zoom-info">
-            <ZoomIn class="w-3.5 h-3.5" />
-            <span class="text-xs font-medium">
-              Zoom Intervals ({zoomIntervals.length})
-            </span>
-          </div>
-          <button
-            class="zoom-reset"
-            onclick={resetZoom}
-            aria-label="Clear all zoom intervals"
-            title="Clear all zoom intervals"
+        <!-- 全时间轴背景 -->
+        <div class="zoom-full-range"></div>
+
+        <!-- 🆕 显示所有 Zoom 区间 -->
+        {#each zoomIntervals as interval, index}
+          <!-- 🆕 如果正在拖拽当前区间，使用拖拽位置；否则使用实际位置 -->
+          {@const isDragging = draggingZoomIndex === index}
+          {@const displayStartMs = isDragging ? draggingZoomStartMs : interval.startMs}
+          {@const displayEndMs = isDragging ? draggingZoomEndMs : interval.endMs}
+          {@const startPercent = (displayStartMs / timelineMaxMs) * 100}
+          {@const widthPercent = ((displayEndMs - displayStartMs) / timelineMaxMs) * 100}
+          {@const durationMs = displayEndMs - displayStartMs}
+
+          <div
+            class="zoom-interval"
+            class:dragging={isDragging}
+            class:moving={isDragging && draggingZoomType === 'move'}
+            class:resizing={isDragging && (draggingZoomType === 'resize-start' || draggingZoomType === 'resize-end')}
+            style="left: {startPercent}%; width: {widthPercent}%"
+            title="{formatTimeSec(displayStartMs / 1000)} - {formatTimeSec(displayEndMs / 1000)} ({durationMs}ms)"
+            onmousedown={(e) => handleZoomIntervalDrag(e, index)}
+            role="button"
+            tabindex="0"
+            aria-label="Zoom interval {index + 1}"
           >
-            <X class="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        <!-- Zoom 缩略时间轴 -->
-        <div
-          class="zoom-mini-timeline"
-          bind:this={zoomTrackEl}
-          onclick={handleZoomTrackClick}
-          onkeydown={handleZoomTrackKeydown}
-          role="button"
-          tabindex="0"
-          aria-label="Click to create zoom interval"
-        >
-          <!-- 全时间轴背景 -->
-          <div class="zoom-full-range"></div>
-
-          <!-- 🆕 显示所有 Zoom 区间 -->
-          {#each zoomIntervals as interval, index}
-            <!-- 🆕 如果正在拖拽当前区间，使用拖拽位置；否则使用实际位置 -->
-            {@const isDragging = draggingZoomIndex === index}
-            {@const displayStartMs = isDragging ? draggingZoomStartMs : interval.startMs}
-            {@const displayEndMs = isDragging ? draggingZoomEndMs : interval.endMs}
-            {@const startPercent = (displayStartMs / timelineMaxMs) * 100}
-            {@const widthPercent = ((displayEndMs - displayStartMs) / timelineMaxMs) * 100}
-            {@const durationMs = displayEndMs - displayStartMs}
-
+            <!-- 🆕 左侧调整手柄 -->
             <div
-              class="zoom-interval"
-              class:dragging={isDragging}
-              class:moving={isDragging && draggingZoomType === 'move'}
-              class:resizing={isDragging && (draggingZoomType === 'resize-start' || draggingZoomType === 'resize-end')}
-              style="left: {startPercent}%; width: {widthPercent}%"
-              title="{formatTimeSec(displayStartMs / 1000)} - {formatTimeSec(displayEndMs / 1000)} ({durationMs}ms)"
-              onmousedown={(e) => handleZoomIntervalDrag(e, index)}
+              class="zoom-resize-handle zoom-resize-handle-start"
+              onmousedown={(e) => handleZoomStartResize(e, index)}
               role="button"
               tabindex="0"
-              aria-label="Zoom interval {index + 1}"
-            >
-              <!-- 🆕 左侧调整手柄 -->
-              <div
-                class="zoom-resize-handle zoom-resize-handle-start"
-                onmousedown={(e) => handleZoomStartResize(e, index)}
-                role="button"
-                tabindex="0"
-                aria-label="Resize start of interval {index + 1}"
-                title="Drag to adjust start time"
-              ></div>
+              aria-label="Resize start of interval {index + 1}"
+              title="Drag to adjust start time"
+            ></div>
 
-              <!-- 区间内容 -->
-              <div class="zoom-interval-content">
+            <!-- 区间内容 -->
+            <div class="zoom-interval-content">
 
-	                <!-- 🆕 设置焦点按钮 -->
-	                <button
-	                  class="zoom-interval-focus"
-	                  onclick={(e) => { e.stopPropagation(); onZoomFocusSetup?.(index) }}
-	                  aria-label={`Set zoom focal point for interval ${index + 1}`}
-	                  title="Set zoom focal point"
-	                >
-	                  <Crosshair class="w-3 h-3" />
-	                </button>
-
-                <!-- 区间标签 -->
-                <span class="zoom-interval-label">
-                  {index + 1}
-                </span>
-
-                <!-- 删除按钮 -->
+                <!-- 🆕 设置焦点按钮 -->
                 <button
-                  class="zoom-interval-delete"
-                  onclick={(e) => {
-                    e.stopPropagation()
-                    handleRemoveZoomInterval(index)
-                  }}
-                  aria-label="Remove zoom interval {index + 1}"
-                  title="Remove this interval"
+                  class="zoom-interval-focus"
+                  onclick={(e) => { e.stopPropagation(); onZoomFocusSetup?.(index) }}
+                  aria-label={`Set zoom focal point for interval ${index + 1}`}
+                  title="Set zoom focal point"
                 >
-                  <X class="w-3 h-3" />
+                  <Crosshair class="w-3 h-3" />
                 </button>
-              </div>
 
-              <!-- 🆕 右侧调整手柄 -->
-              <div
-                class="zoom-resize-handle zoom-resize-handle-end"
-                onmousedown={(e) => handleZoomEndResize(e, index)}
-                role="button"
-                tabindex="0"
-                aria-label="Resize end of interval {index + 1}"
-                title="Drag to adjust end time"
-              ></div>
+              <!-- 区间标签 -->
+              <span class="zoom-interval-label">
+                {index + 1}
+              </span>
+
+              <!-- 删除按钮 -->
+              <button
+                class="zoom-interval-delete"
+                onclick={(e) => {
+                  e.stopPropagation()
+                  handleRemoveZoomInterval(index)
+                }}
+                aria-label="Remove zoom interval {index + 1}"
+                title="Remove this interval"
+              >
+                <X class="w-3 h-3" />
+              </button>
             </div>
-          {/each}
-        </div>
+
+            <!-- 🆕 右侧调整手柄 -->
+            <div
+              class="zoom-resize-handle zoom-resize-handle-end"
+              onmousedown={(e) => handleZoomEndResize(e, index)}
+              role="button"
+              tabindex="0"
+              aria-label="Resize end of interval {index + 1}"
+              title="Drag to adjust end time"
+            ></div>
+          </div>
+        {/each}
+
+        <!-- 🆕 Zoom 轨道裁剪遮罩 (Visual Sync) -->
+        {#if trimEnabled}
+          <div
+            class="trim-overlay trim-overlay-left zoom-trim-mask"
+            style="width: {trimStartPercent}%"
+            onclick={(e) => e.stopPropagation()}
+            role="none"
+          ></div>
+          <div
+            class="trim-overlay trim-overlay-right zoom-trim-mask"
+            style="left: {trimEndPercent}%; width: {100 - trimEndPercent}%"
+            onclick={(e) => e.stopPropagation()}
+            role="none"
+          ></div>
+        {/if}
       </div>
-    {/if}
-  </div>
+    </div>
+  {/if}
 
   <!-- 播放头竖线 - 覆盖整个时间轴包括 zoom 区 -->
   <div
@@ -1152,7 +1228,7 @@
   .time-markers {
     position: relative;
     width: 100%;
-    height: 2.5rem; /* h-10 - 增加高度以容纳标签 */
+    height: 2rem; /* Reduced height from 2.5rem */
     margin-bottom: 0.5rem; /* mb-2 */
     padding-right: 1.5rem; /* 为最后刻度标签留空间 */
     padding-left: 1.5rem; /* 为第一个刻度标签留空间 */
@@ -1208,15 +1284,15 @@
   .timeline-track {
     position: relative;
     width: 100%;
-    height: 2.5rem; /* 增加高度 */
-    background: linear-gradient(to bottom, #374151, #1f2937); /* 深色渐变背景 */
+    height: 2.25rem; /* Matched to zoom-mini-timeline height */
+    background: linear-gradient(to bottom, #374151, #1f2937);
     border: 1px solid #4b5563;
-    border-radius: 0.375rem; /* 更圆润 */
+    border-radius: 0.375rem;
     cursor: pointer;
     overflow: visible;
     box-shadow:
       inset 0 2px 4px rgba(0, 0, 0, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05); /* 内部高光 */
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
     transition: all 0.2s ease;
   }
 
@@ -1239,148 +1315,104 @@
       rgba(0, 0, 0, 0.4) 10px,
       rgba(0, 0, 0, 0.6) 10px,
       rgba(0, 0, 0, 0.6) 20px
-    ); /* 深色斜纹图案 */
+    );
     pointer-events: none;
     backdrop-filter: blur(1px);
   }
 
   .trim-overlay-left {
     left: 0;
-    border-radius: 0.375rem 0 0 0.375rem; /* rounded-l */
+    border-radius: 0.375rem 0 0 0.375rem;
   }
 
   .trim-overlay-right {
-    border-radius: 0 0.375rem 0.375rem 0; /* rounded-r */
+    border-radius: 0 0.375rem 0.375rem 0;
   }
 
   .trim-active-region {
     position: absolute;
     top: 0;
     height: 100%;
-    background: linear-gradient(to bottom, rgba(59, 130, 246, 0.25), rgba(37, 99, 235, 0.35)); /* 更亮的渐变高亮 */
-    border-top: 2px solid rgba(59, 130, 246, 0.7);
-    border-bottom: 2px solid rgba(59, 130, 246, 0.7);
+    /* Match Zoom Interval Style */
+    background: linear-gradient(to bottom, rgba(59, 130, 246, 0.4), rgba(37, 99, 235, 0.5));
+    border-top: 2px solid #3b82f6;
+    border-bottom: 2px solid #3b82f6;
     pointer-events: none;
   }
 
-  /* ========== 裁剪手柄 ========== */
+  /* ========== 裁剪手柄 (Unified with Zoom) ========== */
   .trim-handle {
     position: absolute;
     top: 50%;
-    transform: translate(-50%, -50%);
-    width: 2.5rem; /* 增大尺寸 */
-    height: 2.5rem;
-    background: linear-gradient(135deg, #3b82f6, #2563eb); /* 渐变背景 */
-    border: 2px solid white;
-    border-radius: 50%;
-    box-shadow:
-      0 4px 6px -1px rgba(0, 0, 0, 0.1),
-      0 2px 4px -1px rgba(0, 0, 0, 0.06),
-      0 0 0 3px rgba(59, 130, 246, 0.2); /* 外发光 */
+    /* Base transform is handled by specific start/end classes */
+    width: 8px; /* Match zoom handle width */
+    height: 100%; /* Match track height */
+    background: rgba(96, 165, 250, 0.8); /* Match zoom handle color */
+    border: none;
+    box-shadow: none; /* Flat style like zoom */
     cursor: ew-resize;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
-    z-index: 35; /* 高于预览线和播放头 */
-    pointer-events: auto; /* 确保可以接收鼠标事件 */
+    z-index: 35;
+    pointer-events: auto;
+  }
+
+  .trim-handle.trim-start {
+    transform: translate(-100%, -50%); /* Sit to the left of the start line */
+    border-radius: 0.25rem 0 0 0.25rem; /* Rounded on outer side (left) */
+    border-right: 1px solid rgba(255, 255, 255, 0.3); /* Match zoom separator */
+  }
+
+  .trim-handle.trim-end {
+    transform: translate(0%, -50%); /* Sit to the right of the end line */
+    border-radius: 0 0.25rem 0.25rem 0; /* Rounded on outer side (right) */
+    border-left: 1px solid rgba(255, 255, 255, 0.3); /* Match zoom separator */
   }
 
   .trim-handle:hover {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8);
-    transform: translate(-50%, -50%) scale(1.1);
-    box-shadow:
-      0 10px 15px -3px rgba(0, 0, 0, 0.1),
-      0 4px 6px -2px rgba(0, 0, 0, 0.05),
-      0 0 0 4px rgba(59, 130, 246, 0.3);
+    background: rgba(96, 165, 250, 1);
+    width: 10px; /* Expand on hover */
+    z-index: 40;
+  }
+  
+  .trim-handle.trim-start:hover {
+    transform: translate(-100%, -50%);
+  }
+  .trim-handle.trim-end:hover {
+    transform: translate(0%, -50%);
   }
 
   .trim-handle.dragging {
-    background: linear-gradient(135deg, #1d4ed8, #1e40af);
-    transform: translate(-50%, -50%) scale(1.15);
-    box-shadow:
-      0 20px 25px -5px rgba(0, 0, 0, 0.1),
-      0 10px 10px -5px rgba(0, 0, 0, 0.04),
-      0 0 0 5px rgba(59, 130, 246, 0.4);
+    background: rgba(37, 99, 235, 1); /* Darker active state */
+    width: 10px;
+    z-index: 40;
+    transition: none; /* Disable transition for instant follow */
+  }
+  
+  .trim-handle.trim-start.dragging {
+    transform: translate(-100%, -50%);
+  }
+  .trim-handle.trim-end.dragging {
+    transform: translate(0%, -50%);
   }
 
   /* ========== Zoom 控制区 ========== */
-  .zoom-control {
-    margin-top: 0.75rem; /* mt-3 */
-    padding-top: 0.75rem; /* pt-3 */
-    border-top: 1px solid #374151; /* 深色分隔线 */
-  }
-
-  /* Zoom 提示 */
-  .zoom-hint {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem; /* gap-2 */
-    padding: 0.75rem;
-    font-size: 0.875rem; /* text-sm */
-    font-weight: 500;
-    color: #9ca3af;
-    background: rgba(31, 41, 55, 0.5); /* 半透明深色背景 */
-    border: 1px dashed #4b5563;
-    border-radius: 0.375rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    user-select: none;
-  }
-
-  .zoom-hint:hover {
-    color: #60a5fa;
-    border-color: #60a5fa;
-    background: rgba(37, 99, 235, 0.1);
-  }
-
-  /* Zoom 激活状态 */
+  
+  /* Zoom 激活状态容器 */
   .zoom-active {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    padding: 0.75rem;
-    background: rgba(31, 41, 55, 0.5);
-    border: 1px solid #4b5563;
-    border-radius: 0.375rem;
-  }
-
-  .zoom-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 0.25rem;
-  }
-
-  .zoom-info {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: #d1d5db;
-    font-weight: 500;
-  }
-
-  .zoom-reset {
-    padding: 0.375rem;
-    color: #9ca3af;
+    margin-top: 0.5rem; /* Space from main timeline */
+    padding: 0; /* Remove padding since no container border */
     background: transparent;
     border: none;
-    border-radius: 0.25rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .zoom-reset:hover {
-    color: #f87171;
-    background-color: rgba(239, 68, 68, 0.1);
   }
 
   /* Zoom 缩略时间轴 */
   .zoom-mini-timeline {
     position: relative;
     width: 100%;
-    height: 3rem; /* h-12 */
+    height: 2.25rem; /* Reduced height from 3rem */
     background: linear-gradient(to bottom, #374151, #1f2937);
     border: 1px solid #4b5563;
     border-radius: 0.375rem;
@@ -1451,7 +1483,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 0.5rem;
+    padding: 0 0.25rem; /* Reduced padding */
     gap: 0.5rem;
     min-width: 0; /* 允许内容收缩 */
   }
@@ -1671,5 +1703,12 @@
         0 0 12px rgba(239, 68, 68, 0.8),
         0 0 24px rgba(239, 68, 68, 0.5);
     }
+  }
+
+  /* 🆕 Zoom 轨道专用遮罩样式 */
+  .zoom-trim-mask {
+    z-index: 20; /* 高于 Zoom 区间 (z-index: 10) */
+    pointer-events: auto; /* 恢复鼠标事件响应，以阻挡下方交互 */
+    cursor: not-allowed; /* 鼠标样式：禁止 */
   }
 </style>
