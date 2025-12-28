@@ -227,8 +227,14 @@
     // 绘制九宫格辅助线
     ctx.shadowColor = 'rgba(0,0,0,0.5)'
     ctx.shadowBlur = 1
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'
-    ctx.lineWidth = 1
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)' // 略微增加不透明度
+    
+    // 动态计算线宽：确保在屏幕上至少显示为 1-1.5px
+    // 视频像素 / 显示像素 = 缩放比例。如果视频是 4K (3840)，显示是 960，则 1px 屏幕 = 4px 视频
+    const currentDisplaySize = frameDisplaySize()
+    const scaleFactor = videoWidth / currentDisplaySize.width
+    // 设置线宽为 1.2 个屏幕像素对应的视频像素量，最少 1px
+    ctx.lineWidth = Math.max(1, scaleFactor * 1.2)
     
     // 辅助函数：像素对齐，防止模糊和闪烁
     const snap = (v: number) => Math.floor(v) + 0.5
