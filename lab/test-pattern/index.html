@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SRS Master Calibration Chart v3</title>
+    <style>
+        :root {
+            --bg-color: #050505;
+            --text-color: #e0e0e0;
+            --grid-color: #333;
+            --guide-color: rgba(0, 255, 255, 0.3);
+        }
+        body, html {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+            user-select: none;
+            cursor: crosshair;
+        }
+
+        /* --- Global Grid --- */
+        .layout {
+            display: grid;
+            grid-template-columns: 320px 1fr 320px;
+            grid-template-rows: 120px 1fr 160px;
+            width: 100vw; height: 100vh;
+            position: relative;
+            z-index: 10;
+        }
+
+        .panel {
+            border: 1px solid var(--grid-color);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .label {
+            position: absolute;
+            top: 0; left: 0;
+            background: rgba(255,255,255,0.1);
+            color: #aaa;
+            font-size: 10px;
+            padding: 2px 6px;
+            text-transform: uppercase;
+            z-index: 20;
+            backdrop-filter: blur(2px);
+        }
+
+        /* --- 16:9 Safe Guides (Overlay) --- */
+        .safe-guides {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            border: 2px dashed var(--guide-color);
+            pointer-events: none;
+            z-index: 5;
+            display: flex; align-items: flex-start; justify-content: flex-start;
+        }
+        .safe-guides::after {
+            content: "16:9 ASPECT GUIDE";
+            color: var(--guide-color);
+            font-size: 10px;
+            padding: 5px;
+        }
+
+        /* --- Zone: Encoder Stress (Noise) --- */
+        .noise-canvas { width: 100%; height: 100%; image-rendering: pixelated; }
+
+        /* --- Zone: Chroma Subsampling (4:2:0 Torture Test) --- */
+        .chroma-box {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            height: 100%;
+        }
+        .chroma-sub {
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 900; font-size: 14px; text-align: center;
+            line-height: 1.2;
+        }
+        /* Red on Blue: Worst for 4:2:0 */
+        .c-rb { background: #0000ff; color: #ff0000; } 
+        /* Red on Black */
+        .c-rk { background: #000000; color: #ff0000; }
+        /* Magenta on Green */
+        .c-mg { background: #00ff00; color: #ff00ff; }
+        /* Cyan on Red */
+        .c-cr { background: #ff0000; color: #00ffff; }
+
+        /* --- Zone: Jitter Graph --- */
+        .jitter-container {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 60px;
+            background: rgba(0,0,0,0.5);
+            display: flex; align-items: flex-end;
+            border-top: 1px solid #333;
+        }
+        .jitter-bar { flex: 1; background: #0f0; margin-right: 1px; }
+        .jitter-warn { background: #ff0; }
+        .jitter-bad { background: #f00; }
+
+        /* --- Center Stage: Clock & Star --- */
+        .center-stage {
+            grid-column: 2; grid-row: 2;
+            position: relative;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .siemens-star {
+            width: 80vh; height: 80vh;
+            max-width: 80%; max-height: 80%;
+            opacity: 0.8;
+            animation: rotateStar 120s linear infinite;
+        }
+        @keyframes rotateStar { to { transform: rotate(360deg); } }
+
+        .hud {
+            position: absolute;
+            background: rgba(10,10,10,0.9);
+            border: 1px solid #666;
+            padding: 20px 40px;
+            text-align: center;
+            box-shadow: 0 0 40px rgba(0,0,0,0.8);
+            border-radius: 4px;
+        }
+        .time-big { font-size: 3.5rem; font-weight: 700; color: #fff; font-feature-settings: "tnum"; }
+        .frame-info { display: flex; justify-content: space-between; margin-top: 10px; color: #888; font-size: 12px; }
+        
+        /* Binary Matrix */
+        .binary-row { display: flex; gap: 3px; margin: 15px 0; justify-content: center; }
+        .bit { width: 14px; height: 24px; background: #222; border: 1px solid #444; transition: background 0.05s; }
+        .bit.on { background: #0f0; box-shadow: 0 0 8px #0f0; border-color: #fff; }
+
+        /* --- Zone: AV Sync --- */
+        .sync-circle {
+            width: 60px; height: 60px;
+            border-radius: 50%;
+            background: #222;
+            margin: auto;
+            border: 2px solid #444;
+        }
+        .sync-circle.flash { background: #fff; box-shadow: 0 0 40px #fff; border-color: #fff; }
+
+        /* --- Bottom: Motion & Ramp --- */
+        .motion-area {
+            grid-column: 1 / span 3;
+            position: relative;
+            background: #111;
+        }
+        .ramp {
+            height: 40px; width: 100%;
+            background: linear-gradient(to right, 
+                #000 0%, #111 20%, #333 40%, #666 60%, #999 80%, #fff 100%);
+        }
+        .ufo-track {
+            height: 60px; width: 100%; position: relative;
+            border-top: 1px solid #333;
+            overflow: hidden;
+        }
+        .ufo {
+            position: absolute; top: 10px; height: 40px; width: 60px;
+            background: cyan;
+            display: flex; align-items: center; justify-content: center;
+            color: #000; font-weight: bold; font-size: 10px;
+            border: 2px solid #fff;
+        }
+        
+        /* --- Pixel Rulers --- */
+        .ruler { position: absolute; background: rgba(0,255,255,0.1); pointer-events: none; z-index: 100; font-size: 9px; color: cyan; }
+        .r-top { top: 0; left: 0; width: 100%; height: 20px; border-bottom: 1px solid cyan; }
+        .r-left { top: 0; left: 0; height: 100%; width: 20px; border-right: 1px solid cyan; }
+
+        /* Start Overlay */
+        #start {
+            position: fixed; inset: 0; background: #000; z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: #fff; cursor: pointer;
+        }
+        h1 { margin: 0 0 10px 0; color: #0f0; }
+        p { color: #888; }
+    </style>
+</head>
+<body>
+
+    <div id="start">
+        <h1>SRS MASTER CALIBRATION v3</h1>
+        <p>Click anywhere to initialize Audio Context & Rendering Engine</p>
+    </div>
+
+    <!-- Rulers -->
+    <div class="ruler r-top" id="rTop"></div>
+    <div class="ruler r-left" id="rLeft"></div>
+
+    <!-- 16:9 Guide (Calculated in JS) -->
+    <div class="safe-guides" id="guide169"></div>
+
+    <div class="layout">
+        
+        <!-- 1. Entropy / Noise -->
+        <div class="panel">
+            <div class="label">01 BITRATE STRESS</div>
+            <canvas id="noise" class="noise-canvas"></canvas>
+        </div>
+
+        <!-- 2. Chroma & Color -->
+        <div class="panel" style="grid-column: 2; flex-direction: row;">
+            <!-- Color Bars (Rec.709 100%) -->
+            <div style="flex:1; display:flex; flex-direction:column;">
+                <div class="label" style="position:relative;">02 COLOR ACCURACY</div>
+                <div style="flex:1; display:flex;">
+                    <div style="flex:1; background:#ffffff;"></div> <!-- White -->
+                    <div style="flex:1; background:#ffff00;"></div> <!-- Yellow -->
+                    <div style="flex:1; background:#00ffff;"></div> <!-- Cyan -->
+                    <div style="flex:1; background:#00ff00;"></div> <!-- Green -->
+                    <div style="flex:1; background:#ff00ff;"></div> <!-- Magenta -->
+                    <div style="flex:1; background:#ff0000;"></div> <!-- Red -->
+                    <div style="flex:1; background:#0000ff;"></div> <!-- Blue -->
+                </div>
+            </div>
+            
+            <!-- AV Sync Flash (Visual) -->
+            <div style="width: 120px; border-left: 1px solid #333; display:flex; align-items:center; justify-content:center; flex-direction:column; position:relative;">
+                <div class="label">03 AV SYNC</div>
+                <div class="sync-circle" id="flash"></div>
+                <div style="font-size:9px; color:#666; margin-top:5px;">1kHz @ 0ms</div>
+            </div>
+        </div>
+
+        <!-- 3. Jitter Monitor -->
+        <div class="panel">
+            <div class="label">04 RENDER JITTER (ms)</div>
+            <div style="flex:1; position:relative;" id="jitterGraph">
+                <div class="jitter-container" id="jitterBars"></div>
+            </div>
+            <div style="padding: 5px; font-size: 10px; color: #666; text-align: right;">
+                <span style="color:#0f0">■</span> &lt;18ms 
+                <span style="color:#ff0">■</span> &lt;33ms 
+                <span style="color:#f00">■</span> &gt;33ms
+            </div>
+        </div>
+
+        <!-- 4. Chroma Subsampling -->
+        <div class="panel">
+            <div class="label">05 CHROMA 4:2:0 TEST</div>
+            <div class="chroma-box">
+                <div class="chroma-sub c-rb">RED TEXT<br>BLUE BG</div>
+                <div class="chroma-sub c-rk">RED TEXT<br>BLACK BG</div>
+                <div class="chroma-sub c-mg">MAGENTA<br>GREEN BG</div>
+                <div class="chroma-sub c-cr">CYAN<br>RED BG</div>
+            </div>
+        </div>
+
+        <!-- 5. Center Stage -->
+        <div class="center-stage">
+            <svg class="siemens-star" id="star" viewBox="-500 -500 1000 1000"></svg>
+            
+            <div class="hud">
+                <div class="label" style="top:-10px; left:50%; transform:translateX(-50%); width:auto;">06 TIMING & RESOLUTION</div>
+                <div class="time-big" id="tc">00:00:000</div>
+                
+                <div class="binary-row" id="bits"></div>
+                
+                <div class="frame-info">
+                    <span>FRAME: <b id="fn" style="color:#fff;">0</b></span>
+                    <span>FPS: <b id="fps" style="color:#fff;">0</b></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. Aliasing / Zone Plate -->
+        <div class="panel">
+            <div class="label">07 ALIASING (ZONE PLATE)</div>
+            <canvas id="zone" style="width:100%; height:100%;"></canvas>
+        </div>
+
+        <!-- 7. Motion & Ramp -->
+        <div class="panel motion-area">
+            <div class="label">08 GAMMA RAMP & MOTION</div>
+            <div class="ramp"></div>
+            <div class="ufo-track">
+                <div class="ufo" id="ufo">960px/s</div>
+                <!-- Stationary Vertical Grid for tearing check -->
+                <div style="position:absolute; left:25%; top:0; bottom:0; width:1px; background:#333;"></div>
+                <div style="position:absolute; left:50%; top:0; bottom:0; width:1px; background:#333;"></div>
+                <div style="position:absolute; left:75%; top:0; bottom:0; width:1px; background:#333;"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- 1. Audio Setup ---
+        let audioCtx, osc, gain;
+        function initAudio() {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AC();
+            gain = audioCtx.createGain();
+            gain.gain.value = 0;
+            gain.connect(audioCtx.destination);
+            osc = audioCtx.createOscillator();
+            osc.frequency.value = 1000;
+            osc.connect(gain);
+            osc.start();
+        }
+        function beep() {
+            if(!audioCtx) return;
+            gain.gain.cancelScheduledValues(audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+        }
+
+        // --- 2. Graphics Generators ---
+        function makeStar() {
+            const svg = document.getElementById('star');
+            const segs = 36;
+            for(let i=0; i<segs; i++) {
+                const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                const a1 = (i * 360/segs) * Math.PI/180;
+                const a2 = ((i+0.5) * 360/segs) * Math.PI/180;
+                const R = 500;
+                path.setAttribute("d", `M0,0 L${Math.cos(a1)*R},${Math.sin(a1)*R} A${R},${R} 0 0,1 ${Math.cos(a2)*R},${Math.sin(a2)*R} Z`);
+                path.setAttribute("fill", "#fff");
+                svg.appendChild(path);
+            }
+        }
+        makeStar();
+
+        function makeZonePlate() {
+            const cvs = document.getElementById('zone');
+            const ctx = cvs.getContext('2d');
+            cvs.width = cvs.clientWidth; cvs.height = cvs.clientHeight;
+            const w = cvs.width, h = cvs.height;
+            const id = ctx.createImageData(w, h);
+            const d = id.data;
+            const cx = w/2, cy = h/2;
+            for(let y=0; y<h; y++) {
+                for(let x=0; x<w; x++) {
+                    const r = Math.sqrt((x-cx)**2 + (y-cy)**2);
+                    const v = 127 + 127 * Math.sin(r*r*0.05);
+                    const i = (y*w+x)*4;
+                    d[i]=v; d[i+1]=v; d[i+2]=v; d[i+3]=255;
+                }
+            }
+            ctx.putImageData(id, 0, 0);
+        }
+
+        function makeBits() {
+            const c = document.getElementById('bits');
+            for(let i=0; i<16; i++) {
+                const d = document.createElement('div');
+                d.className = 'bit';
+                c.appendChild(d);
+            }
+            return c.children;
+        }
+        const bitEls = makeBits();
+
+        // --- 3. Noise Gen ---
+        const nCvs = document.getElementById('noise');
+        const nCtx = nCvs.getContext('2d', {alpha:false});
+        let nW, nH, nId;
+        function resizeNoise() {
+            nW = nCvs.width = nCvs.clientWidth;
+            nH = nCvs.height = nCvs.clientHeight;
+            nId = nCtx.createImageData(nW, nH);
+        }
+        window.onresize = () => {
+            resizeNoise();
+            makeZonePlate();
+            drawRulers();
+            updateGuides();
+        };
+
+        // --- 4. Rulers & Guides ---
+        function drawRulers() {
+            const rt = document.getElementById('rTop');
+            const rl = document.getElementById('rLeft');
+            rt.innerHTML = ''; rl.innerHTML = '';
+            for(let i=0; i<window.innerWidth; i+=50) {
+                const d = document.createElement('div');
+                d.style.position='absolute'; d.style.bottom='0'; d.style.left=i+'px';
+                d.style.width='1px'; d.style.height=(i%100==0)?'10px':'5px'; d.style.background='cyan';
+                rt.appendChild(d);
+            }
+            for(let i=0; i<window.innerHeight; i+=50) {
+                const d = document.createElement('div');
+                d.style.position='absolute'; d.style.right='0'; d.style.top=i+'px';
+                d.style.height='1px'; d.style.width=(i%100==0)?'10px':'5px'; d.style.background='cyan';
+                rl.appendChild(d);
+            }
+        }
+        function updateGuides() {
+            const g = document.getElementById('guide169');
+            // Try to fit a 16:9 box in the window
+            const w = window.innerWidth * 0.8;
+            const h = w * (9/16);
+            g.style.width = w + 'px';
+            g.style.height = h + 'px';
+        }
+
+        // --- 5. Jitter Graph ---
+        const jContainer = document.getElementById('jitterBars');
+        const jBars = [];
+        const MAX_BARS = 60;
+        for(let i=0; i<MAX_BARS; i++) {
+            const b = document.createElement('div');
+            b.className = 'jitter-bar';
+            jContainer.appendChild(b);
+            jBars.push(b);
+        }
+        let jIdx = 0;
+
+        // --- Main Loop ---
+        let running = false;
+        let startT = null;
+        let lastT = 0;
+        let frames = 0;
+        let fpsC = 0;
+        let lastFpsT = 0;
+
+        const elTc = document.getElementById('tc');
+        const elFn = document.getElementById('fn');
+        const elFps = document.getElementById('fps');
+        const elFlash = document.getElementById('flash');
+        const elUfo = document.getElementById('ufo');
+
+        function loop(t) {
+            if(!running) return;
+            if(!startT) startT = t;
+            
+            const delta = t - lastT;
+            lastT = t;
+            
+            // Jitter Update
+            const barH = Math.min(100, delta * 2); // Scale: 1ms = 2% height
+            const bar = jBars[jIdx];
+            bar.style.height = barH + '%';
+            bar.className = 'jitter-bar ' + (delta > 33 ? 'jitter-bad' : (delta > 18 ? 'jitter-warn' : ''));
+            jIdx = (jIdx + 1) % MAX_BARS;
+
+            const elapsed = t - startT;
+
+            // 1. Timecode
+            const m = Math.floor(elapsed/60000);
+            const s = Math.floor((elapsed%60000)/1000);
+            const ms = Math.floor(elapsed%1000);
+            elTc.innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}:${ms.toString().padStart(3,'0')}`;
+
+            // 2. Frame & Binary
+            elFn.innerText = frames;
+            const val = frames % 65536;
+            for(let i=0; i<16; i++) {
+                // Visualize LSB at right (index 15)
+                const on = (val >> (15-i)) & 1;
+                if(on) bitEls[i].classList.add('on');
+                else bitEls[i].classList.remove('on');
+            }
+
+            // 3. Noise
+            if(nId) {
+                const buf = new Uint32Array(nId.data.buffer);
+                for(let i=0; i<buf.length; i++) buf[i] = 0xFF000000 | (Math.random()*0xFFFFFF);
+                nCtx.putImageData(nId, 0, 0);
+            }
+
+            // 4. Sync (Every 1000ms)
+            const secPhase = elapsed % 1000;
+            if(secPhase < 50) {
+                if(!elFlash.classList.contains('flash')) {
+                    elFlash.classList.add('flash');
+                    beep();
+                }
+            } else {
+                elFlash.classList.remove('flash');
+            }
+
+            // 5. Motion (Ping Pong or Loop? Loop is easier to track)
+            // 960px per second. 
+            // ufo-track is 100% width. Let's just oscillate 0-100% over 2s
+            const prog = (elapsed % 2000) / 2000;
+            elUfo.style.left = (prog * 100) + '%';
+
+            // 6. FPS
+            fpsC++;
+            if(t - lastFpsT >= 1000) {
+                elFps.innerText = fpsC;
+                fpsC = 0;
+                lastFpsT = t;
+            }
+
+            frames++;
+            requestAnimationFrame(loop);
+        }
+
+        document.getElementById('start').onclick = function() {
+            this.style.display = 'none';
+            initAudio();
+            resizeNoise();
+            makeZonePlate();
+            drawRulers();
+            updateGuides();
+            running = true;
+            requestAnimationFrame(loop);
+        };
+
+    </script>
+</body>
+</html>

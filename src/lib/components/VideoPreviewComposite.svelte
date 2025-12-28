@@ -1,7 +1,7 @@
 <!-- Video preview component - using VideoComposite Worker for background composition -->
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { Play, Pause, LoaderCircle, Monitor, Info, Scissors, Crop } from '@lucide/svelte'
+  import { Play, Pause, LoaderCircle, Monitor, Info, Scissors, Crop, ZoomIn } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import { DataFormatValidator } from '$lib/utils/data-format-validator'
   import { imageBackgroundManager } from '$lib/services/image-background-manager'
@@ -763,10 +763,10 @@
         // 🔧 裁剪检查：如果启用了裁剪且到达裁剪终点，自动停止播放
         if (trimStore.enabled && isPlaying) {
           const currentGlobalFrame = lastFrameWindowStartIndex + frameIndex
-          const currentGlobalMs = (currentGlobalFrame / frameRate) * 1000
-
-          if (currentGlobalMs >= trimStore.trimEndMs) {
-            console.log('✂️ [VideoPreview] Reached trim end point, stopping playback')
+          
+          // 🔧 修复：使用帧索引比较避免时间戳精度问题
+          if (currentGlobalFrame >= trimStore.trimEndFrame) {
+            console.log('✂️ [VideoPreview] Reached trim end point (frame ' + currentGlobalFrame + '), stopping playback')
             pause()
           }
         }
@@ -1132,27 +1132,58 @@
       console.log('🔍 [Preview] Exited preview mode due to play')
     }
 
-    // 🔧 裁剪检查：如果启用了裁剪且当前位置超出裁剪范围，则跳转到裁剪开始位置
-    if (trimStore.enabled) {
-      const currentGlobalFrame = windowStartIndex + currentFrameIndex
-      const currentGlobalMs = (currentGlobalFrame / frameRate) * 1000
+    const startFrame = windowStartIndex + currentFrameIndex
+    let needsSeek = false
+    let targetGlobalFrame = startFrame
 
-      if (currentGlobalMs < trimStore.trimStartMs || currentGlobalMs >= trimStore.trimEndMs) {
-        console.log('⚠️ [VideoPreview] Current position outside trim range, seeking to trim start')
-        seekToGlobalTime(trimStore.trimStartMs)
-        // 等待 seek 完成后再播放
-        requestAnimationFrame(() => {
-          compositeWorker!.postMessage({ type: 'play' })
-        })
-        isPlaying = true
-        return
+    // 1. 检查是否在 Trim 范围外（或已到达 Trim 终点）
+    if (trimStore.enabled) {
+      // 如果当前位置小于起点，或大于等于终点（播放结束），则重置到起点
+      if (startFrame < trimStore.trimStartFrame || startFrame >= trimStore.trimEndFrame) {
+        targetGlobalFrame = trimStore.trimStartFrame
+        needsSeek = true
+        console.log('⚠️ [Play] Outside trim range or at end, resetting to:', targetGlobalFrame)
       }
+    } 
+    // 2. 检查是否已到达视频末尾（无 Trim 情况）
+    else if (totalFramesAll > 0 && startFrame >= totalFramesAll - 1) { 
+      // -1 容错，避免在最后一帧点击播放无效
+      targetGlobalFrame = 0
+      needsSeek = true
+      console.log('🔄 [Play] Reached end of video, resetting to start')
     }
 
-    console.log('▶️ [VideoPreview] Starting playback')
-    isPlaying = true
+    if (needsSeek) {
+      // 判断是否需要切窗
+      const targetWindowFrame = targetGlobalFrame - windowStartIndex
+      const isInsideWindow = targetWindowFrame >= 0 && targetWindowFrame < totalFrames
 
-    compositeWorker.postMessage({ type: 'play' })
+      if (isInsideWindow) {
+        // 窗口内跳转：直接 Seek 然后 Play
+        console.log('⏭️ [Play] Seeking inside window to', targetWindowFrame)
+        seekToFrame(targetWindowFrame)
+        // 确保 Seek 消息发送后再发送 Play
+        requestAnimationFrame(() => {
+          if (compositeWorker) {
+            console.log('▶️ [Play] Starting playback after seek')
+            compositeWorker.postMessage({ type: 'play' })
+            isPlaying = true
+          }
+        })
+      } else {
+        // 窗口外跳转：利用 shouldContinuePlayback 机制，在 Ready 后自动播放
+        console.log('🔄 [Play] Target outside window, requesting switch with auto-play')
+        shouldContinuePlayback = true
+        continueFromGlobalFrame = targetGlobalFrame
+        seekToGlobalFrame(targetGlobalFrame) // 这会触发 onRequestWindow
+        // 注意：这里不立即设置 isPlaying = true，等待 Worker Ready 后处理
+      }
+    } else {
+      // 不需要跳转，直接播放
+      console.log('▶️ [Play] Resuming playback')
+      isPlaying = true
+      compositeWorker.postMessage({ type: 'play' })
+    }
   }
 
   function pause() {
@@ -2212,6 +2243,17 @@
         <div class="flex items-center justify-end gap-4 text-xs text-gray-400 flex-1">
           <span>Frame: {currentFrameNumber}/{totalFramesAll > 0 ? totalFramesAll : (totalFrames > 0 ? totalFrames : encodedChunks.length)}</span>
           <span>Resolution: {outputWidth}×{outputHeight}</span>
+          <!-- Add Zoom 按钮 -->
+          <button
+            class="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600 hover:border-gray-500"
+            onclick={() => handleZoomChange(currentTimeMs, Math.min(currentTimeMs + 1500, timelineMaxMs))}
+            disabled={isProcessing}
+            title="Add zoom effect at current time"
+          >
+            <ZoomIn class="w-3.5 h-3.5" />
+            Add Zoom
+          </button>
+
           <!-- Crop 按钮 -->
           <button
             class="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"

@@ -63,8 +63,13 @@
 
   const currentTier = $derived(tierConfig[licenseTier] || tierConfig['free'])
 
-  // Display total frames: prioritize using total frames (totalFramesAll), otherwise fallback to current window (encodedChunks.length)
-  const displayTotalFrames = $derived(totalFramesAll > 0 ? totalFramesAll : encodedChunks.length)
+  // Display total frames: prioritize trimmed frame count if enabled, otherwise use total source frames
+  const displayTotalFrames = $derived.by(() => {
+    if (trimStore.enabled) {
+      return Math.max(1, trimStore.trimFrameCount)
+    }
+    return totalFramesAll > 0 ? totalFramesAll : encodedChunks.length
+  })
 
   // Use global background configuration
   const backgroundConfig = $derived(backgroundConfigStore.config)
