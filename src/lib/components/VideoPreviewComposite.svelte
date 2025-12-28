@@ -350,10 +350,7 @@
           duration = totalFrames / frameRate
           outputWidth = data.outputSize.width
           outputHeight = data.outputSize.height
-          // 保存视频信息用于裁剪
-          videoInfo = { width: outputWidth, height: outputHeight }
-          // 🆕 设置裁剪 store 的原始尺寸
-          videoCropStore.setOriginalSize(outputWidth, outputHeight)
+          
           console.log('[progress] Worker ready - internal state updated:', {
             totalFrames,
             duration,
@@ -874,6 +871,15 @@
         type: firstChunk.type,
         codec: firstChunk.codec
       })
+
+      // 🆕 修复：使用源视频尺寸设置裁剪 Store 和 videoInfo
+      if (firstChunk.codedWidth && firstChunk.codedHeight) {
+        const sw = firstChunk.codedWidth
+        const sh = firstChunk.codedHeight
+        videoCropStore.setOriginalSize(sw, sh)
+        videoInfo = { width: sw, height: sh }
+        console.log('✅ [VideoPreview] Set source dimensions for crop:', { width: sw, height: sh })
+      }
     }
 
     // Collect all ArrayBuffers for transfer
@@ -1062,7 +1068,7 @@
 
         // 🔧 关键：在 Promise 内部发送消息，确保 resolver 已经设置
         compositeWorker!.postMessage({
-          type: 'getCurrentFrameBitmap',
+          type: 'getSourceFrameBitmap',
           data: { frameIndex: currentFrameIndex }
         })
       })
@@ -2227,10 +2233,10 @@
             class:hover:border-gray-500={!videoCropStore.enabled}
             onclick={enterCropMode}
             disabled={isProcessing || !hasEverProcessed}
-            title={videoCropStore.enabled ? 'Cropped - Click to edit' : 'Crop video'}
+            title={videoCropStore.enabled ? 'Click to adjust crop area' : 'Crop video'}
           >
             <Crop class="w-3.5 h-3.5" />
-            {videoCropStore.enabled ? 'Cropped' : 'Crop'}
+            {videoCropStore.enabled ? 'Edit Crop' : 'Crop'}
           </button>
         </div>
       </div>
