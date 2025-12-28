@@ -153,7 +153,7 @@ function calculateVideoLayout(
   videoWidth: number,
   videoHeight: number
 ): VideoLayout {
-  const padding = config.padding || 60;
+  const padding = config.padding ?? 60;
   const inset = config.inset || 0; // 视频内缩距离
   const totalPadding = padding + inset;
   const availableWidth = outputWidth - totalPadding * 2;

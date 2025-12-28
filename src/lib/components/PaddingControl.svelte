@@ -4,7 +4,7 @@
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
 
   // Current padding value
-  const currentPadding = $derived(backgroundConfigStore.config.padding || 60)
+  const currentPadding = $derived(backgroundConfigStore.config.padding ?? 60)
 
   // Preset padding values
   const PRESET_PADDING = [
