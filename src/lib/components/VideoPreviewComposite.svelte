@@ -230,12 +230,12 @@
     const aspectRatio = outputWidth / outputHeight
 
     // Calculate available space - consider control bar and timeline height
-    const headerHeight = 60  // Preview info bar height
+    const headerHeight = 0  // Preview info bar height (Removed)
     const controlsHeight = showControls && totalFrames > 0 ? 56 : 0  // Play control bar height
     // 🔧 更新：新 Timeline 组件包含时间刻度、轨道和 Zoom 控制区，总高度约 200-232px
     // 保守估计使用 232px 以确保不会溢出
     const timelineHeight = showTimeline && totalFrames > 0 ? 232 : 0  // New Timeline component height (with zoom control)
-    const padding = 48  // Canvas area padding (p-6 = 24px * 2)
+    const padding = 0  // Canvas area padding (Removed)
 
     const availableWidth = displayWidth - padding
     const availableHeight = displayHeight - headerHeight - controlsHeight - timelineHeight - padding
@@ -2120,19 +2120,12 @@
 
 <!-- Video preview container - optimized for full height layout -->
 <div class="flex flex-col h-full bg-gray-900 rounded-lg overflow-hidden {className}">
-  <!-- Preview info bar - fixed height -->
-  <div class="flex-shrink-0 flex justify-between items-center p-3 border-b border-gray-700">
-    <div class="flex items-center gap-2">
-      <Monitor class="w-4 h-4 text-gray-400" />
-      <span class="text-sm font-semibold text-gray-100">Video Preview</span>
-    </div>
-  </div>
-
+  
   <!-- 🔧 普通预览模式区域 - 包含 Canvas 和时间轴 -->
   <!-- 在裁剪模式下整体隐藏，避免布局混乱 -->
   <div class:hidden={isCropMode || isFocusMode} class="flex-1 flex flex-col min-h-0">
     <!-- Canvas display area - takes remaining space -->
-    <div class="flex-1 flex items-center justify-center p-6 min-h-0">
+    <div class="flex-1 flex items-center justify-center p-0 min-h-0">
       <div class="relative bg-black flex items-center justify-center rounded overflow-hidden" style="width: {previewWidth}px; height: {previewHeight}px;">
         <canvas
           bind:this={canvas}

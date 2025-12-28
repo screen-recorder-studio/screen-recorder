@@ -78,10 +78,10 @@
 
 <!-- Video aspect ratio configuration control - Segmented Control Style -->
 <div class="flex justify-center">
-  <div class="relative inline-flex bg-gray-100/80 p-1.5 rounded-xl shadow-inner gap-1 border border-gray-200/50">
+  <div class="relative inline-flex bg-gray-100/80 p-0.5 rounded-lg shadow-inner gap-1 border border-gray-200/50">
     <!-- Animated Selection Slider -->
     <div
-      class="absolute top-1.5 bottom-1.5 bg-white rounded-lg shadow-sm ring-1 ring-black/5 transition-all duration-300 ease-[cubic-bezier(0.25,0.8,0.25,1)]"
+      class="absolute top-0.5 bottom-0.5 bg-white rounded-md shadow-sm ring-1 ring-black/5 transition-all duration-300 ease-[cubic-bezier(0.25,0.8,0.25,1)]"
       style="left: {sliderStyle.left}px; width: {sliderStyle.width}px; opacity: {sliderStyle.opacity};"
     ></div>
 
@@ -91,7 +91,7 @@
       <button
         bind:this={buttonRefs[i]}
         class="
-          relative z-10 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200
+          relative z-10 flex items-center gap-2 px-3 py-1 rounded-md text-sm font-medium transition-colors duration-200
           focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/30
           {isSelected 
             ? 'text-gray-900' 
@@ -101,7 +101,7 @@
         onclick={() => handleRatioSelect(platform)}
         title="{platform.name} - {platform.description}"
       >
-        <IconComponent class="w-4 h-4 {isSelected ? 'text-purple-600' : 'opacity-70'}" />
+        <IconComponent class="w-3.5 h-3.5 {isSelected ? 'text-purple-600' : 'opacity-70'}" />
         <span class="{isSelected ? 'font-semibold' : ''}">{platform.ratio}</span>
       </button>
     {/each}
