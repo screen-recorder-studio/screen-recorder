@@ -3,108 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SRS Master Calibration Chart v3</title>
+    <title>SRS Master Calibration Chart v4 (Crop/Trim Edition)</title>
     <style>
         :root {
             --bg-color: #050505;
-            --text-color: #e0e0e0;
+            --theme-color: #00ffff; /* Dynamic */
             --grid-color: #333;
-            --guide-color: rgba(0, 255, 255, 0.3);
+            --panel-bg: rgba(0,0,0,0.7);
         }
         body, html {
             margin: 0; padding: 0;
             width: 100%; height: 100%;
             overflow: hidden;
             background: var(--bg-color);
-            color: var(--text-color);
+            color: #e0e0e0;
             font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
             user-select: none;
-            cursor: crosshair;
         }
 
-        /* --- Global Grid --- */
+        /* --- Layer 0: Coordinate Grid (Canvas) --- */
+        #grid-canvas {
+            position: absolute;
+            top: 0; left: 0;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* --- Layer 1: Layout --- */
         .layout {
             display: grid;
             grid-template-columns: 320px 1fr 320px;
-            grid-template-rows: 120px 1fr 160px;
+            grid-template-rows: 140px 1fr 180px;
             width: 100vw; height: 100vh;
             position: relative;
             z-index: 10;
+            padding: 20px;
+            box-sizing: border-box;
+            gap: 10px;
         }
 
         .panel {
-            border: 1px solid var(--grid-color);
+            border: 1px solid var(--theme-color);
+            background: var(--panel-bg);
             position: relative;
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            transition: border-color 0.5s;
+            backdrop-filter: blur(4px);
         }
 
         .label {
             position: absolute;
             top: 0; left: 0;
-            background: rgba(255,255,255,0.1);
-            color: #aaa;
+            background: var(--theme-color);
+            color: #000;
+            font-weight: bold;
             font-size: 10px;
             padding: 2px 6px;
             text-transform: uppercase;
             z-index: 20;
-            backdrop-filter: blur(2px);
+            transition: background 0.5s;
         }
 
-        /* --- 16:9 Safe Guides (Overlay) --- */
-        .safe-guides {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            border: 2px dashed var(--guide-color);
-            pointer-events: none;
-            z-index: 5;
-            display: flex; align-items: flex-start; justify-content: flex-start;
-        }
-        .safe-guides::after {
-            content: "16:9 ASPECT GUIDE";
-            color: var(--guide-color);
-            font-size: 10px;
-            padding: 5px;
-        }
-
-        /* --- Zone: Encoder Stress (Noise) --- */
+        /* --- Zone 1: Bitrate Stress (Noise) --- */
         .noise-canvas { width: 100%; height: 100%; image-rendering: pixelated; }
 
-        /* --- Zone: Chroma Subsampling (4:2:0 Torture Test) --- */
-        .chroma-box {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: 1fr 1fr;
-            height: 100%;
+        /* --- Zone 2: Color & Sync --- */
+        .chroma-box { display: grid; grid-template-columns: 1fr 1fr; height: 100%; }
+        .sync-visual {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            border-left: 1px solid #333; width: 100px;
         }
-        .chroma-sub {
-            display: flex; align-items: center; justify-content: center;
-            font-weight: 900; font-size: 14px; text-align: center;
-            line-height: 1.2;
+        .sync-indicator {
+            width: 40px; height: 40px; background: #222; border: 2px solid #444; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 10px; color: #000; font-weight: bold;
         }
-        /* Red on Blue: Worst for 4:2:0 */
-        .c-rb { background: #0000ff; color: #ff0000; } 
-        /* Red on Black */
-        .c-rk { background: #000000; color: #ff0000; }
-        /* Magenta on Green */
-        .c-mg { background: #00ff00; color: #ff00ff; }
-        /* Cyan on Red */
-        .c-cr { background: #ff0000; color: #00ffff; }
+        .sync-active { background: #fff; box-shadow: 0 0 20px #fff; border-color: #fff; }
+        .sync-text { margin-top: 5px; font-size: 9px; color: #888; }
 
-        /* --- Zone: Jitter Graph --- */
+        /* --- Zone 3: Jitter --- */
         .jitter-container {
-            position: absolute; bottom: 0; left: 0; width: 100%; height: 60px;
-            background: rgba(0,0,0,0.5);
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 100%;
             display: flex; align-items: flex-end;
-            border-top: 1px solid #333;
+            opacity: 0.8;
         }
-        .jitter-bar { flex: 1; background: #0f0; margin-right: 1px; }
-        .jitter-warn { background: #ff0; }
-        .jitter-bad { background: #f00; }
+        .jitter-bar { flex: 1; margin-right: 1px; background: var(--theme-color); transition: background 0.5s; }
+        .jitter-bad { background: #f00 !important; }
 
-        /* --- Center Stage: Clock & Star --- */
+        /* --- Center Stage --- */
         .center-stage {
             grid-column: 2; grid-row: 2;
             position: relative;
@@ -112,146 +99,134 @@
         }
         .siemens-star {
             width: 80vh; height: 80vh;
-            max-width: 80%; max-height: 80%;
-            opacity: 0.8;
-            animation: rotateStar 120s linear infinite;
+            max-width: 90%; max-height: 90%;
+            opacity: 0.9;
+            /* Animation handled by JS now for sync */
         }
-        @keyframes rotateStar { to { transform: rotate(360deg); } }
 
         .hud {
             position: absolute;
-            background: rgba(10,10,10,0.9);
-            border: 1px solid #666;
-            padding: 20px 40px;
+            background: rgba(0,0,0,0.85);
+            border: 2px solid var(--theme-color);
+            padding: 15px 30px;
             text-align: center;
-            box-shadow: 0 0 40px rgba(0,0,0,0.8);
-            border-radius: 4px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            border-radius: 8px;
+            transition: border-color 0.5s;
         }
-        .time-big { font-size: 3.5rem; font-weight: 700; color: #fff; font-feature-settings: "tnum"; }
-        .frame-info { display: flex; justify-content: space-between; margin-top: 10px; color: #888; font-size: 12px; }
+        .time-big { font-size: 3rem; font-weight: 700; color: #fff; font-feature-settings: "tnum"; margin-bottom: 5px; }
+        .theme-phase { font-size: 10px; color: var(--theme-color); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; transition: color 0.5s; }
         
-        /* Binary Matrix */
-        .binary-row { display: flex; gap: 3px; margin: 15px 0; justify-content: center; }
-        .bit { width: 14px; height: 24px; background: #222; border: 1px solid #444; transition: background 0.05s; }
-        .bit.on { background: #0f0; box-shadow: 0 0 8px #0f0; border-color: #fff; }
+        .binary-row { display: flex; gap: 3px; justify-content: center; height: 20px; }
+        .bit { width: 10px; height: 100%; background: #222; border: 1px solid #444; }
+        .bit.on { background: var(--theme-color); box-shadow: 0 0 5px var(--theme-color); border-color: #fff; }
 
-        /* --- Zone: AV Sync --- */
-        .sync-circle {
-            width: 60px; height: 60px;
-            border-radius: 50%;
-            background: #222;
-            margin: auto;
-            border: 2px solid #444;
-        }
-        .sync-circle.flash { background: #fff; box-shadow: 0 0 40px #fff; border-color: #fff; }
-
-        /* --- Bottom: Motion & Ramp --- */
-        .motion-area {
+        /* --- Bottom: Gradients & Motion --- */
+        .motion-panel {
             grid-column: 1 / span 3;
-            position: relative;
-            background: #111;
+            display: flex; flex-direction: column;
         }
-        .ramp {
-            height: 40px; width: 100%;
-            background: linear-gradient(to right, 
-                #000 0%, #111 20%, #333 40%, #666 60%, #999 80%, #fff 100%);
+        /* Stepped Ramp for Banding Check */
+        .stepped-ramp {
+            height: 30px; width: 100%; display: flex;
         }
+        .ramp-step { flex: 1; height: 100%; }
+
+        /* Smooth Ramp */
+        .smooth-ramp {
+            height: 20px; width: 100%;
+            background: linear-gradient(to right, #000, #fff);
+        }
+
         .ufo-track {
-            height: 60px; width: 100%; position: relative;
-            border-top: 1px solid #333;
-            overflow: hidden;
+            flex: 1; position: relative; border-top: 1px solid #333; background: #111; overflow: hidden;
         }
         .ufo {
-            position: absolute; top: 10px; height: 40px; width: 60px;
-            background: cyan;
-            display: flex; align-items: center; justify-content: center;
-            color: #000; font-weight: bold; font-size: 10px;
+            position: absolute; top: 15px; height: 30px; width: 40px;
+            background: var(--theme-color);
             border: 2px solid #fff;
+            box-shadow: 0 0 10px var(--theme-color);
+            transition: background 0.5s;
         }
-        
-        /* --- Pixel Rulers --- */
-        .ruler { position: absolute; background: rgba(0,255,255,0.1); pointer-events: none; z-index: 100; font-size: 9px; color: cyan; }
-        .r-top { top: 0; left: 0; width: 100%; height: 20px; border-bottom: 1px solid cyan; }
-        .r-left { top: 0; left: 0; height: 100%; width: 20px; border-right: 1px solid cyan; }
+        /* Vertical Tearing Check Lines */
+        .tear-line { position: absolute; top:0; bottom:0; width:1px; background:rgba(255,255,255,0.3); }
 
         /* Start Overlay */
         #start {
             position: fixed; inset: 0; background: #000; z-index: 9999;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            color: #fff; cursor: pointer;
+            cursor: pointer;
         }
-        h1 { margin: 0 0 10px 0; color: #0f0; }
-        p { color: #888; }
+        h1 { color: var(--theme-color); margin-bottom: 10px; }
+        .specs { color: #666; font-size: 12px; margin-top: 20px; text-align: center; line-height: 1.6; }
     </style>
 </head>
 <body>
 
     <div id="start">
-        <h1>SRS MASTER CALIBRATION v3</h1>
-        <p>Click anywhere to initialize Audio Context & Rendering Engine</p>
+        <h1 style="color:#0ff">SRS BENCHMARK v4</h1>
+        <p style="color:#fff">Click to Start • Enable Audio</p>
+        <div class="specs">
+            Features:<br>
+            • Fullscreen Coordinate Grid (Crop Test)<br>
+            • Temporal Color Cycling (Trim Test)<br>
+            • Stereo Audio Separation (L/R)<br>
+            • Main-Thread Optimized Noise<br>
+            • Frame-Perfect Sync
+        </div>
     </div>
 
-    <!-- Rulers -->
-    <div class="ruler r-top" id="rTop"></div>
-    <div class="ruler r-left" id="rLeft"></div>
-
-    <!-- 16:9 Guide (Calculated in JS) -->
-    <div class="safe-guides" id="guide169"></div>
+    <!-- Background Grid for Crop Validation -->
+    <canvas id="grid-canvas"></canvas>
 
     <div class="layout">
         
-        <!-- 1. Entropy / Noise -->
+        <!-- 1. Entropy / Bitrate Stress -->
         <div class="panel">
-            <div class="label">01 BITRATE STRESS</div>
+            <div class="label">01 ENCODER STRESS</div>
             <canvas id="noise" class="noise-canvas"></canvas>
+            <div style="position:absolute; bottom:2px; right:5px; font-size:9px; color:#fff; background:rgba(0,0,0,0.5); padding:2px;">
+                PRE-CALC BUFFER
+            </div>
         </div>
 
-        <!-- 2. Chroma & Color -->
+        <!-- 2. Chroma & Audio Visual -->
         <div class="panel" style="grid-column: 2; flex-direction: row;">
-            <!-- Color Bars (Rec.709 100%) -->
             <div style="flex:1; display:flex; flex-direction:column;">
-                <div class="label" style="position:relative;">02 COLOR ACCURACY</div>
-                <div style="flex:1; display:flex;">
-                    <div style="flex:1; background:#ffffff;"></div> <!-- White -->
-                    <div style="flex:1; background:#ffff00;"></div> <!-- Yellow -->
-                    <div style="flex:1; background:#00ffff;"></div> <!-- Cyan -->
-                    <div style="flex:1; background:#00ff00;"></div> <!-- Green -->
-                    <div style="flex:1; background:#ff00ff;"></div> <!-- Magenta -->
-                    <div style="flex:1; background:#ff0000;"></div> <!-- Red -->
-                    <div style="flex:1; background:#0000ff;"></div> <!-- Blue -->
+                <div class="label">02 CHROMA 4:2:0</div>
+                <!-- Torture Test Colors -->
+                <div style="flex:1; display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; font-size:12px; font-weight:900; text-align:center;">
+                    <div style="background:#0000ff; color:#ff0000; display:flex; align-items:center; justify-content:center;">RED/BLUE</div>
+                    <div style="background:#ff0000; color:#00ffff; display:flex; align-items:center; justify-content:center;">CYAN/RED</div>
+                    <div style="background:#000000; color:#ff0000; display:flex; align-items:center; justify-content:center;">RED/BLK</div>
+                    <div style="background:#00ff00; color:#ff00ff; display:flex; align-items:center; justify-content:center;">MAG/GRN</div>
                 </div>
             </div>
             
-            <!-- AV Sync Flash (Visual) -->
-            <div style="width: 120px; border-left: 1px solid #333; display:flex; align-items:center; justify-content:center; flex-direction:column; position:relative;">
-                <div class="label">03 AV SYNC</div>
-                <div class="sync-circle" id="flash"></div>
-                <div style="font-size:9px; color:#666; margin-top:5px;">1kHz @ 0ms</div>
+            <!-- Stereo Sync -->
+            <div class="sync-visual">
+                <div class="label">03 AUDIO</div>
+                <div class="sync-indicator" id="ind-left" style="margin-bottom:5px;">L</div>
+                <div class="sync-indicator" id="ind-right">R</div>
+                <div class="sync-text">STEREO CHECK</div>
             </div>
         </div>
 
-        <!-- 3. Jitter Monitor -->
+        <!-- 3. Jitter -->
         <div class="panel">
-            <div class="label">04 RENDER JITTER (ms)</div>
+            <div class="label">04 RENDER JITTER</div>
             <div style="flex:1; position:relative;" id="jitterGraph">
                 <div class="jitter-container" id="jitterBars"></div>
             </div>
-            <div style="padding: 5px; font-size: 10px; color: #666; text-align: right;">
-                <span style="color:#0f0">■</span> &lt;18ms 
-                <span style="color:#ff0">■</span> &lt;33ms 
-                <span style="color:#f00">■</span> &gt;33ms
+            <div style="text-align:right; padding:2px; font-size:9px; color:#888;">
+                RED > 33ms (Drop)
             </div>
         </div>
 
-        <!-- 4. Chroma Subsampling -->
+        <!-- 4. Dynamic Aliasing (Zone Plate) -->
         <div class="panel">
-            <div class="label">05 CHROMA 4:2:0 TEST</div>
-            <div class="chroma-box">
-                <div class="chroma-sub c-rb">RED TEXT<br>BLUE BG</div>
-                <div class="chroma-sub c-rk">RED TEXT<br>BLACK BG</div>
-                <div class="chroma-sub c-mg">MAGENTA<br>GREEN BG</div>
-                <div class="chroma-sub c-cr">CYAN<br>RED BG</div>
-            </div>
+            <div class="label">05 DYNAMIC ZONE</div>
+            <canvas id="zone" style="width:100%; height:100%;"></canvas>
         </div>
 
         <!-- 5. Center Stage -->
@@ -259,61 +234,200 @@
             <svg class="siemens-star" id="star" viewBox="-500 -500 1000 1000"></svg>
             
             <div class="hud">
-                <div class="label" style="top:-10px; left:50%; transform:translateX(-50%); width:auto;">06 TIMING & RESOLUTION</div>
+                <div class="theme-phase" id="phase-name">PHASE 1: BLUE</div>
                 <div class="time-big" id="tc">00:00:000</div>
-                
                 <div class="binary-row" id="bits"></div>
                 
-                <div class="frame-info">
-                    <span>FRAME: <b id="fn" style="color:#fff;">0</b></span>
-                    <span>FPS: <b id="fps" style="color:#fff;">0</b></span>
+                <div style="margin-top:10px; font-size:10px; color:#888; display:flex; justify-content:space-between;">
+                    <span>FRAME: <b id="fn" style="color:#fff">0</b></span>
+                    <span>FPS: <b id="fps" style="color:#fff">0</b></span>
                 </div>
             </div>
         </div>
 
-        <!-- 6. Aliasing / Zone Plate -->
+        <!-- 6. Color Banding -->
         <div class="panel">
-            <div class="label">07 ALIASING (ZONE PLATE)</div>
-            <canvas id="zone" style="width:100%; height:100%;"></canvas>
+            <div class="label">06 BIT DEPTH</div>
+            <div class="stepped-ramp" id="rampSteps">
+                <!-- JS will fill 32 steps -->
+            </div>
+            <div style="height:20px; background:linear-gradient(to right, #000, #fff); margin-top:5px;"></div>
+            <div style="font-size:9px; color:#666; text-align:center; margin-top:2px;">
+                Top: 32-Step Quantized (Check Banding) | Btm: Smooth
+            </div>
         </div>
 
-        <!-- 7. Motion & Ramp -->
-        <div class="panel motion-area">
-            <div class="label">08 GAMMA RAMP & MOTION</div>
-            <div class="ramp"></div>
+        <!-- 7. Motion & Crop Check -->
+        <div class="panel motion-panel">
+            <div class="label">07 MOTION & TEARING</div>
             <div class="ufo-track">
-                <div class="ufo" id="ufo">960px/s</div>
-                <!-- Stationary Vertical Grid for tearing check -->
-                <div style="position:absolute; left:25%; top:0; bottom:0; width:1px; background:#333;"></div>
-                <div style="position:absolute; left:50%; top:0; bottom:0; width:1px; background:#333;"></div>
-                <div style="position:absolute; left:75%; top:0; bottom:0; width:1px; background:#333;"></div>
+                <div class="tear-line" style="left:25%"></div>
+                <div class="tear-line" style="left:50%"></div>
+                <div class="tear-line" style="left:75%"></div>
+                <div class="ufo" id="ufo"></div>
             </div>
         </div>
 
     </div>
 
     <script>
-        // --- 1. Audio Setup ---
-        let audioCtx, osc, gain;
+        // --- Configuration ---
+        const CONFIG = {
+            colors: [
+                { hex: '#00ffff', name: 'CYAN / BLUE' },   // 0-10s
+                { hex: '#00ff00', name: 'GREEN' },         // 10-20s
+                { hex: '#ff0000', name: 'RED' },           // 20-30s
+                { hex: '#ffff00', name: 'YELLOW' }         // 30-40s
+            ],
+            cycleDuration: 10000, // 10s per color
+            noiseInterval: 2, // Update noise every N frames (save CPU)
+            ufoSpeed: 1 // loops per 2s
+        };
+
+        // --- 1. Audio Engine (Stereo) ---
+        let audioCtx, oscLeft, oscRight, gainLeft, gainRight, pannerLeft, pannerRight;
+        let isAudioInit = false;
+
         function initAudio() {
             const AC = window.AudioContext || window.webkitAudioContext;
             audioCtx = new AC();
-            gain = audioCtx.createGain();
-            gain.gain.value = 0;
-            gain.connect(audioCtx.destination);
-            osc = audioCtx.createOscillator();
-            osc.frequency.value = 1000;
-            osc.connect(gain);
-            osc.start();
-        }
-        function beep() {
-            if(!audioCtx) return;
-            gain.gain.cancelScheduledValues(audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+            
+            // Left Channel (Low Pitch 440Hz)
+            oscLeft = audioCtx.createOscillator();
+            oscLeft.frequency.value = 440;
+            gainLeft = audioCtx.createGain();
+            gainLeft.gain.value = 0;
+            pannerLeft = audioCtx.createStereoPanner();
+            pannerLeft.pan.value = -1; // Full Left
+            oscLeft.connect(gainLeft).connect(pannerLeft).connect(audioCtx.destination);
+            oscLeft.start();
+
+            // Right Channel (High Pitch 880Hz)
+            oscRight = audioCtx.createOscillator();
+            oscRight.frequency.value = 880;
+            gainRight = audioCtx.createGain();
+            gainRight.gain.value = 0;
+            pannerRight = audioCtx.createStereoPanner();
+            pannerRight.pan.value = 1; // Full Right
+            oscRight.connect(gainRight).connect(pannerRight).connect(audioCtx.destination);
+            oscRight.start();
+
+            isAudioInit = true;
         }
 
-        // --- 2. Graphics Generators ---
+        function triggerBeep(side) {
+            if(!isAudioInit) return;
+            const now = audioCtx.currentTime;
+            const targetGain = side === 'left' ? gainLeft : gainRight;
+            
+            // Cancel previous schedule to avoid overlap artifacts
+            targetGain.gain.cancelScheduledValues(now);
+            targetGain.gain.setValueAtTime(0, now);
+            targetGain.gain.linearRampToValueAtTime(0.1, now + 0.01);
+            targetGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+        }
+
+        // --- 2. Background Grid (Canvas) ---
+        const gridCanvas = document.getElementById('grid-canvas');
+        const gridCtx = gridCanvas.getContext('2d');
+
+        function drawGrid() {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            gridCanvas.width = w;
+            gridCanvas.height = h;
+            
+            gridCtx.clearRect(0,0,w,h);
+            gridCtx.font = '9px monospace';
+            gridCtx.fillStyle = '#444';
+            gridCtx.strokeStyle = '#222';
+            gridCtx.lineWidth = 1;
+
+            // Draw Lines & Text
+            for (let x = 0; x < w; x += 50) {
+                const isMajor = x % 100 === 0;
+                gridCtx.beginPath();
+                gridCtx.moveTo(x, 0);
+                gridCtx.lineTo(x, h);
+                gridCtx.strokeStyle = isMajor ? '#333' : '#1a1a1a';
+                gridCtx.stroke();
+            }
+            for (let y = 0; y < h; y += 50) {
+                const isMajor = y % 100 === 0;
+                gridCtx.beginPath();
+                gridCtx.moveTo(0, y);
+                gridCtx.lineTo(w, y);
+                gridCtx.strokeStyle = isMajor ? '#333' : '#1a1a1a';
+                gridCtx.stroke();
+            }
+
+            // Draw Coordinates at Intersections (every 100px)
+            gridCtx.fillStyle = '#666';
+            for(let x=0; x<w; x+=100) {
+                for(let y=0; y<h; y+=100) {
+                    if(x===0 && y===0) continue;
+                    gridCtx.fillText(`${x},${y}`, x + 2, y + 10);
+                }
+            }
+        }
+        window.addEventListener('resize', drawGrid);
+
+        // --- 3. Optimized Noise (Pre-calculated) ---
+        const nCvs = document.getElementById('noise');
+        const nCtx = nCvs.getContext('2d', {alpha:false});
+        let noiseFrames = [];
+        let noiseIdx = 0;
+
+        function initNoise() {
+            // Create small buffer and scale up (Pixelated) for performance
+            // But for bitrate stress, we want 1:1 pixels.
+            // Compromise: 4 frames of Full HD noise consumes RAM but saves CPU.
+            // Let's use a smaller buffer (e.g., 640x360) and scale up. 
+            // It still destroys compression algorithms effectively.
+            const w = 640; 
+            const h = 360;
+            nCvs.width = w; nCvs.height = h;
+            
+            for(let f=0; f<4; f++) {
+                const id = nCtx.createImageData(w, h);
+                const buf = new Uint32Array(id.data.buffer);
+                for(let i=0; i<buf.length; i++) {
+                    buf[i] = 0xFF000000 | (Math.random()*0xFFFFFF);
+                }
+                noiseFrames.push(id);
+            }
+        }
+        initNoise();
+
+        // --- 4. Dynamic Zone Plate ---
+        const zCvs = document.getElementById('zone');
+        const zCtx = zCvs.getContext('2d');
+        let zPhase = 0;
+        
+        function drawZone() {
+            // Draw once, animate phase later? 
+            // Actually, calculating Zone Plate JS per frame is heavy.
+            // Let's draw a static high-res one, and just PAN it.
+            // A moving texture is enough to test temporal aliasing.
+            const w = 300, h = 150;
+            zCvs.width = w; zCvs.height = h;
+            const id = zCtx.createImageData(w, h);
+            const d = id.data;
+            const cx = w/2, cy = h/2;
+            
+            for(let y=0; y<h; y++) {
+                for(let x=0; x<w; x++) {
+                    const r = Math.sqrt((x-cx)**2 + (y-cy)**2);
+                    // Add phase shift
+                    const v = 127 + 127 * Math.sin(r*r*0.1 + zPhase);
+                    const i = (y*w+x)*4;
+                    d[i]=v; d[i+1]=v; d[i+2]=v; d[i+3]=255;
+                }
+            }
+            zCtx.putImageData(id, 0, 0);
+        }
+
+        // --- 5. Siemens Star Generator ---
         function makeStar() {
             const svg = document.getElementById('star');
             const segs = 36;
@@ -329,80 +443,30 @@
         }
         makeStar();
 
-        function makeZonePlate() {
-            const cvs = document.getElementById('zone');
-            const ctx = cvs.getContext('2d');
-            cvs.width = cvs.clientWidth; cvs.height = cvs.clientHeight;
-            const w = cvs.width, h = cvs.height;
-            const id = ctx.createImageData(w, h);
-            const d = id.data;
-            const cx = w/2, cy = h/2;
-            for(let y=0; y<h; y++) {
-                for(let x=0; x<w; x++) {
-                    const r = Math.sqrt((x-cx)**2 + (y-cy)**2);
-                    const v = 127 + 127 * Math.sin(r*r*0.05);
-                    const i = (y*w+x)*4;
-                    d[i]=v; d[i+1]=v; d[i+2]=v; d[i+3]=255;
-                }
-            }
-            ctx.putImageData(id, 0, 0);
-        }
-
-        function makeBits() {
-            const c = document.getElementById('bits');
-            for(let i=0; i<16; i++) {
+        // --- 6. Stepped Ramp ---
+        function initRamp() {
+            const el = document.getElementById('rampSteps');
+            for(let i=0; i<32; i++) {
                 const d = document.createElement('div');
-                d.className = 'bit';
-                c.appendChild(d);
-            }
-            return c.children;
-        }
-        const bitEls = makeBits();
-
-        // --- 3. Noise Gen ---
-        const nCvs = document.getElementById('noise');
-        const nCtx = nCvs.getContext('2d', {alpha:false});
-        let nW, nH, nId;
-        function resizeNoise() {
-            nW = nCvs.width = nCvs.clientWidth;
-            nH = nCvs.height = nCvs.clientHeight;
-            nId = nCtx.createImageData(nW, nH);
-        }
-        window.onresize = () => {
-            resizeNoise();
-            makeZonePlate();
-            drawRulers();
-            updateGuides();
-        };
-
-        // --- 4. Rulers & Guides ---
-        function drawRulers() {
-            const rt = document.getElementById('rTop');
-            const rl = document.getElementById('rLeft');
-            rt.innerHTML = ''; rl.innerHTML = '';
-            for(let i=0; i<window.innerWidth; i+=50) {
-                const d = document.createElement('div');
-                d.style.position='absolute'; d.style.bottom='0'; d.style.left=i+'px';
-                d.style.width='1px'; d.style.height=(i%100==0)?'10px':'5px'; d.style.background='cyan';
-                rt.appendChild(d);
-            }
-            for(let i=0; i<window.innerHeight; i+=50) {
-                const d = document.createElement('div');
-                d.style.position='absolute'; d.style.right='0'; d.style.top=i+'px';
-                d.style.height='1px'; d.style.width=(i%100==0)?'10px':'5px'; d.style.background='cyan';
-                rl.appendChild(d);
+                d.className = 'ramp-step';
+                const val = Math.floor((i/31)*255);
+                d.style.background = `rgb(${val},${val},${val})`;
+                el.appendChild(d);
             }
         }
-        function updateGuides() {
-            const g = document.getElementById('guide169');
-            // Try to fit a 16:9 box in the window
-            const w = window.innerWidth * 0.8;
-            const h = w * (9/16);
-            g.style.width = w + 'px';
-            g.style.height = h + 'px';
+        initRamp();
+
+        // --- 7. Binary Bits ---
+        const bitEls = [];
+        const bitsContainer = document.getElementById('bits');
+        for(let i=0; i<16; i++){
+            const d = document.createElement('div');
+            d.className = 'bit';
+            bitsContainer.appendChild(d);
+            bitEls.push(d);
         }
 
-        // --- 5. Jitter Graph ---
+        // --- 8. Jitter Bars ---
         const jContainer = document.getElementById('jitterBars');
         const jBars = [];
         const MAX_BARS = 60;
@@ -414,77 +478,101 @@
         }
         let jIdx = 0;
 
-        // --- Main Loop ---
-        let running = false;
+        // --- MAIN LOOP ---
         let startT = null;
         let lastT = 0;
         let frames = 0;
-        let fpsC = 0;
-        let lastFpsT = 0;
-
+        let fpsC = 0, lastFpsT = 0;
+        
         const elTc = document.getElementById('tc');
         const elFn = document.getElementById('fn');
         const elFps = document.getElementById('fps');
-        const elFlash = document.getElementById('flash');
+        const elPhase = document.getElementById('phase-name');
         const elUfo = document.getElementById('ufo');
+        const elStar = document.getElementById('star');
+        const elIndL = document.getElementById('ind-left');
+        const elIndR = document.getElementById('ind-right');
 
         function loop(t) {
-            if(!running) return;
             if(!startT) startT = t;
-            
             const delta = t - lastT;
             lastT = t;
-            
-            // Jitter Update
-            const barH = Math.min(100, delta * 2); // Scale: 1ms = 2% height
-            const bar = jBars[jIdx];
-            bar.style.height = barH + '%';
-            bar.className = 'jitter-bar ' + (delta > 33 ? 'jitter-bad' : (delta > 18 ? 'jitter-warn' : ''));
-            jIdx = (jIdx + 1) % MAX_BARS;
-
             const elapsed = t - startT;
 
-            // 1. Timecode
+            // A. Temporal Color Coding (Trim Test)
+            const cycleIdx = Math.floor(elapsed / CONFIG.cycleDuration) % CONFIG.colors.length;
+            const theme = CONFIG.colors[cycleIdx];
+            document.documentElement.style.setProperty('--theme-color', theme.hex);
+            elPhase.innerText = `PHASE ${cycleIdx+1}: ${theme.name}`;
+            elPhase.style.color = theme.hex;
+
+            // B. Jitter Graph
+            const barH = Math.min(100, delta * 2); 
+            const bar = jBars[jIdx];
+            bar.style.height = barH + '%';
+            bar.classList.toggle('jitter-bad', delta > 33);
+            jIdx = (jIdx + 1) % MAX_BARS;
+
+            // C. Timecode
             const m = Math.floor(elapsed/60000);
             const s = Math.floor((elapsed%60000)/1000);
             const ms = Math.floor(elapsed%1000);
             elTc.innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}:${ms.toString().padStart(3,'0')}`;
 
-            // 2. Frame & Binary
+            // D. Binary Counter & Frame Info
             elFn.innerText = frames;
             const val = frames % 65536;
             for(let i=0; i<16; i++) {
-                // Visualize LSB at right (index 15)
                 const on = (val >> (15-i)) & 1;
-                if(on) bitEls[i].classList.add('on');
-                else bitEls[i].classList.remove('on');
+                bitEls[i].classList.toggle('on', !!on);
             }
 
-            // 3. Noise
-            if(nId) {
-                const buf = new Uint32Array(nId.data.buffer);
-                for(let i=0; i<buf.length; i++) buf[i] = 0xFF000000 | (Math.random()*0xFFFFFF);
-                nCtx.putImageData(nId, 0, 0);
+            // E. Noise (Throttled)
+            if(frames % CONFIG.noiseInterval === 0) {
+                nCtx.putImageData(noiseFrames[noiseIdx], 0, 0);
+                noiseIdx = (noiseIdx + 1) % noiseFrames.length;
             }
 
-            // 4. Sync (Every 1000ms)
-            const secPhase = elapsed % 1000;
-            if(secPhase < 50) {
-                if(!elFlash.classList.contains('flash')) {
-                    elFlash.classList.add('flash');
-                    beep();
+            // F. Dynamic Zone Plate (Slow Phase Shift)
+            // Updating pixel data every frame is too heavy. 
+            // Just update it every 4th frame (15fps effective) to induce temporal aliasing without CPU kill
+            if(frames % 4 === 0) {
+                zPhase += 0.5;
+                drawZone();
+            }
+
+            // G. Sync - Star Rotation (JS Driven now)
+            // 1 revolution every 10 seconds (36 deg/s)
+            const rot = (elapsed / 10000) * 360; 
+            elStar.style.transform = `rotate(${rot}deg)`;
+
+            // H. Sync - Audio Stereo Sweep
+            // 0-500ms: Left, 1000-1500ms: Right, every 2s
+            const audPhase = elapsed % 2000;
+            if(audPhase < 100) { // Short blip
+                if(!elIndL.classList.contains('sync-active')) {
+                    elIndL.classList.add('sync-active');
+                    triggerBeep('left');
                 }
             } else {
-                elFlash.classList.remove('flash');
+                elIndL.classList.remove('sync-active');
             }
 
-            // 5. Motion (Ping Pong or Loop? Loop is easier to track)
-            // 960px per second. 
-            // ufo-track is 100% width. Let's just oscillate 0-100% over 2s
-            const prog = (elapsed % 2000) / 2000;
-            elUfo.style.left = (prog * 100) + '%';
+            if(audPhase > 1000 && audPhase < 1100) {
+                if(!elIndR.classList.contains('sync-active')) {
+                    elIndR.classList.add('sync-active');
+                    triggerBeep('right');
+                }
+            } else {
+                elIndR.classList.remove('sync-active');
+            }
 
-            // 6. FPS
+            // I. Motion UFO
+            // Linear loop 0-100% every 2s
+            const ufoP = (elapsed % 2000) / 2000;
+            elUfo.style.left = (ufoP * 100) + '%';
+
+            // FPS Calc
             fpsC++;
             if(t - lastFpsT >= 1000) {
                 elFps.innerText = fpsC;
@@ -498,12 +586,8 @@
 
         document.getElementById('start').onclick = function() {
             this.style.display = 'none';
+            drawGrid(); // Init grid
             initAudio();
-            resizeNoise();
-            makeZonePlate();
-            drawRulers();
-            updateGuides();
-            running = true;
             requestAnimationFrame(loop);
         };
 
