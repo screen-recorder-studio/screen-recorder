@@ -58,8 +58,9 @@ let lowWatermarkNotified = false;
 let criticalWatermarkNotified = false;
 
 // 🚀 P1 优化：帧缓冲限制，防止内存无限增长
+// 注意：窗口大小需要平衡性能和内存占用，4K 视频每帧约 32MB
 const FRAME_BUFFER_LIMITS = {
-  maxDecodedFrames: 150,      // 当前窗口最大帧数 (~5秒@30fps, ~1.2GB @ 1080p)
+  maxDecodedFrames: 150,      // 当前窗口最大帧数 (~5秒@30fps, ~1.2GB @ 1080p, ~4.8GB @ 4K)
   maxNextDecoded: 120,        // 预取窗口最大帧数 (~4秒@30fps, ~1GB @ 1080p)
   warningThreshold: 0.9       // 90% 时警告
 };
@@ -983,6 +984,17 @@ function startStreamingDecode(chunks: any[]) {
     throw new Error('No video chunks provided');
   }
 
+  // 🔧 修复：在清理旧帧之前，先 reset 解码器以取消所有待处理的解码操作
+  // 这可以防止旧窗口的帧被推送到新清空的 decodedFrames 数组中
+  if (videoDecoder && videoDecoder.state !== 'closed') {
+    try {
+      console.log('[progress] VideoComposite - resetting decoder before new window')
+      videoDecoder.reset()
+    } catch (e) {
+      console.warn('[COMPOSITE-WORKER] Failed to reset decoder:', e)
+    }
+  }
+
   // 清理旧帧（保留解码器以复用）
   if (decodedFrames.length > 0) {
     console.log('[progress] VideoComposite - cleaning old decoded frames (streaming):', decodedFrames.length)
@@ -995,7 +1007,8 @@ function startStreamingDecode(chunks: any[]) {
   const firstChunk = chunks[0];
   const codec = firstChunk.codec || 'vp8';
 
-  const needRecreate = !videoDecoder || videoDecoderCodec !== codec;
+  // 🔧 修复：reset 后需要重新 configure，所以总是需要重新创建或配置
+  const needRecreate = !videoDecoder || videoDecoderCodec !== codec || videoDecoder.state === 'unconfigured';
   if (needRecreate) {
     console.log('🎬 [COMPOSITE-WORKER] (Re)initializing VideoDecoder for streaming, codec:', codec);
 
@@ -1099,12 +1112,63 @@ function startStreamingDecode(chunks: any[]) {
   // 开始流式解码
   isDecoding = true;
   console.log('[progress] VideoComposite - starting streaming decode, chunks:', chunks.length)
+
+  // 🔧 诊断：检查 chunks 中的关键帧分布
+  const keyframeIndices: number[] = []
+  const firstFewTimestamps: number[] = []
+  let prevTimestamp = -1
+  let timestampErrors = 0
+
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i]
+    if (chunk.type === 'key') {
+      keyframeIndices.push(i)
+    }
+    if (i < 5) {
+      firstFewTimestamps.push(chunk.timestamp)
+    }
+    if (prevTimestamp >= 0 && chunk.timestamp < prevTimestamp) {
+      timestampErrors++
+    }
+    prevTimestamp = chunk.timestamp
+  }
+
+  console.log('🔍 [DIAGNOSTIC] Chunks analysis:', {
+    totalChunks: chunks.length,
+    keyframeCount: keyframeIndices.length,
+    keyframeIndices: keyframeIndices.slice(0, 10),
+    firstKeyframe: keyframeIndices[0],
+    firstFewTimestamps,
+    timestampErrors,
+    firstChunkType: chunks[0]?.type
+  })
+
+  if (keyframeIndices.length === 0) {
+    console.error('❌ [DIAGNOSTIC] NO KEYFRAMES in chunks! All frames are delta. This will cause decode failures.')
+  } else if (keyframeIndices[0] !== 0) {
+    console.error('❌ [DIAGNOSTIC] First chunk is NOT a keyframe! type:', chunks[0]?.type, 'First keyframe at index:', keyframeIndices[0])
+  }
+
   try {
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
       const data = chunk.data instanceof ArrayBuffer ? new Uint8Array(chunk.data) : chunk.data;
+      const chunkType = chunk.type === 'key' ? 'key' : 'delta';
+
+      // 🔧 诊断：记录第一个 chunk 的详细信息
+      if (i === 0) {
+        console.log('🔍 [DIAGNOSTIC] First chunk details:', {
+          type: chunk.type,
+          resolvedType: chunkType,
+          timestamp: chunk.timestamp,
+          dataSize: data.byteLength,
+          codedWidth: chunk.codedWidth,
+          codedHeight: chunk.codedHeight
+        })
+      }
+
       const encodedChunk = new EncodedVideoChunk({
-        type: chunk.type === 'key' ? 'key' : 'delta',
+        type: chunkType,
         timestamp: chunk.timestamp,
         data
       });

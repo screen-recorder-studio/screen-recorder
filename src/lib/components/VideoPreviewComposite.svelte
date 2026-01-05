@@ -139,9 +139,9 @@
   let previewFrameIndex = $state<number | null>(null)  // 🆕 预览帧索引（独立于播放位置）
   let savedPlaybackState = $state<{ frameIndex: number; isPlaying: boolean; windowStartIndex?: number } | null>(null)
   let hoverPreviewThrottleTimer: number | null = null
-  let windowSwitchThrottleTimer: number | null = null  // 🆕 窗口切换节流
-  const HOVER_PREVIEW_THROTTLE_MS = 50  // 50ms 节流
-  const WINDOW_SWITCH_THROTTLE_MS = 300  // 300ms 窗口切换节流
+  let windowSwitchThrottleTimer: number | null = null  // 🔧 窗口切换防抖
+  const HOVER_PREVIEW_THROTTLE_MS = 50  // 50ms 节流（窗口内帧预览）
+  const WINDOW_SWITCH_DEBOUNCE_MS = 200  // 🔧 200ms 防抖（窗口切换）- 快速拖动时不触发，鼠标稳定后才请求
 
   // 🆕 标记：是否有因预览触发的待处理窗口切换，避免 ready 时误跳到 0 帧
   let pendingPreviewWindowSwitch = false
@@ -1414,6 +1414,9 @@
 
   // Reactive processing - only process once after recording is complete
   let hasProcessed = false
+  // 🔧 修复：追踪已处理的 chunks 引用，防止重复处理
+  let processedChunksRef: any[] | null = null
+  let lastChunksRef: any[] | null = null
 
   $effect(() => {
     console.log('🔍 [VideoPreview] Effect triggered:', {
@@ -1446,6 +1449,7 @@
         compositeWorker) {
       console.log('🎬 [VideoPreview] Processing completed recording with', encodedChunks.length, 'chunks')
       hasProcessed = true
+      processedChunksRef = encodedChunks  // 🔧 标记为已处理，防止第二个 effect 重复处理
       processVideo().catch(error => {
         console.error('❌ [VideoPreview] Failed to process video:', error)
       })
@@ -1453,19 +1457,36 @@
   })
 
   // When external window data (encodedChunks) reference changes, allow reprocessing
-  let lastChunksRef: any[] | null = null
+  // 🔧 修复：使用 processedChunksRef 追踪已处理的 chunks，避免重复处理
   $effect(() => {
     if (encodedChunks && encodedChunks !== lastChunksRef) {
-      console.log('[progress] New window data detected, reprocessing:', {
-        oldLength: lastChunksRef?.length || 0,
-        newLength: encodedChunks.length,
-        windowStartIndex
-      })
+      const oldRef = lastChunksRef
       lastChunksRef = encodedChunks
-      hasProcessed = false
+
+      // 🔧 关键修复：如果这批 chunks 已经被处理过，跳过
+      if (encodedChunks === processedChunksRef) {
+        console.log('[progress] Skipping already processed chunks:', {
+          length: encodedChunks.length,
+          windowStartIndex
+        })
+        return
+      }
+
+      console.log('[progress] New window data detected, reprocessing:', {
+        oldLength: oldRef?.length || 0,
+        newLength: encodedChunks.length,
+        windowStartIndex,
+        wasProcessed: hasProcessed
+      })
+
+      // 🔧 只有当 oldRef 不为 null 时才重置 hasProcessed
+      // 这样首次加载时不会与第一个 effect 冲突
+      if (oldRef !== null) {
+        hasProcessed = false
+      }
 
       // 🔧 Immediately process new window data
-      if (isRecordingComplete && encodedChunks.length > 0 && isInitialized && compositeWorker) {
+      if (isRecordingComplete && encodedChunks.length > 0 && isInitialized && compositeWorker && !hasProcessed) {
         console.log('[progress] Immediately processing new window data')
 
         // Reset current frame index only when truly idle (no preview/restore pending)
@@ -1483,6 +1504,7 @@
         }
 
         hasProcessed = true
+        processedChunksRef = encodedChunks  // 标记为已处理
         processVideo().catch(error => {
           console.error('❌ [VideoPreview] Failed to process new window data:', error)
         })
@@ -1679,8 +1701,14 @@
     previewTimeMs = timeMs
 
     if (windowFrameIndex >= 0 && windowFrameIndex < totalFrames) {
-      // 🔧 #9 优化：在当前窗口内，立即清除加载状态
+      // 🔧 在当前窗口内，立即显示预览帧（帧已在内存中）
       isLoadingPreview = false
+
+      // 🔧 取消任何挂起的窗口切换请求
+      if (windowSwitchThrottleTimer) {
+        clearTimeout(windowSwitchThrottleTimer)
+        windowSwitchThrottleTimer = null
+      }
 
       // 请求预览帧
       if (compositeWorker) {
@@ -1690,33 +1718,46 @@
         })
       }
     } else {
-      // 🔧 #9 优化：不在当前窗口，显示加载指示器并触发窗口切换
-      if (!windowSwitchThrottleTimer) {
-        windowSwitchThrottleTimer = window.setTimeout(() => {
-          windowSwitchThrottleTimer = null
-        }, WINDOW_SWITCH_THROTTLE_MS)
+      // 🔧 性能优化：使用防抖而非节流
+      // 快速拖动时不触发窗口切换，只有鼠标稳定后才请求
 
-        // 🆕 #9：延迟显示加载指示器，避免快速滑动时闪烁
+      // 取消之前的挂起请求
+      if (windowSwitchThrottleTimer) {
+        clearTimeout(windowSwitchThrottleTimer)
+      }
+
+      // 记录目标位置，延迟执行窗口切换
+      const targetTimeMs = (globalFrameIndex / frameRate) * 1000
+
+      windowSwitchThrottleTimer = window.setTimeout(() => {
+        windowSwitchThrottleTimer = null
+
+        // 🔧 再次检查是否仍需要切换（可能鼠标已移回窗口内）
+        const currentGlobalFrame = Math.floor((previewTimeMs / 1000) * frameRate)
+        const currentWindowFrame = currentGlobalFrame - windowStartIndex
+        if (currentWindowFrame >= 0 && currentWindowFrame < totalFrames) {
+          // 已经在窗口内了，不需要切换
+          return
+        }
+
+        // 显示加载指示器
         previewLoadingStartTime = performance.now()
         setTimeout(() => {
-          // 仅在仍在等待且超过延迟阈值时显示
-          if (isPreviewMode && pendingPreviewWindowSwitch && 
+          if (isPreviewMode && pendingPreviewWindowSwitch &&
               performance.now() - previewLoadingStartTime >= PREVIEW_LOADING_DELAY_MS) {
             isLoadingPreview = true
           }
         }, PREVIEW_LOADING_DELAY_MS)
 
         // 触发窗口切换
-        const targetTimeMs = (globalFrameIndex / frameRate) * 1000
         pendingPreviewWindowSwitch = true
-        
-        // 🔧 #9 优化：使用更小的窗口减少加载时间
+
         onRequestWindow?.({
           centerMs: targetTimeMs,
-          beforeMs: 500,   // 减小：原 1500ms
-          afterMs: 1000    // 减小：原 1500ms
+          beforeMs: 1000,
+          afterMs: 2000
         })
-      }
+      }, WINDOW_SWITCH_DEBOUNCE_MS)  // 使用防抖延迟
     }
   }
 

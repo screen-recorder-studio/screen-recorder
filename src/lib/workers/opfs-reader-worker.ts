@@ -122,6 +122,10 @@ function summarize() {
   let totalBytes = 0
   const chunkSizes: number[] = []
 
+  // 🔧 诊断：检查时间戳单调性和关键帧分布
+  let timestampErrors: Array<{ index: number; prev: number; curr: number }> = []
+  let prevTimestamp = -1
+
   indexEntries.forEach((entry, index) => {
     // 收集关键帧索引
     if (entry.type === 'key' || entry.isKeyframe) {
@@ -130,6 +134,13 @@ function summarize() {
     // 统计数据大小
     totalBytes += entry.size || 0
     chunkSizes.push(entry.size || 0)
+
+    // 🔧 诊断：检查时间戳是否单调递增
+    const currTimestamp = entry.timestamp ?? 0
+    if (prevTimestamp >= 0 && currTimestamp < prevTimestamp) {
+      timestampErrors.push({ index, prev: prevTimestamp, curr: currTimestamp })
+    }
+    prevTimestamp = currTimestamp
   })
 
   // 计算相对时长（最后一帧 - 第一帧）
@@ -152,12 +163,43 @@ function summarize() {
     totalBytes
   }
 
+  // 🔧 诊断日志：检查数据完整性
   console.log('[progress] OPFS Reader - enhanced summary:', {
     ...summary,
     durationSeconds: durationMs / 1000,
     keyframeRatio: (keyframeIndices.length / totalChunks * 100).toFixed(1) + '%',
     avgKeyframeInterval: totalChunks / keyframeIndices.length
   })
+
+  // 🔴 关键诊断：检查关键帧标记是否正确
+  if (keyframeIndices.length === 0) {
+    console.error('❌ [DIAGNOSTIC] NO KEYFRAMES FOUND! All frames are delta frames. This will cause playback issues.')
+  } else if (keyframeIndices[0] !== 0) {
+    console.error('❌ [DIAGNOSTIC] First frame is NOT a keyframe! index[0]:', keyframeIndices[0])
+  }
+
+  // 🔴 关键诊断：检查时间戳单调性
+  if (timestampErrors.length > 0) {
+    console.error('❌ [DIAGNOSTIC] Timestamp ordering errors detected!', {
+      errorCount: timestampErrors.length,
+      firstErrors: timestampErrors.slice(0, 5)
+    })
+  } else {
+    console.log('✅ [DIAGNOSTIC] Timestamps are monotonically increasing')
+  }
+
+  // 🔴 关键诊断：检查关键帧间隔是否合理
+  if (keyframeIndices.length >= 2) {
+    const intervals = keyframeIndices.slice(1).map((k, i) => k - keyframeIndices[i])
+    const maxInterval = Math.max(...intervals)
+    const minInterval = Math.min(...intervals)
+    console.log('[DIAGNOSTIC] Keyframe intervals:', {
+      min: minInterval,
+      max: maxInterval,
+      avg: (keyframeIndices[keyframeIndices.length - 1] / (keyframeIndices.length - 1)).toFixed(1),
+      firstFew: keyframeIndices.slice(0, 10)
+    })
+  }
 
   return summary
 }
@@ -188,7 +230,8 @@ function idxByTimeMs(ms: number): number {
 
 // 🔧 优化关键帧查找：优先使用isKeyframe字段
 function keyframeBefore(index: number): number {
-  let i = Math.max(0, Math.min(index, indexEntries.length - 1))
+  const clampedIndex = Math.max(0, Math.min(index, indexEntries.length - 1))
+  let i = clampedIndex
   for (; i >= 0; i--) {
     const ent = indexEntries[i]
     // 优先检查isKeyframe字段，回退到type字段
@@ -196,7 +239,15 @@ function keyframeBefore(index: number): number {
       return i
     }
   }
-  return 0
+
+  // 🔧 修复：如果没有找到关键帧，打印警告并返回请求的索引
+  // 而不是返回 0，这会导致窗口错误地回退到开头
+  console.warn('⚠️ [OPFS-READER] keyframeBefore: no keyframe found before index', index, ', returning original index. This may cause decode issues.')
+  console.warn('⚠️ [OPFS-READER] This usually means keyframe markers are not being written correctly during recording.')
+
+  // 返回请求的索引，至少不会回退到帧 0
+  // 但这可能导致解码问题（从 delta 帧开始解码）
+  return clampedIndex
 }
 
 // 🔧 新增：查找下一个关键帧
@@ -303,6 +354,14 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
       }
       if (endIdx <= startIdx) endIdx = Math.min(startIdx + 1, indexEntries.length)
 
+      // 🔧 修复：限制返回的帧数不超过 maxFramesPerWindow，防止解码缓冲区溢出
+      // composite worker 的 maxDecodedFrames = 150，留 10 帧余量
+      const maxFramesPerWindow = 140
+      if (endIdx - startIdx > maxFramesPerWindow) {
+        console.warn(`⚠️ [OPFS-READER] Window size ${endIdx - startIdx} exceeds max ${maxFramesPerWindow}, truncating`)
+        endIdx = startIdx + maxFramesPerWindow
+      }
+
       const file = await getDataFile()
       const chunks: ChunkWire[] = []
       const transfer: ArrayBuffer[] = []
@@ -384,7 +443,15 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
       let start = prevKey
       // 需要保证覆盖从 prevKey 到 requestedStart 的GOP，再加上用户期望的 count
       const distance = requestedStart - prevKey
+      // 🔧 修复：限制返回的帧数不超过 maxFramesPerWindow，防止解码缓冲区溢出
+      // composite worker 的 maxDecodedFrames = 150，留 10 帧余量
+      const maxFramesPerWindow = 140
       let end = Math.min(indexEntries.length, start + count + Math.max(0, distance))
+      // 如果超过限制，截断到 maxFramesPerWindow
+      if (end - start > maxFramesPerWindow) {
+        console.warn(`⚠️ [OPFS-READER] Window size ${end - start} exceeds max ${maxFramesPerWindow}, truncating`)
+        end = start + maxFramesPerWindow
+      }
 
       console.log('[progress] OPFS Reader - aligned to previous keyframe for seek:', {
         requestedStart,
