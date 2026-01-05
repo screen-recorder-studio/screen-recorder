@@ -58,8 +58,9 @@ let lowWatermarkNotified = false;
 let criticalWatermarkNotified = false;
 
 // 🚀 P1 优化：帧缓冲限制，防止内存无限增长
+// 注意：窗口大小需要平衡性能和内存占用，4K 视频每帧约 32MB
 const FRAME_BUFFER_LIMITS = {
-  maxDecodedFrames: 150,      // 当前窗口最大帧数 (~5秒@30fps, ~1.2GB @ 1080p)
+  maxDecodedFrames: 150,      // 当前窗口最大帧数 (~5秒@30fps, ~1.2GB @ 1080p, ~4.8GB @ 4K)
   maxNextDecoded: 120,        // 预取窗口最大帧数 (~4秒@30fps, ~1GB @ 1080p)
   warningThreshold: 0.9       // 90% 时警告
 };

@@ -355,6 +355,7 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
       if (endIdx <= startIdx) endIdx = Math.min(startIdx + 1, indexEntries.length)
 
       // 🔧 修复：限制返回的帧数不超过 maxFramesPerWindow，防止解码缓冲区溢出
+      // composite worker 的 maxDecodedFrames = 150，留 10 帧余量
       const maxFramesPerWindow = 140
       if (endIdx - startIdx > maxFramesPerWindow) {
         console.warn(`⚠️ [OPFS-READER] Window size ${endIdx - startIdx} exceeds max ${maxFramesPerWindow}, truncating`)
