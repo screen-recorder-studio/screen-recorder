@@ -354,6 +354,13 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
       }
       if (endIdx <= startIdx) endIdx = Math.min(startIdx + 1, indexEntries.length)
 
+      // 🔧 修复：限制返回的帧数不超过 maxFramesPerWindow，防止解码缓冲区溢出
+      const maxFramesPerWindow = 140
+      if (endIdx - startIdx > maxFramesPerWindow) {
+        console.warn(`⚠️ [OPFS-READER] Window size ${endIdx - startIdx} exceeds max ${maxFramesPerWindow}, truncating`)
+        endIdx = startIdx + maxFramesPerWindow
+      }
+
       const file = await getDataFile()
       const chunks: ChunkWire[] = []
       const transfer: ArrayBuffer[] = []
@@ -435,7 +442,15 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
       let start = prevKey
       // 需要保证覆盖从 prevKey 到 requestedStart 的GOP，再加上用户期望的 count
       const distance = requestedStart - prevKey
+      // 🔧 修复：限制返回的帧数不超过 maxFramesPerWindow，防止解码缓冲区溢出
+      // composite worker 的 maxDecodedFrames = 150，留 10 帧余量
+      const maxFramesPerWindow = 140
       let end = Math.min(indexEntries.length, start + count + Math.max(0, distance))
+      // 如果超过限制，截断到 maxFramesPerWindow
+      if (end - start > maxFramesPerWindow) {
+        console.warn(`⚠️ [OPFS-READER] Window size ${end - start} exceeds max ${maxFramesPerWindow}, truncating`)
+        end = start + maxFramesPerWindow
+      }
 
       console.log('[progress] OPFS Reader - aligned to previous keyframe for seek:', {
         requestedStart,

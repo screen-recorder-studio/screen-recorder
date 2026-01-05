@@ -983,6 +983,17 @@ function startStreamingDecode(chunks: any[]) {
     throw new Error('No video chunks provided');
   }
 
+  // 🔧 修复：在清理旧帧之前，先 reset 解码器以取消所有待处理的解码操作
+  // 这可以防止旧窗口的帧被推送到新清空的 decodedFrames 数组中
+  if (videoDecoder && videoDecoder.state !== 'closed') {
+    try {
+      console.log('[progress] VideoComposite - resetting decoder before new window')
+      videoDecoder.reset()
+    } catch (e) {
+      console.warn('[COMPOSITE-WORKER] Failed to reset decoder:', e)
+    }
+  }
+
   // 清理旧帧（保留解码器以复用）
   if (decodedFrames.length > 0) {
     console.log('[progress] VideoComposite - cleaning old decoded frames (streaming):', decodedFrames.length)
@@ -995,7 +1006,8 @@ function startStreamingDecode(chunks: any[]) {
   const firstChunk = chunks[0];
   const codec = firstChunk.codec || 'vp8';
 
-  const needRecreate = !videoDecoder || videoDecoderCodec !== codec;
+  // 🔧 修复：reset 后需要重新 configure，所以总是需要重新创建或配置
+  const needRecreate = !videoDecoder || videoDecoderCodec !== codec || videoDecoder.state === 'unconfigured';
   if (needRecreate) {
     console.log('🎬 [COMPOSITE-WORKER] (Re)initializing VideoDecoder for streaming, codec:', codec);
 
