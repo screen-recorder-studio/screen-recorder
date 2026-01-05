@@ -147,29 +147,68 @@
     let frameCount = 0;
 
     if (keyframeInfo && keyframeInfo.indices.length > 0) {
-      // 基于关键帧对齐：向前找到最近的关键帧，确保不会从非解码起点开始
-      let prevKeyframeIndex = keyframeInfo.indices[0];
-      for (const k of keyframeInfo.indices) {
-        if (k <= targetFrameIndex) prevKeyframeIndex = k;
-        else break;
+      // 🔧 修复：连续播放模式下不做关键帧回退
+      // 当 beforeMs === 0 且 mode === 'play' 时，表示连续播放的窗口切换
+      // 此时应该从 targetFrameIndex 开始，让 OPFS Reader 负责关键帧对齐
+      // 避免双重回退导致窗口起点错误
+      const isForwardPlayback = mode === "play" && clampedBeforeMs === 0;
+
+      if (isForwardPlayback) {
+        // 🔧 连续播放：直接从目标帧开始，OPFS Reader 会自动对齐到关键帧
+        startFrame = Math.max(0, targetFrameIndex);
+
+        // 结合关键帧间隔调整窗口大小
+        const avgInterval = keyframeInfo.avgInterval || effectiveFps;
+        const keyframeSuggested = avgInterval * 2;
+        desiredWindowFrames = Math.min(
+          maxWindowFrames,
+          Math.max(
+            minWindowFrames,
+            Math.max(desiredWindowFrames, keyframeSuggested),
+          ),
+        );
+        frameCount = Math.min(
+          desiredWindowFrames,
+          Math.max(1, totalFrames - startFrame),
+        );
+
+        console.log("[progress] computeFrameWindow: forward playback mode, no keyframe rollback:", {
+          targetFrameIndex,
+          startFrame,
+          frameCount
+        });
+      } else {
+        // 🔧 Seek 模式：需要回退到关键帧以确保正确解码
+        let prevKeyframeIndex = keyframeInfo.indices[0];
+        for (const k of keyframeInfo.indices) {
+          if (k <= targetFrameIndex) prevKeyframeIndex = k;
+          else break;
+        }
+
+        startFrame = Math.max(0, prevKeyframeIndex);
+
+        // 结合关键帧间隔调整窗口大小（典型为 2 * avgInterval，再结合时间范围做 clamp）
+        const avgInterval = keyframeInfo.avgInterval || effectiveFps;
+        const keyframeSuggested = avgInterval * 2;
+        desiredWindowFrames = Math.min(
+          maxWindowFrames,
+          Math.max(
+            minWindowFrames,
+            Math.max(desiredWindowFrames, keyframeSuggested),
+          ),
+        );
+        frameCount = Math.min(
+          desiredWindowFrames,
+          Math.max(1, totalFrames - startFrame),
+        );
+
+        console.log("[progress] computeFrameWindow: seek mode, aligned to keyframe:", {
+          targetFrameIndex,
+          prevKeyframeIndex,
+          startFrame,
+          frameCount
+        });
       }
-
-      startFrame = Math.max(0, prevKeyframeIndex);
-
-      // 结合关键帧间隔调整窗口大小（典型为 2 * avgInterval，再结合时间范围做 clamp）
-      const avgInterval = keyframeInfo.avgInterval || effectiveFps;
-      const keyframeSuggested = avgInterval * 2;
-      desiredWindowFrames = Math.min(
-        maxWindowFrames,
-        Math.max(
-          minWindowFrames,
-          Math.max(desiredWindowFrames, keyframeSuggested),
-        ),
-      );
-      frameCount = Math.min(
-        desiredWindowFrames,
-        Math.max(1, totalFrames - startFrame),
-      );
     } else {
       // 无关键帧信息时，退回纯时间推导：让窗口尽量覆盖 [target - before, target + after]
       startFrame = Math.max(0, targetFrameIndex - framesBefore);

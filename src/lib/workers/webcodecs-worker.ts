@@ -149,15 +149,26 @@ function handleEncodedChunk(chunk: EncodedVideoChunk, metadata?: any) {
     const data = new Uint8Array(chunk.byteLength)
     chunk.copyTo(data)
 
+    // 🔧 关键帧检测：从 EncodedVideoChunk.type 获取
+    const chunkType = chunk.type // 'key' or 'delta'
+    const isKeyframe = chunkType === 'key'
+
+    // 🔧 诊断日志：每个关键帧都记录
+    if (isKeyframe) {
+      console.log(`🔑 [WORKER] Keyframe encoded: ts=${chunk.timestamp}, size=${chunk.byteLength}`)
+    }
+
     // ✅ 流式输出，不在 Worker 内累积
     // 直接发送给主线程，由 OPFS Writer 处理
+    // 🔧 修复：使用 chunkType 变量确保类型正确传递
     self.postMessage({
       type: 'chunk',
       data: {
         data: data, // 实际的编码数据
         size: chunk.byteLength,
         timestamp: chunk.timestamp,
-        type: chunk.type,
+        chunkType: chunkType, // 🔧 使用明确的字段名避免与外层 type 混淆
+        isKeyframe: isKeyframe, // 🔧 额外添加布尔标记
         // 添加分辨率信息
         codedWidth: currentEncoderConfig?.width || 1920,
         codedHeight: currentEncoderConfig?.height || 1080,
@@ -165,7 +176,7 @@ function handleEncodedChunk(chunk: EncodedVideoChunk, metadata?: any) {
       }
     })
 
-    console.log(`📦 Encoded chunk: ${chunk.byteLength} bytes, type: ${chunk.type}, resolution: ${currentEncoderConfig?.width || 1920}x${currentEncoderConfig?.height || 1080}`)
+    console.log(`📦 Encoded chunk: ${chunk.byteLength} bytes, type: ${chunkType}, resolution: ${currentEncoderConfig?.width || 1920}x${currentEncoderConfig?.height || 1080}`)
 
   } catch (error) {
     console.error('❌ [WORKER] Chunk handling failed:', error)

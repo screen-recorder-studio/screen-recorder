@@ -1099,12 +1099,63 @@ function startStreamingDecode(chunks: any[]) {
   // 开始流式解码
   isDecoding = true;
   console.log('[progress] VideoComposite - starting streaming decode, chunks:', chunks.length)
+
+  // 🔧 诊断：检查 chunks 中的关键帧分布
+  const keyframeIndices: number[] = []
+  const firstFewTimestamps: number[] = []
+  let prevTimestamp = -1
+  let timestampErrors = 0
+
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i]
+    if (chunk.type === 'key') {
+      keyframeIndices.push(i)
+    }
+    if (i < 5) {
+      firstFewTimestamps.push(chunk.timestamp)
+    }
+    if (prevTimestamp >= 0 && chunk.timestamp < prevTimestamp) {
+      timestampErrors++
+    }
+    prevTimestamp = chunk.timestamp
+  }
+
+  console.log('🔍 [DIAGNOSTIC] Chunks analysis:', {
+    totalChunks: chunks.length,
+    keyframeCount: keyframeIndices.length,
+    keyframeIndices: keyframeIndices.slice(0, 10),
+    firstKeyframe: keyframeIndices[0],
+    firstFewTimestamps,
+    timestampErrors,
+    firstChunkType: chunks[0]?.type
+  })
+
+  if (keyframeIndices.length === 0) {
+    console.error('❌ [DIAGNOSTIC] NO KEYFRAMES in chunks! All frames are delta. This will cause decode failures.')
+  } else if (keyframeIndices[0] !== 0) {
+    console.error('❌ [DIAGNOSTIC] First chunk is NOT a keyframe! type:', chunks[0]?.type, 'First keyframe at index:', keyframeIndices[0])
+  }
+
   try {
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
       const data = chunk.data instanceof ArrayBuffer ? new Uint8Array(chunk.data) : chunk.data;
+      const chunkType = chunk.type === 'key' ? 'key' : 'delta';
+
+      // 🔧 诊断：记录第一个 chunk 的详细信息
+      if (i === 0) {
+        console.log('🔍 [DIAGNOSTIC] First chunk details:', {
+          type: chunk.type,
+          resolvedType: chunkType,
+          timestamp: chunk.timestamp,
+          dataSize: data.byteLength,
+          codedWidth: chunk.codedWidth,
+          codedHeight: chunk.codedHeight
+        })
+      }
+
       const encodedChunk = new EncodedVideoChunk({
-        type: chunk.type === 'key' ? 'key' : 'delta',
+        type: chunkType,
         timestamp: chunk.timestamp,
         data
       });

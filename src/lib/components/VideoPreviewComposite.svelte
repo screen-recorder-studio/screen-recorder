@@ -1414,6 +1414,9 @@
 
   // Reactive processing - only process once after recording is complete
   let hasProcessed = false
+  // 🔧 修复：追踪已处理的 chunks 引用，防止重复处理
+  let processedChunksRef: any[] | null = null
+  let lastChunksRef: any[] | null = null
 
   $effect(() => {
     console.log('🔍 [VideoPreview] Effect triggered:', {
@@ -1446,6 +1449,7 @@
         compositeWorker) {
       console.log('🎬 [VideoPreview] Processing completed recording with', encodedChunks.length, 'chunks')
       hasProcessed = true
+      processedChunksRef = encodedChunks  // 🔧 标记为已处理，防止第二个 effect 重复处理
       processVideo().catch(error => {
         console.error('❌ [VideoPreview] Failed to process video:', error)
       })
@@ -1453,19 +1457,36 @@
   })
 
   // When external window data (encodedChunks) reference changes, allow reprocessing
-  let lastChunksRef: any[] | null = null
+  // 🔧 修复：使用 processedChunksRef 追踪已处理的 chunks，避免重复处理
   $effect(() => {
     if (encodedChunks && encodedChunks !== lastChunksRef) {
-      console.log('[progress] New window data detected, reprocessing:', {
-        oldLength: lastChunksRef?.length || 0,
-        newLength: encodedChunks.length,
-        windowStartIndex
-      })
+      const oldRef = lastChunksRef
       lastChunksRef = encodedChunks
-      hasProcessed = false
+
+      // 🔧 关键修复：如果这批 chunks 已经被处理过，跳过
+      if (encodedChunks === processedChunksRef) {
+        console.log('[progress] Skipping already processed chunks:', {
+          length: encodedChunks.length,
+          windowStartIndex
+        })
+        return
+      }
+
+      console.log('[progress] New window data detected, reprocessing:', {
+        oldLength: oldRef?.length || 0,
+        newLength: encodedChunks.length,
+        windowStartIndex,
+        wasProcessed: hasProcessed
+      })
+
+      // 🔧 只有当 oldRef 不为 null 时才重置 hasProcessed
+      // 这样首次加载时不会与第一个 effect 冲突
+      if (oldRef !== null) {
+        hasProcessed = false
+      }
 
       // 🔧 Immediately process new window data
-      if (isRecordingComplete && encodedChunks.length > 0 && isInitialized && compositeWorker) {
+      if (isRecordingComplete && encodedChunks.length > 0 && isInitialized && compositeWorker && !hasProcessed) {
         console.log('[progress] Immediately processing new window data')
 
         // Reset current frame index only when truly idle (no preview/restore pending)
@@ -1483,6 +1504,7 @@
         }
 
         hasProcessed = true
+        processedChunksRef = encodedChunks  // 标记为已处理
         processVideo().catch(error => {
           console.error('❌ [VideoPreview] Failed to process new window data:', error)
         })

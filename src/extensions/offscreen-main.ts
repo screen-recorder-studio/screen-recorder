@@ -115,7 +115,7 @@
     if (opfsEndPending) { opfsEndPending = false; void finalizeOpfsWriter() }
   }
 
-  function appendToOpfsChunk(d: { data: any; timestamp?: number; type?: string; codedWidth?: number; codedHeight?: number; codec?: string }) {
+  function appendToOpfsChunk(d: { data: any; timestamp?: number; type?: string; isKeyframe?: boolean; codedWidth?: number; codedHeight?: number; codec?: string }) {
     if (!OPFS_WRITER_ENABLED) return
     if (!opfsWriter || !opfsWriterReady) { opfsPendingChunks.push(d); return }
     try {
@@ -129,7 +129,15 @@
       else if (raw && typeof raw === 'object') { const keys = Object.keys(raw); const isIndexedObject = keys.length > 0 && keys.every(k => /^\d+$/.test(k)); if (isIndexedObject) { const maxIndex = Math.max(...keys.map(k => parseInt(k, 10))); const bytes = new Array(maxIndex + 1); for (let i = 0; i <= maxIndex; i++) bytes[i] = raw[i] || 0; u8 = new Uint8Array(bytes) } }
       if (!u8) { log('[Offscreen][OPFS] Unsupported chunk data'); return }
       const transferBuf = (u8.byteOffset === 0 && u8.byteLength === u8.buffer.byteLength) ? u8.buffer : u8.slice().buffer
-      opfsWriter!.postMessage({ type: 'append', buffer: transferBuf, timestamp: d.timestamp || 0, chunkType: d.type === 'key' ? 'key' : 'delta', codedWidth: d.codedWidth || opfsLastMeta?.width, codedHeight: d.codedHeight || opfsLastMeta?.height, codec: d.codec || opfsLastMeta?.codec, isKeyframe: d.type === 'key' }, [transferBuf])
+
+      // 🔧 修复：优先使用传入的 isKeyframe 标记，回退到 type 字段检查
+      const isKeyframe = d.isKeyframe === true || d.type === 'key'
+      const chunkType = isKeyframe ? 'key' : 'delta'
+      if (isKeyframe) {
+        log(`[OPFS] 🔑 Keyframe detected: ts=${d.timestamp}, size=${u8.byteLength}`)
+      }
+
+      opfsWriter!.postMessage({ type: 'append', buffer: transferBuf, timestamp: d.timestamp || 0, chunkType, codedWidth: d.codedWidth || opfsLastMeta?.width, codedHeight: d.codedHeight || opfsLastMeta?.height, codec: d.codec || opfsLastMeta?.codec, isKeyframe }, [transferBuf])
     } catch (e) { log('[Offscreen][OPFS] append failed', e) }
   }
 
@@ -373,11 +381,15 @@
           case 'chunk': {
             // track chunk meta count; avoid retaining big buffers here to save memory
             if (data) {
-              recordedChunks.push({ size: data.size, ts: data.timestamp, type: data.type })
+              // 🔧 修复：使用 chunkType 字段（从 webcodecs-worker 传递）
+              const chunkType = data.chunkType || data.type || 'delta'
+              const isKeyframe = data.isKeyframe === true || chunkType === 'key'
+
+              recordedChunks.push({ size: data.size, ts: data.timestamp, type: chunkType })
               try {
                 chrome.runtime.sendMessage({
                   type: 'STREAM_CHUNK_INFO',
-                  meta: { index: recordedChunks.length, size: data.size, ts: data.timestamp, type: data.type }
+                  meta: { index: recordedChunks.length, size: data.size, ts: data.timestamp, type: chunkType }
                 })
               } catch {}
               try {
@@ -385,7 +397,8 @@
                 appendToOpfsChunk({
                   data: data.data,
                   timestamp: data.timestamp,
-                  type: data.type,
+                  type: chunkType,
+                  isKeyframe: isKeyframe, // 🔧 额外传递布尔标记
                   codedWidth: data.codedWidth,
                   codedHeight: data.codedHeight,
                   codec: data.codec
