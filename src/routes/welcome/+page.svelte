@@ -220,9 +220,7 @@
     if (!subs) return template
     const values = Array.isArray(subs) ? subs : [subs]
     let index = 0
-    let result = template.replace(/\$[A-Z_]+\$/g, () => values[index++] ?? '')
-    result = result.replace(/\$(\d+)/g, (_, pos) => values[Number(pos) - 1] ?? '')
-    return result
+    return template.replace(/\$(\d+|[A-Z_]+)\$?/g, () => values[index++] ?? '')
   }
 
   function t(key: string, subs?: string | string[]) {
