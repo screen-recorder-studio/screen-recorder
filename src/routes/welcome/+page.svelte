@@ -23,28 +23,77 @@
   let isLoading = $state(false)
   const COUNTDOWN_SECONDS = 3
 
+  const FALLBACK_MESSAGES: Record<string, string> = {
+    appName: 'Screen Recorder Studio',
+    welcome_pageTitle: 'Welcome to Screen Recorder Studio',
+    welcome_headerSubtitle: 'Professional Browser Recording Tool',
+    welcome_installSuccess: 'Installation Successful',
+    welcome_headline: 'Welcome to Screen Recorder Studio! 🎉',
+    welcome_subheadline: 'Ready to create your first recording? It only takes seconds to get started!',
+    welcome_tryTitle: 'Try It Now! 🚀',
+    welcome_trySubtitle: 'Select your recording mode and hit the button below',
+    welcome_tryFeatures: 'No setup required • $SECONDS$-second countdown • Professional quality',
+    control_modeTab: 'Tab',
+    control_modeTabDesc: 'Record current tab',
+    control_modeWindow: 'Window',
+    control_modeWindowDesc: 'Record entire window',
+    control_modeScreen: 'Screen',
+    control_modeScreenDesc: 'Record entire screen',
+    welcome_modeTabDetail: 'Perfect for web demos and tutorials',
+    welcome_modeWindowDetail: 'Includes address bar and toolbar',
+    welcome_modeScreenDetail: 'Best for cross-application workflows',
+    control_btnStart: 'Start Recording',
+    control_btnPause: 'Pause Recording',
+    control_btnResume: 'Resume Recording',
+    control_btnStop: 'Stop Recording',
+    control_btnPreparing: 'Preparing...',
+    control_statusPaused: 'Recording Paused',
+    welcome_statusRecording: 'Recording in Progress',
+    welcome_modeLabel: 'Mode',
+    welcome_readyTitle: '🎬 Everything is Ready!',
+    welcome_readyDesc: "You've selected $MODE$ mode. Click the big blue button above to start your first recording!",
+    welcome_readyTip: '$SECONDS$-second countdown before recording starts',
+    welcome_howTitle: 'How It Works',
+    welcome_howDesc: 'Three simple steps to get the most out of your extension',
+    welcome_step1Title: 'Pin Extension',
+    welcome_step1Desc: 'Click the puzzle icon 🧩 in your browser toolbar and pin this extension for quick access anytime',
+    welcome_step2Title: 'Choose Your Target',
+    welcome_step2Desc: 'Select what to record: current tab, entire window, or full screen - whatever fits your needs',
+    welcome_step3Title: 'Hit Record',
+    welcome_step3Desc: 'Click "$BTN$" and get ready - a $SECONDS$-second countdown gives you time to prepare!',
+    welcome_advancedTitle: 'Need More Control?',
+    welcome_advancedDesc: 'Click the extension icon in your browser toolbar to access the full control panel',
+    welcome_featureElementTitle: 'Element Recording',
+    welcome_featureElementDesc: 'Select specific page elements to record with precision',
+    welcome_featureAreaTitle: 'Area Selection',
+    welcome_featureAreaDesc: 'Draw custom recording areas on any webpage',
+    welcome_openControl: 'Open Full Control Panel',
+    welcome_footerHelp: 'Need help? Click the extension icon for the control panel with advanced features.',
+    welcome_footerMeta: 'Screen Recorder Studio • Made for professionals'
+  }
+
   // Recording mode configuration
   const recordingModes = [
     {
       id: 'tab' as const,
-      name: 'Tab',
-      icon: Monitor,
-      description: 'Record the current browser tab',
-      detail: 'Perfect for web demos and tutorials'
+      nameKey: 'control_modeTab',
+      descriptionKey: 'control_modeTabDesc',
+      detailKey: 'welcome_modeTabDetail',
+      icon: Monitor
     },
     {
       id: 'window' as const,
-      name: 'Window',
-      icon: AppWindow,
-      description: 'Record the entire browser window',
-      detail: 'Includes address bar and toolbar'
+      nameKey: 'control_modeWindow',
+      descriptionKey: 'control_modeWindowDesc',
+      detailKey: 'welcome_modeWindowDetail',
+      icon: AppWindow
     },
     {
       id: 'screen' as const,
-      name: 'Screen',
-      icon: ScreenShare,
-      description: 'Record your entire screen',
-      detail: 'Best for cross-application workflows'
+      nameKey: 'control_modeScreen',
+      descriptionKey: 'control_modeScreenDesc',
+      detailKey: 'welcome_modeScreenDetail',
+      icon: ScreenShare
     }
   ]
 
@@ -146,11 +195,11 @@
 
   // Get button text
   function getButtonText() {
-    if (isLoading) return 'Preparing...'
+    if (isLoading) return t('control_btnPreparing')
     if (isRecording) {
-      return isPaused ? 'Resume Recording' : 'Pause Recording'
+      return isPaused ? t('control_btnResume') : t('control_btnPause')
     }
-    return 'Start Recording'
+    return t('control_btnStart')
   }
 
   // Get button icon
@@ -161,50 +210,74 @@
     }
     return Play
   }
+
+  function getModeName(mode: typeof selectedMode) {
+    const target = recordingModes.find(m => m.id === mode)
+    return target ? t(target.nameKey) : ''
+  }
+
+  function applySubs(template: string, subs?: string | string[]) {
+    if (!subs) return template
+    const values = Array.isArray(subs) ? subs : [subs]
+    let index = 0
+    let result = template.replace(/\$[A-Z_]+\$/g, () => values[index++] ?? '')
+    result = result.replace(/\$(\d+)/g, (_, pos) => values[Number(pos) - 1] ?? '')
+    return result
+  }
+
+  function t(key: string, subs?: string | string[]) {
+    if (typeof chrome !== 'undefined' && chrome.i18n?.getMessage) {
+      return chrome.i18n.getMessage(key, subs) || key
+    }
+    if (FALLBACK_MESSAGES[key]) {
+      return applySubs(FALLBACK_MESSAGES[key], subs)
+    }
+    return key
+  }
 </script>
 
 <svelte:head>
-  <title>Welcome to Screen Recorder Studio</title>
+  <title>{t('welcome_pageTitle')}</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-  <!-- Header -->
-  <div class="bg-white border-b border-gray-200 shadow-sm">
-    <div class="max-w-6xl mx-auto px-6 py-4">
-      <div class="flex items-center gap-3">
-        <img src="/assets/icon.svg" alt="Screen Recorder Studio" class="w-10 h-10" />
-        <div>
-          <h1 class="text-xl font-bold text-gray-900">Screen Recorder Studio</h1>
-          <p class="text-sm text-gray-600">Professional Browser Recording Tool</p>
+  <div class="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+    <!-- Header -->
+    <div class="bg-white border-b border-gray-200 shadow-sm">
+      <div class="max-w-6xl mx-auto px-6 py-4">
+        <div class="flex items-center gap-3">
+          <img src="/assets/icon.svg" alt={t('appName')} class="w-10 h-10" />
+          <div>
+            <h1 class="text-xl font-bold text-gray-900">{t('appName')}</h1>
+            <p class="text-sm text-gray-600">{t('welcome_headerSubtitle')}</p>
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
   <div class="max-w-6xl mx-auto px-6 py-12">
     <!-- Welcome Banner -->
     <div class="text-center mb-12">
       <div class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full text-sm font-medium mb-6">
         <CheckCircle2 class="w-4 h-4" />
-        Installation Successful
+        {t('welcome_installSuccess')}
       </div>
       <h2 class="text-4xl font-bold text-gray-900 mb-4">
-        Welcome to Screen Recorder Studio! 🎉
+        {t('welcome_headline')}
       </h2>
       <p class="text-xl text-gray-600 max-w-2xl mx-auto">
-        Ready to create your first recording? It only takes seconds to get started!
+        {t('welcome_subheadline')}
       </p>
     </div>
 
     <!-- Recording Mode Selection (Moved up) -->
     <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-xl p-8 mb-12 border-2 border-blue-200">
       <div class="text-center mb-6">
-        <h3 class="text-3xl font-bold text-gray-900 mb-3">Try It Now! 🚀</h3>
+        <h3 class="text-3xl font-bold text-gray-900 mb-3">{t('welcome_tryTitle')}</h3>
         <p class="text-lg text-gray-700 mb-2">
-          Select your recording mode and hit the button below
+          {t('welcome_trySubtitle')}
         </p>
         <p class="text-sm text-gray-600">
-          No setup required • 3-second countdown • Professional quality
+          {t('welcome_tryFeatures', String(COUNTDOWN_SECONDS))}
         </p>
       </div>
       
@@ -231,12 +304,12 @@
             {/if}
 
             <!-- Icon -->
-            <div class="w-16 h-16 mb-4 rounded-full flex items-center justify-center"
-                 class:bg-blue-100={selectedMode === mode.id}
-                 class:bg-gray-100={selectedMode !== mode.id}
-                 class:group-hover:bg-blue-50={selectedMode !== mode.id && !isRecording}>
-              <IconComponent
-                class={`w-8 h-8 transition-colors duration-200 ${
+             <div class="w-16 h-16 mb-4 rounded-full flex items-center justify-center"
+                  class:bg-blue-100={selectedMode === mode.id}
+                  class:bg-gray-100={selectedMode !== mode.id}
+                  class:group-hover:bg-blue-50={selectedMode !== mode.id && !isRecording}>
+               <IconComponent
+                 class={`w-8 h-8 transition-colors duration-200 ${
                   selectedMode === mode.id ? 'text-blue-600' : 'text-gray-600'
                 }`}
               />
@@ -246,12 +319,12 @@
             <h4 class="text-lg font-semibold mb-2 transition-colors duration-200"
                 class:text-blue-700={selectedMode === mode.id}
                 class:text-gray-900={selectedMode !== mode.id}>
-              {mode.name}
+              {t(mode.nameKey)}
             </h4>
             
             <!-- Description -->
-            <p class="text-sm text-gray-600 mb-1 text-center">{mode.description}</p>
-            <p class="text-xs text-gray-500 text-center">{mode.detail}</p>
+            <p class="text-sm text-gray-600 mb-1 text-center">{t(mode.descriptionKey)}</p>
+            <p class="text-xs text-gray-500 text-center">{t(mode.detailKey)}</p>
           </button>
         {/each}
       </div>
@@ -295,7 +368,7 @@
             onclick={stopRecording}
           >
             <Square class="w-5 h-5" />
-            <span>Stop Recording</span>
+            <span>{t('control_btnStop')}</span>
           </button>
         {/if}
       </div>
@@ -307,11 +380,11 @@
             <div class="flex items-center gap-3">
               <div class="w-4 h-4 bg-red-500 rounded-full animate-pulse"></div>
               <span class="text-lg font-semibold text-red-700">
-                {isPaused ? 'Recording Paused' : 'Recording in Progress'}
+                {isPaused ? t('control_statusPaused') : t('welcome_statusRecording')}
               </span>
             </div>
             <div class="px-3 py-1 bg-white rounded-full text-sm font-medium text-gray-700">
-              {recordingModes.find(m => m.id === selectedMode)?.name} Mode
+              {getModeName(selectedMode)} {t('welcome_modeLabel')}
             </div>
           </div>
         </div>
@@ -324,14 +397,13 @@
               </div>
             </div>
             <div class="flex-1">
-              <p class="font-bold text-gray-900 mb-2 text-lg">🎬 Everything is Ready!</p>
+              <p class="font-bold text-gray-900 mb-2 text-lg">{t('welcome_readyTitle')}</p>
               <p class="text-sm text-gray-700 mb-3">
-                You've selected <strong class="text-green-700">{recordingModes.find(m => m.id === selectedMode)?.name}</strong> mode. 
-                Click the big blue button above to start your first recording!
+                {t('welcome_readyDesc', getModeName(selectedMode))}
               </p>
               <div class="flex items-center gap-2 text-xs text-gray-600">
                 <CheckCircle2 class="w-4 h-4 text-green-600" />
-                <span>3-second countdown before recording starts</span>
+                <span>{t('welcome_readyTip', String(COUNTDOWN_SECONDS))}</span>
               </div>
             </div>
           </div>
@@ -342,8 +414,8 @@
     <!-- Quick Start Guide (Moved down) -->
     <div class="bg-white rounded-2xl shadow-lg p-8 mb-12">
       <div class="text-center mb-6">
-        <h3 class="text-2xl font-bold text-gray-900 mb-2">How It Works</h3>
-        <p class="text-gray-600">Three simple steps to get the most out of your extension</p>
+        <h3 class="text-2xl font-bold text-gray-900 mb-2">{t('welcome_howTitle')}</h3>
+        <p class="text-gray-600">{t('welcome_howDesc')}</p>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <!-- Step 1 -->
@@ -351,9 +423,9 @@
           <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
             <span class="text-2xl font-bold text-blue-600">1</span>
           </div>
-          <h4 class="text-lg font-semibold text-gray-900 mb-2">Pin Extension</h4>
+          <h4 class="text-lg font-semibold text-gray-900 mb-2">{t('welcome_step1Title')}</h4>
           <p class="text-sm text-gray-600">
-            Click the puzzle icon 🧩 in your browser toolbar and pin this extension for quick access anytime
+            {t('welcome_step1Desc')}
           </p>
         </div>
 
@@ -362,9 +434,9 @@
           <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
             <span class="text-2xl font-bold text-green-600">2</span>
           </div>
-          <h4 class="text-lg font-semibold text-gray-900 mb-2">Choose Your Target</h4>
+          <h4 class="text-lg font-semibold text-gray-900 mb-2">{t('welcome_step2Title')}</h4>
           <p class="text-sm text-gray-600">
-            Select what to record: current tab, entire window, or full screen - whatever fits your needs
+            {t('welcome_step2Desc')}
           </p>
         </div>
 
@@ -373,9 +445,9 @@
           <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4">
             <span class="text-2xl font-bold text-purple-600">3</span>
           </div>
-          <h4 class="text-lg font-semibold text-gray-900 mb-2">Hit Record</h4>
+          <h4 class="text-lg font-semibold text-gray-900 mb-2">{t('welcome_step3Title')}</h4>
           <p class="text-sm text-gray-600">
-            Click "Start Recording" and get ready - a 3-second countdown gives you time to prepare!
+            {t('welcome_step3Desc', [t('control_btnStart'), String(COUNTDOWN_SECONDS)])}
           </p>
         </div>
       </div>
@@ -388,9 +460,9 @@
           <Zap class="w-6 h-6" />
         </div>
         <div>
-          <h3 class="text-2xl font-bold mb-2">Need More Control?</h3>
+          <h3 class="text-2xl font-bold mb-2">{t('welcome_advancedTitle')}</h3>
           <p class="text-blue-100">
-            Click the extension icon in your browser toolbar to access the full control panel
+            {t('welcome_advancedDesc')}
           </p>
         </div>
       </div>
@@ -399,20 +471,20 @@
         <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4">
           <div class="flex items-center gap-2 mb-2">
             <Mouse class="w-5 h-5" />
-            <h4 class="font-semibold">Element Recording</h4>
+            <h4 class="font-semibold">{t('welcome_featureElementTitle')}</h4>
           </div>
           <p class="text-sm text-blue-100">
-            Select specific page elements to record with precision
+            {t('welcome_featureElementDesc')}
           </p>
         </div>
 
         <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4">
           <div class="flex items-center gap-2 mb-2">
             <Monitor class="w-5 h-5" />
-            <h4 class="font-semibold">Area Selection</h4>
+            <h4 class="font-semibold">{t('welcome_featureAreaTitle')}</h4>
           </div>
           <p class="text-sm text-blue-100">
-            Draw custom recording areas on any webpage
+            {t('welcome_featureAreaDesc')}
           </p>
         </div>
       </div>
@@ -421,7 +493,7 @@
         class="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white text-blue-600 hover:bg-blue-50 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl"
         onclick={openControlPanel}
       >
-        <span>Open Full Control Panel</span>
+        <span>{t('welcome_openControl')}</span>
         <ArrowRight class="w-5 h-5" />
       </button>
     </div>
@@ -431,8 +503,8 @@
   <div class="border-t border-gray-200 bg-white mt-12">
     <div class="max-w-6xl mx-auto px-6 py-6">
       <div class="text-center text-sm text-gray-600">
-        <p>Need help? Click the extension icon for the control panel with advanced features.</p>
-        <p class="mt-1 text-gray-500">Screen Recorder Studio v0.6.0 • Made for professionals</p>
+        <p>{t('welcome_footerHelp')}</p>
+        <p class="mt-1 text-gray-500">{t('welcome_footerMeta')}</p>
       </div>
     </div>
   </div>
