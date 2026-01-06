@@ -32,13 +32,21 @@
   function isPresetSelected(value: number) {
     return currentPadding === value
   }
+
+  // i18n helper
+  function t(key: string) {
+    if (typeof chrome !== 'undefined' && chrome.i18n && chrome.i18n.getMessage) {
+      return chrome.i18n.getMessage(key) || key
+    }
+    return key
+  }
 </script>
 
 <!-- Padding configuration control -->
 <div class="p-4 border border-gray-200 rounded-lg bg-white">
   <div class="flex items-center gap-2 mb-4">
     <SlidersHorizontal class="w-4 h-4 text-gray-600" />
-    <h3 class="text-sm font-semibold text-gray-700">Video Padding</h3>
+    <h3 class="text-sm font-semibold text-gray-700">{t('padding_title')}</h3>
   </div>
 
   <!-- Slider control -->
@@ -61,6 +69,13 @@
   <div class="flex gap-2 mb-4 flex-wrap">
     {#each PRESET_PADDING as preset}
       {@const IconComponent = preset.icon}
+      {@const label = t(
+        preset.name === 'No Padding' ? 'padding_none' :
+        preset.name === 'Small Padding' ? 'padding_small' :
+        preset.name === 'Medium Padding' ? 'padding_medium' :
+        preset.name === 'Large Padding' ? 'padding_large' :
+        'padding_xl'
+      )}
       <button
         class="flex items-center gap-1.5 px-3 py-2 text-xs border rounded-md cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50"
         class:border-emerald-500={isPresetSelected(preset.value)}
@@ -72,10 +87,10 @@
         class:hover:border-emerald-400={!isPresetSelected(preset.value)}
         class:hover:bg-emerald-50={!isPresetSelected(preset.value)}
         onclick={() => handlePresetSelect(preset)}
-        title="{preset.name} ({preset.value}px)"
+        title="{label} ({preset.value}px)"
       >
         <IconComponent class="w-3 h-3" />
-        <span>{preset.name}</span>
+        <span>{label}</span>
       </button>
     {/each}
   </div>

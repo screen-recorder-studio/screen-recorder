@@ -59,6 +59,14 @@
       triggerFileSelect()
     }
   }
+
+  // i18n helper
+  function t(key: string) {
+    if (typeof chrome !== 'undefined' && chrome.i18n && chrome.i18n.getMessage) {
+      return chrome.i18n.getMessage(key) || key
+    }
+    return key
+  }
 </script>
 
 <div class="space-y-3">
@@ -85,13 +93,13 @@
     {#if isUploading}
       <div class="flex flex-col items-center gap-2">
         <div class="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <span class="text-xs text-blue-600">Processing...</span>
+        <span class="text-xs text-blue-600">{t('upload_processing')}</span>
       </div>
     {:else}
       <div class="flex flex-col items-center gap-2">
         <Upload class="w-6 h-6 text-gray-400" />
-        <div class="text-xs text-gray-700 font-medium">Click or drag image here</div>
-        <div class="text-xs text-gray-400">JPEG, PNG, WebP, GIF · Max 5MB</div>
+        <div class="text-xs text-gray-700 font-medium">{t('upload_drop_hint')}</div>
+        <div class="text-xs text-gray-400">{t('upload_format_hint')}</div>
       </div>
     {/if}
   </div>
@@ -100,7 +108,7 @@
   {#if uploadError}
     <div class="flex items-center gap-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
       <CircleAlert class="w-3.5 h-3.5 flex-shrink-0" />
-      <span>{uploadError}</span>
+      <span>{t(uploadError === 'Please select an image file' ? 'upload_error_select' : 'upload_error_failed')}</span>
     </div>
   {/if}
 

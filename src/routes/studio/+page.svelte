@@ -586,10 +586,18 @@
     console.log("📱 Sidepanel unmounted, cleaning up...");
     // cleanup()
   });
+
+  // i18n helper
+  function t(key: string, subs?: string | string[]) {
+    if (typeof chrome !== 'undefined' && chrome.i18n && chrome.i18n.getMessage) {
+      return chrome.i18n.getMessage(key, subs) || key
+    }
+    return key
+  }
 </script>
 
 <svelte:head>
-  <title>Screen Recording Studio</title>
+  <title>{t('studio_pageTitle')}</title>
 </svelte:head>
 
 <div class="flex h-screen bg-gray-50">
@@ -602,7 +610,7 @@
         <div class="flex items-center gap-2">
           <Video class="w-6 h-6 text-blue-600" />
           <h1 class="text-xl font-bold text-gray-800">
-            Screen Recorder Studio
+            {t('studio_headerTitle')}
           </h1>
         </div>
 
@@ -620,62 +628,62 @@
             target="_blank"
             rel="noopener noreferrer"
             class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-300 hover:border-blue-400 hover:bg-white/70 hover:shadow-sm transition-all duration-200 group text-sm"
-            title="View source on GitHub"
+            title={t('studio_githubTooltip')}
           >
             <Github
               class="w-4 h-4 text-gray-600 group-hover:text-blue-600 transition-colors duration-200"
             />
-            <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">GitHub</span>
+            <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">{t('studio_githubText')}</span>
           </a>
           <a
             href="https://github.com/screen-recorder-studio/screen-recorder/issues"
             target="_blank"
             rel="noopener noreferrer"
             class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-300 hover:border-blue-400 hover:bg-white/70 hover:shadow-sm transition-all duration-200 group text-sm"
-            title="Report bugs or suggest features"
+            title={t('studio_feedbackTooltip')}
           >
             <MessageCircle
               class="w-4 h-4 text-gray-600 group-hover:text-blue-600 transition-colors duration-200"
             />
-            <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">Feedback</span>
+            <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">{t('studio_feedbackText')}</span>
           </a>
           <a
             href="https://www.screenrecorder.studio/"
             target="_blank"
             rel="noopener noreferrer"
             class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-300 hover:border-blue-400 hover:bg-white/70 hover:shadow-sm transition-all duration-200 group text-sm"
-            title="Help & Documentation"
+            title={t('studio_helpTooltip')}
           >
             <BookOpen
               class="w-4 h-4 text-gray-600 group-hover:text-blue-600 transition-colors duration-200"
             />
-            <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">Help</span>
+            <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">{t('studio_helpText')}</span>
           </a>
           <button
             class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-300 hover:border-blue-400 hover:bg-white/70 hover:shadow-sm transition-all duration-200 group text-sm"
             onclick={() => window.open("/drive.html", "_blank")}
-            title="Open Recording File Manager"
+            title={t('studio_driveTooltip')}
           >
             <HardDrive
               class="w-4 h-4 text-gray-600 group-hover:text-blue-600 transition-colors duration-200"
             />
-            <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">Drive</span>
+            <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">{t('studio_driveText')}</span>
           </button>
           <button
             class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-300 hover:border-blue-400 hover:bg-white/70 hover:shadow-sm transition-all duration-200 group text-sm"
             onclick={toggleFullscreen}
-            title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+            title={isFullscreen ? t('studio_fullscreenExitTooltip') : t('studio_fullscreenEnterTooltip')}
           >
             {#if isFullscreen}
               <Minimize
                 class="w-4 h-4 text-gray-600 group-hover:text-blue-600 transition-colors duration-200"
               />
-              <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">Exit</span>
+              <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">{t('studio_fullscreenExitText')}</span>
             {:else}
               <Maximize
                 class="w-4 h-4 text-gray-600 group-hover:text-blue-600 transition-colors duration-200"
               />
-              <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">Fullscreen</span>
+              <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">{t('studio_fullscreenEnterText')}</span>
             {/if}
           </button>
         </div>

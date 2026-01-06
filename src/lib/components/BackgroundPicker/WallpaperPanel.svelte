@@ -21,7 +21,7 @@
   // Category tabs from wallpaper presets with lucide icons
   const categories = Object.entries(WALLPAPER_CATEGORIES).map(([key, cat]) => ({
     key,
-    name: cat.name.split(' ')[0], // Use short name
+    name: cat.name, // Use the key from data
     icon: categoryIcons[key] || Sparkles,
     wallpapers: cat.wallpapers
   }))
@@ -62,6 +62,14 @@
   function isSelected(wallpaper: ImagePreset) {
     return selectedWallpaperId === wallpaper.id
   }
+
+  // i18n helper
+  function t(key: string, subs?: string | string[]) {
+    if (typeof chrome !== 'undefined' && chrome.i18n && chrome.i18n.getMessage) {
+      return chrome.i18n.getMessage(key, subs) || key
+    }
+    return key
+  }
 </script>
 
 <div class="space-y-3">
@@ -77,7 +85,7 @@
         type="button"
       >
         <cat.icon class="w-3 h-3" />
-        <span>{cat.name}</span>
+        <span>{t(cat.name)}</span>
       </button>
     {/each}
   </div>
@@ -95,12 +103,12 @@
       >
         <img
           src={wallpaper.imageUrl}
-          alt={wallpaper.name}
+          alt={t(wallpaper.name)}
           loading="lazy"
           class="w-full h-full object-cover"
         />
         <div class="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-20">
-          {wallpaper.name}
+          {t(wallpaper.name)}
         </div>
       </button>
     {/each}
@@ -109,14 +117,14 @@
   <!-- Error message -->
   {#if loadError}
     <div class="text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
-      {loadError}
+      {t('wallpaper_error')}
     </div>
   {/if}
 
   <!-- Stats -->
   <div class="flex items-center justify-between text-xs text-gray-500 pt-1 border-t border-gray-200">
-    <span>{activeCategoryWallpapers.length} wallpapers in this category</span>
-    <span>{Object.values(WALLPAPER_CATEGORIES).reduce((t, c) => t + c.wallpapers.length, 0)} total</span>
+    <span>{t('wallpaper_stats', String(activeCategoryWallpapers.length))}</span>
+    <span>{t('wallpaper_total', String(Object.values(WALLPAPER_CATEGORIES).reduce((t, c) => t + c.wallpapers.length, 0)))}</span>
   </div>
 </div>
 

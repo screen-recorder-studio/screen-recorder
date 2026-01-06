@@ -81,6 +81,14 @@
       console.warn('Failed to copy color:', e)
     }
   }
+
+  // i18n helper
+  function t(key: string) {
+    if (typeof chrome !== 'undefined' && chrome.i18n && chrome.i18n.getMessage) {
+      return chrome.i18n.getMessage(key) || key
+    }
+    return key
+  }
 </script>
 
 <div class="space-y-3">
@@ -96,7 +104,12 @@
         type="button"
       >
         <cat.icon class="w-3 h-3" />
-        <span>{cat.name}</span>
+        <span>{t(
+          cat.key === 'basic' ? 'color_tab_basic' :
+          cat.key === 'light' ? 'color_tab_light' :
+          cat.key === 'business' ? 'color_tab_business' :
+          'color_tab_creative'
+        )}</span>
       </button>
     {/each}
   </div>
@@ -107,7 +120,7 @@
       <button
         class="w-8 h-8 rounded-md border-2 cursor-pointer transition-all relative group
           {isSelected(preset)
-            ? 'border-blue-500 ring-2 ring-blue-200 scale-110'
+            ? 'border-blue-500 ring-2 ring-blue-200 scale-105'
             : 'border-gray-300 hover:border-gray-400 hover:scale-105'}"
         style="background-color: {preset.color}"
         title="{preset.name} ({preset.color})"
@@ -124,7 +137,7 @@
 
   <!-- Custom color picker -->
   <div class="flex items-center gap-2 pt-2 border-t border-gray-200">
-    <span class="text-xs text-gray-600">Custom:</span>
+    <span class="text-xs text-gray-600">{t('color_custom')}</span>
     <input
       type="color"
       class="w-7 h-7 border border-gray-300 rounded cursor-pointer"

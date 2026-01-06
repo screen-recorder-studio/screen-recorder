@@ -74,6 +74,14 @@
   function isRatioSelected(ratio: BackgroundConfig['outputRatio']) {
     return currentRatio === ratio
   }
+
+  // i18n helper
+  function t(key: string) {
+    if (typeof chrome !== 'undefined' && chrome.i18n && chrome.i18n.getMessage) {
+      return chrome.i18n.getMessage(key) || key
+    }
+    return key
+  }
 </script>
 
 <!-- Video aspect ratio configuration control - Segmented Control Style -->
@@ -88,6 +96,18 @@
     {#each PLATFORM_RATIOS as platform, i}
       {@const IconComponent = platform.icon}
       {@const isSelected = isRatioSelected(platform.ratio)}
+      {@const name = t(
+        platform.ratio === '16:9' ? 'ratio_yt' :
+        platform.ratio === '1:1' ? 'ratio_sq' :
+        platform.ratio === '9:16' ? 'ratio_tiktok' :
+        'ratio_story'
+      )}
+      {@const desc = t(
+        platform.ratio === '16:9' ? 'ratio_yt_desc' :
+        platform.ratio === '1:1' ? 'ratio_sq_desc' :
+        platform.ratio === '9:16' ? 'ratio_tiktok_desc' :
+        'ratio_story_desc'
+      )}
       <button
         bind:this={buttonRefs[i]}
         class="
@@ -99,7 +119,7 @@
           }
         "
         onclick={() => handleRatioSelect(platform)}
-        title="{platform.name} - {platform.description}"
+        title="{name} - {desc}"
       >
         <IconComponent class="w-3.5 h-3.5 {isSelected ? 'text-purple-600' : 'opacity-70'}" />
         <span class="{isSelected ? 'font-semibold' : ''}">{platform.ratio}</span>

@@ -45,20 +45,28 @@
     licenseTier = 'pro-trial'
   }: Props = $props()
 
-  // License tier labels and styles
-  const tierConfig: Record<LicenseTier, { label: string; classes: string }> = {
+  // License tier labels and styles (using getters for reactive translations)
+  const tierConfig = $derived<Record<LicenseTier, { label: string; classes: string }>>({
     'free': {
-      label: 'FREE',
+      label: t('export_panel_tier_free'),
       classes: 'bg-gray-100 text-gray-600 border border-gray-200'
     },
     'pro': {
-      label: 'PRO',
+      label: t('export_panel_tier_pro'),
       classes: 'bg-blue-600 text-white'
     },
     'pro-trial': {
-      label: 'PRO TRIAL',
+      label: t('export_panel_tier_trial'),
       classes: 'bg-blue-50 text-blue-600 border border-blue-200'
     }
+  })
+
+  // i18n helper
+  function t(key: string, subs?: string | string[]) {
+    if (typeof chrome !== 'undefined' && chrome.i18n && chrome.i18n.getMessage) {
+      return chrome.i18n.getMessage(key, subs) || key
+    }
+    return key
   }
 
   const currentTier = $derived(tierConfig[licenseTier] || tierConfig['free'])
@@ -613,10 +621,10 @@
     <button
       class="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-400 text-sm font-medium rounded-lg border border-gray-200 cursor-not-allowed"
       disabled
-      title={!isRecordingComplete ? 'Complete recording to export' : 'No video data'}
+      title={!isRecordingComplete ? t('export_panel_tooltip_incomplete') : t('export_panel_tooltip_no_data')}
     >
       <TriangleAlert class="w-4 h-4" />
-      Export
+      {t('export_panel_btn')}
     </button>
   {:else}
     <button
@@ -626,10 +634,10 @@
     >
       {#if isExporting}
         <LoaderCircle class="w-4 h-4 animate-spin" />
-        Exporting...
+        {t('export_panel_btn_exporting')}
       {:else}
         <Download class="w-4 h-4" />
-        Export
+        {t('export_panel_btn')}
       {/if}
     </button>
   {/if}

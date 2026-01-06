@@ -69,6 +69,14 @@
       switchTab(tabOptions[nextIndex].value)
     }
   }
+
+  // i18n helper
+  function t(key: string) {
+    if (typeof chrome !== 'undefined' && chrome.i18n && chrome.i18n.getMessage) {
+      return chrome.i18n.getMessage(key) || key
+    }
+    return key
+  }
 </script>
 
 <div class="p-4 border border-gray-200 rounded-lg bg-white flex flex-col gap-4">
@@ -76,7 +84,7 @@
   <div class="flex flex-col gap-3">
     <div class="flex items-center gap-2">
       <PaintBucket class="w-4 h-4 text-gray-600" />
-      <h3 class="text-sm font-semibold text-gray-700">Background</h3>
+      <h3 class="text-sm font-semibold text-gray-700">{t('bg_title')}</h3>
     </div>
     <div class="flex bg-gray-100 rounded-md p-0.5 gap-0.5" role="tablist">
       {#each tabOptions as tab}
@@ -93,7 +101,12 @@
           tabindex={activeTab === tab.value ? 0 : -1}
         >
           <tab.icon class="w-3.5 h-3.5" />
-          <span>{tab.label}</span>
+          <span>{t(
+            tab.value === 'wallpaper' ? 'bg_tab_wallpaper' :
+            tab.value === 'gradient' ? 'bg_tab_gradient' :
+            tab.value === 'solid-color' ? 'bg_tab_solid' :
+            'bg_tab_image'
+          )}</span>
         </button>
       {/each}
     </div>
