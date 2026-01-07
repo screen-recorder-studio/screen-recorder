@@ -11,8 +11,7 @@
     Zap,
     Sparkles,
     ArrowRight,
-    CheckCircle2,
-    Mouse
+    CheckCircle2
   } from '@lucide/svelte'
   import { onMount } from 'svelte'
   import { _t } from '$lib/utils/i18n'
@@ -62,13 +61,9 @@
     welcome_step2Desc: 'Select what to record: current tab, entire window, or full screen - whatever fits your needs',
     welcome_step3Title: 'Hit Record',
     welcome_step3Desc: 'Click "$BTN$" and get ready - a $SECONDS$-second countdown gives you time to prepare!',
-    welcome_advancedTitle: 'Need More Control?',
-    welcome_advancedDesc: 'Click the extension icon in your browser toolbar to access the full control panel',
-    welcome_featureElementTitle: 'Element Recording',
-    welcome_featureElementDesc: 'Select specific page elements to record with precision',
-    welcome_featureAreaTitle: 'Area Selection',
-    welcome_featureAreaDesc: 'Draw custom recording areas on any webpage',
-    welcome_openControl: 'Open Full Control Panel',
+     welcome_advancedTitle: 'Need More Control?',
+     welcome_advancedDesc: 'Click the extension icon in your browser toolbar to access the full control panel',
+     welcome_openControl: 'Open Full Control Panel',
     welcome_footerHelp: 'Need help? Click the extension icon for the control panel with advanced features.',
     welcome_footerMeta: 'Screen Recorder Studio • Made for professionals'
   }
@@ -448,28 +443,6 @@
           <h3 class="text-2xl font-bold mb-2">{t('welcome_advancedTitle')}</h3>
           <p class="text-blue-100">
             {t('welcome_advancedDesc')}
-          </p>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-          <div class="flex items-center gap-2 mb-2">
-            <Mouse class="w-5 h-5" />
-            <h4 class="font-semibold">{t('welcome_featureElementTitle')}</h4>
-          </div>
-          <p class="text-sm text-blue-100">
-            {t('welcome_featureElementDesc')}
-          </p>
-        </div>
-
-        <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-          <div class="flex items-center gap-2 mb-2">
-            <Monitor class="w-5 h-5" />
-            <h4 class="font-semibold">{t('welcome_featureAreaTitle')}</h4>
-          </div>
-          <p class="text-sm text-blue-100">
-            {t('welcome_featureAreaDesc')}
           </p>
         </div>
       </div>

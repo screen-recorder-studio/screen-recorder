@@ -335,10 +335,6 @@
   "welcome_step3Desc": { "message": "点击“$BTN$”并准备好——$SECONDS$ 秒倒计时让你从容就绪！", "placeholders": { "btn": { "content": "$1" }, "seconds": { "content": "$2" } } },
   "welcome_advancedTitle": { "message": "需要更多控制？" },
   "welcome_advancedDesc": { "message": "点击浏览器工具栏中的扩展图标打开完整控制面板" },
-  "welcome_featureElementTitle": { "message": "元素录制" },
-  "welcome_featureElementDesc": { "message": "精确选择页面元素进行录制" },
-  "welcome_featureAreaTitle": { "message": "区域选择" },
-  "welcome_featureAreaDesc": { "message": "在任意网页上绘制自定义录制区域" },
   "welcome_openControl": { "message": "打开完整控制面板" },
   "welcome_footerHelp": { "message": "需要帮助？点击扩展图标，打开带高级功能的控制面板。" },
   "welcome_footerMeta": { "message": "Screen Recorder Studio • 为专业人士打造" }

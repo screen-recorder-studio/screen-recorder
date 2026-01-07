@@ -335,10 +335,6 @@
   "welcome_step3Desc": { "message": "Klik “$BTN$” dan bersiap—hitung mundur $SECONDS$ detik memberi waktu untuk persiapan!", "placeholders": { "btn": { "content": "$1" }, "seconds": { "content": "$2" } } },
   "welcome_advancedTitle": { "message": "Butuh kontrol lebih?" },
   "welcome_advancedDesc": { "message": "Klik ikon ekstensi di toolbar browser untuk membuka panel kontrol lengkap" },
-  "welcome_featureElementTitle": { "message": "Rekam elemen" },
-  "welcome_featureElementDesc": { "message": "Pilih elemen halaman secara presisi untuk direkam" },
-  "welcome_featureAreaTitle": { "message": "Pilih area" },
-  "welcome_featureAreaDesc": { "message": "Gambar area perekaman khusus di halaman mana pun" },
   "welcome_openControl": { "message": "Buka panel kontrol lengkap" },
   "welcome_footerHelp": { "message": "Butuh bantuan? Klik ikon ekstensi untuk membuka panel dengan fitur lanjutan." },
   "welcome_footerMeta": { "message": "Screen Recorder Studio • Dibuat untuk profesional" }

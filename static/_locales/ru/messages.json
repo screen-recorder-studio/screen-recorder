@@ -335,10 +335,6 @@
   "welcome_step3Desc": { "message": "Нажмите «$BTN$» и приготовьтесь — $SECONDS$‑секундный отсчёт даст время на подготовку!", "placeholders": { "btn": { "content": "$1" }, "seconds": { "content": "$2" } } },
   "welcome_advancedTitle": { "message": "Нужно больше контроля?" },
   "welcome_advancedDesc": { "message": "Нажмите значок расширения на панели браузера, чтобы открыть полный контрольный центр" },
-  "welcome_featureElementTitle": { "message": "Запись элементов" },
-  "welcome_featureElementDesc": { "message": "Точно выбирайте элементы страницы для записи" },
-  "welcome_featureAreaTitle": { "message": "Выбор области" },
-  "welcome_featureAreaDesc": { "message": "Рисуйте произвольные области записи на любой странице" },
   "welcome_openControl": { "message": "Открыть полный контрольный центр" },
   "welcome_footerHelp": { "message": "Нужна помощь? Нажмите значок расширения, чтобы открыть панель с расширенными возможностями." },
   "welcome_footerMeta": { "message": "Screen Recorder Studio • Создано для профессионалов" }

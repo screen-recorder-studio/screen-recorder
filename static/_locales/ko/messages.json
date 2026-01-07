@@ -335,10 +335,6 @@
   "welcome_step3Desc": { "message": "“$BTN$”을 클릭하고 준비하세요—$SECONDS$초 카운트다운으로 여유를 드립니다!", "placeholders": { "btn": { "content": "$1" }, "seconds": { "content": "$2" } } },
   "welcome_advancedTitle": { "message": "더 많은 제어가 필요하세요?" },
   "welcome_advancedDesc": { "message": "브라우저 도구 모음의 확장 아이콘을 클릭해 전체 제어 패널을 엽니다" },
-  "welcome_featureElementTitle": { "message": "요소 녹화" },
-  "welcome_featureElementDesc": { "message": "페이지 요소를 정확하게 선택해 녹화" },
-  "welcome_featureAreaTitle": { "message": "영역 선택" },
-  "welcome_featureAreaDesc": { "message": "어떤 페이지에서도 맞춤 녹화 영역을 그리기" },
   "welcome_openControl": { "message": "전체 제어 패널 열기" },
   "welcome_footerHelp": { "message": "도움이 필요하세요? 확장 아이콘을 클릭해 고급 기능이 있는 제어 패널을 열어보세요." },
   "welcome_footerMeta": { "message": "Screen Recorder Studio • 전문가를 위해 제작" }

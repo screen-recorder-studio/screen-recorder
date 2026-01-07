@@ -335,10 +335,6 @@
   "welcome_step3Desc": { "message": "點擊「$BTN$」並準備好——$SECONDS$ 秒倒數讓你從容就緒！", "placeholders": { "btn": { "content": "$1" }, "seconds": { "content": "$2" } } },
   "welcome_advancedTitle": { "message": "需要更多控制？" },
   "welcome_advancedDesc": { "message": "點擊瀏覽器工具列中的擴充功能圖示以開啟完整控制面板" },
-  "welcome_featureElementTitle": { "message": "元素錄製" },
-  "welcome_featureElementDesc": { "message": "精準選擇頁面元素進行錄製" },
-  "welcome_featureAreaTitle": { "message": "區域選擇" },
-  "welcome_featureAreaDesc": { "message": "在任何網頁上繪製自訂錄製區域" },
   "welcome_openControl": { "message": "打開完整控制面板" },
   "welcome_footerHelp": { "message": "需要協助嗎？點擊擴充功能圖示以開啟具備進階功能的控制面板。" },
   "welcome_footerMeta": { "message": "Screen Recorder Studio • 為專業人士打造" }
