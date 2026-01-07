@@ -335,10 +335,6 @@
   "welcome_step3Desc": { "message": "“$BTN$” पर क्लिक करें और तैयार हो जाएँ — $SECONDS$-सेकंड की काउंटडाउन आपको समय देती है!", "placeholders": { "btn": { "content": "$1" }, "seconds": { "content": "$2" } } },
   "welcome_advancedTitle": { "message": "और नियंत्रण चाहिए?" },
   "welcome_advancedDesc": { "message": "पूर्ण नियंत्रण पैनल खोलने के लिए ब्राउज़र टूलबार में एक्सटेंशन आइकन पर क्लिक करें" },
-  "welcome_featureElementTitle": { "message": "एलिमेंट रिकॉर्डिंग" },
-  "welcome_featureElementDesc": { "message": "पेज एलिमेंट्स को सटीकता से चुनकर रिकॉर्ड करें" },
-  "welcome_featureAreaTitle": { "message": "क्षेत्र चयन" },
-  "welcome_featureAreaDesc": { "message": "किसी भी वेबपेज पर कस्टम रिकॉर्डिंग क्षेत्र बनाएं" },
   "welcome_openControl": { "message": "पूर्ण नियंत्रण पैनल खोलें" },
   "welcome_footerHelp": { "message": "मदद चाहिए? उन्नत सुविधाओं वाले नियंत्रण पैनल के लिए एक्सटेंशन आइकन पर क्लिक करें।" },
   "welcome_footerMeta": { "message": "Screen Recorder Studio • पेशेवरों के लिए बनाया गया" }

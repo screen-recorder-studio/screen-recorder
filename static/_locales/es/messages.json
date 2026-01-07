@@ -335,10 +335,6 @@
   "welcome_step3Desc": { "message": "Haz clic en «$BTN$» y prepárate: la cuenta regresiva de $SECONDS$ segundos te da tiempo.", "placeholders": { "btn": { "content": "$1" }, "seconds": { "content": "$2" } } },
   "welcome_advancedTitle": { "message": "¿Necesitas más control?" },
   "welcome_advancedDesc": { "message": "Haz clic en el icono de la extensión en la barra del navegador para abrir el panel completo" },
-  "welcome_featureElementTitle": { "message": "Grabación de elementos" },
-  "welcome_featureElementDesc": { "message": "Selecciona elementos de la página para grabarlos con precisión" },
-  "welcome_featureAreaTitle": { "message": "Selección de área" },
-  "welcome_featureAreaDesc": { "message": "Dibuja áreas personalizadas de grabación en cualquier página" },
   "welcome_openControl": { "message": "Abrir panel completo" },
   "welcome_footerHelp": { "message": "¿Necesitas ayuda? Haz clic en el icono de la extensión para abrir el panel con funciones avanzadas." },
   "welcome_footerMeta": { "message": "Screen Recorder Studio • Hecho para profesionales" }

@@ -335,10 +335,6 @@
   "welcome_step3Desc": { "message": "Klicke auf „$BTN$“ und mach dich bereit – ein $SECONDS$-Sekunden-Countdown gibt dir Zeit!", "placeholders": { "btn": { "content": "$1" }, "seconds": { "content": "$2" } } },
   "welcome_advancedTitle": { "message": "Mehr Kontrolle nötig?" },
   "welcome_advancedDesc": { "message": "Klicke auf das Erweiterungssymbol in der Symbolleiste, um das komplette Bedienfeld zu öffnen" },
-  "welcome_featureElementTitle": { "message": "Element-Aufnahme" },
-  "welcome_featureElementDesc": { "message": "Einzelne Seitenelemente präzise aufzeichnen" },
-  "welcome_featureAreaTitle": { "message": "Bereich auswählen" },
-  "welcome_featureAreaDesc": { "message": "Eigene Aufnahmebereiche auf jeder Webseite zeichnen" },
   "welcome_openControl": { "message": "Komplettes Bedienfeld öffnen" },
   "welcome_footerHelp": { "message": "Brauchst du Hilfe? Klicke auf das Erweiterungssymbol, um das Bedienfeld mit Profi-Funktionen zu öffnen." },
   "welcome_footerMeta": { "message": "Screen Recorder Studio • Für Profis entwickelt" }

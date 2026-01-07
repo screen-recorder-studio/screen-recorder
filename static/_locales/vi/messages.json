@@ -335,10 +335,6 @@
   "welcome_step3Desc": { "message": "Nhấp “$BTN$” và chuẩn bị — đếm ngược $SECONDS$ giây giúp bạn sẵn sàng!", "placeholders": { "btn": { "content": "$1" }, "seconds": { "content": "$2" } } },
   "welcome_advancedTitle": { "message": "Cần kiểm soát nhiều hơn?" },
   "welcome_advancedDesc": { "message": "Nhấp vào biểu tượng tiện ích trên thanh công cụ để mở bảng điều khiển đầy đủ" },
-  "welcome_featureElementTitle": { "message": "Ghi phần tử" },
-  "welcome_featureElementDesc": { "message": "Chọn chính xác các phần tử trang để ghi lại" },
-  "welcome_featureAreaTitle": { "message": "Chọn khu vực" },
-  "welcome_featureAreaDesc": { "message": "Vẽ vùng ghi tùy chỉnh trên bất kỳ trang nào" },
   "welcome_openControl": { "message": "Mở bảng điều khiển đầy đủ" },
   "welcome_footerHelp": { "message": "Cần trợ giúp? Nhấp vào biểu tượng tiện ích để mở bảng điều khiển với các tính năng nâng cao." },
   "welcome_footerMeta": { "message": "Screen Recorder Studio • Dành cho người dùng chuyên nghiệp" }

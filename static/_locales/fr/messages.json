@@ -335,10 +335,6 @@
   "welcome_step3Desc": { "message": "Cliquez sur « $BTN$ » et préparez-vous : un compte à rebours de $SECONDS$ secondes vous laisse le temps.", "placeholders": { "btn": { "content": "$1" }, "seconds": { "content": "$2" } } },
   "welcome_advancedTitle": { "message": "Besoin de plus de contrôle ?" },
   "welcome_advancedDesc": { "message": "Cliquez sur l’icône de l’extension pour ouvrir le panneau complet" },
-  "welcome_featureElementTitle": { "message": "Enregistrement d’éléments" },
-  "welcome_featureElementDesc": { "message": "Sélectionnez précisément les éléments de page à enregistrer" },
-  "welcome_featureAreaTitle": { "message": "Sélection de zone" },
-  "welcome_featureAreaDesc": { "message": "Dessinez des zones d’enregistrement personnalisées sur n’importe quelle page" },
   "welcome_openControl": { "message": "Ouvrir le panneau complet" },
   "welcome_footerHelp": { "message": "Besoin d’aide ? Cliquez sur l’icône de l’extension pour ouvrir le panneau avec les fonctions avancées." },
   "welcome_footerMeta": { "message": "Screen Recorder Studio • Conçu pour les professionnels" }

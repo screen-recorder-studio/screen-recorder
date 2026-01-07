@@ -335,10 +335,6 @@
   "welcome_step3Desc": { "message": "Click \"$BTN$\" and get ready - a $SECONDS$-second countdown gives you time to prepare!", "placeholders": { "btn": { "content": "$1" }, "seconds": { "content": "$2" } } },
   "welcome_advancedTitle": { "message": "Need More Control?" },
   "welcome_advancedDesc": { "message": "Click the extension icon in your browser toolbar to access the full control panel" },
-  "welcome_featureElementTitle": { "message": "Element Recording" },
-  "welcome_featureElementDesc": { "message": "Select specific page elements to record with precision" },
-  "welcome_featureAreaTitle": { "message": "Area Selection" },
-  "welcome_featureAreaDesc": { "message": "Draw custom recording areas on any webpage" },
   "welcome_openControl": { "message": "Open Full Control Panel" },
   "welcome_footerHelp": { "message": "Need help? Click the extension icon for the control panel with advanced features." },
   "welcome_footerMeta": { "message": "Screen Recorder Studio • Made for professionals" }

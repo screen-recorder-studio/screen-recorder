@@ -335,10 +335,6 @@
   "welcome_step3Desc": { "message": "「$BTN$」をクリックして準備しましょう。$SECONDS$ 秒のカウントダウンで落ち着いて開始できます。", "placeholders": { "btn": { "content": "$1" }, "seconds": { "content": "$2" } } },
   "welcome_advancedTitle": { "message": "さらに詳しく操作しますか？" },
   "welcome_advancedDesc": { "message": "ツールバーの拡張機能アイコンをクリックしてフルコントロールパネルを開きます" },
-  "welcome_featureElementTitle": { "message": "要素録画" },
-  "welcome_featureElementDesc": { "message": "ページ要素を選択して精密に録画" },
-  "welcome_featureAreaTitle": { "message": "範囲選択" },
-  "welcome_featureAreaDesc": { "message": "任意のページでカスタム録画範囲を描画" },
   "welcome_openControl": { "message": "フルコントロールパネルを開く" },
   "welcome_footerHelp": { "message": "ヘルプが必要ですか？拡張機能アイコンをクリックして高度な機能付きのコントロールパネルを開いてください。" },
   "welcome_footerMeta": { "message": "Screen Recorder Studio • プロ向けに作成" }
