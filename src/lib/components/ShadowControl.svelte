@@ -3,6 +3,7 @@
   import { Zap, Palette, Move, Focus, Sun, Moon, Sparkles } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import type { BackgroundConfig } from '$lib/types/background'
+  import { _t as t } from '$lib/utils/i18n'
 
   // Current shadow configuration
   const currentShadow = $derived(backgroundConfigStore.config.shadow)
@@ -124,13 +125,6 @@
     }
   })
 
-  // i18n helper
-  function t(key: string) {
-    if (typeof chrome !== 'undefined' && chrome.i18n && chrome.i18n.getMessage) {
-      return chrome.i18n.getMessage(key) || key
-    }
-    return key
-  }
 </script>
 
 <!-- Video shadow configuration control -->

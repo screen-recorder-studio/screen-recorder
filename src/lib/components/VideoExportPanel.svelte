@@ -12,6 +12,7 @@
     type SourceVideoInfo
   } from './UnifiedExportDialog.svelte'
   import { extractSourceInfo, convertBackgroundConfigForExport } from '$lib/utils/export-utils'
+  import { _t as t } from '$lib/utils/i18n'
 
   // License tier type
   export type LicenseTier = 'free' | 'pro' | 'pro-trial'
@@ -60,14 +61,6 @@
       classes: 'bg-blue-50 text-blue-600 border border-blue-200'
     }
   })
-
-  // i18n helper
-  function t(key: string, subs?: string | string[]) {
-    if (typeof chrome !== 'undefined' && chrome.i18n && chrome.i18n.getMessage) {
-      return chrome.i18n.getMessage(key, subs) || key
-    }
-    return key
-  }
 
   const currentTier = $derived(tierConfig[licenseTier] || tierConfig['free'])
 

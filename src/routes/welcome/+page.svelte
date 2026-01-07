@@ -15,6 +15,7 @@
     Mouse
   } from '@lucide/svelte'
   import { onMount } from 'svelte'
+  import { _t } from '$lib/utils/i18n'
 
   // Recording state management
   let isRecording = $state(false)
@@ -71,6 +72,8 @@
     welcome_footerHelp: 'Need help? Click the extension icon for the control panel with advanced features.',
     welcome_footerMeta: 'Screen Recorder Studio • Made for professionals'
   }
+
+  const t = (key: string, subs?: string | string[]) => _t(key, subs, FALLBACK_MESSAGES)
 
   // Recording mode configuration
   const recordingModes = [
@@ -216,22 +219,6 @@
     return target ? t(target.nameKey) : ''
   }
 
-  function applySubs(template: string, subs?: string | string[]) {
-    if (!subs) return template
-    const values = Array.isArray(subs) ? subs : [subs]
-    let index = 0
-    return template.replace(/\$(\d+|[A-Z_]+)\$?/g, () => values[index++] ?? '')
-  }
-
-  function t(key: string, subs?: string | string[]) {
-    if (typeof chrome !== 'undefined' && chrome.i18n?.getMessage) {
-      return chrome.i18n.getMessage(key, subs) || key
-    }
-    if (FALLBACK_MESSAGES[key]) {
-      return applySubs(FALLBACK_MESSAGES[key], subs)
-    }
-    return key
-  }
 </script>
 
 <svelte:head>

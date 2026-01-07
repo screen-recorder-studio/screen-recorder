@@ -4,6 +4,7 @@
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import { WALLPAPER_CATEGORIES } from '$lib/data/wallpaper-presets'
   import type { ImagePreset } from '$lib/types/background'
+  import { _t as t } from '$lib/utils/i18n'
 
   // Current config from store
   const currentConfig = $derived(backgroundConfigStore.config)
@@ -63,13 +64,6 @@
     return selectedWallpaperId === wallpaper.id
   }
 
-  // i18n helper
-  function t(key: string, subs?: string | string[]) {
-    if (typeof chrome !== 'undefined' && chrome.i18n && chrome.i18n.getMessage) {
-      return chrome.i18n.getMessage(key, subs) || key
-    }
-    return key
-  }
 </script>
 
 <div class="space-y-3">
@@ -127,4 +121,3 @@
     <span>{t('wallpaper_total', String(Object.values(WALLPAPER_CATEGORIES).reduce((t, c) => t + c.wallpapers.length, 0)))}</span>
   </div>
 </div>
-

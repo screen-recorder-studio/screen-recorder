@@ -2,6 +2,7 @@
 <script lang="ts">
   import { Move, Minimize2, Maximize2, SlidersHorizontal } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
+  import { _t as t } from '$lib/utils/i18n'
 
   // Current padding value
   const currentPadding = $derived(backgroundConfigStore.config.padding ?? 60)
@@ -33,13 +34,6 @@
     return currentPadding === value
   }
 
-  // i18n helper
-  function t(key: string) {
-    if (typeof chrome !== 'undefined' && chrome.i18n && chrome.i18n.getMessage) {
-      return chrome.i18n.getMessage(key) || key
-    }
-    return key
-  }
 </script>
 
 <!-- Padding configuration control -->
