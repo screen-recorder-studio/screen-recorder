@@ -13,7 +13,7 @@
     ArrowRight,
     CheckCircle2
   } from '@lucide/svelte'
-  import { onMount } from 'svelte'
+  import { onDestroy, onMount } from 'svelte'
   import { _t } from '$lib/utils/i18n'
 
   // Recording state management
@@ -21,7 +21,15 @@
   let isPaused = $state(false)
   let selectedMode = $state<'tab' | 'window' | 'screen'>('tab')
   let isLoading = $state(false)
+  let countdownActive = $state(false)
+  let countdownValue = $state(0)
+  let countdownTimer: ReturnType<typeof setTimeout> | null = null
   const COUNTDOWN_SECONDS = 3
+  const MAX_COUNTDOWN_SECONDS = 10
+
+  function sanitizeCountdown(seconds: number) {
+    return Number.isFinite(seconds) ? Math.max(0, Math.min(MAX_COUNTDOWN_SECONDS, seconds)) : COUNTDOWN_SECONDS
+  }
 
   const FALLBACK_MESSAGES: Record<string, string> = {
     appName: 'Screen Recorder Studio',
@@ -61,9 +69,12 @@
     welcome_step2Desc: 'Select what to record: current tab, entire window, or full screen - whatever fits your needs',
     welcome_step3Title: 'Hit Record',
     welcome_step3Desc: 'Click "$BTN$" and get ready - a $SECONDS$-second countdown gives you time to prepare!',
-     welcome_advancedTitle: 'Need More Control?',
-     welcome_advancedDesc: 'Click the extension icon in your browser toolbar to access the full control panel',
-     welcome_openControl: 'Open Full Control Panel',
+    welcome_advancedTitle: 'Need More Control?',
+    welcome_advancedDesc: 'Click the extension icon in your browser toolbar to access the full control panel',
+    welcome_openControl: 'Open Full Control Panel',
+    control_btnStarting: 'Starting in $1...',
+    control_overlayRecordingStarts: 'Recording will begin after the countdown',
+    control_btnSkipCountdown: 'Skip countdown',
     welcome_footerHelp: 'Need help? Click the extension icon for the control panel with advanced features.',
     welcome_footerMeta: 'Screen Recorder Studio • Made for professionals'
   }
@@ -110,18 +121,27 @@
   onMount(() => {
     const handler = (msg: any) => {
       try {
-        if (msg?.type === 'STREAM_META' && msg?.meta && typeof msg.meta.paused === 'boolean') {
-          isPaused = !!msg.meta.paused
+        if (msg?.type === 'STREAM_META') {
+          const meta = msg?.meta
+          if (meta && typeof meta.paused === 'boolean') {
+            isPaused = !!meta.paused
+          }
+          // Background signals countdown when preparing is true and countdown provides remaining seconds
+          if (meta?.preparing && typeof meta.countdown === 'number') {
+            startCountdown(meta.countdown)
+          }
         }
         if (msg?.type === 'STREAM_START') {
           isRecording = true
           isPaused = false
           isLoading = false
+          resetCountdown()
         }
         if (msg?.type === 'STREAM_END' || msg?.type === 'STREAM_ERROR' || msg?.type === 'RECORDING_COMPLETE' || msg?.type === 'OPFS_RECORDING_READY') {
           isRecording = false
           isPaused = false
           isLoading = false
+          resetCountdown()
         }
       } catch (e) {
         // ignore handler errors
@@ -193,6 +213,7 @@
 
   // Get button text
   function getButtonText() {
+    if (countdownActive) return t('control_btnStarting', [String(countdownValue)])
     if (isLoading) return t('control_btnPreparing')
     if (isRecording) {
       return isPaused ? t('control_btnResume') : t('control_btnPause')
@@ -214,13 +235,85 @@
     return target ? t(target.nameKey) : ''
   }
 
+  function startCountdown(seconds: number) {
+    const safeSeconds = sanitizeCountdown(seconds)
+    resetCountdown()
+    countdownValue = safeSeconds
+    if (countdownValue === 0) {
+      notifyCountdownDone()
+      return
+    }
+    countdownActive = true
+    const endTime = Date.now() + countdownValue * 1000
+    const tick = () => {
+      const remainingMs = Math.max(0, endTime - Date.now())
+      countdownValue = Math.ceil(remainingMs / 1000)
+      if (remainingMs <= 0) {
+        resetCountdown()
+        notifyCountdownDone()
+        return
+      }
+      countdownTimer = setTimeout(tick, Math.min(remainingMs, 500))
+    }
+    tick()
+  }
+
+  function notifyCountdownDone() {
+    try {
+      chrome.runtime.sendMessage({ type: 'COUNTDOWN_DONE' })
+    } catch (e) {
+      console.warn('Failed to send countdown completion message to background script', e)
+    }
+  }
+
+  function skipCountdown() {
+    resetCountdown()
+    notifyCountdownDone()
+  }
+
+  function resetCountdown() {
+    countdownActive = false
+    countdownValue = 0
+    if (countdownTimer) {
+      clearTimeout(countdownTimer)
+      countdownTimer = null
+    }
+  }
+
+  onDestroy(() => {
+    resetCountdown()
+  })
+
 </script>
 
 <svelte:head>
   <title>{t('welcome_pageTitle')}</title>
 </svelte:head>
 
-  <div class="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+  {#if countdownActive}
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/85 backdrop-blur-sm">
+      <div
+        class="text-center space-y-4"
+        role="status"
+        aria-live="polite"
+        aria-label={`Countdown timer, recording starts in ${countdownValue} seconds`}
+      >
+        <div class="text-6xl font-bold text-white tabular-nums animate-pulse">
+          {countdownValue}
+        </div>
+        <p class="text-white/70 text-lg">{t('control_overlayRecordingStarts')}</p>
+        <button
+          class="px-4 py-2 rounded-lg bg-white/90 text-slate-900 font-semibold hover:bg-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white"
+          type="button"
+          on:click={skipCountdown}
+        >
+          {t('control_btnSkipCountdown')}
+        </button>
+      </div>
+    </div>
+  {/if}
+
+  <div class="min-h-screen bg-gray-50">
     <!-- Header -->
     <div class="bg-white border-b border-gray-200 shadow-sm">
       <div class="max-w-6xl mx-auto px-6 py-4">
@@ -234,32 +327,32 @@
       </div>
     </div>
 
-  <div class="max-w-6xl mx-auto px-6 py-8">
-    <!-- Welcome Banner -->
-    <div class="text-center mb-8">
-      <div class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full text-sm font-medium mb-4">
-        <CheckCircle2 class="w-4 h-4" />
-        {t('welcome_installSuccess')}
+    <div class="max-w-6xl mx-auto px-6 py-8">
+      <!-- Welcome Banner -->
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-full text-sm font-medium mb-4">
+          <CheckCircle2 class="w-4 h-4" />
+          {t('welcome_installSuccess')}
+        </div>
+        <h2 class="text-3xl font-bold text-gray-900 mb-3">
+          {t('welcome_headline')}
+        </h2>
+        <p class="text-lg text-gray-600 max-w-2xl mx-auto">
+          {t('welcome_subheadline')}
+        </p>
       </div>
-      <h2 class="text-3xl font-bold text-gray-900 mb-3">
-        {t('welcome_headline')}
-      </h2>
-      <p class="text-lg text-gray-600 max-w-2xl mx-auto">
-        {t('welcome_subheadline')}
-      </p>
-    </div>
 
-    <!-- Recording Mode Selection (Moved up) -->
-    <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-xl p-6 mb-8 border-2 border-blue-200">
-      <div class="text-center mb-4">
-        <h3 class="text-2xl font-bold text-gray-900 mb-2">{t('welcome_tryTitle')}</h3>
-        <p class="text-base text-gray-700 mb-1">
-          {t('welcome_trySubtitle')}
-        </p>
-        <p class="text-xs text-gray-500">
-          {t('welcome_tryFeatures', String(COUNTDOWN_SECONDS))}
-        </p>
-      </div>
+      <!-- Recording Mode Selection (Moved up) -->
+      <div class="bg-white rounded-2xl shadow-xl p-6 mb-8 border border-gray-200">
+        <div class="text-center mb-4">
+          <h3 class="text-2xl font-bold text-gray-900 mb-2">{t('welcome_tryTitle')}</h3>
+          <p class="text-base text-gray-700 mb-1">
+            {t('welcome_trySubtitle')}
+          </p>
+          <p class="text-xs text-gray-500">
+            {t('welcome_tryFeatures', String(COUNTDOWN_SECONDS))}
+          </p>
+        </div>
       
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {#each recordingModes as mode}
@@ -369,10 +462,10 @@
           </div>
         </div>
       {:else}
-        <div class="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl">
+        <div class="mt-4 p-4 bg-white border border-gray-200 rounded-xl">
           <div class="flex items-start gap-3">
             <div class="flex-shrink-0">
-              <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+              <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                 <Play class="w-4 h-4 text-white" />
               </div>
             </div>
@@ -400,8 +493,8 @@
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <!-- Step 1 -->
         <div class="flex flex-col items-center text-center">
-          <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
-            <span class="text-xl font-bold text-blue-600">1</span>
+          <div class="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3">
+            <span class="text-xl font-bold text-slate-800">1</span>
           </div>
           <h4 class="text-base font-semibold text-gray-900 mb-1">{t('welcome_step1Title')}</h4>
           <p class="text-xs text-gray-600">
@@ -411,8 +504,8 @@
 
         <!-- Step 2 -->
         <div class="flex flex-col items-center text-center">
-          <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-3">
-            <span class="text-xl font-bold text-green-600">2</span>
+          <div class="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3">
+            <span class="text-xl font-bold text-slate-800">2</span>
           </div>
           <h4 class="text-base font-semibold text-gray-900 mb-1">{t('welcome_step2Title')}</h4>
           <p class="text-xs text-gray-600">
@@ -422,8 +515,8 @@
 
         <!-- Step 3 -->
         <div class="flex flex-col items-center text-center">
-          <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-3">
-            <span class="text-xl font-bold text-purple-600">3</span>
+          <div class="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3">
+            <span class="text-xl font-bold text-slate-800">3</span>
           </div>
           <h4 class="text-base font-semibold text-gray-900 mb-1">{t('welcome_step3Title')}</h4>
           <p class="text-xs text-gray-600">
@@ -434,7 +527,7 @@
     </div>
 
     <!-- Advanced Features Guide -->
-    <div class="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl shadow-2xl p-8 text-white">
+    <div class="bg-slate-900 rounded-2xl shadow-2xl p-8 text-white">
       <div class="flex items-start gap-4 mb-6">
         <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
           <Zap class="w-6 h-6" />
