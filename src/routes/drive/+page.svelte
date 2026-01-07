@@ -3,6 +3,7 @@
   import { Folder } from '@lucide/svelte'
   import RecordingList from '$lib/components/drive/RecordingList.svelte'
   import { formatBytes, formatTime, formatDate } from '$lib/utils/format'
+  import { _t as t } from '$lib/utils/i18n'
 
   // Recording summary type definition
   interface RecordingSummary {
@@ -243,14 +244,6 @@
   // Refresh list
   function refreshRecordings() {
     loadRecordings()
-  }
-
-  // i18n helper
-  function t(key: string, subs?: string | string[]) {
-    if (typeof chrome !== 'undefined' && chrome.i18n && chrome.i18n.getMessage) {
-      return chrome.i18n.getMessage(key, subs) || key
-    }
-    return key
   }
 
   // Load data when component mounts

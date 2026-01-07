@@ -1,6 +1,7 @@
 <script lang="ts">
   import { RefreshCw, Trash2, AlertTriangle, Folder } from '@lucide/svelte'
   import RecordingCard from './RecordingCard.svelte'
+  import { _t as t } from '$lib/utils/i18n'
 
   // Recording summary type definition
   interface RecordingSummary {
@@ -102,13 +103,6 @@
     }
   })
 
-  // i18n helper
-  function t(key: string, subs?: string | string[]) {
-    if (typeof chrome !== 'undefined' && chrome.i18n && chrome.i18n.getMessage) {
-      return chrome.i18n.getMessage(key, subs) || key
-    }
-    return key
-  }
 </script>
 
 <div class="max-w-6xl mx-auto px-6 py-6">

@@ -3,6 +3,7 @@
 <script lang="ts">
   import { Square, Circle, SlidersHorizontal } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
+  import { _t as t } from '$lib/utils/i18n'
 
   // Current border radius value
   const currentRadius = $derived(backgroundConfigStore.config.borderRadius || 0)
@@ -34,13 +35,6 @@
     return currentRadius === value
   }
 
-  // i18n helper
-  function t(key: string) {
-    if (typeof chrome !== 'undefined' && chrome.i18n && chrome.i18n.getMessage) {
-      return chrome.i18n.getMessage(key) || key
-    }
-    return key
-  }
 </script>
 
 <!-- Video border radius configuration control -->

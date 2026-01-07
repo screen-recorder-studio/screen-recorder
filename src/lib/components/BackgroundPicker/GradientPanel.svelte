@@ -3,6 +3,7 @@
   import { ArrowRight, Target, RefreshCw, Rainbow } from '@lucide/svelte'
   import { backgroundConfigStore, PRESET_GRADIENTS } from '$lib/stores/background-config.svelte'
   import type { GradientPreset } from '$lib/types/background'
+  import { _t as t } from '$lib/utils/i18n'
 
   // Current config from store
   const currentConfig = $derived(backgroundConfigStore.config)
@@ -49,13 +50,6 @@
     return 'linear-gradient(45deg, #f3f4f6, #e5e7eb)'
   }
 
-  // i18n helper
-  function t(key: string) {
-    if (typeof chrome !== 'undefined' && chrome.i18n && chrome.i18n.getMessage) {
-      return chrome.i18n.getMessage(key) || key
-    }
-    return key
-  }
 </script>
 
 <div class="space-y-3">
@@ -117,4 +111,3 @@
     {/if}
   </div>
 </div>
-

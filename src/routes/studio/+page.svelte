@@ -10,6 +10,7 @@
   import PaddingControl from "$lib/components/PaddingControl.svelte";
   import AspectRatioControl from "$lib/components/AspectRatioControl.svelte";
   import ShadowControl from "$lib/components/ShadowControl.svelte";
+  import { _t as t } from "$lib/utils/i18n";
 
   // Fullscreen control
   let isFullscreen = $state(false);
@@ -587,13 +588,6 @@
     // cleanup()
   });
 
-  // i18n helper
-  function t(key: string, subs?: string | string[]) {
-    if (typeof chrome !== 'undefined' && chrome.i18n && chrome.i18n.getMessage) {
-      return chrome.i18n.getMessage(key, subs) || key
-    }
-    return key
-  }
 </script>
 
 <svelte:head>

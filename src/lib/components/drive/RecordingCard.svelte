@@ -2,6 +2,7 @@
   import { onMount } from 'svelte'
   import { Edit, Trash2, Info } from '@lucide/svelte'
   import VideoPreview from '$lib/components/VideoPreview.svelte'
+  import { _t as t } from '$lib/utils/i18n'
 
   // New status: control metadata display (no longer needed, changed to hover display)
   // let showMetadata = $state(false)
@@ -83,14 +84,6 @@
         day: 'numeric'
       })
     }
-  }
-
-  // i18n helper
-  function t(key: string, subs?: string | string[]) {
-    if (typeof chrome !== 'undefined' && chrome.i18n && chrome.i18n.getMessage) {
-      return chrome.i18n.getMessage(key, subs) || key
-    }
-    return key
   }
 
   // Generate thumbnail

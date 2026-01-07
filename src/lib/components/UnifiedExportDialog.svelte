@@ -12,6 +12,7 @@
     Clock
   } from '@lucide/svelte'
   import { trimStore } from '$lib/stores/trim.svelte'
+  import { _t as t } from '$lib/utils/i18n'
 
   interface Props {
     open: boolean
@@ -95,14 +96,6 @@
   let gifRepeat = $state(0)
   let gifDither = $state<string>('false')
   let gifTransparent = $state<string | null>(null)
-
-  // i18n helper
-  function t(key: string, subs?: string | string[]) {
-    if (typeof chrome !== 'undefined' && chrome.i18n && chrome.i18n.getMessage) {
-      return chrome.i18n.getMessage(key, subs) || key
-    }
-    return key
-  }
 
   // Reset framerate when dialog closes
   $effect(() => {
@@ -685,4 +678,3 @@
     </div>
   </div>
 {/if}
-

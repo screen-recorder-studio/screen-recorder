@@ -13,6 +13,7 @@
     X
   } from '@lucide/svelte'
   import { onMount } from 'svelte'
+  import { _t as t } from '$lib/utils/i18n'
 
   // Recording state management
   let isRecording = $state(false)
@@ -289,13 +290,6 @@
     return Play
   }
 
-  // i18n helper
-  function t(key: string, subs?: string | string[]) {
-    if (typeof chrome !== 'undefined' && chrome.i18n && chrome.i18n.getMessage) {
-      return chrome.i18n.getMessage(key, subs) || key
-    }
-    return key
-  }
 </script>
 
 <svelte:head>
@@ -531,4 +525,3 @@
   </div>
   </div><!-- End of main content area -->
 </div>
-

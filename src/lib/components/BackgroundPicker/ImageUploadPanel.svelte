@@ -2,6 +2,7 @@
 <script lang="ts">
   import { Upload, CircleAlert } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
+  import { _t as t } from '$lib/utils/i18n'
 
   // Current config from store
   const currentConfig = $derived(backgroundConfigStore.config)
@@ -60,13 +61,6 @@
     }
   }
 
-  // i18n helper
-  function t(key: string) {
-    if (typeof chrome !== 'undefined' && chrome.i18n && chrome.i18n.getMessage) {
-      return chrome.i18n.getMessage(key) || key
-    }
-    return key
-  }
 </script>
 
 <div class="space-y-3">
@@ -126,4 +120,3 @@
     </div>
   {/if}
 </div>
-
