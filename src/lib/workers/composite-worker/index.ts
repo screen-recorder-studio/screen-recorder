@@ -93,6 +93,7 @@ let mouseEventsLoadedFor: string | null = null
 let customCursorBitmap: ImageBitmap | null = null
 let customCursorUrl: string | null = null
 const MIN_CURSOR_RADIUS = 4
+const DEFAULT_CURSOR_SIZE = 20
 
 // 初始化 OffscreenCanvas
 function initializeCanvas(width: number, height: number) {
@@ -364,10 +365,10 @@ function drawMouseCursor(
   size: number,
   customImageUrl?: string
 ) {
-  const radius = Math.max(MIN_CURSOR_RADIUS, size || 20)
+  const radius = Math.max(MIN_CURSOR_RADIUS, size || DEFAULT_CURSOR_SIZE)
   if (style === 'custom' && customCursorBitmap) {
     const pxSize = radius
-    ctx.drawImage(customCursorBitmap, x, y, pxSize, pxSize)
+    ctx.drawImage(customCursorBitmap, x - pxSize / 2, y - pxSize / 2, pxSize, pxSize)
     return
   }
   if (style === 'hand') {
@@ -389,14 +390,6 @@ function drawMouseCursor(
     ctx.stroke()
     return
   }
-  if (style === 'custom' && customImageUrl) {
-    ctx.fillStyle = '#000'
-    ctx.beginPath()
-    ctx.arc(x, y, radius * 0.25, 0, Math.PI * 2)
-    ctx.fill()
-    return
-  }
-
   ctx.fillStyle = '#000'
   ctx.strokeStyle = '#fff'
   ctx.lineWidth = 1

@@ -53,10 +53,16 @@ interface WriterErrorEvent {
 interface ReadyEvent { type: 'ready'; id: string }
 interface FinalizedEvent { type: 'finalized'; id: string }
 
+type SyncAccessHandle = {
+  write(buffer: Uint8Array, options?: { at: number }): number
+  flush(): void
+  close(): void
+}
+
 let rootDir: FileSystemDirectoryHandle | null = null
 let recDir: FileSystemDirectoryHandle | null = null
 let dataHandle: FileSystemFileHandle | null = null
-let dataSyncHandle: any | null = null // FileSystemSyncAccessHandle (typed as any for TS lib compat)
+let dataSyncHandle: SyncAccessHandle | null = null
 let dataOffset = 0
 let pendingIndexLines: string[] = []
 let chunksWritten = 0
@@ -69,7 +75,7 @@ let lastTimestamp = -1
 
 // Mouse tracking
 let mouseHandle: FileSystemFileHandle | null = null
-let mouseSyncHandle: any | null = null
+let mouseSyncHandle: SyncAccessHandle | null = null
 let mouseBuffer: string[] = []
 let mouseOffset = 0
 let mouseEnabled = false

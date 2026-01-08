@@ -322,7 +322,7 @@
   let previewDisplayH = $state(0);
   let resizeObserver: ResizeObserver | null = null;
 
-  let recordingMeta = $state<any>(null);
+  let recordingMeta = $state<{ mouseTrackingEnabled?: boolean } | null>(null);
   const workerStatus = $derived(recordingStore.state.status);
 
   // 组件挂载时的初始化

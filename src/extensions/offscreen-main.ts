@@ -180,9 +180,10 @@
 
   function flushOpfsPendingIfReady() {
     if (!opfsWriter || !opfsWriterReady) return
-    while (opfsPendingChunks.length) { const c = opfsPendingChunks.shift()!; appendToOpfsChunk(c) }
-    while (opfsPendingMouse.length) {
-      const evt = opfsPendingMouse.shift()!
+    const pendingChunks = opfsPendingChunks.splice(0)
+    for (const c of pendingChunks) { appendToOpfsChunk(c) }
+    const pendingMouse = opfsPendingMouse.splice(0)
+    for (const evt of pendingMouse) {
       try { opfsWriter!.postMessage({ type: 'append-mouse', event: evt }) } catch {}
     }
     if (opfsEndPending) { opfsEndPending = false; void finalizeOpfsWriter() }
