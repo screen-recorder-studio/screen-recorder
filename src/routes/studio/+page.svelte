@@ -322,6 +322,7 @@
   let previewDisplayH = $state(0);
   let resizeObserver: ResizeObserver | null = null;
 
+  let recordingMeta = $state<any>(null);
   const workerStatus = $derived(recordingStore.state.status);
 
   // 组件挂载时的初始化
@@ -378,6 +379,7 @@
               meta,
               keyframeInfo: receivedKeyframeInfo,
             });
+            recordingMeta = meta || null;
             if (summary?.durationMs) durationMs = summary.durationMs;
             if (summary?.totalChunks) globalTotalFrames = summary.totalChunks;
             if (receivedKeyframeInfo) keyframeInfo = receivedKeyframeInfo;
@@ -704,6 +706,8 @@
           {windowEndMs}
           totalFramesAll={globalTotalFrames}
           {windowStartIndex}
+          {opfsDirId}
+          mouseTrackingEnabled={!!recordingMeta?.mouseTrackingEnabled}
           {keyframeInfo}
           onRequestWindow={handleWindowRequest}
           {fetchWindowData}
@@ -717,15 +721,16 @@
   <div class="w-100 bg-white border-l border-gray-200 flex flex-col h-full">
     <!-- Editing panel header - license badge + export button -->
     <div class="flex-shrink-0 px-4 py-3">
-      <VideoExportPanel
-        encodedChunks={workerEncodedChunks}
-        isRecordingComplete={workerStatus === "completed" ||
-          workerStatus === "idle"}
-        totalFramesAll={globalTotalFrames}
-        {opfsDirId}
-        {sourceFps}
-        licenseTier="pro-trial"
-      />
+        <VideoExportPanel
+          encodedChunks={workerEncodedChunks}
+          isRecordingComplete={workerStatus === "completed" ||
+            workerStatus === "idle"}
+          totalFramesAll={globalTotalFrames}
+          {opfsDirId}
+          mouseTrackingEnabled={!!recordingMeta?.mouseTrackingEnabled}
+          {sourceFps}
+          licenseTier="pro-trial"
+        />
     </div>
 
     <!-- Scrollable editing content area -->

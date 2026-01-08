@@ -62,7 +62,17 @@ export function extractSourceInfo(
  */
 export function convertBackgroundConfigForExport(
   backgroundConfig: any,
-  videoCropStore: VideoCropStore
+  videoCropStore: VideoCropStore,
+  extras?: {
+    mouseCursor?: {
+      enabled?: boolean
+      style?: string
+      size?: number
+      customImageUrl?: string
+    }
+    mouseTrackingEnabled?: boolean
+    opfsDirId?: string
+  }
 ): any {
   if (!backgroundConfig) return undefined
 
@@ -138,7 +148,15 @@ export function convertBackgroundConfigForExport(
     } : undefined,
     
     // Get videoCrop from store
-    videoCrop: videoCropStore.getCropConfig()
+    videoCrop: videoCropStore.getCropConfig(),
+    mouseTrackingEnabled: extras?.mouseTrackingEnabled,
+    mouseCursor: extras?.mouseCursor ? {
+      enabled: extras.mouseCursor.enabled,
+      style: extras.mouseCursor.style,
+      size: extras.mouseCursor.size,
+      customImageUrl: extras.mouseCursor.customImageUrl
+    } : undefined,
+    opfsDirId: extras?.opfsDirId
   }
 }
 

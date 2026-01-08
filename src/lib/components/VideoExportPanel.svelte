@@ -5,6 +5,7 @@
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import { trimStore } from '$lib/stores/trim.svelte'
   import { videoCropStore } from '$lib/stores/video-crop.svelte'
+  import { mouseCursorStore } from '$lib/stores/mouse-cursor.svelte'
   import UnifiedExportDialog, {
     type ExportFormat,
     type VideoExportOptions,
@@ -23,6 +24,7 @@
     isRecordingComplete?: boolean
     totalFramesAll?: number
     opfsDirId?: string
+    mouseTrackingEnabled?: boolean
     className?: string
     /**
      * Source frames-per-second for this recording.
@@ -41,6 +43,7 @@
     isRecordingComplete = false,
     totalFramesAll = 0,
     opfsDirId = '',
+    mouseTrackingEnabled = false,
     className = '',
     sourceFps = 30,
     licenseTier = 'pro-trial'
@@ -74,6 +77,12 @@
 
   // Use global background configuration
   const backgroundConfig = $derived(backgroundConfigStore.config)
+  const mouseCursor = $derived({
+    enabled: mouseCursorStore.enabled,
+    style: mouseCursorStore.style,
+    size: mouseCursorStore.size,
+    customImageUrl: mouseCursorStore.customImageUrl
+  })
 
   // Export status
   let isExportingWebM = $state(false)
@@ -158,7 +167,11 @@
       isGifLibReady = true
 
       // Convert Svelte 5 Proxy objects to plain objects using utility
-      const plainBackgroundConfig = convertBackgroundConfigForExport(backgroundConfig, videoCropStore)
+      const plainBackgroundConfig = convertBackgroundConfigForExport(backgroundConfig, videoCropStore, {
+        mouseCursor,
+        mouseTrackingEnabled,
+        opfsDirId: opfsDirId || undefined
+      })
 
       console.log('🎨 [Export] GIF export config:', {
         hasBackgroundConfig: !!plainBackgroundConfig,
@@ -352,7 +365,11 @@
       console.log('⚙️ [Export] WebM options:', options)
 
       // Convert Svelte 5 Proxy objects to plain objects using utility
-      const plainBackgroundConfig = convertBackgroundConfigForExport(backgroundConfig, videoCropStore)
+      const plainBackgroundConfig = convertBackgroundConfigForExport(backgroundConfig, videoCropStore, {
+        mouseCursor,
+        mouseTrackingEnabled,
+        opfsDirId: opfsDirId || undefined
+      })
 
       console.log('🎬 [Export] WebM export config:', {
         hasBackgroundConfig: !!plainBackgroundConfig,
@@ -470,7 +487,11 @@
       console.log('⚙️ [Export] MP4 options:', options)
 
       // Convert Svelte 5 Proxy objects to plain objects using utility
-      const plainBackgroundConfig = convertBackgroundConfigForExport(backgroundConfig, videoCropStore)
+      const plainBackgroundConfig = convertBackgroundConfigForExport(backgroundConfig, videoCropStore, {
+        mouseCursor,
+        mouseTrackingEnabled,
+        opfsDirId: opfsDirId || undefined
+      })
 
       console.log('🎬 [Export] MP4 export config:', {
         hasBackgroundConfig: !!plainBackgroundConfig,

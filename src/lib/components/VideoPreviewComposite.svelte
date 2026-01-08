@@ -8,6 +8,7 @@
   import { trimStore } from '$lib/stores/trim.svelte'
   import { videoCropStore } from '$lib/stores/video-crop.svelte'
   import { videoZoomStore, type ZoomMode, type ZoomEasing } from '$lib/stores/video-zoom.svelte'
+  import { mouseCursorStore } from '$lib/stores/mouse-cursor.svelte'
   import VideoCropPanel from './VideoCropPanel.svelte'
   import VideoFocusPanel from './VideoFocusPanel.svelte'
   import Timeline from './Timeline.svelte'
@@ -25,6 +26,8 @@
     windowEndMs?: number
     totalFramesAll?: number
     windowStartIndex?: number
+    opfsDirId?: string
+    mouseTrackingEnabled?: boolean
     keyframeInfo?: {
       indices: number[]
       timestamps: number[]
@@ -49,6 +52,8 @@
     windowEndMs = 0,
     totalFramesAll = 0,
     windowStartIndex = 0,
+    opfsDirId = '',
+    mouseTrackingEnabled = false,
     keyframeInfo = null,
     onRequestWindow,
     fetchWindowData,
@@ -85,6 +90,12 @@
 
   // Use global background configuration
   const backgroundConfig = $derived(backgroundConfigStore.config)
+  const mouseCursor = $derived({
+    enabled: mouseCursorStore.enabled,
+    style: mouseCursorStore.style,
+    size: mouseCursorStore.size,
+    customImageUrl: mouseCursorStore.customImageUrl
+  })
 
   // State variables - display related only
   let canvas: HTMLCanvasElement
@@ -951,7 +962,15 @@
       // 🆕 添加视频裁剪配置
       videoCrop: videoCropStore.getCropConfig(),
       // 🆕 添加视频 Zoom 配置（与 config 路径保持一致）
-      videoZoom: videoZoomStore.getZoomConfig()
+      videoZoom: videoZoomStore.getZoomConfig(),
+      mouseTrackingEnabled,
+      mouseCursor: {
+        enabled: mouseCursor.enabled,
+        style: mouseCursor.style,
+        size: mouseCursor.size,
+        customImageUrl: mouseCursor.customImageUrl
+      },
+      opfsDirId: opfsDirId || undefined
     }
 
     // If image background, get new ImageBitmap
@@ -2393,4 +2412,3 @@
   {/if}
 
 </div>
-
