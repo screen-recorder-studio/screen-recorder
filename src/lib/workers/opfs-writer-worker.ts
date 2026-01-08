@@ -74,6 +74,7 @@ let mouseBuffer: string[] = []
 let mouseOffset = 0
 let mouseEnabled = false
 let mouseFallbackParts: Uint8Array[] = []
+const MOUSE_FLUSH_THRESHOLD = 100
 
 // Fallback buffers when SyncAccessHandle is unavailable; we flush to file on finalize
 let fallbackDataParts: Uint8Array[] = []
@@ -273,7 +274,7 @@ self.onmessage = async (e: MessageEvent<InitMessage | AppendMessage | AppendMous
       if (!mouseEnabled) return
       try {
         mouseBuffer.push(JSON.stringify(msg.event) + '\n')
-        if (mouseBuffer.length >= 100) {
+        if (mouseBuffer.length >= MOUSE_FLUSH_THRESHOLD) {
           await flushMouse()
         }
       } catch (err) {

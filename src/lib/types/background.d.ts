@@ -118,6 +118,8 @@ export interface BackgroundConfig {
     size?: number
     customImageUrl?: string
   }
+  // 关联的 OPFS 录制目录（用于加载鼠标轨迹等）
+  opfsDirId?: string
 }
 
 // 预设渐变配置类型

@@ -90,6 +90,8 @@ let videoFrameRate: number = 30;  // 视频帧率（默认 30fps）
 // Mouse events
 let mouseEvents: MouseEventRecord[] = []
 let mouseEventsLoadedFor: string | null = null
+let customCursorBitmap: ImageBitmap | null = null
+let customCursorUrl: string | null = null
 
 // 初始化 OffscreenCanvas
 function initializeCanvas(width: number, height: number) {
@@ -290,14 +292,37 @@ async function loadMouseEvents(opfsDirId: string) {
 async function ensureMouseEvents(config: BackgroundConfig | null) {
   if (!config?.mouseTrackingEnabled || config?.mouseCursor?.enabled === false) {
     resetMouseEvents()
+    customCursorBitmap = null
+    customCursorUrl = null
     return
   }
-  const dirId = (config as any).opfsDirId as string | undefined
+  const dirId = config?.opfsDirId as string | undefined
   if (!dirId) {
     resetMouseEvents()
+    customCursorBitmap = null
+    customCursorUrl = null
     return
   }
   await loadMouseEvents(dirId)
+  const cursor = config.mouseCursor
+  if (cursor?.style === 'custom' && cursor.customImageUrl) {
+    if (customCursorUrl !== cursor.customImageUrl) {
+      try {
+        const res = await fetch(cursor.customImageUrl)
+        const blob = await res.blob()
+        customCursorBitmap = await createImageBitmap(blob)
+        customCursorUrl = cursor.customImageUrl
+        console.log('✅ [COMPOSITE-WORKER] Custom cursor loaded')
+      } catch (e) {
+        console.warn('⚠️ [COMPOSITE-WORKER] Failed to load custom cursor image', e)
+        customCursorBitmap = null
+        customCursorUrl = null
+      }
+    }
+  } else {
+    customCursorBitmap = null
+    customCursorUrl = null
+  }
 }
 
 function findMousePosition(timestamp: number): MouseEventRecord | null {
@@ -330,6 +355,11 @@ function drawMouseCursor(
   customImageUrl?: string
 ) {
   const radius = Math.max(4, size || 20)
+  if (style === 'custom' && customCursorBitmap) {
+    const pxSize = radius
+    ctx.drawImage(customCursorBitmap, x, y, pxSize, pxSize)
+    return
+  }
   if (style === 'hand') {
     ctx.fillStyle = '#000'
     ctx.beginPath()
@@ -1081,8 +1111,8 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
     if (config.mouseTrackingEnabled && config.mouseCursor?.enabled !== false && mouseEvents.length) {
       const pos = findMousePosition(frame.timestamp ?? 0)
       if (pos && pos.isInside !== false) {
-        const srcW = (frame as any).codedWidth || (frame as any).displayWidth || 1
-        const srcH = (frame as any).codedHeight || (frame as any).displayHeight || 1
+        const srcW = frame.codedWidth || frame.displayWidth || 1
+        const srcH = frame.codedHeight || frame.displayHeight || 1
         const clampedX = Math.max(0, Math.min(pos.x, srcW))
         const clampedY = Math.max(0, Math.min(pos.y, srcH))
         const drawX = actualLayout.x + (clampedX / Math.max(1, srcW)) * actualLayout.width

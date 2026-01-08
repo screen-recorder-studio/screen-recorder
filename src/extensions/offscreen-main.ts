@@ -24,6 +24,7 @@
 
   // CaptureController mouse tracking
   const MOUSE_THROTTLE_MS = 16
+  const MIN_CAPTURE_CONTROLLER_CHROME = 109
   let captureController: any = null
   let mouseTrackingEnabled = false
   let lastMouseEventTime = 0
@@ -48,8 +49,8 @@
       return
     }
     const chromeVersion = getChromeVersion()
-    if (chromeVersion < 109) {
-      log(`⚠️ CaptureController requires Chrome 109+, current: ${chromeVersion}`)
+    if (chromeVersion < MIN_CAPTURE_CONTROLLER_CHROME) {
+      log(`⚠️ CaptureController requires Chrome ${MIN_CAPTURE_CONTROLLER_CHROME}+, current: ${chromeVersion}`)
       return
     }
 
