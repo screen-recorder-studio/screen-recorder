@@ -92,6 +92,7 @@ let mouseEvents: MouseEventRecord[] = []
 let mouseEventsLoadedFor: string | null = null
 let customCursorBitmap: ImageBitmap | null = null
 let customCursorUrl: string | null = null
+const MIN_CURSOR_RADIUS = 4
 
 // 初始化 OffscreenCanvas
 function initializeCanvas(width: number, height: number) {
@@ -278,9 +279,18 @@ async function loadMouseEvents(opfsDirId: string) {
     const mouseFile = await dir.getFileHandle('mouse.jsonl', { create: false })
     const blob = await mouseFile.getFile()
     const text = await blob.text()
-    mouseEvents = text.split(/\r?\n/).filter(Boolean).map((line: string) => {
-      try { return JSON.parse(line) as MouseEventRecord } catch { return null }
-    }).filter(Boolean) as MouseEventRecord[]
+    const lines = text.split(/\r?\n/)
+    const parsed: MouseEventRecord[] = []
+    for (const line of lines) {
+      if (!line) continue
+      try {
+        const evt = JSON.parse(line) as MouseEventRecord
+        parsed.push(evt)
+      } catch {
+        // ignore malformed line
+      }
+    }
+    mouseEvents = parsed
     mouseEventsLoadedFor = opfsDirId
     console.log('✅ [COMPOSITE-WORKER] Mouse events loaded:', mouseEvents.length)
   } catch (e) {
@@ -354,7 +364,7 @@ function drawMouseCursor(
   size: number,
   customImageUrl?: string
 ) {
-  const radius = Math.max(4, size || 20)
+  const radius = Math.max(MIN_CURSOR_RADIUS, size || 20)
   if (style === 'custom' && customCursorBitmap) {
     const pxSize = radius
     ctx.drawImage(customCursorBitmap, x, y, pxSize, pxSize)

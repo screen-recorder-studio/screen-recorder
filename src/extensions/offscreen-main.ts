@@ -25,6 +25,7 @@
   // CaptureController mouse tracking
   const MOUSE_THROTTLE_MS = 16
   const MIN_CAPTURE_CONTROLLER_CHROME = 109
+  const MS_TO_MICROSECONDS = 1000
   let captureController: any = null
   let mouseTrackingEnabled = false
   let lastMouseEventTime = 0
@@ -66,7 +67,7 @@
           if (typeof event?.surfaceX !== 'number' || typeof event?.surfaceY !== 'number') return
 
           const mouseEvent = {
-            timestamp: now * 1000,
+            timestamp: now * MS_TO_MICROSECONDS,
             x: event.surfaceX,
             y: event.surfaceY,
             isInside: event.surfaceX !== -1 && event.surfaceY !== -1
