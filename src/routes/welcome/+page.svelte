@@ -236,12 +236,12 @@
 
   <div class="max-w-6xl mx-auto px-6 py-8">
     <!-- Welcome Banner -->
-    <div class="text-center mb-8">
-      <div class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full text-sm font-medium mb-4">
+    <div class="text-center mb-6">
+      <div class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full text-sm font-medium mb-3">
         <CheckCircle2 class="w-4 h-4" />
         {t('welcome_installSuccess')}
       </div>
-      <h2 class="text-3xl font-bold text-gray-900 mb-3">
+      <h2 class="text-3xl font-bold text-gray-900 mb-2">
         {t('welcome_headline')}
       </h2>
       <p class="text-lg text-gray-600 max-w-2xl mx-auto">
@@ -250,10 +250,10 @@
     </div>
 
     <!-- Recording Mode Selection (Moved up) -->
-    <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-xl p-6 mb-8 border-2 border-blue-200">
-      <div class="text-center mb-4">
-        <h3 class="text-2xl font-bold text-gray-900 mb-2">{t('welcome_tryTitle')}</h3>
-        <p class="text-base text-gray-700 mb-1">
+    <div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-xl p-5 mb-6 border-2 border-blue-200">
+      <div class="text-center mb-3">
+        <h3 class="text-xl font-bold text-gray-900 mb-1">{t('welcome_tryTitle')}</h3>
+        <p class="text-sm text-gray-700 mb-1">
           {t('welcome_trySubtitle')}
         </p>
         <p class="text-xs text-gray-500">
@@ -261,11 +261,11 @@
         </p>
       </div>
       
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
         {#each recordingModes as mode}
           {@const IconComponent = mode.icon}
           <button
-            class="group relative flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            class="group relative flex flex-col items-center p-3 rounded-xl border-2 transition-all duration-200 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             class:border-blue-500={selectedMode === mode.id}
             class:bg-blue-50={selectedMode === mode.id}
             class:border-gray-200={selectedMode !== mode.id}
@@ -278,42 +278,42 @@
           >
             <!-- Selection indicator -->
             {#if selectedMode === mode.id}
-              <div class="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center border-2 border-white">
-                <CheckCircle2 class="w-4 h-4 text-white" />
+              <div class="absolute -top-2 -right-2 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center border-2 border-white">
+                <CheckCircle2 class="w-3 h-3 text-white" />
               </div>
             {/if}
 
             <!-- Icon -->
-             <div class="w-12 h-12 mb-3 rounded-full flex items-center justify-center"
+             <div class="w-10 h-10 mb-2 rounded-full flex items-center justify-center"
                   class:bg-blue-100={selectedMode === mode.id}
                   class:bg-gray-100={selectedMode !== mode.id}
                   class:group-hover:bg-blue-50={selectedMode !== mode.id && !isRecording}>
                <IconComponent
-                 class={`w-6 h-6 transition-colors duration-200 ${
+                 class={`w-5 h-5 transition-colors duration-200 ${
                   selectedMode === mode.id ? 'text-blue-600' : 'text-gray-600'
                 }`}
               />
             </div>
 
             <!-- Label -->
-            <h4 class="text-base font-semibold mb-1 transition-colors duration-200"
+            <h4 class="text-sm font-semibold mb-0.5 transition-colors duration-200"
                 class:text-blue-700={selectedMode === mode.id}
                 class:text-gray-900={selectedMode !== mode.id}>
               {t(mode.nameKey)}
             </h4>
             
             <!-- Description -->
-            <p class="text-xs text-gray-600 mb-1 text-center">{t(mode.descriptionKey)}</p>
-            <p class="text-[10px] text-gray-500 text-center">{t(mode.detailKey)}</p>
+            <p class="text-xs text-gray-600 mb-0.5 text-center">{t(mode.descriptionKey)}</p>
+            <p class="text-[10px] text-gray-500 text-center leading-tight">{t(mode.detailKey)}</p>
           </button>
         {/each}
       </div>
 
       <!-- Recording Controls -->
-      <div class="space-y-3">
+      <div class="space-y-2">
         <!-- Main control button -->
         <button
-          class="w-full flex items-center justify-center gap-3 px-6 py-3 rounded-xl font-semibold text-base transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+          class="w-full flex items-center justify-center gap-3 px-6 py-2.5 rounded-xl font-semibold text-base transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
           class:bg-gradient-to-r={!isRecording}
           class:from-blue-500={!isRecording}
           class:to-blue-600={!isRecording}
@@ -355,21 +355,21 @@
 
       <!-- Recording status display -->
       {#if isRecording}
-        <div class="mt-4 p-4 bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-xl">
+        <div class="mt-3 p-3 bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-xl">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
               <div class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-              <span class="text-base font-semibold text-red-700">
+              <span class="text-sm font-semibold text-red-700">
                 {isPaused ? t('control_statusPaused') : t('welcome_statusRecording')}
               </span>
             </div>
-            <div class="px-3 py-1 bg-white rounded-full text-xs font-medium text-gray-700">
+            <div class="px-3 py-0.5 bg-white rounded-full text-xs font-medium text-gray-700">
               {getModeName(selectedMode)} {t('welcome_modeLabel')}
             </div>
           </div>
         </div>
       {:else}
-        <div class="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl">
+        <div class="mt-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl">
           <div class="flex items-start gap-3">
             <div class="flex-shrink-0">
               <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
@@ -377,8 +377,8 @@
               </div>
             </div>
             <div class="flex-1">
-              <p class="font-bold text-gray-900 mb-1 text-base">{t('welcome_readyTitle')}</p>
-              <p class="text-xs text-gray-700 mb-2">
+              <p class="font-bold text-gray-900 mb-0.5 text-sm">{t('welcome_readyTitle')}</p>
+              <p class="text-xs text-gray-700 mb-1">
                 {t('welcome_readyDesc', getModeName(selectedMode))}
               </p>
               <div class="flex items-center gap-2 text-xs text-gray-600">
@@ -392,7 +392,7 @@
     </div>
 
     <!-- Quick Start Guide (Moved down) -->
-    <div class="bg-white rounded-2xl shadow-lg p-6 mb-8">
+    <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
       <div class="text-center mb-6">
         <h3 class="text-2xl font-bold text-gray-900 mb-2">{t('welcome_howTitle')}</h3>
         <p class="text-gray-600">{t('welcome_howDesc')}</p>
