@@ -1827,7 +1827,9 @@ rec_<id>/
 # 任务：实现鼠标轨迹录制功能
 
 ## 需求背景
-在录制屏幕/窗口/Tab 时，需要录制鼠标移动轨迹，以便在编辑时切换不同的指针样式，提升演示视频的专业性。
+仅在录制 **Tab** 时，需要录制鼠标移动轨迹，以便在编辑时切换不同的指针样式，提升演示视频的专业性。
+
+在录制 **Screen/Window** 时，本功能必须禁用/降级：不录制鼠标轨迹、不写入 `mouse.jsonl`，编辑器中的鼠标指针相关能力应不可用（置灰或隐藏）。
 
 ## 技术栈约束
 
@@ -1875,11 +1877,12 @@ pnpm build
 3. **Svelte 5 Runes**: Svelte 组件和 Store 使用 Runes 语法
 
 ## 技术约束
-1. **CaptureController API**: Chrome 109+ 支持，需要在 getDisplayMedia() 时传递 controller 参数
-2. **高频事件**: 鼠标事件采样率约 60fps，需要节流处理
-3. **OPFS 存储**: 鼠标轨迹存储为 JSONL 格式
-4. **性能**: 合成时需要高效查找对应时间戳的鼠标位置
-5. **浏览器兼容性**: 需要检测 CaptureController API 支持情况
+1. **产品约束**: 鼠标轨迹录制仅在 **Tab 录制模式** 启用；Screen/Window 必须禁用/降级（不写 `mouse.jsonl`，编辑器相关项不可用）
+2. **CaptureController API**: Chrome 109+ 支持，需要在 getDisplayMedia() 时传递 controller 参数
+3. **高频事件**: 鼠标事件采样率约 60fps，需要节流处理
+4. **OPFS 存储**: 鼠标轨迹存储为 JSONL 格式
+5. **性能**: 合成时需要高效查找对应时间戳的鼠标位置
+6. **浏览器兼容性**: 需要检测 CaptureController API 支持情况
 
 ## 现有代码结构
 - **Offscreen Document**: src/extensions/offscreen-main.ts（媒体流捕获）
@@ -2232,8 +2235,9 @@ export const mouseCursorStore = createMouseCursorStore()
 5. 测试鼠标轨迹录制和回放
 
 ## 验证标准
-- ✅ 能够录制鼠标移动轨迹
+- ✅ 仅在 **Tab 录制模式** 下能够录制鼠标移动轨迹
 - ✅ 鼠标轨迹保存到 mouse.jsonl
+- ✅ 在 **Screen/Window** 录制模式下不启用鼠标轨迹录制（不写 `mouse.jsonl`，编辑器相关项不可用/降级）
 - ✅ 能够在 Studio 中预览鼠标指针
 - ✅ 支持切换不同指针样式
 - ✅ 导出视频包含鼠标指针
