@@ -83,6 +83,7 @@
   const opfsPendingChunks: Array<{ stream: 'screen' | 'camera' | 'audio'; payload: { data: any; timestamp?: number; type?: string; isKeyframe?: boolean; codedWidth?: number; codedHeight?: number; codec?: string; duration?: number } }> = []
   let opfsEndPending = false
   const opfsFinalizeWaits: Promise<any>[] = []
+  let opfsFinalizing = false
 
   function trackFinalizeWait(p?: Promise<any>) {
     if (!p) return
@@ -92,6 +93,18 @@
       }
     })
     opfsFinalizeWaits.push(wrapped)
+  }
+
+  function flushEncoderSafely(enc: { flush?: () => any; close?: () => any } | null, label: string) {
+    if (!enc) return
+    try {
+      const p = enc.flush?.()
+      trackFinalizeWait(p as any)
+      p?.catch?.((err: any) => { log(`${label} encoder flush error:`, err) })
+    } catch (err) {
+      log(`${label} encoder flush setup error:`, err)
+    }
+    try { enc.close?.() } catch {}
   }
 
   async function drainFinalizeWaits() {
@@ -181,7 +194,8 @@
   }
 
   async function finalizeOpfsWriter() {
-    if (!opfsWriter) return
+    if (!opfsWriter || opfsFinalizing) return
+    opfsFinalizing = true
     opfsEndPending = false
     const w = opfsWriter
     try {
@@ -194,7 +208,7 @@
         setTimeout(() => { if (!settled) { settled = true; try { w.removeEventListener('message', onMsg as any) } catch {}; resolve() } }, 1500)
       })
     } catch (e) { log('[Offscreen][OPFS] finalize failed', e) }
-    finally { try { w.terminate() } catch {}; if (opfsWriter === w) { opfsWriter = null; opfsWriterReady = false; opfsSessionId = null } }
+    finally { try { w.terminate() } catch {}; if (opfsWriter === w) { opfsWriter = null; opfsWriterReady = false; opfsSessionId = null } opfsFinalizing = false }
   }
 
   // ✅ Preload WebCodecs Worker for faster recording start
@@ -841,26 +855,12 @@
        // Stop camera/audio pipelines
        cameraFrameLoopActive = false
        audioLoopActive = false
-       try {
-         if (cameraEncoder) {
-           const p = cameraEncoder.flush?.()
-           trackFinalizeWait(p as any)
-           p?.catch?.((err: any) => { log('Camera encoder flush error:', err) })
-           try { cameraEncoder.close() } catch {}
-         }
-       } catch {}
+       flushEncoderSafely(cameraEncoder, 'Camera')
        cameraEncoder = null
        try { cameraReader?.cancel?.() } catch {}
        cameraReader = null
 
-       try {
-         if (audioEncoder) {
-           const p = audioEncoder.flush?.()
-           trackFinalizeWait(p as any)
-           p?.catch?.((err: any) => { log('Audio encoder flush error:', err) })
-           try { audioEncoder.close() } catch {}
-         }
-       } catch {}
+       flushEncoderSafely(audioEncoder, 'Audio')
        audioEncoder = null
        try { audioReader?.cancel?.() } catch {}
        audioReader = null

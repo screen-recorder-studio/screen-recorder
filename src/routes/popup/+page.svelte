@@ -96,6 +96,13 @@
     }
   }
 
+  $effect(() => {
+    if (previewStream && previewVideoEl) {
+      previewVideoEl.srcObject = previewStream
+      previewVideoEl.play?.().catch?.(() => {})
+    }
+  })
+
   // Disable switching modes during recording
   function isModeDisabledLocal(modeId: typeof selectedMode) {
     return isRecording && selectedMode !== modeId
