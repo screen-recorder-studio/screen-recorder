@@ -25,6 +25,16 @@ interface AppendMessage {
   isKeyframe?: boolean
 }
 
+interface AppendMouseMessage {
+  type: 'append-mouse'
+  event: {
+    timestamp: number
+    x: number
+    y: number
+    isInside?: boolean
+  }
+}
+
 interface FlushMessage { type: 'flush' }
 interface FinalizeMessage { type: 'finalize' }
 
@@ -56,6 +66,14 @@ let initialMeta: any = {}
 // ✅ 追踪实际时间戳
 let firstTimestamp = -1
 let lastTimestamp = -1
+
+// Mouse tracking
+let mouseHandle: FileSystemFileHandle | null = null
+let mouseSyncHandle: any | null = null
+let mouseBuffer: string[] = []
+let mouseOffset = 0
+let mouseEnabled = false
+let mouseFallbackParts: Uint8Array[] = []
 
 // Fallback buffers when SyncAccessHandle is unavailable; we flush to file on finalize
 let fallbackDataParts: Uint8Array[] = []
@@ -143,7 +161,47 @@ async function closeData() {
   }
 }
 
-self.onmessage = async (e: MessageEvent<InitMessage | AppendMessage | FlushMessage | FinalizeMessage>) => {
+async function flushMouse() {
+  if (!mouseEnabled || mouseBuffer.length === 0) return
+  const text = mouseBuffer.join('')
+  mouseBuffer = []
+  const encoder = new TextEncoder()
+  const u8 = encoder.encode(text)
+
+  if (mouseSyncHandle) {
+    const written = mouseSyncHandle.write(u8, { at: mouseOffset })
+    mouseOffset += (typeof written === 'number' ? written : u8.byteLength)
+    return
+  }
+
+  // Fallback: keep in memory until finalize
+  mouseFallbackParts.push(u8)
+  mouseOffset += u8.byteLength
+}
+
+async function flushMouseFallbackToFile() {
+  if (!mouseEnabled || !mouseHandle || mouseFallbackParts.length === 0) return
+  const writable = await (mouseHandle as any).createWritable({ keepExistingData: false })
+  for (const part of mouseFallbackParts) {
+    await writable.write(part)
+  }
+  await writable.close()
+  mouseFallbackParts = []
+}
+
+async function closeMouse() {
+  if (!mouseEnabled) return
+  try { await flushMouse() } catch {}
+  if (mouseSyncHandle) {
+    try { mouseSyncHandle.flush() } catch {}
+    try { mouseSyncHandle.close() } catch {}
+    mouseSyncHandle = null
+    return
+  }
+  await flushMouseFallbackToFile()
+}
+
+self.onmessage = async (e: MessageEvent<InitMessage | AppendMessage | AppendMouseMessage | FlushMessage | FinalizeMessage>) => {
   const msg: any = e.data
   try {
     if (msg.type === 'init') {
@@ -155,11 +213,29 @@ self.onmessage = async (e: MessageEvent<InitMessage | AppendMessage | FlushMessa
         codec: msg.meta?.codec,
         width: msg.meta?.width,
         height: msg.meta?.height,
-        fps: msg.meta?.fps
+        fps: msg.meta?.fps,
+        mouseTrackingEnabled: !!msg.meta?.mouseTrackingEnabled
       }
       await ensureRoot()
       await ensureRecDir(msg.id)
       await openDataFile()
+      mouseEnabled = !!msg.meta?.mouseTrackingEnabled
+      if (mouseEnabled) {
+        try {
+          mouseHandle = await recDir!.getFileHandle('mouse.jsonl', { create: true })
+          const hasSync = typeof (mouseHandle as any).createSyncAccessHandle === 'function'
+          if (hasSync) {
+            mouseSyncHandle = await (mouseHandle as any).createSyncAccessHandle()
+            mouseOffset = 0
+          } else {
+            mouseFallbackParts = []
+            mouseOffset = 0
+          }
+        } catch (err) {
+          mouseEnabled = false
+          console.warn('[OPFS] Failed to init mouse writer:', err)
+        }
+      }
       await writeMeta(initialMeta)
       self.postMessage({ type: 'ready', id: msg.id } as ReadyEvent)
       return
@@ -193,10 +269,24 @@ self.onmessage = async (e: MessageEvent<InitMessage | AppendMessage | FlushMessa
       return
     }
 
+    if (msg.type === 'append-mouse') {
+      if (!mouseEnabled) return
+      try {
+        mouseBuffer.push(JSON.stringify(msg.event) + '\n')
+        if (mouseBuffer.length >= 100) {
+          await flushMouse()
+        }
+      } catch (err) {
+        console.warn('[OPFS] Failed to append mouse event:', err)
+      }
+      return
+    }
+
     if (msg.type === 'flush') {
       // flush() is synchronous
       try { dataSyncHandle?.flush() } catch {}
       try { await flushIndexToFile() } catch {}
+      try { await flushMouse() } catch {}
       self.postMessage({ type: 'progress', bytesWrittenTotal: dataOffset, chunksWritten } as WriterProgressEvent)
       return
     }
@@ -204,6 +294,7 @@ self.onmessage = async (e: MessageEvent<InitMessage | AppendMessage | FlushMessa
     if (msg.type === 'finalize') {
       await flushIndexToFile()
       await closeData()
+      await closeMouse()
 
       // ✅ 使用实际时长（最后chunk的timestamp）
       const actualDuration = lastTimestamp >= 0 ? lastTimestamp : 0
@@ -239,4 +330,3 @@ self.addEventListener('error', (ev: any) => {
   const msg: WriterErrorEvent = { type: 'error', code: 'WORKER_ERROR', message: ev?.message || 'Unknown worker error' }
   try { self.postMessage(msg) } catch {}
 })
-

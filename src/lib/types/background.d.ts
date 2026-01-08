@@ -110,6 +110,14 @@ export interface BackgroundConfig {
       endMs: number
     }>
   }
+  // 鼠标指针配置
+  mouseTrackingEnabled?: boolean
+  mouseCursor?: {
+    enabled?: boolean
+    style?: 'default' | 'hand' | 'magnifier' | 'custom'
+    size?: number
+    customImageUrl?: string
+  }
 }
 
 // 预设渐变配置类型

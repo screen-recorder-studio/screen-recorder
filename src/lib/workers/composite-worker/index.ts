@@ -24,6 +24,15 @@ interface VideoLayout {
   height: number;
 }
 
+interface MouseEventRecord {
+  timestamp: number;
+  x: number;
+  y: number;
+  isInside?: boolean;
+}
+
+type CursorStyle = 'default' | 'hand' | 'magnifier' | 'custom'
+
 // Worker 状态
 let offscreenCanvas: OffscreenCanvas | null = null;
 let ctx: OffscreenCanvasRenderingContext2D | null = null;
@@ -77,6 +86,10 @@ let correctedVideoSize: { width: number; height: number } | null = null;
 // 🆕 窗口信息（用于计算时间）
 let windowStartFrameIndex: number = 0;  // 窗口起始帧索引（全局）
 let videoFrameRate: number = 30;  // 视频帧率（默认 30fps）
+
+// Mouse events
+let mouseEvents: MouseEventRecord[] = []
+let mouseEventsLoadedFor: string | null = null
 
 // 初始化 OffscreenCanvas
 function initializeCanvas(width: number, height: number) {
@@ -239,6 +252,121 @@ function calculateVideoLayout(
     width: layoutWidth,
     height: layoutHeight
   };
+}
+
+function resetMouseEvents() {
+  mouseEvents = []
+  mouseEventsLoadedFor = null
+}
+
+async function loadMouseEvents(opfsDirId: string) {
+  if (!opfsDirId) {
+    resetMouseEvents()
+    return
+  }
+  if (mouseEventsLoadedFor === opfsDirId && mouseEvents.length > 0) return
+  try {
+    const nav: any = (self as any).navigator
+    if (!nav?.storage?.getDirectory) {
+      console.warn('⚠️ [COMPOSITE-WORKER] OPFS not available for mouse events')
+      return
+    }
+    const root = await nav.storage.getDirectory()
+    const dir = await root.getDirectoryHandle(opfsDirId, { create: false })
+    const mouseFile = await dir.getFileHandle('mouse.jsonl', { create: false })
+    const blob = await mouseFile.getFile()
+    const text = await blob.text()
+    mouseEvents = text.split(/\r?\n/).filter(Boolean).map((line: string) => {
+      try { return JSON.parse(line) as MouseEventRecord } catch { return null }
+    }).filter(Boolean) as MouseEventRecord[]
+    mouseEventsLoadedFor = opfsDirId
+    console.log('✅ [COMPOSITE-WORKER] Mouse events loaded:', mouseEvents.length)
+  } catch (e) {
+    console.warn('⚠️ [COMPOSITE-WORKER] No mouse events found or failed to load', e)
+    resetMouseEvents()
+  }
+}
+
+async function ensureMouseEvents(config: BackgroundConfig | null) {
+  if (!config?.mouseTrackingEnabled || config?.mouseCursor?.enabled === false) {
+    resetMouseEvents()
+    return
+  }
+  const dirId = (config as any).opfsDirId as string | undefined
+  if (!dirId) {
+    resetMouseEvents()
+    return
+  }
+  await loadMouseEvents(dirId)
+}
+
+function findMousePosition(timestamp: number): MouseEventRecord | null {
+  if (!mouseEvents.length || typeof timestamp !== 'number') return null
+  let left = 0
+  let right = mouseEvents.length - 1
+  let closest = mouseEvents[0]
+  let minDiff = Math.abs(closest.timestamp - timestamp)
+
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2)
+    const event = mouseEvents[mid]
+    const diff = Math.abs(event.timestamp - timestamp)
+    if (diff < minDiff) {
+      minDiff = diff
+      closest = event
+    }
+    if (event.timestamp < timestamp) left = mid + 1
+    else right = mid - 1
+  }
+  return closest
+}
+
+function drawMouseCursor(
+  ctx: OffscreenCanvasRenderingContext2D,
+  x: number,
+  y: number,
+  style: CursorStyle,
+  size: number,
+  customImageUrl?: string
+) {
+  const radius = Math.max(4, size || 20)
+  if (style === 'hand') {
+    ctx.fillStyle = '#000'
+    ctx.beginPath()
+    ctx.arc(x, y, radius * 0.3, 0, Math.PI * 2)
+    ctx.fill()
+    return
+  }
+  if (style === 'magnifier') {
+    ctx.strokeStyle = '#000'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.arc(x, y, radius * 0.5, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.moveTo(x + radius * 0.35, y + radius * 0.35)
+    ctx.lineTo(x + radius * 0.8, y + radius * 0.8)
+    ctx.stroke()
+    return
+  }
+  if (style === 'custom' && customImageUrl) {
+    ctx.fillStyle = '#000'
+    ctx.beginPath()
+    ctx.arc(x, y, radius * 0.25, 0, Math.PI * 2)
+    ctx.fill()
+    return
+  }
+
+  ctx.fillStyle = '#000'
+  ctx.strokeStyle = '#fff'
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.moveTo(x, y)
+  ctx.lineTo(x, y + radius)
+  ctx.lineTo(x + radius * 0.35, y + radius * 0.65)
+  ctx.closePath()
+  ctx.fill()
+  ctx.stroke()
 }
 
 // 渲染背景
@@ -950,6 +1078,26 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
       actualLayout.x, actualLayout.y, actualLayout.width, actualLayout.height  // 🆕 目标区域（包含 Zoom 放大）
     );
 
+    if (config.mouseTrackingEnabled && config.mouseCursor?.enabled !== false && mouseEvents.length) {
+      const pos = findMousePosition(frame.timestamp ?? 0)
+      if (pos && pos.isInside !== false) {
+        const srcW = (frame as any).codedWidth || (frame as any).displayWidth || 1
+        const srcH = (frame as any).codedHeight || (frame as any).displayHeight || 1
+        const clampedX = Math.max(0, Math.min(pos.x, srcW))
+        const clampedY = Math.max(0, Math.min(pos.y, srcH))
+        const drawX = actualLayout.x + (clampedX / Math.max(1, srcW)) * actualLayout.width
+        const drawY = actualLayout.y + (clampedY / Math.max(1, srcH)) * actualLayout.height
+        drawMouseCursor(
+          ctx,
+          drawX,
+          drawY,
+          (config.mouseCursor?.style as CursorStyle) || 'default',
+          config.mouseCursor?.size ?? 20,
+          config.mouseCursor?.customImageUrl
+        )
+      }
+    }
+
     // 确认裁剪/Zoom 渲染成功
     if ((config.videoCrop?.enabled || zoomScale > 1.0) && frameIndex % 30 === 0) {
       console.log('✅ [COMPOSITE-WORKER] Video rendered:', {
@@ -1497,6 +1645,7 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         criticalWatermarkNotified = false;
 
         currentConfig = data.backgroundConfig;
+        await ensureMouseEvents(currentConfig);
 
         // 🚀 P1 优化：报告缓冲区状态
         console.log('📊 [COMPOSITE-WORKER] Buffer status:', {
@@ -1815,6 +1964,7 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         if (data.backgroundConfig) {
           const oldConfig = currentConfig;
           currentConfig = data.backgroundConfig;
+          await ensureMouseEvents(currentConfig);
 
           // 🔧 修复：更新窗口信息，确保 Zoom 时间计算正确
           if (typeof data.startGlobalFrame === 'number') {

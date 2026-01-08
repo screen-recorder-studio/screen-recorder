@@ -22,6 +22,72 @@
   let badgeAccumMs = 0
   let badgeLastStart: number | null = null
 
+  // CaptureController mouse tracking
+  const MOUSE_THROTTLE_MS = 16
+  let captureController: any = null
+  let mouseTrackingEnabled = false
+  let lastMouseEventTime = 0
+
+  function isCaptureControllerSupported(): boolean {
+    return typeof (window as any).CaptureController !== 'undefined'
+  }
+
+  function getChromeVersion(): number {
+    const match = navigator.userAgent.match(/Chrome\/(\d+)/)
+    return match ? parseInt(match[1], 10) : 0
+  }
+
+  function setupMouseCapture(mode: 'tab' | 'window' | 'screen') {
+    mouseTrackingEnabled = false
+    lastMouseEventTime = 0
+    captureController = null
+
+    if (mode !== 'tab') return
+    if (!isCaptureControllerSupported()) {
+      log('⚠️ CaptureController API not available')
+      return
+    }
+    const chromeVersion = getChromeVersion()
+    if (chromeVersion < 109) {
+      log(`⚠️ CaptureController requires Chrome 109+, current: ${chromeVersion}`)
+      return
+    }
+
+    try {
+      captureController = new (window as any).CaptureController()
+      mouseTrackingEnabled = true
+      captureController.oncapturedmousechange = (event: any) => {
+        try {
+          if (!mouseTrackingEnabled) return
+          const now = performance.now()
+          if (now - lastMouseEventTime < MOUSE_THROTTLE_MS) return
+          lastMouseEventTime = now
+          if (typeof event?.surfaceX !== 'number' || typeof event?.surfaceY !== 'number') return
+
+          const mouseEvent = {
+            timestamp: now * 1000,
+            x: event.surfaceX,
+            y: event.surfaceY,
+            isInside: event.surfaceX !== -1 && event.surfaceY !== -1
+          }
+
+          if (!opfsWriter || !opfsWriterReady) {
+            opfsPendingMouse.push(mouseEvent)
+            return
+          }
+          opfsWriter.postMessage({ type: 'append-mouse', event: mouseEvent })
+        } catch (err) {
+          log('❌ Error processing mouse event:', err)
+        }
+      }
+      log('✅ CaptureController initialized for mouse tracking')
+    } catch (e) {
+      log('⚠️ CaptureController creation failed:', e)
+      captureController = null
+      mouseTrackingEnabled = false
+    }
+  }
+
   function resetBadgeTicker() {
     try { if (badgeTicker) clearInterval(badgeTicker) } catch {}
     badgeTicker = null
@@ -70,6 +136,7 @@
   let opfsSessionId: string | null = null
   let opfsLastMeta: any = null
   const opfsPendingChunks: Array<{ data: any; timestamp?: number; type?: string; codedWidth?: number; codedHeight?: number; codec?: string }> = []
+  const opfsPendingMouse: Array<any> = []
   let opfsEndPending = false
 
   function ensureOpfsSessionId() { if (!opfsSessionId) opfsSessionId = `${Date.now()}`; return opfsSessionId }
@@ -78,7 +145,7 @@
     if (!m) return {} as any
     const metaW = (typeof m.width === 'number') ? m.width : (m.codedWidth)
     const metaH = (typeof m.height === 'number') ? m.height : (m.codedHeight)
-    return { codec: m.codec || 'vp8', width: metaW ?? 1920, height: metaH ?? 1080, fps: m.framerate || m.fps || 30 }
+    return { codec: m.codec || 'vp8', width: metaW ?? 1920, height: metaH ?? 1080, fps: m.framerate || m.fps || 30, mouseTrackingEnabled: !!m.mouseTrackingEnabled }
   }
 
   function initOpfsWriter(meta?: any) {
@@ -112,6 +179,10 @@
   function flushOpfsPendingIfReady() {
     if (!opfsWriter || !opfsWriterReady) return
     while (opfsPendingChunks.length) { const c = opfsPendingChunks.shift()!; appendToOpfsChunk(c) }
+    while (opfsPendingMouse.length) {
+      const evt = opfsPendingMouse.shift()!
+      try { opfsWriter!.postMessage({ type: 'append-mouse', event: evt }) } catch {}
+    }
     if (opfsEndPending) { opfsEndPending = false; void finalizeOpfsWriter() }
   }
 
@@ -237,7 +308,8 @@
             displaySurface: 'browser',
             // preferCurrentTab: true,
             selfBrowserSurface: 'exclude'
-          })
+          }),
+          cursor: mouseTrackingEnabled ? 'never' : 'always'
         },
         audio: false,
         // 根据模式设置顶级选项
@@ -246,6 +318,10 @@
           selfBrowserSurface: 'exclude',
           monitorTypeSurfaces: 'include'
         })
+      }
+
+      if (captureController) {
+        ;(displayMediaOptions as any).controller = captureController
       }
 
       log('📋 Display media options:', displayMediaOptions)
@@ -305,6 +381,10 @@
       // 提取录制模式，默认为 screen
       const mode = options?.mode || 'screen'
       log(`📺 Recording mode: ${mode}`)
+
+      // Setup mouse capture (tab-only)
+      setupMouseCapture(mode)
+      try { chrome.runtime.sendMessage({ type: 'STREAM_META', meta: { mouseTrackingEnabled, chromeVersion: getChromeVersion(), mode } }) } catch {}
 
       // 1) Get the media stream directly through getDisplayMedia with mode-specific options
       const stream = await getDisplayMediaStream(mode)
@@ -376,7 +456,7 @@
             configured = true
             try { resolveConfigured?.(); resolveConfigured = null } catch {}
             log('✅ WebCodecs worker configured:', config)
-            try { if (OPFS_WRITER_ENABLED) initOpfsWriter({ codec: config?.codec, width: config?.width, height: config?.height, framerate }) } catch {}
+            try { if (OPFS_WRITER_ENABLED) initOpfsWriter({ codec: config?.codec, width: config?.width, height: config?.height, framerate, mouseTrackingEnabled }) } catch {}
             break
           case 'chunk': {
             // track chunk meta count; avoid retaining big buffers here to save memory
@@ -594,6 +674,9 @@
       recordingStartTime = null
       mediaRecorder = null
       recordedChunks = []
+      mouseTrackingEnabled = false
+      captureController = null
+      lastMouseEventTime = 0
     }
   }
 
@@ -788,4 +871,3 @@
     }
   }, 10000) // Every 10 seconds
 })()
-
