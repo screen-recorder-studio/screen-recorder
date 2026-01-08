@@ -58,6 +58,7 @@
 
 
   // WebCodecs pipeline state
+  const CAMERA_CODEC = 'vp09.00.10.08'
   let wcWorker: Worker | null = null
   let wcReader: ReadableStreamDefaultReader<VideoFrame> | null = null
   let wcFrameLoopActive = false
@@ -208,7 +209,15 @@
         setTimeout(() => { if (!settled) { settled = true; try { w.removeEventListener('message', onMsg as any) } catch {}; resolve() } }, 1500)
       })
     } catch (e) { log('[Offscreen][OPFS] finalize failed', e) }
-    finally { try { w.terminate() } catch {}; if (opfsWriter === w) { opfsWriter = null; opfsWriterReady = false; opfsSessionId = null } opfsFinalizing = false }
+      finally {
+        try { w.terminate() } catch {}
+        if (opfsWriter === w) {
+          opfsWriter = null
+          opfsWriterReady = false
+          opfsSessionId = null
+        }
+        opfsFinalizing = false
+      }
   }
 
   // ✅ Preload WebCodecs Worker for faster recording start
@@ -439,7 +448,7 @@
           cameraTrack = cameraStream.getVideoTracks()[0] || null
           const camSettings = cameraTrack?.getSettings?.() || {}
           cameraMeta = {
-            codec: 'vp09.00.10.08',
+            codec: CAMERA_CODEC,
             width: camSettings.width || 1280,
             height: camSettings.height || 720,
             fps: Math.round(camSettings.frameRate || 30),
@@ -547,7 +556,7 @@
           const camFps = cameraMeta?.fps || 30
           const camBitrate = cameraMeta?.bitrate || 2_000_000
           cameraEncoder.configure({
-            codec: cameraMeta?.codec || 'vp09.00.10.08',
+            codec: cameraMeta?.codec || CAMERA_CODEC,
             width: camWidth,
             height: camHeight,
             bitrate: camBitrate,
@@ -555,7 +564,7 @@
             latencyMode: 'realtime',
             hardwareAcceleration: 'prefer-hardware'
           })
-          cameraMeta = { ...(cameraMeta || {}), codec: cameraMeta?.codec || 'vp09.00.10.08', width: camWidth, height: camHeight, fps: camFps, bitrate: camBitrate }
+          cameraMeta = { ...(cameraMeta || {}), codec: cameraMeta?.codec || CAMERA_CODEC, width: camWidth, height: camHeight, fps: camFps, bitrate: camBitrate }
         } catch (err) {
           log('Camera encoder setup failed:', err)
         }

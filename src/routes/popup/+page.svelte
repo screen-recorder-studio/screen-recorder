@@ -99,7 +99,9 @@
   $effect(() => {
     if (previewStream && previewVideoEl) {
       previewVideoEl.srcObject = previewStream
-      previewVideoEl.play?.().catch?.(() => {})
+      try {
+        previewVideoEl.play?.()
+      } catch {}
     }
   })
 
