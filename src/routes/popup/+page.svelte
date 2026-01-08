@@ -270,7 +270,6 @@
             video: true,
             audio: audioEnabled,
             cameraEnabled,
-            audioEnabled,
             cameraDeviceId: cameraEnabled ? selectedCameraId : undefined,
             microphoneDeviceId: audioEnabled ? selectedMicrophoneId : undefined,
             countdown: countdownSeconds
