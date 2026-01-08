@@ -63,14 +63,42 @@
   let wcFrameLoopActive = false
   let wcWorkerPreloaded = false  // ✅ Track if worker was preloaded
 
+  // Camera & audio capture state
+  let cameraStream: MediaStream | null = null
+  let audioStream: MediaStream | null = null
+  let cameraReader: ReadableStreamDefaultReader<VideoFrame> | null = null
+  let cameraEncoder: VideoEncoder | null = null
+  let cameraFrameLoopActive = false
+  let cameraFrameCount = 0
+  let audioReader: ReadableStreamDefaultReader<AudioData> | null = null
+  let audioEncoder: AudioEncoder | null = null
+  let audioLoopActive = false
+
   // OPFS writer (side-write) state
   const OPFS_WRITER_ENABLED = true
   let opfsWriter: Worker | null = null
   let opfsWriterReady = false
   let opfsSessionId: string | null = null
   let opfsLastMeta: any = null
-  const opfsPendingChunks: Array<{ data: any; timestamp?: number; type?: string; codedWidth?: number; codedHeight?: number; codec?: string }> = []
+  const opfsPendingChunks: Array<{ stream: 'screen' | 'camera' | 'audio'; payload: { data: any; timestamp?: number; type?: string; isKeyframe?: boolean; codedWidth?: number; codedHeight?: number; codec?: string; duration?: number } }> = []
   let opfsEndPending = false
+  const opfsFinalizeWaits: Promise<any>[] = []
+
+  function trackFinalizeWait(p?: Promise<any>) {
+    if (!p) return
+    const wrapped = p.catch((err) => { log('[Offscreen][FinalizeWait] task failed', err) }).finally(() => {
+      if (opfsEndPending && opfsWriterReady && opfsPendingChunks.length === 0) {
+        void finalizeOpfsWriter()
+      }
+    })
+    opfsFinalizeWaits.push(wrapped)
+  }
+
+  async function drainFinalizeWaits() {
+    if (!opfsFinalizeWaits.length) return
+    const pending = opfsFinalizeWaits.splice(0, opfsFinalizeWaits.length)
+    await Promise.allSettled(pending)
+  }
 
   function ensureOpfsSessionId() { if (!opfsSessionId) opfsSessionId = `${Date.now()}`; return opfsSessionId }
 
@@ -78,7 +106,9 @@
     if (!m) return {} as any
     const metaW = (typeof m.width === 'number') ? m.width : (m.codedWidth)
     const metaH = (typeof m.height === 'number') ? m.height : (m.codedHeight)
-    return { codec: m.codec || 'vp8', width: metaW ?? 1920, height: metaH ?? 1080, fps: m.framerate || m.fps || 30 }
+    const camera = m.camera ? { ...m.camera } : undefined
+    const audio = m.audio ? { ...m.audio } : undefined
+    return { codec: m.codec || 'vp8', width: metaW ?? 1920, height: metaH ?? 1080, fps: m.framerate || m.fps || 30, camera, audio }
   }
 
   function initOpfsWriter(meta?: any) {
@@ -111,13 +141,16 @@
 
   function flushOpfsPendingIfReady() {
     if (!opfsWriter || !opfsWriterReady) return
-    while (opfsPendingChunks.length) { const c = opfsPendingChunks.shift()!; appendToOpfsChunk(c) }
+    while (opfsPendingChunks.length) {
+      const c = opfsPendingChunks.shift()!
+      appendToOpfsChunk(c.payload, c.stream)
+    }
     if (opfsEndPending) { opfsEndPending = false; void finalizeOpfsWriter() }
   }
 
-  function appendToOpfsChunk(d: { data: any; timestamp?: number; type?: string; isKeyframe?: boolean; codedWidth?: number; codedHeight?: number; codec?: string }) {
+  function appendToOpfsChunk(d: { data: any; timestamp?: number; type?: string; isKeyframe?: boolean; codedWidth?: number; codedHeight?: number; codec?: string; duration?: number }, stream: 'screen' | 'camera' | 'audio' = 'screen') {
     if (!OPFS_WRITER_ENABLED) return
-    if (!opfsWriter || !opfsWriterReady) { opfsPendingChunks.push(d); return }
+    if (!opfsWriter || !opfsWriterReady) { opfsPendingChunks.push({ stream, payload: d }); return }
     try {
       const raw: any = d.data
       let u8: Uint8Array | null = null
@@ -137,14 +170,22 @@
         log(`[OPFS] 🔑 Keyframe detected: ts=${d.timestamp}, size=${u8.byteLength}`)
       }
 
-      opfsWriter!.postMessage({ type: 'append', buffer: transferBuf, timestamp: d.timestamp || 0, chunkType, codedWidth: d.codedWidth || opfsLastMeta?.width, codedHeight: d.codedHeight || opfsLastMeta?.height, codec: d.codec || opfsLastMeta?.codec, isKeyframe }, [transferBuf])
+      if (stream === 'camera') {
+        opfsWriter!.postMessage({ type: 'append-camera', buffer: transferBuf, timestamp: d.timestamp || 0, chunkType, codedWidth: d.codedWidth || opfsLastMeta?.camera?.width, codedHeight: d.codedHeight || opfsLastMeta?.camera?.height, codec: d.codec || opfsLastMeta?.camera?.codec, isKeyframe }, [transferBuf])
+      } else if (stream === 'audio') {
+        opfsWriter!.postMessage({ type: 'append-audio', buffer: transferBuf, timestamp: d.timestamp || 0, duration: d.duration || 0, codec: d.codec || opfsLastMeta?.audio?.codec }, [transferBuf])
+      } else {
+        opfsWriter!.postMessage({ type: 'append', buffer: transferBuf, timestamp: d.timestamp || 0, chunkType, codedWidth: d.codedWidth || opfsLastMeta?.width, codedHeight: d.codedHeight || opfsLastMeta?.height, codec: d.codec || opfsLastMeta?.codec, isKeyframe }, [transferBuf])
+      }
     } catch (e) { log('[Offscreen][OPFS] append failed', e) }
   }
 
   async function finalizeOpfsWriter() {
     if (!opfsWriter) return
+    opfsEndPending = false
     const w = opfsWriter
     try {
+      try { await drainFinalizeWaits() } catch {}
       await new Promise<void>((resolve) => {
         let settled = false
         const onMsg = (ev: MessageEvent) => { const t = (ev.data || {}).type; if (t === 'finalized' || t === 'error') { if (!settled) { settled = true; try { w.removeEventListener('message', onMsg as any) } catch {}; resolve() } } }
@@ -313,6 +354,14 @@
       const videoTracks = stream.getVideoTracks() || []
       const audioTracks = stream.getAudioTracks() || []
       const videoTrack = videoTracks[0]
+      const cameraEnabled = !!options?.cameraEnabled
+      let micEnabled = !!options?.audioEnabled || !!options?.microphoneEnabled || !!options?.audio
+      const cameraDeviceId = options?.cameraDeviceId
+      const microphoneDeviceId = options?.microphoneDeviceId
+      let cameraTrack: MediaStreamTrack | null = null
+      let audioTrack: MediaStreamTrack | null = null
+      let cameraMeta: any = null
+      let audioMeta: any = null
 
       log('📺 MediaStream acquired:', {
         id: stream.id,
@@ -332,9 +381,112 @@
         }
       }
 
+      // Camera stream acquisition
+      if (cameraEnabled) {
+        cameraStream = null
+        try {
+          if (!navigator.mediaDevices?.getUserMedia) {
+            throw new Error('getUserMedia API not available')
+          }
+          cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              deviceId: cameraDeviceId ? { exact: cameraDeviceId } : undefined,
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+              frameRate: { ideal: 30 }
+            },
+            audio: false
+          })
+        } catch (e) {
+          const error = e as Error
+          if ((error as any).name === 'NotAllowedError') {
+            log('Camera permission denied by user')
+            try { chrome.runtime.sendMessage({ type: 'STREAM_ERROR', error: 'CAMERA_PERMISSION_DENIED' }) } catch {}
+          } else if ((error as any).name === 'NotFoundError') {
+            log('No camera device found')
+            try { chrome.runtime.sendMessage({ type: 'STREAM_ERROR', error: 'CAMERA_NOT_FOUND' }) } catch {}
+          } else if ((error as any).name === 'OverconstrainedError') {
+            log('Camera constraints not satisfiable, trying fallback')
+            try {
+              cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+                audio: false
+              })
+            } catch (err) {
+              log('Camera fallback failed', err)
+            }
+          } else {
+            log('Camera access failed:', error)
+            try { chrome.runtime.sendMessage({ type: 'STREAM_ERROR', error: `CAMERA_ERROR: ${error.message}` }) } catch {}
+          }
+        }
+
+        if (cameraStream) {
+          cameraTrack = cameraStream.getVideoTracks()[0] || null
+          const camSettings = cameraTrack?.getSettings?.() || {}
+          cameraMeta = {
+            codec: 'vp09.00.10.08',
+            width: camSettings.width || 1280,
+            height: camSettings.height || 720,
+            fps: Math.round(camSettings.frameRate || 30),
+            bitrate: 2_000_000
+          }
+        } else {
+          throw new Error('Failed to acquire camera stream')
+        }
+      }
+
+      // Microphone stream acquisition (optional)
+      if (micEnabled) {
+        audioStream = null
+        try {
+          audioStream = await navigator.mediaDevices.getUserMedia({
+            video: false,
+            audio: {
+              deviceId: microphoneDeviceId ? { exact: microphoneDeviceId } : undefined,
+              sampleRate: { ideal: 48000 },
+              channelCount: { ideal: 2 },
+              echoCancellation: true,
+              noiseSuppression: true
+            }
+          })
+        } catch (e) {
+          const error = e as Error
+          if ((error as any).name === 'NotAllowedError') {
+            log('Microphone permission denied by user')
+            try { chrome.runtime.sendMessage({ type: 'STREAM_ERROR', error: 'MIC_PERMISSION_DENIED' }) } catch {}
+          } else if ((error as any).name === 'NotFoundError') {
+            log('No microphone device found, continue without audio')
+          } else {
+            log('Microphone access failed:', error)
+          }
+        }
+
+        if (audioStream) {
+          audioTrack = audioStream.getAudioTracks()[0] || null
+          const audioSettings = audioTrack?.getSettings?.() || {}
+          audioMeta = {
+            codec: 'opus',
+            sampleRate: audioSettings.sampleRate || 48000,
+            channels: audioSettings.channelCount || 2,
+            bitrate: 192000
+          }
+        }
+      }
+
       // 2) Ensure WebCodecs availability
       if (typeof (window as any).VideoEncoder === 'undefined' || typeof (window as any).MediaStreamTrackProcessor === 'undefined') {
         throw new Error('WebCodecs APIs not supported in this environment')
+      }
+      if (micEnabled && typeof (window as any).AudioEncoder === 'undefined') {
+        log('AudioEncoder not supported; disabling microphone capture')
+        micEnabled = false
+        if (audioStream) {
+          try { audioStream.getTracks().forEach((t) => t.stop()) } catch {}
+          audioStream = null
+          audioTrack = null
+          audioMeta = null
+        }
       }
 
       // 3) Derive encoding parameters from track settings
@@ -349,6 +501,89 @@
       const processor = new ProcessorCtor({ track: videoTrack })
       const reader: ReadableStreamDefaultReader<VideoFrame> = processor.readable.getReader()
       wcReader = reader
+
+      // Camera encoder setup
+      if (cameraTrack) {
+        try {
+          const CameraProcessor: any = (window as any).MediaStreamTrackProcessor
+          const camProcessor = new CameraProcessor({ track: cameraTrack })
+          cameraReader = camProcessor.readable.getReader()
+          cameraEncoder = new VideoEncoder({
+            output: (chunk, metadata) => {
+              try {
+                const buffer = new ArrayBuffer(chunk.byteLength)
+                chunk.copyTo(buffer)
+                appendToOpfsChunk({
+                  data: buffer,
+                  timestamp: chunk.timestamp,
+                  type: chunk.type,
+                  isKeyframe: chunk.type === 'key',
+                  codedWidth: (metadata as any)?.codedWidth ?? (metadata as any)?.encodedWidth ?? cameraMeta?.width,
+                  codedHeight: (metadata as any)?.codedHeight ?? (metadata as any)?.encodedHeight ?? cameraMeta?.height,
+                  codec: cameraMeta?.codec
+                }, 'camera')
+              } catch (err) {
+                log('Camera encoder output error:', err)
+              }
+            },
+            error: (e) => log('Camera encoder error:', e)
+          })
+          const camWidth = cameraMeta?.width || 1280
+          const camHeight = cameraMeta?.height || 720
+          const camFps = cameraMeta?.fps || 30
+          const camBitrate = cameraMeta?.bitrate || 2_000_000
+          cameraEncoder.configure({
+            codec: cameraMeta?.codec || 'vp09.00.10.08',
+            width: camWidth,
+            height: camHeight,
+            bitrate: camBitrate,
+            framerate: camFps,
+            latencyMode: 'realtime',
+            hardwareAcceleration: 'prefer-hardware'
+          })
+          cameraMeta = { ...(cameraMeta || {}), codec: cameraMeta?.codec || 'vp09.00.10.08', width: camWidth, height: camHeight, fps: camFps, bitrate: camBitrate }
+        } catch (err) {
+          log('Camera encoder setup failed:', err)
+        }
+      }
+
+      // Audio encoder setup
+      if (audioTrack && micEnabled) {
+        try {
+          const AudioProcessor: any = (window as any).MediaStreamTrackProcessor
+          const audioProcessor = new AudioProcessor({ track: audioTrack })
+          audioReader = audioProcessor.readable.getReader()
+          audioEncoder = new AudioEncoder({
+            output: (chunk) => {
+              try {
+                const buffer = new ArrayBuffer(chunk.byteLength)
+                chunk.copyTo(buffer)
+                appendToOpfsChunk({
+                  data: buffer,
+                  timestamp: chunk.timestamp ?? 0,
+                  duration: chunk.duration ?? 0,
+                  codec: audioMeta?.codec
+                }, 'audio')
+              } catch (err) {
+                log('Audio encoder output error:', err)
+              }
+            },
+            error: (e) => log('Audio encoder error:', e)
+          })
+          const sampleRate = audioMeta?.sampleRate || 48000
+          const channels = audioMeta?.channels || 2
+          const audioBitrate = audioMeta?.bitrate || 192000
+          audioEncoder.configure({
+            codec: audioMeta?.codec || 'opus',
+            sampleRate,
+            numberOfChannels: channels,
+            bitrate: audioBitrate
+          })
+          audioMeta = { ...(audioMeta || {}), codec: audioMeta?.codec || 'opus', sampleRate, channels, bitrate: audioBitrate }
+        } catch (err) {
+          log('Audio encoder setup failed:', err)
+        }
+      }
 
       // 5) Create or reuse preloaded WebCodecs Worker
       const wasPreloaded = wcWorker !== null && wcWorkerPreloaded
@@ -376,7 +611,18 @@
             configured = true
             try { resolveConfigured?.(); resolveConfigured = null } catch {}
             log('✅ WebCodecs worker configured:', config)
-            try { if (OPFS_WRITER_ENABLED) initOpfsWriter({ codec: config?.codec, width: config?.width, height: config?.height, framerate }) } catch {}
+            try {
+              if (OPFS_WRITER_ENABLED) {
+                initOpfsWriter({
+                  codec: config?.codec,
+                  width: config?.width,
+                  height: config?.height,
+                  framerate,
+                  camera: cameraMeta || undefined,
+                  audio: audioMeta || undefined
+                })
+              }
+            } catch {}
             break
           case 'chunk': {
             // track chunk meta count; avoid retaining big buffers here to save memory
@@ -423,8 +669,8 @@
               setTimeout(() => {
                 try {
                   if (OPFS_WRITER_ENABLED) {
-                    if (!opfsWriterReady || opfsPendingChunks.length > 0) {
-                      log(`⏳ OPFS not ready or has pending chunks (${opfsPendingChunks.length}), deferring finalize`)
+                    if (!opfsWriterReady || opfsPendingChunks.length > 0 || opfsFinalizeWaits.length > 0) {
+                      log(`⏳ OPFS not ready or has pending chunks (${opfsPendingChunks.length}) or finalize waits (${opfsFinalizeWaits.length}), deferring finalize`)
                       opfsEndPending = true
                     } else {
                       log('✅ Finalizing OPFS writer')
@@ -487,6 +733,44 @@
       wcFrameLoopActive = true
       isRecording = true
 
+      if (cameraReader && cameraEncoder) {
+        cameraFrameLoopActive = true
+        cameraFrameCount = 0
+        const cameraKeyEvery = 60
+        ;(async () => {
+          try {
+            while (cameraFrameLoopActive) {
+              const { done, value: frame } = await cameraReader.read()
+              if (done || !frame) break
+              if (isPaused) { try { frame.close() } catch {}; continue }
+              const keyFrame = cameraFrameCount === 0 || (cameraFrameCount % cameraKeyEvery === 0)
+              try { cameraEncoder.encode(frame, { keyFrame }) } catch (err) { log('Camera encode error:', err) }
+              try { frame.close() } catch {}
+              cameraFrameCount++
+            }
+          } catch (err) {
+            log('Camera frame loop error:', err)
+          }
+        })()
+      }
+
+      if (audioReader && audioEncoder) {
+        audioLoopActive = true
+        ;(async () => {
+          try {
+            while (audioLoopActive) {
+              const { done, value: audioData } = await audioReader.read()
+              if (done || !audioData) break
+              if (isPaused) { try { audioData.close() } catch {}; continue }
+              try { audioEncoder.encode(audioData) } catch (err) { log('Audio encode error:', err) }
+              try { audioData.close() } catch {}
+            }
+          } catch (err) {
+            log('Audio loop error:', err)
+          }
+        })()
+      }
+
       // Start badge elapsed ticker for action button
       startBadgeTicker()
 
@@ -523,6 +807,12 @@
 
     } catch (e) {
       log('❌ Failed to start recording:', e)
+      try { currentStream?.getTracks().forEach((t) => t.stop()) } catch {}
+      try { cameraStream?.getTracks().forEach((t) => t.stop()) } catch {}
+      try { audioStream?.getTracks().forEach((t) => t.stop()) } catch {}
+      currentStream = null
+      cameraStream = null
+      audioStream = null
       isRecording = false
       recordingStartTime = null
       try {
@@ -535,7 +825,7 @@
     }
   }
 
-  function stopRecordingInternal(): void {
+  async function stopRecordingInternal(): Promise<void> {
     const timestamp = new Date().toISOString()
     log(`🛑 [${timestamp}] Stopping recording...`)
     log('[stop-share] offscreen: stopRecordingInternal invoked')
@@ -547,6 +837,33 @@
       try { wcFrameLoopActive = false; wcWorker?.postMessage({ type: 'stop' }) } catch (e) { log('❌ Error posting stop to WebCodecs worker:', e) }
       wcWorker = null
       wcReader = null
+
+       // Stop camera/audio pipelines
+       cameraFrameLoopActive = false
+       audioLoopActive = false
+       try {
+         if (cameraEncoder) {
+           const p = cameraEncoder.flush?.()
+           trackFinalizeWait(p as any)
+           await p?.catch?.((err: any) => { log('Camera encoder flush error:', err) })
+           try { cameraEncoder.close() } catch {}
+         }
+       } catch {}
+       cameraEncoder = null
+       try { await cameraReader?.cancel?.() } catch {}
+       cameraReader = null
+
+       try {
+         if (audioEncoder) {
+           const p = audioEncoder.flush?.()
+           trackFinalizeWait(p as any)
+           await p?.catch?.((err: any) => { log('Audio encoder flush error:', err) })
+           try { audioEncoder.close() } catch {}
+         }
+       } catch {}
+       audioEncoder = null
+       try { await audioReader?.cancel?.() } catch {}
+       audioReader = null
 
       // Stop MediaRecorder (fallback)
       if (mediaRecorder && mediaRecorder.state !== 'inactive') {
@@ -567,6 +884,22 @@
         })
         currentStream = null
       }
+
+       if (cameraStream) {
+         const tracks = cameraStream.getTracks()
+         tracks.forEach((track) => {
+           try { track.stop() } catch {}
+         })
+         cameraStream = null
+       }
+
+       if (audioStream) {
+         const tracks = audioStream.getTracks()
+         tracks.forEach((track) => {
+           try { track.stop() } catch {}
+         })
+         audioStream = null
+       }
 
       log(`✅ [${timestamp}] Recording cleanup completed`)
 
@@ -788,4 +1121,3 @@
     }
   }, 10000) // Every 10 seconds
 })()
-

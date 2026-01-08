@@ -887,9 +887,14 @@ async function startRecordingViaOffscreen(options) {
   try {
     const mode = (options?.mode === 'tab' || options?.mode === 'window' || options?.mode === 'screen') ? options.mode : 'screen'
     const normalizedOptions = {
+      ...options,
       mode,
       video: options?.video ?? true,
-      audio: options?.audio ?? false,
+      audio: options?.audio ?? options?.audioEnabled ?? false,
+      cameraEnabled: options?.cameraEnabled ?? false,
+      audioEnabled: options?.audioEnabled ?? options?.microphoneEnabled ?? options?.audio ?? false,
+      cameraDeviceId: options?.cameraDeviceId,
+      microphoneDeviceId: options?.microphoneDeviceId,
       countdown: (typeof options?.countdown === 'number' && options.countdown >=1 && options.countdown <=5) ? options.countdown : 3
     }
 
