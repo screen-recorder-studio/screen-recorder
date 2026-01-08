@@ -294,8 +294,16 @@ self.onmessage = async (e: MessageEvent<InitMessage | AppendMessage | FlushMessa
       firstTimestamp = -1
       lastTimestamp = -1
       fallbackDataParts = []
-      cameraOffset = 0; cameraChunksWritten = 0; cameraFirstTimestamp = -1; cameraLastTimestamp = -1; cameraIndexBuffer = []
-      audioOffset = 0; audioChunksWritten = 0; audioFirstTimestamp = -1; audioLastTimestamp = -1; audioIndexBuffer = []
+      cameraOffset = 0
+      cameraChunksWritten = 0
+      cameraFirstTimestamp = -1
+      cameraLastTimestamp = -1
+      cameraIndexBuffer = []
+      audioOffset = 0
+      audioChunksWritten = 0
+      audioFirstTimestamp = -1
+      audioLastTimestamp = -1
+      audioIndexBuffer = []
       await ensureRoot()
       await ensureRecDir(msg.id)
       await openDataFile()

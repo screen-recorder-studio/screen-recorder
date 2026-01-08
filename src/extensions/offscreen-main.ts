@@ -355,7 +355,7 @@
       const audioTracks = stream.getAudioTracks() || []
       const videoTrack = videoTracks[0]
       const cameraEnabled = !!options?.cameraEnabled
-      let micEnabled = !!options?.audioEnabled || !!options?.microphoneEnabled || !!options?.audio
+      let audioEnabledFlag = !!options?.audioEnabled || !!options?.microphoneEnabled || !!options?.audio
       const cameraDeviceId = options?.cameraDeviceId
       const microphoneDeviceId = options?.microphoneDeviceId
       let cameraTrack: MediaStreamTrack | null = null
@@ -437,7 +437,7 @@
       }
 
       // Microphone stream acquisition (optional)
-      if (micEnabled) {
+      if (audioEnabledFlag) {
         audioStream = null
         try {
           audioStream = await navigator.mediaDevices.getUserMedia({
@@ -478,9 +478,9 @@
       if (typeof (window as any).VideoEncoder === 'undefined' || typeof (window as any).MediaStreamTrackProcessor === 'undefined') {
         throw new Error('WebCodecs APIs not supported in this environment')
       }
-      if (micEnabled && typeof (window as any).AudioEncoder === 'undefined') {
+      if (audioEnabledFlag && typeof (window as any).AudioEncoder === 'undefined') {
         log('AudioEncoder not supported; disabling microphone capture')
-        micEnabled = false
+        audioEnabledFlag = false
         if (audioStream) {
           try { audioStream.getTracks().forEach((t) => t.stop()) } catch {}
           audioStream = null
@@ -548,7 +548,7 @@
       }
 
       // Audio encoder setup
-      if (audioTrack && micEnabled) {
+      if (audioTrack && audioEnabledFlag) {
         try {
           const AudioProcessor: any = (window as any).MediaStreamTrackProcessor
           const audioProcessor = new AudioProcessor({ track: audioTrack })
@@ -825,7 +825,7 @@
     }
   }
 
-  async function stopRecordingInternal(): Promise<void> {
+  function stopRecordingInternal(): void {
     const timestamp = new Date().toISOString()
     log(`🛑 [${timestamp}] Stopping recording...`)
     log('[stop-share] offscreen: stopRecordingInternal invoked')
@@ -845,24 +845,24 @@
          if (cameraEncoder) {
            const p = cameraEncoder.flush?.()
            trackFinalizeWait(p as any)
-           await p?.catch?.((err: any) => { log('Camera encoder flush error:', err) })
+           p?.catch?.((err: any) => { log('Camera encoder flush error:', err) })
            try { cameraEncoder.close() } catch {}
          }
        } catch {}
        cameraEncoder = null
-       try { await cameraReader?.cancel?.() } catch {}
+       try { cameraReader?.cancel?.() } catch {}
        cameraReader = null
 
        try {
          if (audioEncoder) {
            const p = audioEncoder.flush?.()
            trackFinalizeWait(p as any)
-           await p?.catch?.((err: any) => { log('Audio encoder flush error:', err) })
+           p?.catch?.((err: any) => { log('Audio encoder flush error:', err) })
            try { audioEncoder.close() } catch {}
          }
        } catch {}
        audioEncoder = null
-       try { await audioReader?.cancel?.() } catch {}
+       try { audioReader?.cancel?.() } catch {}
        audioReader = null
 
       // Stop MediaRecorder (fallback)
