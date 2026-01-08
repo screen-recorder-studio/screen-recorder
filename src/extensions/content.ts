@@ -281,6 +281,368 @@
   document.documentElement.appendChild(root);
   state.root = root;
 
+  // --- Tab annotation overlay (toolbar + canvas) ---
+  let annotationCanvas = null;
+  let annotationToolbar = null;
+  let isAnnotationMode = false;
+  let annotations = [] as any[];
+  let currentTool = 'arrow';
+  let currentColor = '#ff0000';
+  let currentLineWidth = 3;
+  let isDrawing = false;
+  let startPoint = { x: 0, y: 0 };
+  let currentPath: any[] = [];
+
+  function selectTool(tool: string) {
+    currentTool = tool;
+  }
+
+  function clearAllAnnotations() {
+    annotations = [];
+    if (annotationCanvas) {
+      const ctx = annotationCanvas.getContext('2d');
+      if (ctx) ctx.clearRect(0, 0, annotationCanvas.width, annotationCanvas.height);
+    }
+  }
+
+  function drawArrow(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, color: string, lineWidth: number) {
+    const headLength = 15;
+    const angle = Math.atan2(y2 - y1, x2 - x1);
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(
+      x2 - headLength * Math.cos(angle - Math.PI / 6),
+      y2 - headLength * Math.sin(angle - Math.PI / 6)
+    );
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(
+      x2 - headLength * Math.cos(angle + Math.PI / 6),
+      y2 - headLength * Math.sin(angle + Math.PI / 6)
+    );
+    ctx.stroke();
+  }
+
+  function redrawAllAnnotations() {
+    if (!annotationCanvas) return;
+    const ctx = annotationCanvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, annotationCanvas.width, annotationCanvas.height);
+
+    for (const ann of annotations) {
+      if (ann.tool === 'rectangle') {
+        const [p1, p2] = ann.points;
+        ctx.strokeStyle = ann.color;
+        ctx.lineWidth = ann.lineWidth;
+        ctx.strokeRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
+      } else if (ann.tool === 'circle') {
+        const [p1, p2] = ann.points;
+        const radius = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+        ctx.strokeStyle = ann.color;
+        ctx.lineWidth = ann.lineWidth;
+        ctx.beginPath();
+        ctx.arc(p1.x, p1.y, radius, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (ann.tool === 'arrow') {
+        const [p1, p2] = ann.points;
+        drawArrow(ctx, p1.x, p1.y, p2.x, p2.y, ann.color, ann.lineWidth);
+      } else if (ann.tool === 'freehand') {
+        ctx.strokeStyle = ann.color;
+        ctx.lineWidth = ann.lineWidth;
+        ctx.beginPath();
+        ctx.moveTo(ann.points[0].x, ann.points[0].y);
+        for (let i = 1; i < ann.points.length; i++) {
+          ctx.lineTo(ann.points[i].x, ann.points[i].y);
+        }
+        ctx.stroke();
+      } else if (ann.tool === 'text') {
+        ctx.fillStyle = ann.color;
+        ctx.font = '24px Arial';
+        ctx.fillText(ann.text || '', ann.points[0].x, ann.points[0].y);
+      } else if (ann.tool === 'highlight') {
+        const [p1, p2] = ann.points;
+        ctx.fillStyle = ann.color + '40';
+        ctx.fillRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
+      } else if (ann.tool === 'blur') {
+        const [p1, p2] = ann.points;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.fillRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
+      }
+    }
+  }
+
+  function ensureAnnotationCanvas() {
+    if (annotationCanvas && document.body.contains(annotationCanvas)) return annotationCanvas;
+    const canvas = document.createElement('canvas');
+    canvas.id = 'screen-recorder-annotation-canvas';
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    canvas.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2147483646;
+      pointer-events: auto;
+      display: none;
+    `;
+
+    const host = document.body || document.documentElement;
+    host.appendChild(canvas);
+    annotationCanvas = canvas;
+
+    if (!(canvas as any).__annotationBound) {
+      canvas.addEventListener('mousedown', (e) => {
+        if (!isAnnotationMode) return;
+        isDrawing = true;
+        startPoint = { x: e.clientX, y: e.clientY };
+        currentPath = [{ x: e.clientX, y: e.clientY }];
+
+        if (currentTool === 'text') {
+          const text = prompt('请输入文字：');
+          if (text) {
+            annotations.push({
+              tool: 'text',
+              points: [{ x: e.clientX, y: e.clientY }],
+              color: currentColor,
+              lineWidth: currentLineWidth,
+              text
+            });
+            redrawAllAnnotations();
+          }
+          isDrawing = false;
+        }
+      });
+
+      canvas.addEventListener('mousemove', (e) => {
+        if (!isDrawing || !isAnnotationMode) return;
+        if (currentTool === 'freehand') {
+          currentPath.push({ x: e.clientX, y: e.clientY });
+        }
+        redrawAllAnnotations();
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        if (currentTool === 'rectangle') {
+          ctx.strokeStyle = currentColor;
+          ctx.lineWidth = currentLineWidth;
+          ctx.strokeRect(
+            startPoint.x,
+            startPoint.y,
+            e.clientX - startPoint.x,
+            e.clientY - startPoint.y
+          );
+        } else if (currentTool === 'circle') {
+          const radius = Math.sqrt(
+            Math.pow(e.clientX - startPoint.x, 2) +
+            Math.pow(e.clientY - startPoint.y, 2)
+          );
+          ctx.strokeStyle = currentColor;
+          ctx.lineWidth = currentLineWidth;
+          ctx.beginPath();
+          ctx.arc(startPoint.x, startPoint.y, radius, 0, Math.PI * 2);
+          ctx.stroke();
+        } else if (currentTool === 'arrow') {
+          drawArrow(ctx, startPoint.x, startPoint.y, e.clientX, e.clientY, currentColor, currentLineWidth);
+        } else if (currentTool === 'freehand') {
+          ctx.strokeStyle = currentColor;
+          ctx.lineWidth = currentLineWidth;
+          ctx.beginPath();
+          ctx.moveTo(currentPath[0].x, currentPath[0].y);
+          for (let i = 1; i < currentPath.length; i++) {
+            ctx.lineTo(currentPath[i].x, currentPath[i].y);
+          }
+          ctx.stroke();
+        } else if (currentTool === 'highlight') {
+          ctx.fillStyle = currentColor + '40';
+          ctx.fillRect(
+            startPoint.x,
+            startPoint.y,
+            e.clientX - startPoint.x,
+            e.clientY - startPoint.y
+          );
+        }
+      });
+
+      canvas.addEventListener('mouseup', (e) => {
+        if (!isDrawing || !isAnnotationMode) return;
+        isDrawing = false;
+
+        if (currentTool === 'rectangle') {
+          annotations.push({
+            tool: 'rectangle',
+            points: [startPoint, { x: e.clientX, y: e.clientY }],
+            color: currentColor,
+            lineWidth: currentLineWidth
+          });
+        } else if (currentTool === 'circle') {
+          annotations.push({
+            tool: 'circle',
+            points: [startPoint, { x: e.clientX, y: e.clientY }],
+            color: currentColor,
+            lineWidth: currentLineWidth
+          });
+        } else if (currentTool === 'arrow') {
+          annotations.push({
+            tool: 'arrow',
+            points: [startPoint, { x: e.clientX, y: e.clientY }],
+            color: currentColor,
+            lineWidth: currentLineWidth
+          });
+        } else if (currentTool === 'freehand') {
+          annotations.push({
+            tool: 'freehand',
+            points: currentPath,
+            color: currentColor,
+            lineWidth: currentLineWidth
+          });
+        } else if (currentTool === 'highlight') {
+          annotations.push({
+            tool: 'highlight',
+            points: [startPoint, { x: e.clientX, y: e.clientY }],
+            color: currentColor,
+            lineWidth: currentLineWidth
+          });
+        } else if (currentTool === 'blur') {
+          annotations.push({
+            tool: 'blur',
+            points: [startPoint, { x: e.clientX, y: e.clientY }],
+            color: '#000000',
+            lineWidth: 0
+          });
+        }
+
+        redrawAllAnnotations();
+      });
+
+      (canvas as any).__annotationBound = true;
+    }
+
+    return canvas;
+  }
+
+  function ensureAnnotationToolbar() {
+    if (annotationToolbar && document.body.contains(annotationToolbar)) return annotationToolbar;
+    const toolbar = document.createElement('div');
+    toolbar.id = 'screen-recorder-annotation-toolbar';
+    toolbar.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      z-index: 2147483647;
+      background: rgba(0, 0, 0, 0.8);
+      border-radius: 8px;
+      padding: 12px;
+      display: none;
+      gap: 8px;
+      backdrop-filter: blur(10px);
+    `;
+
+    const tools = [
+      { name: 'arrow', icon: '→', title: '箭头' },
+      { name: 'rectangle', icon: '□', title: '矩形' },
+      { name: 'circle', icon: '○', title: '圆形' },
+      { name: 'freehand', icon: '✎', title: '自由绘制' },
+      { name: 'text', icon: 'T', title: '文字' },
+      { name: 'highlight', icon: '◆', title: '高亮' },
+      { name: 'blur', icon: '⬛', title: '模糊/遮挡' }
+    ];
+
+    tools.forEach(tool => {
+      const btn = document.createElement('button');
+      btn.textContent = tool.icon;
+      btn.title = tool.title;
+      btn.style.cssText = `
+        width: 36px;
+        height: 36px;
+        border: none;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 18px;
+      `;
+      btn.onclick = () => selectTool(tool.name);
+      toolbar.appendChild(btn);
+    });
+
+    const colorPicker = document.createElement('input');
+    colorPicker.type = 'color';
+    colorPicker.value = '#ff0000';
+    colorPicker.style.cssText = `
+      width: 36px;
+      height: 36px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    `;
+    colorPicker.onchange = (e) => {
+      currentColor = (e.target as HTMLInputElement).value;
+    };
+    toolbar.appendChild(colorPicker);
+
+    const clearBtn = document.createElement('button');
+    clearBtn.textContent = '🗑';
+    clearBtn.title = '清除所有标注';
+    clearBtn.style.cssText = `
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: rgba(255, 0, 0, 0.3);
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 18px;
+    `;
+    clearBtn.onclick = () => clearAllAnnotations();
+    toolbar.appendChild(clearBtn);
+
+    const host = document.body || document.documentElement;
+    host.appendChild(toolbar);
+    annotationToolbar = toolbar;
+    return toolbar;
+  }
+
+  function handleAnnotationResize() {
+    if (!annotationCanvas) return;
+    annotationCanvas.width = window.innerWidth;
+    annotationCanvas.height = window.innerHeight;
+    redrawAllAnnotations();
+  }
+
+  function enableAnnotationMode() {
+    const canvas = ensureAnnotationCanvas();
+    const toolbar = ensureAnnotationToolbar();
+    isAnnotationMode = true;
+    if (canvas) {
+      canvas.style.display = 'block';
+      handleAnnotationResize();
+      redrawAllAnnotations();
+    }
+    if (toolbar) toolbar.style.display = 'flex';
+  }
+
+  function disableAnnotationMode() {
+    isAnnotationMode = false;
+    isDrawing = false;
+    currentPath = [];
+    clearAllAnnotations();
+    if (annotationCanvas) annotationCanvas.style.display = 'none';
+    if (annotationToolbar) annotationToolbar.style.display = 'none';
+  }
+
+  window.addEventListener('resize', () => {
+    if (isAnnotationMode) handleAnnotationResize();
+  });
+
   // Report capability support once injected
   try {
     const caps = {
@@ -1268,6 +1630,7 @@
         hidePreview();
         // WebCodecs 路径：主动报告
         report({ recording: false });
+        try { disableAnnotationMode(); } catch {}
       }
     }
   }
@@ -1538,6 +1901,12 @@
         downloadVideo(); break;
       case 'TOGGLE_PAUSE':
         if (state.recording) setPaused(!state.paused);
+        break;
+      case 'ENABLE_TAB_ANNOTATION':
+        enableAnnotationMode();
+        break;
+      case 'DISABLE_TAB_ANNOTATION':
+        disableAnnotationMode();
         break;
       case 'STATE_UPDATE':
         // no-op for now
