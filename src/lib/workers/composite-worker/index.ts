@@ -64,6 +64,7 @@ const FRAME_BUFFER_LIMITS = {
   maxNextDecoded: 120,        // 预取窗口最大帧数 (~4秒@30fps, ~1GB @ 1080p)
   warningThreshold: 0.9       // 90% 时警告
 };
+const DISPLAY_SIZE_TOLERANCE = 1; // pixel tolerance when comparing decoded display dimensions
 
 // 统计信息
 let droppedFramesCount = 0;
@@ -1017,17 +1018,18 @@ function startStreamingDecode(chunks: any[]) {
         const targetBuf = (outputTarget === 'next') ? nextDecoded : decodedFrames;
         const maxSize = (outputTarget === 'next') ? FRAME_BUFFER_LIMITS.maxNextDecoded : FRAME_BUFFER_LIMITS.maxDecodedFrames;
 
-        // 🔧 使用解码帧的实际显示尺寸校正视频比例（避免非方像素导致的拉伸）
+        // 🔧 Use decoded frame display size to correct aspect ratio (avoids non-square pixel stretching)
         const displayWidth = frame.displayWidth || frame.codedWidth;
         const displayHeight = frame.displayHeight || frame.codedHeight;
-        if (
-          displayWidth && displayHeight &&
-          (!videoInfo || videoInfo.width !== displayWidth || videoInfo.height !== displayHeight)
-        ) {
-          videoInfo = { width: displayWidth, height: displayHeight };
-          correctedVideoSize = { width: displayWidth, height: displayHeight };
-          // 重新计算布局以保持正确纵横比
-          calculateAndCacheLayout();
+        if (displayWidth && displayHeight) {
+          const widthDiffers = !videoInfo || Math.abs(videoInfo.width - displayWidth) > DISPLAY_SIZE_TOLERANCE;
+          const heightDiffers = !videoInfo || Math.abs(videoInfo.height - displayHeight) > DISPLAY_SIZE_TOLERANCE;
+          if (widthDiffers || heightDiffers) {
+            videoInfo = { width: displayWidth, height: displayHeight };
+            correctedVideoSize = { width: displayWidth, height: displayHeight };
+            // Recompute layout to keep the correct aspect ratio
+            calculateAndCacheLayout();
+          }
         }
 
         // 🚀 P1 优化：帧缓冲限制
