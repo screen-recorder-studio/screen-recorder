@@ -337,5 +337,18 @@
   "welcome_advancedDesc": { "message": "Tam kontrol panelini açmak için araç çubuğundaki eklenti simgesine tıklayın" },
   "welcome_openControl": { "message": "Tam kontrol panelini aç" },
   "welcome_footerHelp": { "message": "Yardıma mı ihtiyacınız var? Gelişmiş özellikli kontrol paneli için eklenti simgesine tıklayın." },
-  "welcome_footerMeta": { "message": "Screen Recorder Studio • Profesyoneller için üretildi" }
+  "welcome_footerMeta": { "message": "Screen Recorder Studio • Profesyoneller için yapıldı" },
+
+  "annotation_tool_cursor": { "message": "İmleç (Etkileşim)" },
+  "annotation_tool_effect": { "message": "İmleç Efekti" },
+  "annotation_tool_arrow": { "message": "Ok" },
+  "annotation_tool_rectangle": { "message": "Dikdörtgen" },
+  "annotation_tool_circle": { "message": "Daire" },
+  "annotation_tool_freehand": { "message": "Kalem" },
+  "annotation_tool_text": { "message": "Metin" },
+  "annotation_tool_highlight": { "message": "Vurgula" },
+  "annotation_tool_blur": { "message": "Bulanıklaştır" },
+  "annotation_tool_undo": { "message": "Geri Al" },
+  "annotation_tool_clear": { "message": "Tümünü Temizle" },
+  "annotation_tool_close": { "message": "Kapat" }
 }

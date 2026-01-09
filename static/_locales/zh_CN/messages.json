@@ -337,5 +337,18 @@
   "welcome_advancedDesc": { "message": "点击浏览器工具栏中的扩展图标打开完整控制面板" },
   "welcome_openControl": { "message": "打开完整控制面板" },
   "welcome_footerHelp": { "message": "需要帮助？点击扩展图标，打开带高级功能的控制面板。" },
-  "welcome_footerMeta": { "message": "Screen Recorder Studio • 为专业人士打造" }
+  "welcome_footerMeta": { "message": "Screen Recorder Studio • 为专业人士打造" },
+
+  "annotation_tool_cursor": { "message": "鼠标操作 (停止标注)" },
+  "annotation_tool_effect": { "message": "光标高亮/波纹 (开关)" },
+  "annotation_tool_arrow": { "message": "箭头" },
+  "annotation_tool_rectangle": { "message": "矩形" },
+  "annotation_tool_circle": { "message": "圆形" },
+  "annotation_tool_freehand": { "message": "画笔" },
+  "annotation_tool_text": { "message": "文字" },
+  "annotation_tool_highlight": { "message": "高亮" },
+  "annotation_tool_blur": { "message": "马赛克/遮挡" },
+  "annotation_tool_undo": { "message": "撤销" },
+  "annotation_tool_clear": { "message": "清空所有" },
+  "annotation_tool_close": { "message": "关闭标注" }
 }

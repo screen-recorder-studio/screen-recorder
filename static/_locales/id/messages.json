@@ -337,5 +337,18 @@
   "welcome_advancedDesc": { "message": "Klik ikon ekstensi di toolbar browser untuk membuka panel kontrol lengkap" },
   "welcome_openControl": { "message": "Buka panel kontrol lengkap" },
   "welcome_footerHelp": { "message": "Butuh bantuan? Klik ikon ekstensi untuk membuka panel dengan fitur lanjutan." },
-  "welcome_footerMeta": { "message": "Screen Recorder Studio • Dibuat untuk profesional" }
+  "welcome_footerMeta": { "message": "Screen Recorder Studio • Dibuat untuk profesional" },
+
+  "annotation_tool_cursor": { "message": "Kursor (Interaksi)" },
+  "annotation_tool_effect": { "message": "Efek Kursor" },
+  "annotation_tool_arrow": { "message": "Panah" },
+  "annotation_tool_rectangle": { "message": "Persegi Panjang" },
+  "annotation_tool_circle": { "message": "Lingkaran" },
+  "annotation_tool_freehand": { "message": "Pena" },
+  "annotation_tool_text": { "message": "Teks" },
+  "annotation_tool_highlight": { "message": "Sorot" },
+  "annotation_tool_blur": { "message": "Buram" },
+  "annotation_tool_undo": { "message": "Urungkan" },
+  "annotation_tool_clear": { "message": "Hapus Semua" },
+  "annotation_tool_close": { "message": "Tutup" }
 }

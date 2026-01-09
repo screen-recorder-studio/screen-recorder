@@ -337,5 +337,18 @@
   "welcome_advancedDesc": { "message": "Нажмите значок расширения на панели браузера, чтобы открыть полный контрольный центр" },
   "welcome_openControl": { "message": "Открыть полный контрольный центр" },
   "welcome_footerHelp": { "message": "Нужна помощь? Нажмите значок расширения, чтобы открыть панель с расширенными возможностями." },
-  "welcome_footerMeta": { "message": "Screen Recorder Studio • Создано для профессионалов" }
+  "welcome_footerMeta": { "message": "Screen Recorder Studio • Создано для профессионалов" },
+
+  "annotation_tool_cursor": { "message": "Курсор (Взаимод.)" },
+  "annotation_tool_effect": { "message": "Эффект курсора" },
+  "annotation_tool_arrow": { "message": "Стрелка" },
+  "annotation_tool_rectangle": { "message": "Прямоугольник" },
+  "annotation_tool_circle": { "message": "Круг" },
+  "annotation_tool_freehand": { "message": "Карандаш" },
+  "annotation_tool_text": { "message": "Текст" },
+  "annotation_tool_highlight": { "message": "Выделить" },
+  "annotation_tool_blur": { "message": "Размытие" },
+  "annotation_tool_undo": { "message": "Отменить" },
+  "annotation_tool_clear": { "message": "Очистить все" },
+  "annotation_tool_close": { "message": "Закрыть" }
 }

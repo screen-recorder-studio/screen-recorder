@@ -409,6 +409,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'STREAM_END': {
         console.log('[stop-share] background: STREAM_END', { tabId, from: tabId ? 'tab' : 'offscreen' })
         try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
+        disableTabAnnotation()
+        currentRecording.tabId = null
+        currentRecording.mode = null
         try { void stopBadgeTimer() } catch {}
         if (tabId) {
           try { state.recording = false } catch {}
@@ -423,6 +426,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'STREAM_ERROR': {
         console.log('[stop-share] background: STREAM_ERROR', { tabId, from: tabId ? 'tab' : 'offscreen' })
         try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
+        disableTabAnnotation()
+        currentRecording.tabId = null
+        currentRecording.mode = null
         try { void stopBadgeTimer() } catch {}
         if (tabId) {
           try { state.recording = false } catch {}
@@ -841,8 +847,12 @@ let currentRecording = {
   isRecording: false,
   isPaused: false,
   streamId: null,
-  startTime: null
+  startTime: null,
+  tabId: null as number | null,
+  mode: null as string | null
 }
+
+let annotationTabId: number | null = null;
 
 // --- Badge timer for recording duration on action button ---
 function formatElapsed(ms: number): string {
@@ -867,6 +877,23 @@ async function stopBadgeTimer() {
   try { await chrome.action.setBadgeText({ text: '' }) } catch {}
 }
 
+async function enableTabAnnotation(tabId: number | null) {
+  if (tabId == null) return;
+  annotationTabId = tabId;
+  try {
+    await ensureContentInjected(tabId);
+    await chrome.tabs.sendMessage(tabId, { type: 'ENABLE_TAB_ANNOTATION' });
+  } catch (e) {
+    console.warn('[Background] failed to enable tab annotation', e);
+  }
+}
+
+function disableTabAnnotation() {
+  if (annotationTabId == null) return;
+  try { chrome.tabs.sendMessage(annotationTabId, { type: 'DISABLE_TAB_ANNOTATION' }); } catch {}
+  annotationTabId = null;
+}
+
 // Handle COUNTDOWN_DONE from control page - broadcast to offscreen
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.type === 'COUNTDOWN_DONE') {
@@ -882,6 +909,29 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 });
 
+// Helper to resolve the most likely target tab for annotation (active tab in a normal window)
+async function resolveTargetTabId(): Promise<number | null> {
+  try {
+    // 1. If current window is normal (e.g. Side Panel or just a tab page), use its active tab
+    const currentWin = await chrome.windows.getCurrent().catch(() => null);
+    if (currentWin && currentWin.type === 'normal') {
+      const tabs = await chrome.tabs.query({ active: true, windowId: currentWin.id });
+      if (tabs?.[0]?.id) return tabs[0].id;
+    }
+
+    // 2. Otherwise (Control Window, Popup), find the last focused NORMAL window
+    // This handles the case where user clicks "Start" in a separate Control Window
+    const win = await chrome.windows.getLastFocused({ windowTypes: ['normal'] }).catch(() => null);
+    if (win && win.id) {
+       const tabs = await chrome.tabs.query({ active: true, windowId: win.id });
+       if (tabs?.[0]?.id) return tabs[0].id;
+    }
+  } catch (e) {
+    console.warn('[Background] resolveTargetTabId failed', e);
+  }
+  return null;
+}
+
 // Unified start/stop helpers for Offscreen recording
 async function startRecordingViaOffscreen(options) {
   try {
@@ -893,12 +943,21 @@ async function startRecordingViaOffscreen(options) {
       countdown: (typeof options?.countdown === 'number' && options.countdown >=1 && options.countdown <=5) ? options.countdown : 3
     }
 
+    let targetTabId: number | null = null
+    if (mode === 'tab') {
+      targetTabId = await resolveTargetTabId();
+      console.log('[Background] Resolved annotation target tab:', targetTabId);
+    }
+
     await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
     await sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_START_RECORDING', payload: { options: normalizedOptions } })
     // Enter preparing phase: will flip to active on STREAM_START
-    currentRecording = { isRecording: false, isPaused: false, streamId: 'offscreen', startTime: null }
+    currentRecording = { isRecording: false, isPaused: false, streamId: 'offscreen', startTime: null, tabId: targetTabId, mode }
     try { await chrome.action.setBadgeBackgroundColor({ color: '#fb8c00' }) } catch {}
     try { await chrome.action.setBadgeText({ text: '' }) } catch {}
+    if (mode === 'tab' && targetTabId != null) {
+      await enableTabAnnotation(targetTabId)
+    }
   } catch (e) {
     // keep state unchanged on failure
     throw e
@@ -911,7 +970,8 @@ async function stopRecordingViaOffscreen() {
     await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
     sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_STOP_RECORDING' })
   } finally {
-    currentRecording = { isRecording: false, isPaused: false, streamId: null, startTime: null }
+    disableTabAnnotation()
+    currentRecording = { isRecording: false, isPaused: false, streamId: null, startTime: null, tabId: null, mode: null }
     try { await stopBadgeTimer() } catch (e) { /* optional badge clear failure */ }
   }
 }
@@ -926,7 +986,9 @@ async function handleStartRecording(message, sendResponse) {
       isRecording: true,
       isPaused: false,
       streamId: message.streamId,
-      startTime: Date.now()
+      startTime: Date.now(),
+      tabId: tabId ?? null,
+      mode: null
     }
 
     console.log('Recording state saved:', currentRecording)
@@ -965,7 +1027,9 @@ async function handleStopRecording(message, sendResponse) {
       isRecording: false,
       isPaused: false,
       streamId: null,
-      startTime: null
+      startTime: null,
+      tabId: null,
+      mode: null
     }
 
     console.log('Recording state reset')
