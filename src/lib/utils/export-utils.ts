@@ -1,8 +1,11 @@
 // Export utilities for video export functionality
 
 import type { BackgroundConfig } from '$lib/types/background'
-import type { VideoCropStore } from '$lib/stores/video-crop.svelte'
 import { videoZoomStore } from '$lib/stores/video-zoom.svelte'
+
+type CropStoreLike = {
+  getCropConfig: () => any
+}
 
 /**
  * Extract source video information from encoded chunks
@@ -62,7 +65,7 @@ export function extractSourceInfo(
  */
 export function convertBackgroundConfigForExport(
   backgroundConfig: any,
-  videoCropStore: VideoCropStore
+  videoCropStore: CropStoreLike
 ): any {
   if (!backgroundConfig) return undefined
 

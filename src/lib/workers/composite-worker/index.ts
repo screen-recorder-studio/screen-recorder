@@ -6,7 +6,7 @@
 import type { BackgroundConfig, GradientConfig, GradientStop, ImageBackgroundConfig } from '../../types/background'
 
 interface CompositeMessage {
-  type: 'init' | 'process' | 'play' | 'pause' | 'seek' | 'config' | 'appendWindow';
+  type: 'init' | 'process' | 'play' | 'pause' | 'seek' | 'config' | 'appendWindow' | 'preview-frame' | 'getCurrentFrameBitmap' | 'getSourceFrameBitmap';
   data: {
     chunks?: any[];
     backgroundConfig?: BackgroundConfig;
