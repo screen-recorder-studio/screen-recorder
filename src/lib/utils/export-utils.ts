@@ -3,8 +3,21 @@
 import type { BackgroundConfig } from '$lib/types/background'
 import { videoZoomStore } from '$lib/stores/video-zoom.svelte'
 
+type CropConfig = {
+  enabled: boolean
+  mode: 'pixels' | 'percentage'
+  x: number
+  y: number
+  width: number
+  height: number
+  xPercent: number
+  yPercent: number
+  widthPercent: number
+  heightPercent: number
+}
+
 type CropStoreLike = {
-  getCropConfig: () => any
+  getCropConfig: () => CropConfig | undefined
 }
 
 /**
