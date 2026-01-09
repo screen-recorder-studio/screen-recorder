@@ -337,5 +337,18 @@
   "welcome_advancedDesc": { "message": "पूर्ण नियंत्रण पैनल खोलने के लिए ब्राउज़र टूलबार में एक्सटेंशन आइकन पर क्लिक करें" },
   "welcome_openControl": { "message": "पूर्ण नियंत्रण पैनल खोलें" },
   "welcome_footerHelp": { "message": "मदद चाहिए? उन्नत सुविधाओं वाले नियंत्रण पैनल के लिए एक्सटेंशन आइकन पर क्लिक करें।" },
-  "welcome_footerMeta": { "message": "Screen Recorder Studio • पेशेवरों के लिए बनाया गया" }
+  "welcome_footerMeta": { "message": "Screen Recorder Studio • पेशेवरों के लिए बनाया गया" },
+
+  "annotation_tool_cursor": { "message": "कर्सर" },
+  "annotation_tool_effect": { "message": "कर्सर प्रभाव" },
+  "annotation_tool_arrow": { "message": "तीर" },
+  "annotation_tool_rectangle": { "message": "आयत" },
+  "annotation_tool_circle": { "message": "वृत्त" },
+  "annotation_tool_freehand": { "message": "कलम" },
+  "annotation_tool_text": { "message": "पाठ" },
+  "annotation_tool_highlight": { "message": "हाइलाइट" },
+  "annotation_tool_blur": { "message": "धुंधला" },
+  "annotation_tool_undo": { "message": "पूर्ववत करें" },
+  "annotation_tool_clear": { "message": "सभी साफ़ करें" },
+  "annotation_tool_close": { "message": "बंद करें" }
 }

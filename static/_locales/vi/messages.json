@@ -337,5 +337,18 @@
   "welcome_advancedDesc": { "message": "Nhấp vào biểu tượng tiện ích trên thanh công cụ để mở bảng điều khiển đầy đủ" },
   "welcome_openControl": { "message": "Mở bảng điều khiển đầy đủ" },
   "welcome_footerHelp": { "message": "Cần trợ giúp? Nhấp vào biểu tượng tiện ích để mở bảng điều khiển với các tính năng nâng cao." },
-  "welcome_footerMeta": { "message": "Screen Recorder Studio • Dành cho người dùng chuyên nghiệp" }
+  "welcome_footerMeta": { "message": "Screen Recorder Studio • Dành cho chuyên gia" },
+
+  "annotation_tool_cursor": { "message": "Con trỏ (Tương tác)" },
+  "annotation_tool_effect": { "message": "Hiệu ứng con trỏ" },
+  "annotation_tool_arrow": { "message": "Mũi tên" },
+  "annotation_tool_rectangle": { "message": "Hình chữ nhật" },
+  "annotation_tool_circle": { "message": "Hình tròn" },
+  "annotation_tool_freehand": { "message": "Bút" },
+  "annotation_tool_text": { "message": "Văn bản" },
+  "annotation_tool_highlight": { "message": "Tô sáng" },
+  "annotation_tool_blur": { "message": "Làm mờ" },
+  "annotation_tool_undo": { "message": "Hoàn tác" },
+  "annotation_tool_clear": { "message": "Xóa tất cả" },
+  "annotation_tool_close": { "message": "Đóng" }
 }

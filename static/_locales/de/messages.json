@@ -337,5 +337,18 @@
   "welcome_advancedDesc": { "message": "Klicke auf das Erweiterungssymbol in der Symbolleiste, um das komplette Bedienfeld zu öffnen" },
   "welcome_openControl": { "message": "Komplettes Bedienfeld öffnen" },
   "welcome_footerHelp": { "message": "Brauchst du Hilfe? Klicke auf das Erweiterungssymbol, um das Bedienfeld mit Profi-Funktionen zu öffnen." },
-  "welcome_footerMeta": { "message": "Screen Recorder Studio • Für Profis entwickelt" }
+  "welcome_footerMeta": { "message": "Screen Recorder Studio • Made for professionals" },
+
+  "annotation_tool_cursor": { "message": "Mauszeiger (Interagieren)" },
+  "annotation_tool_effect": { "message": "Mauseffekt" },
+  "annotation_tool_arrow": { "message": "Pfeil" },
+  "annotation_tool_rectangle": { "message": "Rechteck" },
+  "annotation_tool_circle": { "message": "Kreis" },
+  "annotation_tool_freehand": { "message": "Stift" },
+  "annotation_tool_text": { "message": "Text" },
+  "annotation_tool_highlight": { "message": "Hervorheben" },
+  "annotation_tool_blur": { "message": "Weichzeichnen" },
+  "annotation_tool_undo": { "message": "Rückgängig" },
+  "annotation_tool_clear": { "message": "Alles löschen" },
+  "annotation_tool_close": { "message": "Schließen" }
 }

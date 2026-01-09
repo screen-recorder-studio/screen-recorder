@@ -337,5 +337,18 @@
   "welcome_advancedDesc": { "message": "點擊瀏覽器工具列中的擴充功能圖示以開啟完整控制面板" },
   "welcome_openControl": { "message": "打開完整控制面板" },
   "welcome_footerHelp": { "message": "需要協助嗎？點擊擴充功能圖示以開啟具備進階功能的控制面板。" },
-  "welcome_footerMeta": { "message": "Screen Recorder Studio • 為專業人士打造" }
+  "welcome_footerMeta": { "message": "Screen Recorder Studio • 為專業人士打造" },
+
+  "annotation_tool_cursor": { "message": "游標操作 (停止標註)" },
+  "annotation_tool_effect": { "message": "游標高亮/波紋 (開關)" },
+  "annotation_tool_arrow": { "message": "箭頭" },
+  "annotation_tool_rectangle": { "message": "矩形" },
+  "annotation_tool_circle": { "message": "圓形" },
+  "annotation_tool_freehand": { "message": "畫筆" },
+  "annotation_tool_text": { "message": "文字" },
+  "annotation_tool_highlight": { "message": "高亮" },
+  "annotation_tool_blur": { "message": "馬賽克/遮擋" },
+  "annotation_tool_undo": { "message": "撤銷" },
+  "annotation_tool_clear": { "message": "清空所有" },
+  "annotation_tool_close": { "message": "關閉標註" }
 }

@@ -786,16 +786,16 @@
 
 
     const tools = [
-      { name: 'cursor', icon: icons.cursor, title: '鼠标操作 (停止标注)' },
+      { name: 'cursor', icon: icons.cursor, title: chrome.i18n.getMessage('annotation_tool_cursor'), isToggle: false },
       // New Effect Button
-      { name: 'effect', icon: icons.effect, title: '光标高亮/波纹 (开关)', isToggle: true },
-      { name: 'arrow', icon: icons.arrow, title: '箭头' },
-      { name: 'rectangle', icon: icons.rectangle, title: '矩形' },
-      { name: 'circle', icon: icons.circle, title: '圆形' },
-      { name: 'freehand', icon: icons.freehand, title: '画笔' },
-      { name: 'text', icon: icons.text, title: '文字' },
-      { name: 'highlight', icon: icons.highlight, title: '高亮' },
-      { name: 'blur', icon: icons.blur, title: '马赛克/遮挡' }
+      { name: 'effect', icon: icons.effect, title: chrome.i18n.getMessage('annotation_tool_effect'), isToggle: true },
+      { name: 'arrow', icon: icons.arrow, title: chrome.i18n.getMessage('annotation_tool_arrow'), isToggle: false },
+      { name: 'rectangle', icon: icons.rectangle, title: chrome.i18n.getMessage('annotation_tool_rectangle'), isToggle: false },
+      { name: 'circle', icon: icons.circle, title: chrome.i18n.getMessage('annotation_tool_circle'), isToggle: false },
+      { name: 'freehand', icon: icons.freehand, title: chrome.i18n.getMessage('annotation_tool_freehand'), isToggle: false },
+      { name: 'text', icon: icons.text, title: chrome.i18n.getMessage('annotation_tool_text'), isToggle: false },
+      { name: 'highlight', icon: icons.highlight, title: chrome.i18n.getMessage('annotation_tool_highlight'), isToggle: false },
+      { name: 'blur', icon: icons.blur, title: chrome.i18n.getMessage('annotation_tool_blur'), isToggle: false }
     ];
 
     let activeBtn: HTMLButtonElement | null = null;
@@ -939,12 +939,12 @@
       return btn;
     };
 
-    toolbar.appendChild(createUtilBtn(icons.undo, '撤销', () => {
+    toolbar.appendChild(createUtilBtn(icons.undo, chrome.i18n.getMessage('annotation_tool_undo'), () => {
       annotations.pop();
       redrawAllAnnotations();
     }));
 
-    toolbar.appendChild(createUtilBtn(icons.clear, '清空所有', () => clearAllAnnotations(), true));
+    toolbar.appendChild(createUtilBtn(icons.clear, chrome.i18n.getMessage('annotation_tool_clear'), () => clearAllAnnotations(), true));
     
     // Separator
     const sep2 = document.createElement('div');
@@ -957,7 +957,7 @@
     toolbar.appendChild(sep2);
 
     // Close Button
-    toolbar.appendChild(createUtilBtn(icons.close, '关闭标注', () => disableAnnotationMode()));
+    toolbar.appendChild(createUtilBtn(icons.close, chrome.i18n.getMessage('annotation_tool_close'), () => disableAnnotationMode()));
 
     const host = document.body || document.documentElement;
     host.appendChild(toolbar);
