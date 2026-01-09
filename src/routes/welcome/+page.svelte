@@ -351,8 +351,8 @@
 
       <!-- Main Action Area -->
       <section class="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden ring-1 ring-slate-900/5">
-        <div class="p-8 md:p-10">
-          <div class="text-center mb-10">
+        <div class="p-6 md:p-8">
+          <div class="text-center mb-6">
             <h3 class="text-2xl font-bold text-slate-900 mb-2">{t('welcome_tryTitle')}</h3>
             <p class="text-slate-600 mb-2">
               {t('welcome_trySubtitle')}
@@ -362,11 +362,11 @@
             </p>
           </div>
         
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             {#each recordingModes as mode}
               {@const IconComponent = mode.icon}
               <button
-                class="group relative flex flex-col items-center p-6 rounded-2xl border-2 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] outline-none"
+                class="group relative flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] outline-none"
                 class:border-blue-500={selectedMode === mode.id}
                 class:bg-blue-50={selectedMode === mode.id && !isRecording}
                 class:shadow-blue-100={selectedMode === mode.id}
@@ -389,13 +389,13 @@
                 {/if}
 
                 <!-- Icon -->
-                <div class="w-16 h-16 mb-4 rounded-2xl flex items-center justify-center transition-colors duration-300"
+                <div class="w-12 h-12 mb-3 rounded-xl flex items-center justify-center transition-colors duration-300"
                       class:bg-white={true}
                       class:text-blue-600={selectedMode === mode.id}
                       class:shadow-sm={selectedMode === mode.id}
                       class:text-slate-400={selectedMode !== mode.id}
                       class:group-hover:text-blue-500={selectedMode !== mode.id && !isRecording}>
-                  <IconComponent class="w-8 h-8" />
+                  <IconComponent class="w-6 h-6" />
                 </div>
 
                 <!-- Label -->
@@ -419,7 +419,7 @@
           <div class="max-w-md mx-auto space-y-4">
             <!-- Main control button -->
             <button
-              class={`w-full group relative flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-bold text-lg text-white transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-xl hover:shadow-2xl active:scale-[0.98] ${
+              class={`w-full group relative flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl font-bold text-lg text-white transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-xl hover:shadow-2xl active:scale-[0.98] ${
                 !isRecording
                   ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 focus:ring-blue-500 shadow-blue-500/30'
                   : 'bg-red-500 hover:bg-red-600 focus:ring-red-500 shadow-red-500/30'
@@ -431,10 +431,10 @@
                 {#if isLoading}
                   <Loader2 class="w-6 h-6 animate-spin" />
                 {:else if isRecording}
-                   <Square class="w-6 h-6 fill-current" />
+                   <Square class="w-5 h-5 fill-current" />
                 {:else}
                   {@const ButtonIcon = getButtonIcon()}
-                  <ButtonIcon class="w-6 h-6 group-hover:scale-110 transition-transform" />
+                  <ButtonIcon class="w-5 h-5 group-hover:scale-110 transition-transform" />
                 {/if}
               </div>
               
@@ -455,7 +455,7 @@
             <!-- Secondary button (Pause/Resume) -->
             {#if isRecording}
               <button
-                class="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 rounded-xl font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-1 shadow-sm"
+                class="w-full flex items-center justify-center gap-2 px-6 py-2.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 rounded-xl font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-1 shadow-sm"
                 onclick={togglePause}
                 disabled={isLoading}
               >
@@ -489,10 +489,10 @@
               </div>
             </div>
           {:else}
-            <div class="mt-8 p-4 bg-slate-50 border border-slate-100 rounded-xl max-w-md mx-auto">
+            <div class="mt-6 p-4 bg-slate-50 border border-slate-100 rounded-xl max-w-md mx-auto">
               <div class="flex items-start gap-4">
-                <div class="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Play class="w-5 h-5 ml-0.5" />
+                <div class="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Play class="w-4 h-4 ml-0.5" />
                 </div>
                 <div class="flex-1">
                   <p class="font-bold text-slate-900 mb-1 text-sm">{t('welcome_readyTitle')}</p>
