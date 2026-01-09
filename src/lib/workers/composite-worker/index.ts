@@ -1017,6 +1017,19 @@ function startStreamingDecode(chunks: any[]) {
         const targetBuf = (outputTarget === 'next') ? nextDecoded : decodedFrames;
         const maxSize = (outputTarget === 'next') ? FRAME_BUFFER_LIMITS.maxNextDecoded : FRAME_BUFFER_LIMITS.maxDecodedFrames;
 
+        // 🔧 使用解码帧的实际显示尺寸校正视频比例（避免非方像素导致的拉伸）
+        const displayWidth = frame.displayWidth || frame.codedWidth;
+        const displayHeight = frame.displayHeight || frame.codedHeight;
+        if (
+          displayWidth && displayHeight &&
+          (!videoInfo || videoInfo.width !== displayWidth || videoInfo.height !== displayHeight)
+        ) {
+          videoInfo = { width: displayWidth, height: displayHeight };
+          correctedVideoSize = { width: displayWidth, height: displayHeight };
+          // 重新计算布局以保持正确纵横比
+          calculateAndCacheLayout();
+        }
+
         // 🚀 P1 优化：帧缓冲限制
         if (targetBuf.length >= maxSize) {
           const bufferName = (outputTarget === 'next') ? 'nextDecoded' : 'decodedFrames';
