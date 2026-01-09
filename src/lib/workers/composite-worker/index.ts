@@ -64,7 +64,8 @@ const FRAME_BUFFER_LIMITS = {
   maxNextDecoded: 120,        // 预取窗口最大帧数 (~4秒@30fps, ~1GB @ 1080p)
   warningThreshold: 0.9       // 90% 时警告
 };
-const DISPLAY_SIZE_TOLERANCE = 1; // pixel tolerance when comparing decoded display dimensions
+// Small tolerance to absorb codec rounding noise; 1px avoids churn without masking real resolution changes
+const DISPLAY_SIZE_TOLERANCE = 1;
 
 // 统计信息
 let droppedFramesCount = 0;
@@ -73,8 +74,7 @@ let lastBufferWarningTime = 0;
 // 固定的视频布局（避免每帧重新计算）
 let fixedVideoLayout: VideoLayout | null = null;
 let videoInfo: { width: number; height: number } | null = null;
-// 🔧 新增：存储修正后的视频尺寸信息
-let correctedVideoSize: { width: number; height: number } | null = null;
+let displaySizeLocked = false;
 // 🆕 窗口信息（用于计算时间）
 let windowStartFrameIndex: number = 0;  // 窗口起始帧索引（全局）
 let videoFrameRate: number = 30;  // 视频帧率（默认 30fps）
@@ -1019,16 +1019,16 @@ function startStreamingDecode(chunks: any[]) {
         const maxSize = (outputTarget === 'next') ? FRAME_BUFFER_LIMITS.maxNextDecoded : FRAME_BUFFER_LIMITS.maxDecodedFrames;
 
         // 🔧 Use decoded frame display size to correct aspect ratio (avoids non-square pixel stretching)
-        const displayWidth = frame.displayWidth || frame.codedWidth;
-        const displayHeight = frame.displayHeight || frame.codedHeight;
-        if (displayWidth && displayHeight) {
+        const displayWidth = frame.displayWidth ?? frame.codedWidth ?? 0;
+        const displayHeight = frame.displayHeight ?? frame.codedHeight ?? 0;
+        if (!displaySizeLocked) {
           const widthDiffers = !videoInfo || Math.abs(videoInfo.width - displayWidth) > DISPLAY_SIZE_TOLERANCE;
           const heightDiffers = !videoInfo || Math.abs(videoInfo.height - displayHeight) > DISPLAY_SIZE_TOLERANCE;
           if (widthDiffers || heightDiffers) {
             videoInfo = { width: displayWidth, height: displayHeight };
-            correctedVideoSize = { width: displayWidth, height: displayHeight };
             // Recompute layout to keep the correct aspect ratio
             calculateAndCacheLayout();
+            displaySizeLocked = true;
           }
         }
 
@@ -1473,6 +1473,8 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         console.log('[progress] VideoComposite - resetting state for new window data')
         isPlaying = false;
         currentFrameIndex = 0;
+        displaySizeLocked = false;
+        videoInfo = null;
         if (animationId) {
           self.cancelAnimationFrame(animationId);
           animationId = null;
@@ -1548,7 +1550,6 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
           decodedFrames = nextDecoded
           nextDecoded = []
 
-          correctedVideoSize = { width: sourceWidth, height: sourceHeight };
           videoInfo = { width: sourceWidth, height: sourceHeight };
 
           nextMeta = null
@@ -1585,9 +1586,6 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         });
 
         // sourceWidth/sourceHeight 已在前方定义
-
-        // 🔧 保存修正后的视频尺寸，用于后续渲染
-        correctedVideoSize = { width: sourceWidth, height: sourceHeight };
 
         console.log('📐 [COMPOSITE-WORKER] Source dimensions determined:', {
           sourceWidth,
