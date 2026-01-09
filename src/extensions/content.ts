@@ -330,6 +330,25 @@
     ctx.stroke();
   }
 
+  function createMosaicPattern(ctx: CanvasRenderingContext2D) {
+    // Create a small offscreen canvas to generate the pattern
+    const patternCanvas = document.createElement('canvas');
+    patternCanvas.width = 10;
+    patternCanvas.height = 10;
+    const pCtx = patternCanvas.getContext('2d');
+    if (!pCtx) return null;
+
+    // Fill with random grey squares to simulate censorship mosaic
+    for (let x = 0; x < 10; x += 5) {
+      for (let y = 0; y < 10; y += 5) {
+        const grey = Math.floor(Math.random() * 55 + 200); // Light grey range
+        pCtx.fillStyle = `rgb(${grey}, ${grey}, ${grey})`;
+        pCtx.fillRect(x, y, 5, 5);
+      }
+    }
+    return ctx.createPattern(patternCanvas, 'repeat');
+  }
+
   function redrawAllAnnotations() {
     if (!annotationCanvas) return;
     const ctx = annotationCanvas.getContext('2d');
@@ -372,8 +391,19 @@
         ctx.fillRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
       } else if (ann.tool === 'blur') {
         const [p1, p2] = ann.points;
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-        ctx.fillRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
+        const pattern = createMosaicPattern(ctx);
+        if (pattern) {
+          ctx.fillStyle = pattern;
+          ctx.fillRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
+          // Add a border to define the area
+          ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
+        } else {
+          // Fallback
+          ctx.fillStyle = '#000000';
+          ctx.fillRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
+        }
       }
     }
   }
@@ -391,8 +421,9 @@
       width: 100%;
       height: 100%;
       z-index: 2147483646;
-      pointer-events: auto;
+      pointer-events: none;
       display: none;
+      cursor: default;
     `;
 
     const host = document.body || document.documentElement;
@@ -407,17 +438,62 @@
         currentPath = [{ x: e.clientX, y: e.clientY }];
 
         if (currentTool === 'text') {
-          const text = prompt('请输入文字：');
-          if (text) {
-            annotations.push({
-              tool: 'text',
-              points: [{ x: e.clientX, y: e.clientY }],
-              color: currentColor,
-              lineWidth: currentLineWidth,
-              text
-            });
-            redrawAllAnnotations();
-          }
+          // Modern floating input instead of prompt
+          const input = document.createElement('div');
+          input.contentEditable = 'true';
+          input.style.cssText = `
+            position: fixed;
+            left: ${e.clientX}px;
+            top: ${e.clientY - 12}px; /* Center vertically relative to mouse */
+            z-index: 2147483650;
+            color: ${currentColor};
+            font: 24px Arial;
+            background: rgba(0, 0, 0, 0.1);
+            border: 1px dashed rgba(255, 255, 255, 0.5);
+            padding: 4px;
+            min-width: 20px;
+            outline: none;
+            white-space: nowrap;
+            cursor: text;
+          `;
+          
+          document.body.appendChild(input);
+          
+          // Use setTimeout to ensure element is mounted before focusing
+          setTimeout(() => input.focus(), 0);
+
+          const finish = () => {
+            const text = input.innerText.trim();
+            if (text) {
+              annotations.push({
+                tool: 'text',
+                points: [{ x: e.clientX, y: e.clientY }],
+                color: currentColor,
+                lineWidth: currentLineWidth,
+                text
+              });
+              redrawAllAnnotations();
+            }
+            cleanup();
+          };
+
+          const cleanup = () => {
+            if (input.parentNode) input.parentNode.removeChild(input);
+          };
+
+          input.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Enter' && !ev.shiftKey) {
+              ev.preventDefault();
+              input.blur(); // Triggers blur handler
+            } else if (ev.key === 'Escape') {
+              cleanup();
+            }
+          });
+
+          input.addEventListener('blur', () => {
+            finish();
+          });
+
           isDrawing = false;
         }
       });
@@ -431,25 +507,35 @@
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
+        ctx.save();
+        const width = e.clientX - startPoint.x;
+        const height = e.clientY - startPoint.y;
+
         if (currentTool === 'rectangle') {
+          // Draw outline
           ctx.strokeStyle = currentColor;
           ctx.lineWidth = currentLineWidth;
-          ctx.strokeRect(
-            startPoint.x,
-            startPoint.y,
-            e.clientX - startPoint.x,
-            e.clientY - startPoint.y
-          );
+          ctx.strokeRect(startPoint.x, startPoint.y, width, height);
+          
+          // Enhanced preview: Fill with transparent color to mimic "Highlight" feel
+          ctx.fillStyle = currentColor + '20'; 
+          ctx.fillRect(startPoint.x, startPoint.y, width, height);
+
         } else if (currentTool === 'circle') {
-          const radius = Math.sqrt(
-            Math.pow(e.clientX - startPoint.x, 2) +
-            Math.pow(e.clientY - startPoint.y, 2)
-          );
-          ctx.strokeStyle = currentColor;
-          ctx.lineWidth = currentLineWidth;
+          const radius = Math.sqrt(width * width + height * height);
+          
           ctx.beginPath();
           ctx.arc(startPoint.x, startPoint.y, radius, 0, Math.PI * 2);
+          
+          // Enhanced preview: Fill with transparent color
+          ctx.fillStyle = currentColor + '20';
+          ctx.fill();
+          
+          // Draw outline
+          ctx.strokeStyle = currentColor;
+          ctx.lineWidth = currentLineWidth;
           ctx.stroke();
+
         } else if (currentTool === 'arrow') {
           drawArrow(ctx, startPoint.x, startPoint.y, e.clientX, e.clientY, currentColor, currentLineWidth);
         } else if (currentTool === 'freehand') {
@@ -463,13 +549,20 @@
           ctx.stroke();
         } else if (currentTool === 'highlight') {
           ctx.fillStyle = currentColor + '40';
-          ctx.fillRect(
-            startPoint.x,
-            startPoint.y,
-            e.clientX - startPoint.x,
-            e.clientY - startPoint.y
-          );
+          ctx.fillRect(startPoint.x, startPoint.y, width, height);
+        } else if (currentTool === 'blur') {
+          // Real-time preview for blur/block tool
+          // Use semi-transparent black to show the area being masked
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+          ctx.fillRect(startPoint.x, startPoint.y, width, height);
+          
+          // Optional: Add a thin dashed outline for better visibility against dark backgrounds
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([5, 5]);
+          ctx.strokeRect(startPoint.x, startPoint.y, width, height);
         }
+        ctx.restore();
       });
 
       canvas.addEventListener('mouseup', (e) => {
@@ -535,75 +628,336 @@
     toolbar.id = 'screen-recorder-annotation-toolbar';
     toolbar.style.cssText = `
       position: fixed;
-      bottom: 20px;
-      left: 20px;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
       z-index: 2147483647;
-      background: rgba(0, 0, 0, 0.8);
-      border-radius: 8px;
-      padding: 12px;
+      background: rgba(20, 20, 20, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 8px 12px;
       display: none;
-      gap: 8px;
-      backdrop-filter: blur(10px);
+      align-items: center;
+      gap: 4px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      transition: opacity 0.2s;
     `;
 
+    // SVG Icons
+    const icons = {
+      cursor: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 4 7.07 17 2.51-7.39L21 11.07z"/></svg>',
+      effect: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>',
+      arrow: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>',
+      rectangle: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>',
+      circle: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg>',
+      freehand: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>',
+      text: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg>',
+      highlight: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 2-2.6 2.6a1 1 0 0 1-1.4 0l-2-2a1 1 0 0 1 0-1.4L18.6 2a1 1 0 0 1 1.4 0l2 2a1 1 0 0 1 0 1.4Z"/></svg>',
+      blur: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M15 3v18"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>',
+      undo: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>',
+      clear: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>',
+      close: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>'
+    };
+
+    // --- Cursor Effects Logic ---
+    let cursorEffectsActive = false;
+    let haloEl: HTMLDivElement | null = null;
+    let styleEl: HTMLStyleElement | null = null;
+
+    const toggleCursorEffects = (enable?: boolean) => {
+      const shouldEnable = enable !== undefined ? enable : !cursorEffectsActive;
+      
+      if (shouldEnable) {
+        if (cursorEffectsActive) return; // Already active
+        cursorEffectsActive = true;
+
+        // 1. Inject Styles
+        if (!styleEl) {
+          styleEl = document.createElement('style');
+          styleEl.textContent = `
+            .mcp-cursor-halo {
+              position: fixed;
+              top: 0; left: 0;
+              width: 40px; height: 40px;
+              margin-left: -20px; margin-top: -20px;
+              background: rgba(255, 215, 0, 0.4);
+              border: 2px solid rgba(255, 215, 0, 0.8);
+              border-radius: 50%;
+              pointer-events: none;
+              z-index: 2147483645; /* Below canvas, above page */
+              box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+              will-change: transform;
+            }
+            .mcp-click-ripple {
+              position: fixed;
+              border-radius: 50%;
+              background: transparent;
+              border: 3px solid rgba(255, 215, 0, 0.8);
+              transform: scale(0.2);
+              opacity: 1;
+              pointer-events: none;
+              z-index: 2147483645;
+              will-change: transform, opacity, border-width;
+              animation: mcp-ripple 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+              box-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+            }
+            @keyframes mcp-ripple {
+              to { 
+                transform: scale(3.0); 
+                opacity: 0; 
+                border-width: 0px;
+              }
+            }
+          `;
+          document.head.appendChild(styleEl);
+        }
+
+        // 2. Create Halo
+        haloEl = document.createElement('div');
+        haloEl.className = 'mcp-cursor-halo';
+        // Initialize off-screen
+        haloEl.style.display = 'none';
+        document.body.appendChild(haloEl);
+
+        // 3. Event Listeners
+        let mouseX = 0, mouseY = 0;
+        let rAFId: number | null = null;
+
+        const updateHalo = () => {
+          if (!haloEl) return;
+          haloEl.style.transform = `translate3d(${mouseX}px, ${mouseY}px, 0)`;
+          rAFId = null;
+        };
+
+        const onMove = (e: MouseEvent) => {
+          if (!haloEl) return;
+          if (haloEl.style.display === 'none') haloEl.style.display = 'block';
+          
+          mouseX = e.clientX;
+          mouseY = e.clientY;
+
+          if (rAFId === null) {
+            rAFId = requestAnimationFrame(updateHalo);
+          }
+        };
+
+        const onClick = (e: MouseEvent) => {
+          const ripple = document.createElement('div');
+          ripple.className = 'mcp-click-ripple';
+          const size = 30;
+          ripple.style.width = `${size}px`;
+          ripple.style.height = `${size}px`;
+          ripple.style.left = `${e.clientX - size/2}px`;
+          ripple.style.top = `${e.clientY - size/2}px`;
+          document.body.appendChild(ripple);
+          ripple.addEventListener('animationend', () => ripple.remove());
+        };
+
+        window.addEventListener('mousemove', onMove, { passive: true, capture: true });
+        window.addEventListener('mousedown', onClick, { passive: true, capture: true });
+
+        // Store cleanup function on the DOM element for retrieval
+        (haloEl as any).__cleanup = () => {
+          window.removeEventListener('mousemove', onMove, { capture: true });
+          window.removeEventListener('mousedown', onClick, { capture: true });
+          if (rAFId !== null) cancelAnimationFrame(rAFId);
+          if (haloEl) haloEl.remove();
+          if (styleEl) styleEl.remove();
+          haloEl = null;
+          styleEl = null;
+        };
+
+      } else {
+        if (!cursorEffectsActive) return; // Already inactive
+        cursorEffectsActive = false;
+        if (haloEl && (haloEl as any).__cleanup) {
+          (haloEl as any).__cleanup();
+        }
+      }
+    };
+
+    // Override disableAnnotationMode to also clean up effects
+    const originalDisable = disableAnnotationMode;
+    disableAnnotationMode = () => {
+      toggleCursorEffects(false); // Force disable effects
+      originalDisable();
+    };
+
+
     const tools = [
-      { name: 'arrow', icon: '→', title: '箭头' },
-      { name: 'rectangle', icon: '□', title: '矩形' },
-      { name: 'circle', icon: '○', title: '圆形' },
-      { name: 'freehand', icon: '✎', title: '自由绘制' },
-      { name: 'text', icon: 'T', title: '文字' },
-      { name: 'highlight', icon: '◆', title: '高亮' },
-      { name: 'blur', icon: '⬛', title: '模糊/遮挡' }
+      { name: 'cursor', icon: icons.cursor, title: '鼠标操作 (停止标注)' },
+      // New Effect Button
+      { name: 'effect', icon: icons.effect, title: '光标高亮/波纹 (开关)', isToggle: true },
+      { name: 'arrow', icon: icons.arrow, title: '箭头' },
+      { name: 'rectangle', icon: icons.rectangle, title: '矩形' },
+      { name: 'circle', icon: icons.circle, title: '圆形' },
+      { name: 'freehand', icon: icons.freehand, title: '画笔' },
+      { name: 'text', icon: icons.text, title: '文字' },
+      { name: 'highlight', icon: icons.highlight, title: '高亮' },
+      { name: 'blur', icon: icons.blur, title: '马赛克/遮挡' }
     ];
 
+    let activeBtn: HTMLButtonElement | null = null;
+    currentTool = 'cursor'; // Reset to cursor on init
+
+    // 1. Drawing Tools Group
     tools.forEach(tool => {
       const btn = document.createElement('button');
-      btn.textContent = tool.icon;
+      btn.innerHTML = tool.icon;
       btn.title = tool.title;
       btn.style.cssText = `
-        width: 36px;
-        height: 36px;
+        width: 40px;
+        height: 40px;
         border: none;
-        background: rgba(255, 255, 255, 0.1);
-        color: white;
-        border-radius: 4px;
+        background: transparent;
+        color: rgba(255, 255, 255, 0.6);
+        border-radius: 8px;
         cursor: pointer;
-        font-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
       `;
-      btn.onclick = () => selectTool(tool.name);
+      
+      btn.onmouseenter = () => { 
+        if (tool.isToggle && cursorEffectsActive) return; // Don't change background if active toggle
+        if(activeBtn !== btn) btn.style.background = 'rgba(255,255,255,0.1)'; 
+      };
+      btn.onmouseleave = () => { 
+        if (tool.isToggle && cursorEffectsActive) return; // Don't change background if active toggle
+        if(activeBtn !== btn) btn.style.background = 'transparent'; 
+      };
+
+      if (tool.name === currentTool) {
+        btn.style.background = 'rgba(255, 255, 255, 0.2)';
+        btn.style.color = '#fff';
+        activeBtn = btn;
+      }
+
+      btn.onclick = () => {
+        // Special handling for Effect toggle
+        if (tool.isToggle) {
+          toggleCursorEffects();
+          if (cursorEffectsActive) {
+            btn.style.background = 'rgba(255, 215, 0, 0.2)'; // Gold tint for active effect
+            btn.style.color = '#ffd700';
+          } else {
+            btn.style.background = 'transparent';
+            btn.style.color = 'rgba(255, 255, 255, 0.6)';
+          }
+          return;
+        }
+
+        selectTool(tool.name);
+        
+        if (annotationCanvas) {
+          if (tool.name === 'cursor') {
+            annotationCanvas.style.pointerEvents = 'none';
+            annotationCanvas.style.cursor = 'default';
+          } else {
+            annotationCanvas.style.pointerEvents = 'auto';
+            annotationCanvas.style.cursor = 'crosshair';
+          }
+        }
+
+        if (activeBtn) {
+          activeBtn.style.background = 'transparent';
+          activeBtn.style.color = 'rgba(255, 255, 255, 0.6)';
+        }
+        btn.style.background = 'rgba(255, 255, 255, 0.2)';
+        btn.style.color = '#fff';
+        activeBtn = btn;
+      };
       toolbar.appendChild(btn);
     });
 
+    // Separator
+    const sep = document.createElement('div');
+    sep.style.cssText = `
+      width: 1px;
+      height: 24px;
+      background: rgba(255, 255, 255, 0.15);
+      margin: 0 6px;
+    `;
+    toolbar.appendChild(sep);
+
+    // 2. Color Picker
+    const colorWrapper = document.createElement('div');
+    colorWrapper.style.cssText = `
+      position: relative;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 2px solid rgba(255,255,255,0.2);
+      cursor: pointer;
+      margin-right: 4px;
+    `;
     const colorPicker = document.createElement('input');
     colorPicker.type = 'color';
     colorPicker.value = '#ff0000';
     colorPicker.style.cssText = `
-      width: 36px;
-      height: 36px;
-      border: none;
-      border-radius: 4px;
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
       cursor: pointer;
+      border: none;
+      padding: 0;
+      margin: 0;
     `;
     colorPicker.onchange = (e) => {
       currentColor = (e.target as HTMLInputElement).value;
+      colorWrapper.style.borderColor = currentColor;
     };
-    toolbar.appendChild(colorPicker);
+    colorWrapper.appendChild(colorPicker);
+    toolbar.appendChild(colorWrapper);
 
-    const clearBtn = document.createElement('button');
-    clearBtn.textContent = '🗑';
-    clearBtn.title = '清除所有标注';
-    clearBtn.style.cssText = `
-      width: 36px;
-      height: 36px;
-      border: none;
-      background: rgba(255, 0, 0, 0.3);
-      color: white;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 18px;
+    // 3. Utility Buttons (Undo, Clear, Close)
+    const createUtilBtn = (icon: string, title: string, action: () => void, isDestructive = false) => {
+      const btn = document.createElement('button');
+      btn.innerHTML = icon;
+      btn.title = title;
+      btn.style.cssText = `
+        width: 40px;
+        height: 40px;
+        border: none;
+        background: transparent;
+        color: ${isDestructive ? '#ff6b6b' : 'rgba(255, 255, 255, 0.6)'};
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+      `;
+      btn.onmouseenter = () => btn.style.background = isDestructive ? 'rgba(255, 107, 107, 0.1)' : 'rgba(255, 255, 255, 0.1)';
+      btn.onmouseleave = () => btn.style.background = 'transparent';
+      btn.onclick = action;
+      return btn;
+    };
+
+    toolbar.appendChild(createUtilBtn(icons.undo, '撤销', () => {
+      annotations.pop();
+      redrawAllAnnotations();
+    }));
+
+    toolbar.appendChild(createUtilBtn(icons.clear, '清空所有', () => clearAllAnnotations(), true));
+    
+    // Separator
+    const sep2 = document.createElement('div');
+    sep2.style.cssText = `
+      width: 1px;
+      height: 24px;
+      background: rgba(255, 255, 255, 0.15);
+      margin: 0 6px;
     `;
-    clearBtn.onclick = () => clearAllAnnotations();
-    toolbar.appendChild(clearBtn);
+    toolbar.appendChild(sep2);
+
+    // Close Button
+    toolbar.appendChild(createUtilBtn(icons.close, '关闭标注', () => disableAnnotationMode()));
 
     const host = document.body || document.documentElement;
     host.appendChild(toolbar);

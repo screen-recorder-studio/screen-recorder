@@ -909,6 +909,29 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 });
 
+// Helper to resolve the most likely target tab for annotation (active tab in a normal window)
+async function resolveTargetTabId(): Promise<number | null> {
+  try {
+    // 1. If current window is normal (e.g. Side Panel or just a tab page), use its active tab
+    const currentWin = await chrome.windows.getCurrent().catch(() => null);
+    if (currentWin && currentWin.type === 'normal') {
+      const tabs = await chrome.tabs.query({ active: true, windowId: currentWin.id });
+      if (tabs?.[0]?.id) return tabs[0].id;
+    }
+
+    // 2. Otherwise (Control Window, Popup), find the last focused NORMAL window
+    // This handles the case where user clicks "Start" in a separate Control Window
+    const win = await chrome.windows.getLastFocused({ windowTypes: ['normal'] }).catch(() => null);
+    if (win && win.id) {
+       const tabs = await chrome.tabs.query({ active: true, windowId: win.id });
+       if (tabs?.[0]?.id) return tabs[0].id;
+    }
+  } catch (e) {
+    console.warn('[Background] resolveTargetTabId failed', e);
+  }
+  return null;
+}
+
 // Unified start/stop helpers for Offscreen recording
 async function startRecordingViaOffscreen(options) {
   try {
@@ -922,12 +945,8 @@ async function startRecordingViaOffscreen(options) {
 
     let targetTabId: number | null = null
     if (mode === 'tab') {
-      try {
-        const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-        if (tabs?.[0]?.id != null) targetTabId = tabs[0].id
-      } catch (e) {
-        console.warn('[Background] failed to resolve active tab for annotation', e)
-      }
+      targetTabId = await resolveTargetTabId();
+      console.log('[Background] Resolved annotation target tab:', targetTabId);
     }
 
     await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
