@@ -142,6 +142,8 @@
   let windowSwitchThrottleTimer: number | null = null  // 🔧 窗口切换防抖
   const HOVER_PREVIEW_THROTTLE_MS = 50  // 50ms 节流（窗口内帧预览）
   const WINDOW_SWITCH_DEBOUNCE_MS = 200  // 🔧 200ms 防抖（窗口切换）- 快速拖动时不触发，鼠标稳定后才请求
+  let previewWindowRequestInFlight = $state(false)
+  let latestPreviewTargetMs: number | null = null
 
   // 🆕 标记：是否有因预览触发的待处理窗口切换，避免 ready 时误跳到 0 帧
   let pendingPreviewWindowSwitch = false
@@ -377,6 +379,7 @@
             const windowFrameIndex = globalFrameIndex - windowStartIndex
 
             if (windowFrameIndex >= 0 && windowFrameIndex < totalFrames) {
+              previewWindowRequestInFlight = false
               console.log('🔍 [Preview] Window switched, requesting preview frame:', {
                 previewTimeMs,
                 globalFrameIndex,
@@ -389,6 +392,16 @@
               })
             } else {
               console.warn('⚠️ [Preview] Preview frame still outside new window')
+              const nextTargetMs = latestPreviewTargetMs ?? previewTimeMs
+              if (nextTargetMs > 0 && onRequestWindow) {
+                previewWindowRequestInFlight = true
+                pendingPreviewWindowSwitch = true
+                onRequestWindow({
+                  centerMs: nextTargetMs,
+                  beforeMs: 1000,
+                  afterMs: 2000
+                })
+              }
             }
           } else if (!shouldContinuePlayback && !isPreviewMode && !pendingPreviewWindowSwitch) {
             // 默认：就绪后跳到第 0 帧（仅在没有任何 pending 操作时）
@@ -477,6 +490,7 @@
           if (data.bitmap) {
             // 🔧 #9 优化：收到预览帧，清除加载状态
             isLoadingPreview = false
+            previewWindowRequestInFlight = false
             
             // 直接显示预览帧，不更新 currentFrameIndex
             displayFrame(data.bitmap)
@@ -1699,10 +1713,16 @@
     const windowFrameIndex = globalFrameIndex - windowStartIndex
 
     previewTimeMs = timeMs
+    latestPreviewTargetMs = timeMs
 
     if (windowFrameIndex >= 0 && windowFrameIndex < totalFrames) {
+      if (previewFrameIndex === windowFrameIndex && !isLoadingPreview) {
+        return
+      }
       // 🔧 在当前窗口内，立即显示预览帧（帧已在内存中）
       isLoadingPreview = false
+      previewWindowRequestInFlight = false
+      pendingPreviewWindowSwitch = false
 
       // 🔧 取消任何挂起的窗口切换请求
       if (windowSwitchThrottleTimer) {
@@ -1751,6 +1771,8 @@
 
         // 触发窗口切换
         pendingPreviewWindowSwitch = true
+        previewWindowRequestInFlight = true
+        latestPreviewTargetMs = targetTimeMs
 
         onRequestWindow?.({
           centerMs: targetTimeMs,
@@ -1773,6 +1795,7 @@
 
     // 🔧 #9：立即清理加载状态
     isLoadingPreview = false
+    previewWindowRequestInFlight = false
     
     // 🔧 清理预览状态
     isPreviewMode = false
@@ -2393,4 +2416,3 @@
   {/if}
 
 </div>
-
