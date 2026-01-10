@@ -20,7 +20,7 @@ const config = {
 		},
 		appDir: 'app',
 		prerender: {
-			entries: ['/', '/sidepanel', '/studio', '/popup', '/drive', '/opfs-drive', '/welcome', '/data-analyzer', '/keyframe-analyzer', '/countdown', '/control']
+			entries: ['/', '/sidepanel', '/studio', '/popup', '/drive', '/opfs-drive', '/welcome', '/data-analyzer', '/keyframe-analyzer', '/countdown', '/control', '/web-record']
 		}
 	}
 };
