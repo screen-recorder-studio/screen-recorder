@@ -3,6 +3,15 @@ let cachedMessages: Record<string, string> = {}
 let localeInitialized = false
 let localeInitPromise: Promise<void> | null = null
 
+// Session storage key for persisting language preference
+const LANG_SESSION_KEY = 'screen_recorder_lang'
+
+// All supported locales (matching static/_locales directories)
+const SUPPORTED_LOCALES = [
+  'de', 'en', 'es', 'fr', 'hi', 'id', 'it', 'ja', 'ko', 
+  'pt_BR', 'ru', 'tr', 'vi', 'zh_CN', 'zh_TW'
+]
+
 export function applyTemplateSubs(template: string, subs?: string | string[]) {
   if (!subs) return template
   const values = Array.isArray(subs) ? subs : [subs]
@@ -11,27 +20,108 @@ export function applyTemplateSubs(template: string, subs?: string | string[]) {
 }
 
 /**
- * Detect language from URL parameter or browser settings
+ * Save language preference to session storage
+ */
+function saveLanguageToSession(lang: string): void {
+  if (typeof sessionStorage !== 'undefined') {
+    try {
+      sessionStorage.setItem(LANG_SESSION_KEY, lang)
+      console.log('[i18n] Language saved to session:', lang)
+    } catch (e) {
+      console.warn('[i18n] Failed to save language to session:', e)
+    }
+  }
+}
+
+/**
+ * Get language preference from session storage
+ */
+function getLanguageFromSession(): string | null {
+  if (typeof sessionStorage !== 'undefined') {
+    try {
+      return sessionStorage.getItem(LANG_SESSION_KEY)
+    } catch (e) {
+      console.warn('[i18n] Failed to read language from session:', e)
+    }
+  }
+  return null
+}
+
+/**
+ * Map browser language codes to our locale folder names
+ */
+function mapBrowserLanguage(browserLang: string): string {
+  const langMap: Record<string, string> = {
+    // Chinese variants
+    'zh-CN': 'zh_CN',
+    'zh-TW': 'zh_TW',
+    'zh-HK': 'zh_TW',
+    'zh': 'zh_CN',
+    // Portuguese variants
+    'pt-BR': 'pt_BR',
+    'pt': 'pt_BR',
+    // Other languages - map to base locale
+    'de-AT': 'de',
+    'de-CH': 'de',
+    'de-DE': 'de',
+    'en-US': 'en',
+    'en-GB': 'en',
+    'en-AU': 'en',
+    'es-ES': 'es',
+    'es-MX': 'es',
+    'es-AR': 'es',
+    'fr-FR': 'fr',
+    'fr-CA': 'fr',
+    'it-IT': 'it',
+    'ja-JP': 'ja',
+    'ko-KR': 'ko',
+    'ru-RU': 'ru',
+    'tr-TR': 'tr',
+    'vi-VN': 'vi',
+    'hi-IN': 'hi',
+    'id-ID': 'id'
+  }
+  
+  // Try exact match first
+  if (langMap[browserLang]) return langMap[browserLang]
+  
+  // Try base language code
+  const base = browserLang.split('-')[0]
+  if (langMap[base]) return langMap[base]
+  
+  // Check if base language is directly supported
+  if (SUPPORTED_LOCALES.includes(base)) return base
+  
+  return 'en'
+}
+
+/**
+ * Detect language from URL parameter, session storage, or browser settings
+ * Priority: URL param > Session storage > Browser language > 'en'
  */
 export function detectLanguage(): string {
   if (typeof window === 'undefined') return 'en'
   
+  // 1. Check URL parameter first (highest priority)
   const params = new URLSearchParams(window.location.search)
   const urlLang = params.get('l')
-  if (urlLang) return urlLang
-
-  // Fallback to browser language
-  const browserLang = navigator.language || (navigator as any).userLanguage || 'en'
-  // Map common browser language codes to our locale folder names
-  const langMap: Record<string, string> = {
-    'zh-CN': 'zh_CN',
-    'zh-TW': 'zh_TW',
-    'zh': 'zh_CN',
-    'pt-BR': 'pt_BR',
-    'pt': 'pt_BR'
+  if (urlLang && SUPPORTED_LOCALES.includes(urlLang)) {
+    // Save to session for other pages to use
+    saveLanguageToSession(urlLang)
+    return urlLang
   }
-  const base = browserLang.split('-')[0]
-  return langMap[browserLang] || langMap[base] || base || 'en'
+  
+  // 2. Check session storage (persisted from previous page)
+  const sessionLang = getLanguageFromSession()
+  if (sessionLang && SUPPORTED_LOCALES.includes(sessionLang)) {
+    return sessionLang
+  }
+  
+  // 3. Fallback to browser language
+  const browserLang = navigator.language || (navigator as any).userLanguage || 'en'
+  const mappedLang = mapBrowserLanguage(browserLang)
+  
+  return mappedLang
 }
 
 /**
