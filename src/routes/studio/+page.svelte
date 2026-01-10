@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { HardDrive, Video, Github, MessageCircle, BookOpen, Maximize, Minimize } from "@lucide/svelte";
+  import { HardDrive, Video, Github, MessageCircle, BookOpen } from "@lucide/svelte";
 
   import { recordingStore } from "$lib/stores/recording.svelte";
   import VideoPreviewComposite from "$lib/components/VideoPreviewComposite.svelte";
@@ -14,29 +14,6 @@
 
   // i18n state for web mode
   let i18nReady = $state(isI18nInitialized());
-
-  // Fullscreen control
-  let isFullscreen = $state(false);
-
-  function toggleFullscreen() {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch((e) => {
-        console.error("Fullscreen failed:", e);
-      });
-    } else {
-      document.exitFullscreen();
-    }
-  }
-
-  onMount(() => {
-    const handleFullscreenChange = () => {
-      isFullscreen = !!document.fullscreenElement;
-    };
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () => {
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
-    };
-  });
 
   // 当前会话的 OPFS 目录 id（用于导出时触发只读日志）
   let opfsDirId = $state("");
@@ -670,23 +647,6 @@
               class="w-4 h-4 text-gray-600 group-hover:text-blue-600 transition-colors duration-200"
             />
             <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">{t('studio_driveText')}</span>
-          </button>
-          <button
-            class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-300 hover:border-blue-400 hover:bg-white/70 hover:shadow-sm transition-all duration-200 group text-sm"
-            onclick={toggleFullscreen}
-            title={isFullscreen ? t('studio_fullscreenExitTooltip') : t('studio_fullscreenEnterTooltip')}
-          >
-            {#if isFullscreen}
-              <Minimize
-                class="w-4 h-4 text-gray-600 group-hover:text-blue-600 transition-colors duration-200"
-              />
-              <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">{t('studio_fullscreenExitText')}</span>
-            {:else}
-              <Maximize
-                class="w-4 h-4 text-gray-600 group-hover:text-blue-600 transition-colors duration-200"
-              />
-              <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">{t('studio_fullscreenEnterText')}</span>
-            {/if}
           </button>
         </div>
       </div>
