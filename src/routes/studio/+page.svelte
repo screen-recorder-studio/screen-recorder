@@ -51,6 +51,12 @@
     | null
     | ((res: { start: number; chunks: any[] }) => void) = null;
 
+  // 🆕 单帧 GOP 预览控制
+  let isFetchingSingleFrameGOP = false;
+  let singleFrameGOPResolver:
+    | null
+    | ((res: { chunks: any[]; targetIndexInGOP: number } | null) => void) = null;
+
   // 时间轴与窗口（毫秒）
   let durationMs = $state(0);
   let windowStartMs = $state(0);
@@ -380,6 +386,23 @@
             return;
           }
 
+          // 🆕 拦截：单帧 GOP 预览响应
+          if (isFetchingSingleFrameGOP && type === "singleFrameGOP") {
+            const { targetFrame, targetIndexInGOP, chunks: gopChunks } = ev.data;
+            console.log("[preview] Reader returned singleFrameGOP:", {
+              targetFrame,
+              targetIndexInGOP,
+              chunks: gopChunks?.length,
+            });
+            isFetchingSingleFrameGOP = false;
+            singleFrameGOPResolver?.({
+              chunks: gopChunks || [],
+              targetIndexInGOP: targetIndexInGOP ?? 0,
+            });
+            singleFrameGOPResolver = null;
+            return;
+          }
+
           if (type === "ready") {
             console.log("✅ [OPFSReader] Ready:", {
               summary,
@@ -590,6 +613,62 @@
     });
   }
 
+  // 🆕 供 VideoPreviewComposite 进行单帧预览的 GOP 数据拉取
+  // 只读取目标帧所需的最小 GOP（从最近关键帧到目标帧）
+  async function fetchSingleFrameGOP(
+    targetFrame: number
+  ): Promise<{ chunks: any[]; targetIndexInGOP: number } | null> {
+    if (!workerCurrentWorker) {
+      console.warn("[preview] No reader worker; returning null");
+      return null;
+    }
+    if (isFetchingSingleFrameGOP) {
+      console.warn("[preview] Already fetching single frame GOP; skip");
+      return null;
+    }
+    if (targetFrame < 0 || targetFrame >= globalTotalFrames) {
+      console.warn("[preview] Target frame out of range:", {
+        targetFrame,
+        globalTotalFrames,
+      });
+      return null;
+    }
+
+    return new Promise((resolve) => {
+      isFetchingSingleFrameGOP = true;
+      let settled = false;
+      singleFrameGOPResolver = (res) => {
+        if (settled) return;
+        settled = true;
+        resolve(res);
+      };
+
+      try {
+        workerCurrentWorker!.postMessage({
+          type: "getSingleFrameGOP",
+          targetFrame,
+        });
+      } catch (err) {
+        console.warn("[preview] Failed to post single frame GOP request:", err);
+        isFetchingSingleFrameGOP = false;
+        singleFrameGOPResolver = null;
+        resolve(null);
+        return;
+      }
+
+      // 超时保护（较短，因为这是预览操作）
+      setTimeout(() => {
+        if (!settled) {
+          console.warn("[preview] Single frame GOP timeout, returning null");
+          settled = true;
+          isFetchingSingleFrameGOP = false;
+          singleFrameGOPResolver = null;
+          resolve(null);
+        }
+      }, 2000);
+    });
+  }
+
   // 组件销毁时清理
   onDestroy(() => {
     console.log("📱 Sidepanel unmounted, cleaning up...");
@@ -715,6 +794,7 @@
           {keyframeInfo}
           onRequestWindow={handleWindowRequest}
           {fetchWindowData}
+          {fetchSingleFrameGOP}
           className="worker-video-preview w-full h-full"
         />
       </div>

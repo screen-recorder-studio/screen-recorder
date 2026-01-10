@@ -34,6 +34,8 @@
     onRequestWindow?: (args: { centerMs: number; beforeMs: number; afterMs: number }) => void
     // Optional: only fetch data, don't switch window, used for prefetch cache
     fetchWindowData?: (args: { centerMs: number; beforeMs: number; afterMs: number }) => Promise<{ chunks: any[]; windowStartIndex: number }>
+    // 🆕 单帧预览：获取目标帧的最小 GOP（用于快速预览）
+    fetchSingleFrameGOP?: (targetFrame: number) => Promise<{ chunks: any[]; targetIndexInGOP: number } | null>
     className?: string
   }
 
@@ -52,6 +54,7 @@
     keyframeInfo = null,
     onRequestWindow,
     fetchWindowData,
+    fetchSingleFrameGOP,
     className = ''
   }: Props = $props()
 
@@ -699,6 +702,29 @@
         case 'complete':
           console.log('🎉 [VideoPreview] Playback completed')
           isPlaying = false
+          break
+
+        // 🆕 单帧预览响应处理
+        case 'singleFramePreview':
+          console.log('🔍 [VideoPreview] Received single frame preview:', {
+            success: data.success,
+            hasError: !!data.error,
+            globalFrameIndex: data.globalFrameIndex,
+            hasBitmap: !!data.bitmap
+          })
+
+          // 清除加载状态
+          isLoadingPreview = false
+
+          if (data.success && data.bitmap) {
+            // 显示预览帧（不更新播放位置）
+            displayFrame(data.bitmap)
+            previewFrameIndex = data.globalFrameIndex
+            pendingPreviewWindowSwitch = false
+            console.log('✅ [VideoPreview] Single frame preview displayed')
+          } else {
+            console.warn('⚠️ [VideoPreview] Single frame preview failed:', data.error)
+          }
           break
 
         case 'error':
@@ -1718,45 +1744,90 @@
         })
       }
     } else {
-      // 🔧 性能优化：使用防抖而非节流
-      // 快速拖动时不触发窗口切换，只有鼠标稳定后才请求
-
+      // 🆕 优化：使用单帧预览（只加载最小 GOP）而非完整窗口切换
       // 取消之前的挂起请求
       if (windowSwitchThrottleTimer) {
         clearTimeout(windowSwitchThrottleTimer)
       }
 
-      // 记录目标位置，延迟执行窗口切换
-      const targetTimeMs = (globalFrameIndex / frameRate) * 1000
-
-      windowSwitchThrottleTimer = window.setTimeout(() => {
+      windowSwitchThrottleTimer = window.setTimeout(async () => {
         windowSwitchThrottleTimer = null
 
-        // 🔧 再次检查是否仍需要切换（可能鼠标已移回窗口内）
+        // 再次检查是否仍需要预览（可能鼠标已移回窗口内或离开）
+        if (!isPreviewMode) return
         const currentGlobalFrame = Math.floor((previewTimeMs / 1000) * frameRate)
         const currentWindowFrame = currentGlobalFrame - windowStartIndex
         if (currentWindowFrame >= 0 && currentWindowFrame < totalFrames) {
-          // 已经在窗口内了，不需要切换
+          // 已经在窗口内了，直接请求预览
+          if (compositeWorker) {
+            compositeWorker.postMessage({
+              type: 'preview-frame',
+              data: { frameIndex: currentWindowFrame }
+            })
+          }
           return
         }
 
-        // 显示加载指示器
-        previewLoadingStartTime = performance.now()
-        setTimeout(() => {
-          if (isPreviewMode && pendingPreviewWindowSwitch &&
-              performance.now() - previewLoadingStartTime >= PREVIEW_LOADING_DELAY_MS) {
-            isLoadingPreview = true
+        // 🆕 使用单帧 GOP 预览（如果可用）
+        if (fetchSingleFrameGOP && compositeWorker) {
+          console.log('🔍 [Preview] Using single-frame GOP preview for frame:', currentGlobalFrame)
+
+          // 显示加载指示器（延迟）
+          previewLoadingStartTime = performance.now()
+          pendingPreviewWindowSwitch = true
+          setTimeout(() => {
+            if (isPreviewMode && pendingPreviewWindowSwitch &&
+                performance.now() - previewLoadingStartTime >= PREVIEW_LOADING_DELAY_MS) {
+              isLoadingPreview = true
+            }
+          }, PREVIEW_LOADING_DELAY_MS)
+
+          try {
+            const gopData = await fetchSingleFrameGOP(currentGlobalFrame)
+
+            // 检查预览模式是否仍然有效
+            if (!isPreviewMode || !gopData || gopData.chunks.length === 0) {
+              pendingPreviewWindowSwitch = false
+              isLoadingPreview = false
+              return
+            }
+
+            // 发送单帧解码请求到 composite worker
+            compositeWorker.postMessage({
+              type: 'decodeSingleFrame',
+              data: {
+                chunks: gopData.chunks,
+                targetIndexInGOP: gopData.targetIndexInGOP,
+                globalFrameIndex: currentGlobalFrame
+              }
+            })
+          } catch (error) {
+            console.warn('⚠️ [Preview] Single-frame GOP fetch failed:', error)
+            pendingPreviewWindowSwitch = false
+            isLoadingPreview = false
           }
-        }, PREVIEW_LOADING_DELAY_MS)
+        } else {
+          // 🔧 回退：使用完整窗口切换（老方法）
+          const targetTimeMs = (currentGlobalFrame / frameRate) * 1000
 
-        // 触发窗口切换
-        pendingPreviewWindowSwitch = true
+          // 显示加载指示器
+          previewLoadingStartTime = performance.now()
+          setTimeout(() => {
+            if (isPreviewMode && pendingPreviewWindowSwitch &&
+                performance.now() - previewLoadingStartTime >= PREVIEW_LOADING_DELAY_MS) {
+              isLoadingPreview = true
+            }
+          }, PREVIEW_LOADING_DELAY_MS)
 
-        onRequestWindow?.({
-          centerMs: targetTimeMs,
-          beforeMs: 1000,
-          afterMs: 2000
-        })
+          // 触发窗口切换
+          pendingPreviewWindowSwitch = true
+
+          onRequestWindow?.({
+            centerMs: targetTimeMs,
+            beforeMs: 1000,
+            afterMs: 2000
+          })
+        }
       }, WINDOW_SWITCH_DEBOUNCE_MS)  // 使用防抖延迟
     }
   }
