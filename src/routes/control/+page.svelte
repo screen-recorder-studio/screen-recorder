@@ -298,7 +298,7 @@
 
 <div class="fixed inset-0 w-full h-full bg-white font-sans select-none flex flex-col overflow-auto">
   <!-- Header with close button -->
-  <div class="flex-shrink-0 px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+  <div class="flex-shrink-0 px-4 py-2 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
@@ -341,13 +341,13 @@
   <!-- Main content area -->
   <div class="flex flex-col">
     <!-- Recording mode selection -->
-    <div class="flex-shrink-0 p-4">
-      <h2 class="text-sm font-medium text-gray-700 mb-3">{t('control_recordingMode')}</h2>
+    <div class="flex-shrink-0 p-3">
+      <h2 class="text-sm font-medium text-gray-700 mb-2">{t('control_recordingMode')}</h2>
       <div class="grid grid-cols-3 gap-2">
         {#each recordingModes as mode}
           {@const IconComponent = mode.icon}
           <button
-            class="group relative flex flex-col items-center p-3 rounded-lg border-2 transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+            class="group relative flex flex-col items-center p-2 rounded-lg border-2 transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
             class:border-blue-500={selectedMode === mode.id}
             class:bg-blue-50={selectedMode === mode.id}
             class:border-gray-200={selectedMode !== mode.id}
@@ -387,7 +387,7 @@
 
   <!-- Recording status display -->
   {#if isRecording}
-    <div class="px-4 py-3 bg-red-50 border-t border-red-100">
+    <div class="px-3 py-2 bg-red-50 border-t border-red-100">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
           <div class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
@@ -408,7 +408,7 @@
 
   <!-- Preparing status -->
   {#if phase === 'preparing'}
-    <div class="px-4 py-3 bg-orange-50 border-t border-orange-100">
+    <div class="px-3 py-2 bg-orange-50 border-t border-orange-100">
       <div class="flex items-center gap-2">
         <LoaderCircle class="w-4 h-4 text-orange-600 animate-spin" />
         <span class="text-sm font-medium text-orange-700">{t('control_statusPreparing')}</span>
@@ -417,11 +417,11 @@
   {/if}
 
   <!-- Control buttons - fixed at bottom -->
-  <div class="flex-shrink-0 p-4 border-t border-gray-200 bg-gray-50">
+  <div class="flex-shrink-0 p-3 border-t border-gray-200 bg-gray-50">
     <div class="space-y-2">
       <!-- Main control button -->
       <button
-        class="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        class="w-full flex items-center justify-center gap-3 px-4 py-2.5 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
         class:bg-gradient-to-r={phase === 'idle'}
         class:from-blue-500={phase === 'idle'}
         class:to-blue-600={phase === 'idle'}
@@ -474,7 +474,7 @@
 
     <!-- Countdown setting -->
     {#if phase === 'idle' && !isRecording}
-      <div class="flex items-center gap-2 mt-3 p-2 bg-white border border-gray-200 rounded-lg">
+      <div class="flex items-center gap-2 mt-2 p-1.5 bg-white border border-gray-200 rounded-lg">
         <label class="text-xs font-medium text-gray-600 flex items-center gap-1">
           <Clock class="w-3 h-3 text-gray-500" /> {t('control_countdownLabel')}
         </label>
@@ -497,7 +497,7 @@
     {/if}
 
     <!-- Tips -->
-    <div class="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+    <div class="mt-2 p-2 bg-blue-50 rounded-lg border border-blue-200">
       <div class="flex items-start gap-2">
         <CircleAlert class="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
         <div class="text-xs text-blue-700">

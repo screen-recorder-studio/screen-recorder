@@ -351,8 +351,8 @@
 
       <!-- Main Action Area -->
       <section class="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden ring-1 ring-slate-900/5">
-        <div class="p-8 md:p-10">
-          <div class="text-center mb-10">
+        <div class="p-6 md:p-8">
+          <div class="text-center mb-6">
             <h3 class="text-2xl font-bold text-slate-900 mb-2">{t('welcome_tryTitle')}</h3>
             <p class="text-slate-600 mb-2">
               {t('welcome_trySubtitle')}
@@ -362,11 +362,11 @@
             </p>
           </div>
         
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             {#each recordingModes as mode}
               {@const IconComponent = mode.icon}
               <button
-                class="group relative flex flex-col items-center p-6 rounded-2xl border-2 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] outline-none"
+                class="group relative flex flex-col items-center p-4 rounded-2xl border-2 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] outline-none"
                 class:border-blue-500={selectedMode === mode.id}
                 class:bg-blue-50={selectedMode === mode.id && !isRecording}
                 class:shadow-blue-100={selectedMode === mode.id}
@@ -389,17 +389,17 @@
                 {/if}
 
                 <!-- Icon -->
-                <div class="w-16 h-16 mb-4 rounded-2xl flex items-center justify-center transition-colors duration-300"
+                <div class="w-12 h-12 mb-3 rounded-2xl flex items-center justify-center transition-colors duration-300"
                       class:bg-white={true}
                       class:text-blue-600={selectedMode === mode.id}
                       class:shadow-sm={selectedMode === mode.id}
                       class:text-slate-400={selectedMode !== mode.id}
                       class:group-hover:text-blue-500={selectedMode !== mode.id && !isRecording}>
-                  <IconComponent class="w-8 h-8" />
+                  <IconComponent class="w-6 h-6" />
                 </div>
 
                 <!-- Label -->
-                <h4 class="text-lg font-bold mb-2 transition-colors duration-200"
+                <h4 class="text-base font-bold mb-1 transition-colors duration-200"
                     class:text-blue-900={selectedMode === mode.id}
                     class:text-slate-700={selectedMode !== mode.id}
                     class:group-hover:text-blue-800={selectedMode !== mode.id && !isRecording}>
@@ -407,8 +407,8 @@
                 </h4>
                 
                 <!-- Description -->
-                <p class="text-sm text-slate-500 mb-3 text-center leading-snug">{t(mode.descriptionKey)}</p>
-                <div class="mt-auto pt-3 border-t border-slate-200/50 w-full text-center">
+                <p class="text-sm text-slate-500 mb-2 text-center leading-snug">{t(mode.descriptionKey)}</p>
+                <div class="mt-auto pt-2 border-t border-slate-200/50 w-full text-center">
                     <p class="text-[10px] font-medium text-slate-400 uppercase tracking-wide">{t(mode.detailKey)}</p>
                 </div>
               </button>
@@ -419,7 +419,7 @@
           <div class="max-w-md mx-auto space-y-4">
             <!-- Main control button -->
             <button
-              class={`w-full group relative flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-bold text-lg text-white transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-xl hover:shadow-2xl active:scale-[0.98] ${
+              class={`w-full group relative flex items-center justify-center gap-3 px-8 py-3 rounded-2xl font-bold text-lg text-white transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-xl hover:shadow-2xl active:scale-[0.98] ${
                 !isRecording
                   ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 focus:ring-blue-500 shadow-blue-500/30'
                   : 'bg-red-500 hover:bg-red-600 focus:ring-red-500 shadow-red-500/30'
@@ -472,7 +472,7 @@
 
           <!-- Recording status display -->
           {#if isRecording}
-            <div class="mt-8 p-4 bg-orange-50/50 border border-orange-100 rounded-xl max-w-md mx-auto">
+            <div class="mt-6 p-4 bg-orange-50/50 border border-orange-100 rounded-xl max-w-md mx-auto">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
                   <span class="relative flex h-3 w-3">
@@ -489,7 +489,7 @@
               </div>
             </div>
           {:else}
-            <div class="mt-8 p-4 bg-slate-50 border border-slate-100 rounded-xl max-w-md mx-auto">
+            <div class="mt-6 p-4 bg-slate-50 border border-slate-100 rounded-xl max-w-md mx-auto">
               <div class="flex items-start gap-4">
                 <div class="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
                   <Play class="w-5 h-5 ml-0.5" />
