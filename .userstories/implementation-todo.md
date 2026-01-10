@@ -1,6 +1,6 @@
 # Screen Recorder Studio - 新功能实现 TODO
 
-> **文档说明**: 本文档包含三个新用户故事的详细实现计划，包括需求背景、技术约束、业务路径和 AI 提示词。
+> **文档说明**: 本文档包含四个新用户故事的详细实现计划，包括需求背景、技术约束、业务路径和 AI 提示词。
 
 > **最后更新**: 2026-01-08 | **技术评审状态**: ✅ 已优化
 
@@ -12,9 +12,10 @@
 2. [US-1.6: 摄像头 + 语音录制](#us-16-摄像头--语音录制)
 3. [US-1.7: 页面标注工具](#us-17-页面标注工具)
 4. [US-1.8: 鼠标轨迹录制](#us-18-鼠标轨迹录制)
-5. [📊 总结与工作量估算](#📊-总结)
-6. [F-7: Veo 虚拟主播集成](#🎬-f-7-veo-虚拟主播集成未来功能)
-7. [F-6 Phase 1: 基础字幕功能](#🎤-f-6-phase-1-基础字幕功能quick-win)
+5. [US-1.9: Web 页面录制（非扩展）](#us-19-web-页面录制非扩展)
+6. [📊 总结与工作量估算](#📊-总结)
+7. [F-7: Veo 虚拟主播集成](#🎬-f-7-veo-虚拟主播集成未来功能)
+8. [F-6 Phase 1: 基础字幕功能](#🎤-f-6-phase-1-基础字幕功能quick-win)
 
 ---
 
@@ -2247,15 +2248,174 @@ export const mouseCursorStore = createMouseCursorStore()
 
 ---
 
+## US-1.9: Web 页面录制（非扩展）
+
+### 📝 用户故事
+
+> 作为一名**跨平台用户（Windows/macOS/Linux）**，我希望在不安装 Chrome 扩展的情况下，直接在 Web 页面中开始录制（屏幕/窗口/标签页），并且将录制数据写入**当前域名对应的 OPFS**，以便后续在同一套 Studio 工作流中完成预览、编辑和导出。
+
+### 🎯 需求背景
+
+- **为什么要做 Web 版**:
+  - 覆盖不同操作系统与不同部署环境（不依赖扩展安装/分发）
+  - 企业环境/受管设备可能无法安装扩展（只是其中一类典型场景）
+  - 需要“打开网页即可录制”的低门槛入口
+  - 复用现有 OPFS → Studio → Export 的核心技术优势
+
+- **核心目标（MVP）**:
+  - 在 Web 页面完成“开始录制 → 停止录制 → 生成一条 OPFS 录制记录”
+  - 写入格式与现有一致（`rec_<id>/data.bin` + `index.jsonl` + `meta.json`）
+  - Drive/Studio/Export **无需为 Web 录制做额外适配**（同一 origin 内）
+
+### ✅ 范围与非目标
+
+**范围（必须）**
+- ✅ Web 页面可启动录制（基于 `navigator.mediaDevices.getDisplayMedia()`）
+- ✅ 编码后实时写入该域名 OPFS（复用现有 OPFS Writer Worker 协议：`init/append/finalize`）
+- ✅ 录制完成后可在现有 Drive/Studio 页面读到并编辑/导出
+- ✅ Web 页面支持多语言，并允许通过 URL 参数控制语言（例如 `/web-record?l=en`）
+
+**非目标（本故事不做）**
+- ❌ 不要求替换/改造现有扩展录制链路（保证扩展稳定运行）
+- ❌ 不做 Web 与扩展之间的录制互通/迁移（不同 origin 的 OPFS 天然隔离）
+- ❌ 不强制实现与扩展完全一致的 UI/功能（例如倒计时、跨页面状态同步、徽标等）
+
+### 🔧 技术约束（关键）
+
+#### **Origin / OPFS 隔离**
+- Web 录制写入的是**当前站点（origin）的 OPFS**。
+- Chrome 扩展写入的是 `chrome-extension://<id>` 的 OPFS。
+- 两者**不可互读**，属于浏览器安全模型的正常行为。
+
+#### **Web 端录制能力限制**
+- Web 页面环境可以调用 `getDisplayMedia()`，但**无法像扩展一样可靠地“强制 Tab/Window/Screen 模式”**（最终由浏览器 picker 与权限决定）。
+- 需要 HTTPS 或 localhost（安全上下文）才能正常获取媒体与使用 OPFS。
+
+#### **保持扩展端最小改动**
+- Web 录制实现应尽量复用 `src/lib/workers/*` 的通用 worker（例如 `opfs-writer-worker.ts`、`webcodecs-worker.ts`）。
+- 不应改动扩展的 Background/Offscreen 消息协议与状态机。
+
+#### **多语言（Web 端）**
+- 当前仓库的 i18n 工具（`$lib/utils/i18n`）在扩展环境可走 `chrome.i18n.getMessage`，但 Web 环境没有 `chrome.i18n`。
+- 因此 Web 录制页需要：
+  - 使用与扩展一致的 key（便于复用文案体系），并为 Web 环境提供 `fallbackMessages`。
+  - 通过 URL 查询参数 `l` 控制语言，例如：`/web-record?l=en`。
+  - 未提供 `l` 时，回退到浏览器语言（例如 `navigator.language`）或默认语言（建议 `zh`）。
+
+### 📂 可能修改的业务路径和文件（建议）
+
+#### **新增入口页面（Web 版）**
+- 新增一个 Web 专用录制页面路由（参考 `src/routes/control/+page.svelte` 的 UI 结构，但不要依赖 `chrome.*` API）。
+  - 建议：`src/routes/web-record/+page.svelte`（满足 `/web-record?l=en` 的入口约定；与扩展 control 分离，避免误用 `chrome.runtime`）
+
+#### **复用的通用 Worker**
+- `src/lib/workers/webcodecs-worker.ts`
+  - 负责 WebCodecs 编码，向主线程发送 `EncodedVideoChunk` 对应的 `ArrayBuffer`/时间戳信息
+- `src/lib/workers/opfs-writer-worker.ts`
+  - 负责在 Worker 内写入 OPFS：`data.bin` + `index.jsonl` + `meta.json`
+  - 协议：`{type:'init'}` → 多次 `{type:'append'}` → `{type:'finalize'}`
+
+> 参考实现可对照：`src/routes/sidepanel/+page.svelte` 里已有初始化 OPFS writer 的用法（用于开发/验证）。
+
+### 🧩 数据与协议（必须与现有一致）
+
+**目录结构**
+```
+rec_<id>/
+├── data.bin
+├── index.jsonl
+└── meta.json
+```
+
+**时间戳单位**
+- 全链路一律使用微秒（us）：
+  - `EncodedVideoChunk.timestamp` / `VideoFrame.timestamp` / `index.jsonl.timestamp`
+  - 若来源为 `performance.now()`（ms），在边界处统一转换：`us = ms * 1000`
+
+### 实现步骤（MVP）
+
+1. **新增 Web 录制页面**：提供开始/停止按钮与基础状态显示（录制中/错误）。
+  - 解析 `l` 参数：`const lang = new URLSearchParams(location.search).get('l')`。
+  - 将 `lang` 写入本页的语言选择逻辑（优先级：URL 参数 → 本地持久化 → 浏览器语言 → 默认语言）。
+2. **初始化 OPFS Writer Worker**：开始录制时生成 `id`（如时间戳/uuid），发送 `init` 并等待 `ready`。
+3. **启动 getDisplayMedia**：获取 `MediaStream`（仅视频即可，音频后续再扩展）。
+4. **启动编码 Worker**：将 `VideoFrame` 或等价帧输入送入 `webcodecs-worker` 编码。
+5. **写入 OPFS**：收到编码结果后，将 `buffer/timestamp/chunkType/isKeyframe/...` 转发给 `opfs-writer-worker` 的 `append`。
+6. **停止与 finalize**：停止捕获与编码，调用 OPFS writer `finalize`，确保 `meta.json.completed=true`。
+7. **验收联调**：停止后跳转/提示用户进入 Drive/Studio，确认能读取并预览/导出。
+
+### 验证标准（AC）
+
+- ✅ 在 Web 页面点击开始后，能弹出浏览器捕获选择器并成功开始录制
+- ✅ 停止录制后，OPFS 中生成 `rec_<id>/data.bin`、`index.jsonl`、`meta.json` 且 `meta.json.completed=true`
+- ✅ 现有读取端（Drive/Studio/Export）在同一站点 origin 下能直接识别该条录制并完成预览/编辑/导出
+- ✅ 访问 `/web-record?l=en` 时页面文案切换为英文（或对应语言）；不带 `l` 时使用默认/浏览器语言回退
+- ✅ 权限拒绝、API 不支持、非安全上下文时给出明确报错，不会卡死在“录制中”状态
+
+### 🤖 AI 提示词
+
+#### **提示词 1: Web 录制页面（MVP，最小改动）**
+
+```
+# 任务
+为 Screen Recorder Studio 实现“US-1.9 Web 页面录制（非扩展）”的最小可用版本：
+在 Web 页面直接录制（getDisplayMedia），编码后写入当前站点 OPFS，并复用现有 Drive/Studio/Export 读取、编辑、导出能力。
+
+## 强约束（必须遵守）
+1) 扩展稳定性优先：不要改造现有 Chrome 扩展录制链路（src/extensions/background.ts / offscreen-main.ts 等的状态机与消息协议尽量不动）。
+  - Web 录制作为新入口实现，功能独立，不影响扩展可用性。
+2) OPFS / origin 隔离：Web 录制写入的是当前站点 origin 的 OPFS；与 chrome-extension:// 的 OPFS 互相隔离，不能互读。
+  - 不要尝试做“Web 与扩展互通/迁移”。
+3) 必须复用现有写入格式与协议：
+  - 目录结构：rec_<id>/data.bin + index.jsonl + meta.json
+  - Writer 协议：opfs-writer-worker 的 init/append/finalize（不要自创新的消息名与文件名）。
+4) 时间戳单位统一为微秒 us：
+  - EncodedVideoChunk.timestamp / VideoFrame.timestamp / index.jsonl.timestamp 全链路保持一致。
+  - 如果用 performance.now()（ms）作为来源，需要在边界处转换：us = ms * 1000。
+5) 多语言（Web）：页面必须支持多语言，并可通过 URL 参数控制，例如 /web-record?l=en。
+  - 仓库现有 $lib/utils/i18n 在 Web 环境没有 chrome.i18n，需要提供 fallbackMessages。
+  - **i18n 本地化加载**:
+    - 页面加载时解析 URL 参数 `?l=en` (默认 `en`)。
+    - 使用 `fetch('/_locales/' + lang + '/messages.json')` 获取语言包。
+    - **格式转换**: Chrome 语言包结构为 `{ "key": { "message": "Text" } }`，必须转换为扁平对象 `{ "key": "Text" }` 后，传给 `_t` 函数的 `fallbackMessages` 参数。
+6) 禁止硬编码行号：用搜索关键字/符号定位。
+
+## 现有可复用实现（请先搜索阅读再改）
+- OPFS Writer Worker：src/lib/workers/opfs-writer-worker.ts（init/append/finalize、meta.json/index.jsonl/data.bin 写入）
+- WebCodecs Worker：src/lib/workers/webcodecs-worker.ts（编码输出如何组织、timestamp 语义）
+- 录制入口 UI 参考：src/routes/control/+page.svelte（但 Web 版不能依赖 chrome.* API）
+- i18n 工具：src/lib/utils/i18n.ts（_t(key, subs, fallbackMessages)）
+
+## 实现范围（MVP）
+- 新增 Web 路由页面：src/routes/web-record/+page.svelte
+  - 解析查询参数 l（例如 en/zh）；未提供时回退到浏览器语言或默认语言。
+  - UI 仅需要：开始/停止 + 基础状态（录制中/错误）。
+- 录制：navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
+- 编码：复用 webcodecs-worker（不要把编码放主线程）
+- 写入：复用 opfs-writer-worker（写入 rec_<id>/...；finalize 写 completed=true）
+
+## 验收标准（必须达成）
+- ✅ /web-record 页面可以开始与停止录制
+- ✅ 停止后 OPFS 里生成 rec_<id>/data.bin、index.jsonl、meta.json（completed=true）
+- ✅ Drive/Studio/Export 在同一站点 origin 下可以识别并正常预览/编辑/导出该条录制
+- ✅ /web-record?l=en 可切英文；不带 l 时有合理回退
+- ✅ 权限拒绝/API 不支持/非安全上下文时给出清晰错误提示，不会卡死
+
+请先输出：你将修改/新增哪些文件、为什么；再给出补丁与验证步骤。
+```
+
+---
+
 ## 📊 总结
 
-### **三个用户故事的优先级和工作量**
+### **四个用户故事的优先级和工作量**
 
 | 用户故事 | 优先级 | 预计工作量 | 依赖关系 | 实现复杂度 | 风险等级 |
 |---------|--------|-----------|---------|-----------|---------|
 | **US-1.6: 摄像头 + 语音录制** | P1 | 28-40 天 | 无 | 高 | 🟡 中 |
 | **US-1.7: 页面标注工具** | P2 | 3-5 天 | 无 | 低（简化后） | 🟢 低 |
 | **US-1.8: 鼠标轨迹录制** | P2 | 10-15 天 | 无 | 中 | 🟡 中 |
+| **US-1.9: Web 页面录制（非扩展）** | P1 | 3-7 天 | 无 | 中 | 🟡 中 |
 
 ### **工作量详细分解**
 
