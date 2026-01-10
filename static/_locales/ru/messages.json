@@ -1,341 +1,1125 @@
 {
-  "appName": { "message": "Screen Recorder Studio" },
-  "appDesc": { "message": "Профессиональное расширение Chrome для записи вкладок, окон, экрана, областей и элементов" },
-  "action_defaultTitle": { "message": "Открыть панель записи" },
-
-  "control_headerTitle": { "message": "Запись экрана" },
-  "control_headerDesc": { "message": "Выберите режим и начните запись" },
-  "control_openDriveTooltip": { "message": "Открыть менеджер файлов" },
-  "control_closePanelTooltip": { "message": "Закрыть панель управления" },
-  "control_recordingMode": { "message": "Режим записи" },
-  "control_modeTab": { "message": "Вкладка" },
-  "control_modeTabDesc": { "message": "Запись текущей вкладки" },
-  "control_modeWindow": { "message": "Окно" },
-  "control_modeWindowDesc": { "message": "Запись всего окна" },
-  "control_modeScreen": { "message": "Экран" },
-  "control_modeScreenDesc": { "message": "Запись всего экрана" },
-  "control_statusRecording": { "message": "Идет запись" },
-  "control_statusPaused": { "message": "Запись на паузе" },
-  "control_statusPreparing": { "message": "Подготовка к записи..." },
-  "control_btnStart": { "message": "Начать запись" },
-  "control_btnStop": { "message": "Остановить" },
-  "control_btnPause": { "message": "Пауза" },
-  "control_btnResume": { "message": "Продолжить" },
-  "control_btnPreparing": { "message": "Подготовка..." },
-  "control_btnStarting": { "message": "Запуск через $SECONDS$...", "placeholders": { "seconds": { "content": "$1" } } },
-  "control_countdownLabel": { "message": "Таймер" },
-  "control_tipsTitle": { "message": "Советы по записи:" },
-  "control_tipsSelectMode": { "message": "Выбран режим $MODE$, нажмите «Начать запись» для запуска.", "placeholders": { "mode": { "content": "$1" } } },
-  "control_tipsPreparing": { "message": "Ожидание выбора экрана..." },
-  "control_tipsCountdown": { "message": "Приготовьтесь! Запись начнется через $SECONDS$ сек.", "placeholders": { "seconds": { "content": "$1" } } },
-  "control_tipsPaused": { "message": "Запись приостановлена, нажмите «Продолжить» для возобновления." },
-  "control_tipsRecording": { "message": "Идет запись, нажмите «Пауза» при необходимости." },
-  "control_overlayRecordingStarts": { "message": "Запись скоро начнется..." },
-
-  "drive_pageTitle": { "message": "Записи - Screen Recorder" },
-  "drive_headerTitle": { "message": "Менеджер записей" },
-  "drive_errorSupport": { "message": "Ваш браузер не поддерживает хранилище OPFS" },
-  "drive_errorMetaNotFound": { "message": "Файл meta.json не найден" },
-  "drive_errorEmpty": { "message": "Файл записи пуст" },
-  "drive_errorMetadata": { "message": "Не удалось прочитать метаданные" },
-  "drive_errorDataSize": { "message": "Не удалось получить размер файла" },
-  "drive_recordingNamePrefix": { "message": "Запись экрана" },
-  "drive_logDeleted": { "message": "Запись $ID$ удалена", "placeholders": { "id": { "content": "$1" } } },
-  "drive_errorDelete": { "message": "Ошибка удаления: $ERROR$", "placeholders": { "error": { "content": "$1" } } },
-  "drive_logBatchDelete": { "message": "Успешно удалено $COUNT$ записей", "placeholders": { "count": { "content": "$1" } } },
-  "drive_errorLoad": { "message": "Произошла ошибка при загрузке записей" },
-  "drive_errorLoadPrefix": { "message": "Ошибка загрузки:" },
-
-  "studio_pageTitle": { "message": "Screen Recording Studio" },
-  "studio_headerTitle": { "message": "Screen Recorder Studio" },
-  "studio_githubTooltip": { "message": "Посмотреть исходный код на GitHub" },
-  "studio_githubText": { "message": "GitHub" },
-  "studio_feedbackTooltip": { "message": "Сообщить об ошибке или предложить функцию" },
-  "studio_feedbackText": { "message": "Отзыв" },
-  "studio_helpTooltip": { "message": "Помощь и документация" },
-  "studio_helpText": { "message": "Помощь" },
-  "studio_driveTooltip": { "message": "Открыть менеджер файлов" },
-  "studio_driveText": { "message": "Файлы" },
-  "studio_fullscreenEnterTooltip": { "message": "Полноэкранный режим" },
-  "studio_fullscreenExitTooltip": { "message": "Выйти из полноэкранного режима" },
-  "studio_fullscreenEnterText": { "message": "Экран" },
-  "studio_fullscreenExitText": { "message": "Выход" },
-
-  "bg_title": { "message": "Настройки фона" },
-  "bg_tab_wallpaper": { "message": "Обои" },
-  "bg_tab_gradient": { "message": "Градиент" },
-  "bg_tab_solid": { "message": "Цвет" },
-  "bg_tab_image": { "message": "Фото" },
-
-  "radius_title": { "message": "Скругление углов" },
-  "radius_none": { "message": "Нет" },
-  "radius_small": { "message": "Малое" },
-  "radius_medium": { "message": "Среднее" },
-  "radius_large": { "message": "Большое" },
-  "radius_xl": { "message": "Макс." },
-
-  "padding_title": { "message": "Отступы (Padding)" },
-  "padding_none": { "message": "Нет" },
-  "padding_small": { "message": "Малые" },
-  "padding_medium": { "message": "Средние" },
-  "padding_large": { "message": "Большие" },
-  "padding_xl": { "message": "Макс." },
-
-  "ratio_yt": { "message": "YouTube Гориз." },
-  "ratio_yt_desc": { "message": "YouTube, Bilibili и др." },
-  "ratio_sq": { "message": "Instagram Квадрат" },
-  "ratio_sq_desc": { "message": "Посты Instagram" },
-  "ratio_tiktok": { "message": "TikTok Верт." },
-  "ratio_tiktok_desc": { "message": "TikTok, Reels и др." },
-  "ratio_story": { "message": "Instagram Story" },
-  "ratio_story_desc": { "message": "Stories, Xiaohongshu" },
-
-  "shadow_title": { "message": "Тень видео" },
-  "shadow_preset_title": { "message": "Готовые эффекты" },
-  "shadow_custom_title": { "message": "Настройка параметров" },
-  "shadow_light": { "message": "Легкая" },
-  "shadow_standard": { "message": "Стандарт" },
-  "shadow_deep": { "message": "Глубокая" },
-  "shadow_distant": { "message": "Дальняя" },
-  "shadow_offset_x": { "message": "Смещение X" },
-  "shadow_offset_y": { "message": "Смещение Y" },
-  "shadow_blur": { "message": "Размытие" },
-  "shadow_color": { "message": "Цвет" },
-  "shadow_opacity": { "message": "Прозрачность" },
-  "shadow_empty_state": { "message": "Включите переключатель для настройки теней" },
-
-  "color_tab_basic": { "message": "Базовые" },
-  "color_tab_light": { "message": "Светлые" },
-  "color_tab_business": { "message": "Бизнес" },
-  "color_tab_creative": { "message": "Творчество" },
-  "color_custom": { "message": "Свой:" },
-
-  "gradient_tab_linear": { "message": "Линейный" },
-  "gradient_tab_radial": { "message": "Радиальный" },
-  "gradient_tab_conic": { "message": "Конический" },
-  "gradient_tab_multi": { "message": "Мульти" },
-  "gradient_current": { "message": "Текущий:" },
-  "gradient_select_hint": { "message": "Выберите градиент" },
-  "gradient_colors_suffix": { "message": "цв." },
-
-  "wallpaper_tab_abstract": { "message": "Абстракция" },
-  "wallpaper_tab_minimal": { "message": "Минимализм" },
-  "wallpaper_tab_nature": { "message": "Природа" },
-  "wallpaper_tab_business": { "message": "Бизнес" },
-  "wallpaper_tab_tech": { "message": "Техно" },
-  "wallpaper_error": { "message": "Ошибка загрузки обоев" },
-  "wallpaper_stats": { "message": "$COUNT$ обоев в этой категории", "placeholders": { "count": { "content": "$1" } } },
-  "wallpaper_total": { "message": "Всего $TOTAL$", "placeholders": { "total": { "content": "$1" } } },
-
-  "upload_processing": { "message": "Обработка..." },
-  "upload_drop_hint": { "message": "Кликните или перетащите фото" },
-  "upload_format_hint": { "message": "JPEG, PNG, WebP, GIF · Макс 5МБ" },
-  "upload_error_select": { "message": "Пожалуйста, выберите изображение" },
-  "upload_error_failed": { "message": "Ошибка загрузки" },
-
-  "drive_delete_selected_btn": { "message": "Удалить выбранные ($COUNT$)", "placeholders": { "count": { "content": "$1" } } },
-  "drive_clear_selection": { "message": "Снять выделение" },
-  "drive_refresh": { "message": "Обновить" },
-  "drive_error_title": { "message": "Ошибка" },
-  "drive_close_error": { "message": "Закрыть" },
-  "drive_loading": { "message": "Загрузка записей..." },
-  "drive_empty_title": { "message": "Записей пока нет" },
-  "drive_empty_desc1": { "message": "У вас еще нет сохраненных записей экрана." },
-  "drive_empty_desc2": { "message": "Начните запись, и она появится здесь." },
-  "drive_start_recording_btn": { "message": "Начать запись" },
-  "drive_select_all": { "message": "Выбрать все ($COUNT$)", "placeholders": { "count": { "content": "$1" } } },
-  "drive_sort_hint": { "message": "Сортировка: новые сверху" },
-  "drive_confirm_delete_title": { "message": "Подтверждение удаления" },
-  "drive_confirm_delete_selected": { "message": "Вы уверены, что хотите удалить $COUNT$ выбраных записей?", "placeholders": { "count": { "content": "$1" } } },
-  "drive_confirm_delete_single": { "message": "Вы уверены, что хотите удалить эту запись?" },
-  "drive_action_undone": { "message": "Это действие нельзя отменить." },
-  "drive_cancel": { "message": "Отмена" },
-  "drive_delete": { "message": "Удалить" },
-
-  "card_status_completed": { "message": "Готово" },
-  "card_status_incomplete": { "message": "Не завершено" },
-  "card_label_created": { "message": "Создано:" },
-  "card_label_status": { "message": "Статус:" },
-  "card_label_codec": { "message": "Кодек:" },
-  "card_label_resolution": { "message": "Разрешение:" },
-  "card_label_fps": { "message": "FPS:" },
-  "card_label_size": { "message": "Размер:" },
-  "card_label_frames": { "message": "Всего кадров:" },
-  "card_incomplete_title": { "message": "Запись прервана" },
-  "card_incomplete_desc": { "message": "Видеоданные отсутствуют" },
-  "card_preview_error": { "message": "Превью недоступно" },
-  "card_preview_loading": { "message": "Создание превью..." },
-  "card_btn_edit": { "message": "Правка" },
-  "card_btn_delete": { "message": "Удалить" },
-  "card_edit_disabled_tooltip": { "message": "Нельзя редактировать прерванную запись" },
-  "card_edit_tooltip": { "message": "Редактировать запись" },
-  "card_preview_load_error": { "message": "Ошибка загрузки: $ERROR$", "placeholders": { "error": { "content": "$1" } } },
-  "card_date_today": { "message": "Сегодня $TIME$", "placeholders": { "time": { "content": "$1" } } },
-  "card_date_yesterday": { "message": "Вчера $TIME$", "placeholders": { "time": { "content": "$1" } } },
-  "card_date_days_ago": { "message": "$DAYS$ дн. назад", "placeholders": { "days": { "content": "$1" } } },
-
-  "export_panel_tier_free": { "message": "БЕСПЛАТНО" },
-  "export_panel_tier_pro": { "message": "PRO" },
-  "export_panel_tier_trial": { "message": "PRO ТЕСТ" },
-  "export_panel_btn": { "message": "Экспорт" },
-  "export_panel_tooltip_incomplete": { "message": "Завершите запись для экспорта" },
-  "export_panel_tooltip_no_data": { "message": "Нет видеоданных" },
-  "export_panel_btn_exporting": { "message": "Экспорт..." },
-
-  "export_dialog_title": { "message": "Экспорт видео" },
-  "export_source_res": { "message": "Разрешение" },
-  "export_source_codec": { "message": "Кодек" },
-  "export_source_duration": { "message": "Длительность" },
-  "export_source_frames": { "message": "Кадры" },
-  "export_badge_bg": { "message": "С фоном" },
-  "export_badge_trim": { "message": "Обрезано" },
-  "export_format_mp4": { "message": "MP4" },
-  "export_format_webm": { "message": "WebM" },
-  "export_format_gif": { "message": "GIF" },
-  "export_quality_title": { "message": "Настройки качества" },
-  "export_quality_draft": { "message": "Черновик" },
-  "export_quality_draft_desc": { "message": "Быстро, низкое качество" },
-  "export_quality_balanced": { "message": "Баланс" },
-  "export_quality_balanced_desc": { "message": "Хорошее качество и скорость" },
-  "export_quality_high": { "message": "Высокое" },
-  "export_quality_high_desc": { "message": "Высокое качество, медленнее" },
-  "export_quality_best": { "message": "Лучшее" },
-  "export_quality_best_desc": { "message": "Макс. качество, очень медленно" },
-  "export_label_resolution": { "message": "Разрешение" },
-  "export_res_source": { "message": "Как в источнике ($WIDTH$×$HEIGHT$)", "placeholders": { "width": { "content": "$1" }, "height": { "content": "$2" } } },
-  "export_label_framerate": { "message": "Частота кадров" },
-  "export_fps_source": { "message": "$FPS$ fps (Источник)", "placeholders": { "fps": { "content": "$1" } } },
-  "export_label_bitrate": { "message": "Битрейт" },
-  "export_bitrate_auto": { "message": "Авто" },
-  "export_bitrate_manual": { "message": "Вручную" },
-  "export_bitrate_auto_hint": { "message": "Авто: $RATE$ Mbps (зависит от разр.)", "placeholders": { "rate": { "content": "$1" } } },
-  "export_label_speed": { "message": "Скорость кодирования" },
-  "export_speed_fastest": { "message": "Ультра" },
-  "export_speed_fast": { "message": "Быстро" },
-  "export_speed_balanced": { "message": "Баланс" },
-  "export_speed_slow": { "message": "Медленно" },
-  "export_speed_slowest": { "message": "Очень медленно" },
-  "export_est_output": { "message": "Ожидаемый файл" },
-  "export_est_size": { "message": "Ожид. размер" },
-  "export_label_gif_quality": { "message": "Качество GIF" },
-  "export_gif_best": { "message": "Лучшее (Медленно)" },
-  "export_gif_high": { "message": "Высокое" },
-  "export_gif_good": { "message": "Среднее (Стандарт)" },
-  "export_gif_fast": { "message": "Быстро" },
-  "export_gif_fastest": { "message": "Очень быстро" },
-  "export_label_scale": { "message": "Масштаб" },
-  "export_scale_original": { "message": "100% (Оригинал)" },
-  "export_label_workers": { "message": "Потоки обработки" },
-  "export_worker_singular": { "message": "$COUNT$ поток", "placeholders": { "count": { "content": "$1" } } },
-  "export_worker_plural": { "message": "$COUNT$ потоков", "placeholders": { "count": { "content": "$1" } } },
-  "export_label_dither": { "message": "Дизеринг" },
-  "export_dither_none": { "message": "Нет" },
-  "export_btn_cancel": { "message": "Отмена" },
-  "export_btn_export_mp4": { "message": "Экспорт в MP4" },
-  "export_btn_export_webm": { "message": "Экспорт в WebM" },
-  "export_btn_export_gif": { "message": "Экспорт в GIF" },
-  "export_progress_preparing": { "message": "Подготовка..." },
-  "export_progress_encoding": { "message": "Кодирование кадров..." },
-  "export_progress_muxing": { "message": "Сборка файла..." },
-  "export_progress_finalizing": { "message": "Завершение..." },
-  "export_progress_frame": { "message": "Кадр $CURRENT$ / $TOTAL$", "placeholders": { "current": { "content": "$1" }, "total": { "content": "$2" } } },
-  "export_progress_time": { "message": "Осталось ~$SECONDS$ сек.", "placeholders": { "seconds": { "content": "$1" } } },
-  "export_progress_hint": { "message": "Пожалуйста, подождите, пока видео экспортируется..." },
-
-  "wallpaper_cat_abstract_name": { "message": "Абстракция" },
-  "wallpaper_cat_abstract_desc": { "message": "Абстрактные узоры и современный дизайн" },
-  "wallpaper_cat_minimal_name": { "message": "Минимализм" },
-  "wallpaper_cat_minimal_desc": { "message": "Чистая геометрия и строгая эстетика" },
-  "wallpaper_cat_nature_name": { "message": "Природа" },
-  "wallpaper_cat_nature_desc": { "message": "Природные пейзажи и текстуры растений" },
-  "wallpaper_cat_business_name": { "message": "Бизнес" },
-  "wallpaper_cat_business_desc": { "message": "Деловая атмосфера и корпоративный стиль" },
-  "wallpaper_cat_tech_name": { "message": "Технологии" },
-  "wallpaper_cat_tech_desc": { "message": "Техно-элементы и цифровое искусство" },
-
-  "wallpaper_gradient_abstract_1_name": { "message": "Абстрактный градиент" },
-  "wallpaper_gradient_abstract_1_desc": { "message": "Современный абстрактный фон" },
-  "wallpaper_geometric_pattern_1_name": { "message": "Геометрия" },
-  "wallpaper_geometric_pattern_1_desc": { "message": "Чистый геометрический узор" },
-  "wallpaper_abstract_2425706_name": { "message": "Абстрактные цвета" },
-  "wallpaper_abstract_2425706_desc": { "message": "Яркая абстрактная текстура" },
-  "wallpaper_abstract_2512412_name": { "message": "Цветные потоки" },
-  "wallpaper_abstract_2512412_desc": { "message": "Фон с текучими цветами" },
-  "wallpaper_abstract_6297317_name": { "message": "Абстрактные формы" },
-  "wallpaper_abstract_6297317_desc": { "message": "Композиция из цветовых блоков" },
-  "wallpaper_ai_generated_9083808_name": { "message": "Искусство ИИ" },
-  "wallpaper_ai_generated_9083808_desc": { "message": "Футуристичный фон, созданный ИИ" },
-  "wallpaper_beach_4938036_name": { "message": "Пляж" },
-  "wallpaper_beach_4938036_desc": { "message": "Свежий морской пейзаж" },
-  "wallpaper_bulb_5665770_name": { "message": "Креативная лампа" },
-  "wallpaper_bulb_5665770_desc": { "message": "Символ идей и вдохновения" },
-  "wallpaper_cpu_8892400_name": { "message": "Процессор" },
-  "wallpaper_cpu_8892400_desc": { "message": "Чип и печатная плата" },
-  "wallpaper_feather_5488401_name": { "message": "Перо макро" },
-  "wallpaper_feather_5488401_desc": { "message": "Мягкая текстура пера" },
-  "wallpaper_fractal_8902060_name": { "message": "Фрактал" },
-  "wallpaper_fractal_8902060_desc": { "message": "Блестящие фрактальные узоры" },
-  "wallpaper_orange_3036097_name": { "message": "Срез апельсина" },
-  "wallpaper_orange_3036097_desc": { "message": "Сочный срез апельсина" },
-  "wallpaper_orange_6508617_name": { "message": "Оранжевый фон" },
-  "wallpaper_orange_6508617_desc": { "message": "Энергичный оранжевый фон" },
-  "wallpaper_polar_lights_5858656_name": { "message": "Сияние" },
-  "wallpaper_polar_lights_5858656_desc": { "message": "Сказочное северное сияние" },
-  "wallpaper_spiral_3112405_name": { "message": "Спираль" },
-  "wallpaper_spiral_3112405_desc": { "message": "Динамичная спиральная текстура" },
-  "wallpaper_steelwool_458842_name": { "message": "Светопись" },
-  "wallpaper_steelwool_458842_desc": { "message": "Эффект рисования светом" },
-  "wallpaper_swimming_pool_8306716_name": { "message": "Бассейн" },
-  "wallpaper_swimming_pool_8306716_desc": { "message": "Прохладная рябь воды" },
-  "wallpaper_abstract_2426502_name": { "message": "Абстракция" },
-  "wallpaper_abstract_2426502_desc": { "message": "Современный абстрактный дизайн" },
-  "wallpaper_camera_1248682_name": { "message": "Камера" },
-  "wallpaper_camera_1248682_desc": { "message": "Камера макро в техно-стиле" },
-  "wallpaper_circle_5090539_name": { "message": "Круги" },
-  "wallpaper_circle_5090539_desc": { "message": "Чистый геометрический узор" },
-  "wallpaper_feather_7009025_name": { "message": "Текстура пера" },
-  "wallpaper_feather_7009025_desc": { "message": "Нежные природные узоры" },
-  "wallpaper_fiber_4814456_name": { "message": "Оптоволокно" },
-  "wallpaper_fiber_4814456_desc": { "message": "Абстрактные техно-линии" },
-  "wallpaper_frost_6702335_name": { "message": "Иней" },
-  "wallpaper_frost_6702335_desc": { "message": "Холодный узор из кристаллов льда" },
-  "wallpaper_leaves_4291098_name": { "message": "Листья" },
-  "wallpaper_leaves_4291098_desc": { "message": "Натуральная текстура листьев" },
-  "wallpaper_light_1834289_name": { "message": "Боке" },
-  "wallpaper_light_1834289_desc": { "message": "Атмосферный эффект боке" },
-  "wallpaper_light_942231_name": { "message": "Световые полосы" },
-  "wallpaper_light_942231_desc": { "message": "Динамичные линии света" },
-  "wallpaper_luck_4397584_name": { "message": "Клевер" },
-  "wallpaper_luck_4397584_desc": { "message": "Свежий четырехлистный клевер" },
-  "wallpaper_waterdrop_2256201_name": { "message": "Капля воды" },
-  "wallpaper_waterdrop_2256201_desc": { "message": "Макро-текстура капли воды" },
-  "welcome_pageTitle": { "message": "Добро пожаловать в Screen Recorder Studio" },
-  "welcome_headerSubtitle": { "message": "Профессиональный инструмент записи в браузере" },
-  "welcome_installSuccess": { "message": "Установка завершена" },
-  "welcome_headline": { "message": "Добро пожаловать в Screen Recorder Studio! 🎉" },
-  "welcome_subheadline": { "message": "Готовы создать первую запись? На это уйдут считанные секунды!" },
-  "welcome_tryTitle": { "message": "Попробовать сейчас! 🚀" },
-  "welcome_trySubtitle": { "message": "Выберите режим записи и нажмите кнопку ниже" },
-  "welcome_tryFeatures": { "message": "Без настройки • $SECONDS$‑секундный отсчёт • Профессиональное качество", "placeholders": { "seconds": { "content": "$1" } } },
-  "welcome_modeTabDetail": { "message": "Идеально для веб‑демо и обучающих материалов" },
-  "welcome_modeWindowDetail": { "message": "Включает адресную строку и панель инструментов" },
-  "welcome_modeScreenDetail": { "message": "Лучше всего для работы между приложениями" },
-  "welcome_statusRecording": { "message": "Запись идёт" },
-  "welcome_modeLabel": { "message": "Режим" },
-  "welcome_readyTitle": { "message": "🎬 Всё готово!" },
-  "welcome_readyDesc": { "message": "Вы выбрали режим $MODE$. Нажмите синюю кнопку сверху, чтобы начать первую запись!", "placeholders": { "mode": { "content": "$1" } } },
-  "welcome_readyTip": { "message": "$SECONDS$‑секундный отсчёт перед началом", "placeholders": { "seconds": { "content": "$1" } } },
-  "welcome_howTitle": { "message": "Как это работает" },
-  "welcome_howDesc": { "message": "Три простых шага, чтобы раскрыть возможности расширения" },
-  "welcome_step1Title": { "message": "Закрепите расширение" },
-  "welcome_step1Desc": { "message": "Нажмите значок пазла 🧩 на панели браузера и закрепите расширение для быстрого доступа" },
-  "welcome_step2Title": { "message": "Выберите цель" },
-  "welcome_step2Desc": { "message": "Выберите, что записывать: текущую вкладку, всё окно или весь экран" },
-  "welcome_step3Title": { "message": "Нажмите «Запись»" },
-  "welcome_step3Desc": { "message": "Нажмите «$BTN$» и приготовьтесь — $SECONDS$‑секундный отсчёт даст время на подготовку!", "placeholders": { "btn": { "content": "$1" }, "seconds": { "content": "$2" } } },
-  "welcome_advancedTitle": { "message": "Нужно больше контроля?" },
-  "welcome_advancedDesc": { "message": "Нажмите значок расширения на панели браузера, чтобы открыть полный контрольный центр" },
-  "welcome_openControl": { "message": "Открыть полный контрольный центр" },
-  "welcome_footerHelp": { "message": "Нужна помощь? Нажмите значок расширения, чтобы открыть панель с расширенными возможностями." },
-  "welcome_footerMeta": { "message": "Screen Recorder Studio • Создано для профессионалов" }
+  "appName": {
+    "message": "Screen Recorder Studio"
+  },
+  "appDesc": {
+    "message": "Профессиональное расширение Chrome для записи вкладок, окон, экрана, областей и элементов"
+  },
+  "action_defaultTitle": {
+    "message": "Открыть панель записи"
+  },
+  "control_headerTitle": {
+    "message": "Запись экрана"
+  },
+  "control_headerDesc": {
+    "message": "Выберите режим и начните запись"
+  },
+  "control_openDriveTooltip": {
+    "message": "Открыть менеджер файлов"
+  },
+  "control_closePanelTooltip": {
+    "message": "Закрыть панель управления"
+  },
+  "control_recordingMode": {
+    "message": "Режим записи"
+  },
+  "control_modeTab": {
+    "message": "Вкладка"
+  },
+  "control_modeTabDesc": {
+    "message": "Запись текущей вкладки"
+  },
+  "control_modeWindow": {
+    "message": "Окно"
+  },
+  "control_modeWindowDesc": {
+    "message": "Запись всего окна"
+  },
+  "control_modeScreen": {
+    "message": "Экран"
+  },
+  "control_modeScreenDesc": {
+    "message": "Запись всего экрана"
+  },
+  "control_statusRecording": {
+    "message": "Идет запись"
+  },
+  "control_statusPaused": {
+    "message": "Запись на паузе"
+  },
+  "control_statusPreparing": {
+    "message": "Подготовка к записи..."
+  },
+  "control_btnStart": {
+    "message": "Начать запись"
+  },
+  "control_btnStop": {
+    "message": "Остановить"
+  },
+  "control_btnPause": {
+    "message": "Пауза"
+  },
+  "control_btnResume": {
+    "message": "Продолжить"
+  },
+  "control_btnPreparing": {
+    "message": "Подготовка..."
+  },
+  "control_btnStarting": {
+    "message": "Запуск через $SECONDS$...",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_countdownLabel": {
+    "message": "Таймер"
+  },
+  "control_tipsTitle": {
+    "message": "Советы по записи:"
+  },
+  "control_tipsSelectMode": {
+    "message": "Выбран режим $MODE$, нажмите «Начать запись» для запуска.",
+    "placeholders": {
+      "mode": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_tipsPreparing": {
+    "message": "Ожидание выбора экрана..."
+  },
+  "control_tipsCountdown": {
+    "message": "Приготовьтесь! Запись начнется через $SECONDS$ сек.",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_tipsPaused": {
+    "message": "Запись приостановлена, нажмите «Продолжить» для возобновления."
+  },
+  "control_tipsRecording": {
+    "message": "Идет запись, нажмите «Пауза» при необходимости."
+  },
+  "control_overlayRecordingStarts": {
+    "message": "Запись скоро начнется..."
+  },
+  "drive_pageTitle": {
+    "message": "Записи - Screen Recorder"
+  },
+  "drive_headerTitle": {
+    "message": "Менеджер записей"
+  },
+  "drive_errorSupport": {
+    "message": "Ваш браузер не поддерживает хранилище OPFS"
+  },
+  "drive_errorMetaNotFound": {
+    "message": "Файл meta.json не найден"
+  },
+  "drive_errorEmpty": {
+    "message": "Файл записи пуст"
+  },
+  "drive_errorMetadata": {
+    "message": "Не удалось прочитать метаданные"
+  },
+  "drive_errorDataSize": {
+    "message": "Не удалось получить размер файла"
+  },
+  "drive_recordingNamePrefix": {
+    "message": "Запись экрана"
+  },
+  "drive_logDeleted": {
+    "message": "Запись $ID$ удалена",
+    "placeholders": {
+      "id": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_errorDelete": {
+    "message": "Ошибка удаления: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_logBatchDelete": {
+    "message": "Успешно удалено $COUNT$ записей",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_errorLoad": {
+    "message": "Произошла ошибка при загрузке записей"
+  },
+  "drive_errorLoadPrefix": {
+    "message": "Ошибка загрузки:"
+  },
+  "studio_pageTitle": {
+    "message": "Screen Recording Studio"
+  },
+  "studio_headerTitle": {
+    "message": "Screen Recorder Studio"
+  },
+  "studio_githubTooltip": {
+    "message": "Посмотреть исходный код на GitHub"
+  },
+  "studio_githubText": {
+    "message": "GitHub"
+  },
+  "studio_feedbackTooltip": {
+    "message": "Сообщить об ошибке или предложить функцию"
+  },
+  "studio_feedbackText": {
+    "message": "Отзыв"
+  },
+  "studio_helpTooltip": {
+    "message": "Помощь и документация"
+  },
+  "studio_helpText": {
+    "message": "Помощь"
+  },
+  "studio_driveTooltip": {
+    "message": "Открыть менеджер файлов"
+  },
+  "studio_driveText": {
+    "message": "Файлы"
+  },
+  "studio_fullscreenEnterTooltip": {
+    "message": "Полноэкранный режим"
+  },
+  "studio_fullscreenExitTooltip": {
+    "message": "Выйти из полноэкранного режима"
+  },
+  "studio_fullscreenEnterText": {
+    "message": "Экран"
+  },
+  "studio_fullscreenExitText": {
+    "message": "Выход"
+  },
+  "bg_title": {
+    "message": "Настройки фона"
+  },
+  "bg_tab_wallpaper": {
+    "message": "Обои"
+  },
+  "bg_tab_gradient": {
+    "message": "Градиент"
+  },
+  "bg_tab_solid": {
+    "message": "Цвет"
+  },
+  "bg_tab_image": {
+    "message": "Фото"
+  },
+  "radius_title": {
+    "message": "Скругление углов"
+  },
+  "radius_none": {
+    "message": "Нет"
+  },
+  "radius_small": {
+    "message": "Малое"
+  },
+  "radius_medium": {
+    "message": "Среднее"
+  },
+  "radius_large": {
+    "message": "Большое"
+  },
+  "radius_xl": {
+    "message": "Макс."
+  },
+  "padding_title": {
+    "message": "Отступы (Padding)"
+  },
+  "padding_none": {
+    "message": "Нет"
+  },
+  "padding_small": {
+    "message": "Малые"
+  },
+  "padding_medium": {
+    "message": "Средние"
+  },
+  "padding_large": {
+    "message": "Большие"
+  },
+  "padding_xl": {
+    "message": "Макс."
+  },
+  "ratio_yt": {
+    "message": "YouTube Гориз."
+  },
+  "ratio_yt_desc": {
+    "message": "YouTube, Bilibili и др."
+  },
+  "ratio_sq": {
+    "message": "Instagram Квадрат"
+  },
+  "ratio_sq_desc": {
+    "message": "Посты Instagram"
+  },
+  "ratio_tiktok": {
+    "message": "TikTok Верт."
+  },
+  "ratio_tiktok_desc": {
+    "message": "TikTok, Reels и др."
+  },
+  "ratio_story": {
+    "message": "Instagram Story"
+  },
+  "ratio_story_desc": {
+    "message": "Stories, Xiaohongshu"
+  },
+  "shadow_title": {
+    "message": "Тень видео"
+  },
+  "shadow_preset_title": {
+    "message": "Готовые эффекты"
+  },
+  "shadow_custom_title": {
+    "message": "Настройка параметров"
+  },
+  "shadow_light": {
+    "message": "Легкая"
+  },
+  "shadow_standard": {
+    "message": "Стандарт"
+  },
+  "shadow_deep": {
+    "message": "Глубокая"
+  },
+  "shadow_distant": {
+    "message": "Дальняя"
+  },
+  "shadow_offset_x": {
+    "message": "Смещение X"
+  },
+  "shadow_offset_y": {
+    "message": "Смещение Y"
+  },
+  "shadow_blur": {
+    "message": "Размытие"
+  },
+  "shadow_color": {
+    "message": "Цвет"
+  },
+  "shadow_opacity": {
+    "message": "Прозрачность"
+  },
+  "shadow_empty_state": {
+    "message": "Включите переключатель для настройки теней"
+  },
+  "color_tab_basic": {
+    "message": "Базовые"
+  },
+  "color_tab_light": {
+    "message": "Светлые"
+  },
+  "color_tab_business": {
+    "message": "Бизнес"
+  },
+  "color_tab_creative": {
+    "message": "Творчество"
+  },
+  "color_custom": {
+    "message": "Свой:"
+  },
+  "gradient_tab_linear": {
+    "message": "Линейный"
+  },
+  "gradient_tab_radial": {
+    "message": "Радиальный"
+  },
+  "gradient_tab_conic": {
+    "message": "Конический"
+  },
+  "gradient_tab_multi": {
+    "message": "Мульти"
+  },
+  "gradient_current": {
+    "message": "Текущий:"
+  },
+  "gradient_select_hint": {
+    "message": "Выберите градиент"
+  },
+  "gradient_colors_suffix": {
+    "message": "цв."
+  },
+  "wallpaper_tab_abstract": {
+    "message": "Абстракция"
+  },
+  "wallpaper_tab_minimal": {
+    "message": "Минимализм"
+  },
+  "wallpaper_tab_nature": {
+    "message": "Природа"
+  },
+  "wallpaper_tab_business": {
+    "message": "Бизнес"
+  },
+  "wallpaper_tab_tech": {
+    "message": "Техно"
+  },
+  "wallpaper_error": {
+    "message": "Ошибка загрузки обоев"
+  },
+  "wallpaper_stats": {
+    "message": "$COUNT$ обоев в этой категории",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "wallpaper_total": {
+    "message": "Всего $TOTAL$",
+    "placeholders": {
+      "total": {
+        "content": "$1"
+      }
+    }
+  },
+  "upload_processing": {
+    "message": "Обработка..."
+  },
+  "upload_drop_hint": {
+    "message": "Кликните или перетащите фото"
+  },
+  "upload_format_hint": {
+    "message": "JPEG, PNG, WebP, GIF · Макс 5МБ"
+  },
+  "upload_error_select": {
+    "message": "Пожалуйста, выберите изображение"
+  },
+  "upload_error_failed": {
+    "message": "Ошибка загрузки"
+  },
+  "drive_delete_selected_btn": {
+    "message": "Удалить выбранные ($COUNT$)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_clear_selection": {
+    "message": "Снять выделение"
+  },
+  "drive_refresh": {
+    "message": "Обновить"
+  },
+  "drive_error_title": {
+    "message": "Ошибка"
+  },
+  "drive_close_error": {
+    "message": "Закрыть"
+  },
+  "drive_loading": {
+    "message": "Загрузка записей..."
+  },
+  "drive_empty_title": {
+    "message": "Записей пока нет"
+  },
+  "drive_empty_desc1": {
+    "message": "У вас еще нет сохраненных записей экрана."
+  },
+  "drive_empty_desc2": {
+    "message": "Начните запись, и она появится здесь."
+  },
+  "drive_start_recording_btn": {
+    "message": "Начать запись"
+  },
+  "drive_select_all": {
+    "message": "Выбрать все ($COUNT$)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_sort_hint": {
+    "message": "Сортировка: новые сверху"
+  },
+  "drive_confirm_delete_title": {
+    "message": "Подтверждение удаления"
+  },
+  "drive_confirm_delete_selected": {
+    "message": "Вы уверены, что хотите удалить $COUNT$ выбраных записей?",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_confirm_delete_single": {
+    "message": "Вы уверены, что хотите удалить эту запись?"
+  },
+  "drive_action_undone": {
+    "message": "Это действие нельзя отменить."
+  },
+  "drive_cancel": {
+    "message": "Отмена"
+  },
+  "drive_delete": {
+    "message": "Удалить"
+  },
+  "card_status_completed": {
+    "message": "Готово"
+  },
+  "card_status_incomplete": {
+    "message": "Не завершено"
+  },
+  "card_label_created": {
+    "message": "Создано:"
+  },
+  "card_label_status": {
+    "message": "Статус:"
+  },
+  "card_label_codec": {
+    "message": "Кодек:"
+  },
+  "card_label_resolution": {
+    "message": "Разрешение:"
+  },
+  "card_label_fps": {
+    "message": "FPS:"
+  },
+  "card_label_size": {
+    "message": "Размер:"
+  },
+  "card_label_frames": {
+    "message": "Всего кадров:"
+  },
+  "card_incomplete_title": {
+    "message": "Запись прервана"
+  },
+  "card_incomplete_desc": {
+    "message": "Видеоданные отсутствуют"
+  },
+  "card_preview_error": {
+    "message": "Превью недоступно"
+  },
+  "card_preview_loading": {
+    "message": "Создание превью..."
+  },
+  "card_btn_edit": {
+    "message": "Правка"
+  },
+  "card_btn_delete": {
+    "message": "Удалить"
+  },
+  "card_edit_disabled_tooltip": {
+    "message": "Нельзя редактировать прерванную запись"
+  },
+  "card_edit_tooltip": {
+    "message": "Редактировать запись"
+  },
+  "card_preview_load_error": {
+    "message": "Ошибка загрузки: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_today": {
+    "message": "Сегодня $TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_yesterday": {
+    "message": "Вчера $TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_days_ago": {
+    "message": "$DAYS$ дн. назад",
+    "placeholders": {
+      "days": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_panel_tier_free": {
+    "message": "БЕСПЛАТНО"
+  },
+  "export_panel_tier_pro": {
+    "message": "PRO"
+  },
+  "export_panel_tier_trial": {
+    "message": "PRO ТЕСТ"
+  },
+  "export_panel_btn": {
+    "message": "Экспорт"
+  },
+  "export_panel_tooltip_incomplete": {
+    "message": "Завершите запись для экспорта"
+  },
+  "export_panel_tooltip_no_data": {
+    "message": "Нет видеоданных"
+  },
+  "export_panel_btn_exporting": {
+    "message": "Экспорт..."
+  },
+  "export_dialog_title": {
+    "message": "Экспорт видео"
+  },
+  "export_source_res": {
+    "message": "Разрешение"
+  },
+  "export_source_codec": {
+    "message": "Кодек"
+  },
+  "export_source_duration": {
+    "message": "Длительность"
+  },
+  "export_source_frames": {
+    "message": "Кадры"
+  },
+  "export_badge_bg": {
+    "message": "С фоном"
+  },
+  "export_badge_trim": {
+    "message": "Обрезано"
+  },
+  "export_format_mp4": {
+    "message": "MP4"
+  },
+  "export_format_webm": {
+    "message": "WebM"
+  },
+  "export_format_gif": {
+    "message": "GIF"
+  },
+  "export_quality_title": {
+    "message": "Настройки качества"
+  },
+  "export_quality_draft": {
+    "message": "Черновик"
+  },
+  "export_quality_draft_desc": {
+    "message": "Быстро, низкое качество"
+  },
+  "export_quality_balanced": {
+    "message": "Баланс"
+  },
+  "export_quality_balanced_desc": {
+    "message": "Хорошее качество и скорость"
+  },
+  "export_quality_high": {
+    "message": "Высокое"
+  },
+  "export_quality_high_desc": {
+    "message": "Высокое качество, медленнее"
+  },
+  "export_quality_best": {
+    "message": "Лучшее"
+  },
+  "export_quality_best_desc": {
+    "message": "Макс. качество, очень медленно"
+  },
+  "export_label_resolution": {
+    "message": "Разрешение"
+  },
+  "export_res_source": {
+    "message": "Как в источнике ($WIDTH$×$HEIGHT$)",
+    "placeholders": {
+      "width": {
+        "content": "$1"
+      },
+      "height": {
+        "content": "$2"
+      }
+    }
+  },
+  "export_label_framerate": {
+    "message": "Частота кадров"
+  },
+  "export_fps_source": {
+    "message": "$FPS$ fps (Источник)",
+    "placeholders": {
+      "fps": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_bitrate": {
+    "message": "Битрейт"
+  },
+  "export_bitrate_auto": {
+    "message": "Авто"
+  },
+  "export_bitrate_manual": {
+    "message": "Вручную"
+  },
+  "export_bitrate_auto_hint": {
+    "message": "Авто: $RATE$ Mbps (зависит от разр.)",
+    "placeholders": {
+      "rate": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_speed": {
+    "message": "Скорость кодирования"
+  },
+  "export_speed_fastest": {
+    "message": "Ультра"
+  },
+  "export_speed_fast": {
+    "message": "Быстро"
+  },
+  "export_speed_balanced": {
+    "message": "Баланс"
+  },
+  "export_speed_slow": {
+    "message": "Медленно"
+  },
+  "export_speed_slowest": {
+    "message": "Очень медленно"
+  },
+  "export_est_output": {
+    "message": "Ожидаемый файл"
+  },
+  "export_est_size": {
+    "message": "Ожид. размер"
+  },
+  "export_label_gif_quality": {
+    "message": "Качество GIF"
+  },
+  "export_gif_best": {
+    "message": "Лучшее (Медленно)"
+  },
+  "export_gif_high": {
+    "message": "Высокое"
+  },
+  "export_gif_good": {
+    "message": "Среднее (Стандарт)"
+  },
+  "export_gif_fast": {
+    "message": "Быстро"
+  },
+  "export_gif_fastest": {
+    "message": "Очень быстро"
+  },
+  "export_label_scale": {
+    "message": "Масштаб"
+  },
+  "export_scale_original": {
+    "message": "100% (Оригинал)"
+  },
+  "export_label_workers": {
+    "message": "Потоки обработки"
+  },
+  "export_worker_singular": {
+    "message": "$COUNT$ поток",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_worker_plural": {
+    "message": "$COUNT$ потоков",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_dither": {
+    "message": "Дизеринг"
+  },
+  "export_dither_none": {
+    "message": "Нет"
+  },
+  "export_btn_cancel": {
+    "message": "Отмена"
+  },
+  "export_btn_export_mp4": {
+    "message": "Экспорт в MP4"
+  },
+  "export_btn_export_webm": {
+    "message": "Экспорт в WebM"
+  },
+  "export_btn_export_gif": {
+    "message": "Экспорт в GIF"
+  },
+  "export_progress_preparing": {
+    "message": "Подготовка..."
+  },
+  "export_progress_encoding": {
+    "message": "Кодирование кадров..."
+  },
+  "export_progress_muxing": {
+    "message": "Сборка файла..."
+  },
+  "export_progress_finalizing": {
+    "message": "Завершение..."
+  },
+  "export_progress_frame": {
+    "message": "Кадр $CURRENT$ / $TOTAL$",
+    "placeholders": {
+      "current": {
+        "content": "$1"
+      },
+      "total": {
+        "content": "$2"
+      }
+    }
+  },
+  "export_progress_time": {
+    "message": "Осталось ~$SECONDS$ сек.",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_progress_hint": {
+    "message": "Пожалуйста, подождите, пока видео экспортируется..."
+  },
+  "wallpaper_cat_abstract_name": {
+    "message": "Абстракция"
+  },
+  "wallpaper_cat_abstract_desc": {
+    "message": "Абстрактные узоры и современный дизайн"
+  },
+  "wallpaper_cat_minimal_name": {
+    "message": "Минимализм"
+  },
+  "wallpaper_cat_minimal_desc": {
+    "message": "Чистая геометрия и строгая эстетика"
+  },
+  "wallpaper_cat_nature_name": {
+    "message": "Природа"
+  },
+  "wallpaper_cat_nature_desc": {
+    "message": "Природные пейзажи и текстуры растений"
+  },
+  "wallpaper_cat_business_name": {
+    "message": "Бизнес"
+  },
+  "wallpaper_cat_business_desc": {
+    "message": "Деловая атмосфера и корпоративный стиль"
+  },
+  "wallpaper_cat_tech_name": {
+    "message": "Технологии"
+  },
+  "wallpaper_cat_tech_desc": {
+    "message": "Техно-элементы и цифровое искусство"
+  },
+  "wallpaper_gradient_abstract_1_name": {
+    "message": "Абстрактный градиент"
+  },
+  "wallpaper_gradient_abstract_1_desc": {
+    "message": "Современный абстрактный фон"
+  },
+  "wallpaper_geometric_pattern_1_name": {
+    "message": "Геометрия"
+  },
+  "wallpaper_geometric_pattern_1_desc": {
+    "message": "Чистый геометрический узор"
+  },
+  "wallpaper_abstract_2425706_name": {
+    "message": "Абстрактные цвета"
+  },
+  "wallpaper_abstract_2425706_desc": {
+    "message": "Яркая абстрактная текстура"
+  },
+  "wallpaper_abstract_2512412_name": {
+    "message": "Цветные потоки"
+  },
+  "wallpaper_abstract_2512412_desc": {
+    "message": "Фон с текучими цветами"
+  },
+  "wallpaper_abstract_6297317_name": {
+    "message": "Абстрактные формы"
+  },
+  "wallpaper_abstract_6297317_desc": {
+    "message": "Композиция из цветовых блоков"
+  },
+  "wallpaper_ai_generated_9083808_name": {
+    "message": "Искусство ИИ"
+  },
+  "wallpaper_ai_generated_9083808_desc": {
+    "message": "Футуристичный фон, созданный ИИ"
+  },
+  "wallpaper_beach_4938036_name": {
+    "message": "Пляж"
+  },
+  "wallpaper_beach_4938036_desc": {
+    "message": "Свежий морской пейзаж"
+  },
+  "wallpaper_bulb_5665770_name": {
+    "message": "Креативная лампа"
+  },
+  "wallpaper_bulb_5665770_desc": {
+    "message": "Символ идей и вдохновения"
+  },
+  "wallpaper_cpu_8892400_name": {
+    "message": "Процессор"
+  },
+  "wallpaper_cpu_8892400_desc": {
+    "message": "Чип и печатная плата"
+  },
+  "wallpaper_feather_5488401_name": {
+    "message": "Перо макро"
+  },
+  "wallpaper_feather_5488401_desc": {
+    "message": "Мягкая текстура пера"
+  },
+  "wallpaper_fractal_8902060_name": {
+    "message": "Фрактал"
+  },
+  "wallpaper_fractal_8902060_desc": {
+    "message": "Блестящие фрактальные узоры"
+  },
+  "wallpaper_orange_3036097_name": {
+    "message": "Срез апельсина"
+  },
+  "wallpaper_orange_3036097_desc": {
+    "message": "Сочный срез апельсина"
+  },
+  "wallpaper_orange_6508617_name": {
+    "message": "Оранжевый фон"
+  },
+  "wallpaper_orange_6508617_desc": {
+    "message": "Энергичный оранжевый фон"
+  },
+  "wallpaper_polar_lights_5858656_name": {
+    "message": "Сияние"
+  },
+  "wallpaper_polar_lights_5858656_desc": {
+    "message": "Сказочное северное сияние"
+  },
+  "wallpaper_spiral_3112405_name": {
+    "message": "Спираль"
+  },
+  "wallpaper_spiral_3112405_desc": {
+    "message": "Динамичная спиральная текстура"
+  },
+  "wallpaper_steelwool_458842_name": {
+    "message": "Светопись"
+  },
+  "wallpaper_steelwool_458842_desc": {
+    "message": "Эффект рисования светом"
+  },
+  "wallpaper_swimming_pool_8306716_name": {
+    "message": "Бассейн"
+  },
+  "wallpaper_swimming_pool_8306716_desc": {
+    "message": "Прохладная рябь воды"
+  },
+  "wallpaper_abstract_2426502_name": {
+    "message": "Абстракция"
+  },
+  "wallpaper_abstract_2426502_desc": {
+    "message": "Современный абстрактный дизайн"
+  },
+  "wallpaper_camera_1248682_name": {
+    "message": "Камера"
+  },
+  "wallpaper_camera_1248682_desc": {
+    "message": "Камера макро в техно-стиле"
+  },
+  "wallpaper_circle_5090539_name": {
+    "message": "Круги"
+  },
+  "wallpaper_circle_5090539_desc": {
+    "message": "Чистый геометрический узор"
+  },
+  "wallpaper_feather_7009025_name": {
+    "message": "Текстура пера"
+  },
+  "wallpaper_feather_7009025_desc": {
+    "message": "Нежные природные узоры"
+  },
+  "wallpaper_fiber_4814456_name": {
+    "message": "Оптоволокно"
+  },
+  "wallpaper_fiber_4814456_desc": {
+    "message": "Абстрактные техно-линии"
+  },
+  "wallpaper_frost_6702335_name": {
+    "message": "Иней"
+  },
+  "wallpaper_frost_6702335_desc": {
+    "message": "Холодный узор из кристаллов льда"
+  },
+  "wallpaper_leaves_4291098_name": {
+    "message": "Листья"
+  },
+  "wallpaper_leaves_4291098_desc": {
+    "message": "Натуральная текстура листьев"
+  },
+  "wallpaper_light_1834289_name": {
+    "message": "Боке"
+  },
+  "wallpaper_light_1834289_desc": {
+    "message": "Атмосферный эффект боке"
+  },
+  "wallpaper_light_942231_name": {
+    "message": "Световые полосы"
+  },
+  "wallpaper_light_942231_desc": {
+    "message": "Динамичные линии света"
+  },
+  "wallpaper_luck_4397584_name": {
+    "message": "Клевер"
+  },
+  "wallpaper_luck_4397584_desc": {
+    "message": "Свежий четырехлистный клевер"
+  },
+  "wallpaper_waterdrop_2256201_name": {
+    "message": "Капля воды"
+  },
+  "wallpaper_waterdrop_2256201_desc": {
+    "message": "Макро-текстура капли воды"
+  },
+  "welcome_pageTitle": {
+    "message": "Добро пожаловать в Screen Recorder Studio"
+  },
+  "welcome_headerSubtitle": {
+    "message": "Профессиональный инструмент записи в браузере"
+  },
+  "welcome_installSuccess": {
+    "message": "Установка завершена"
+  },
+  "welcome_headline": {
+    "message": "Добро пожаловать в Screen Recorder Studio! 🎉"
+  },
+  "welcome_subheadline": {
+    "message": "Готовы создать первую запись? На это уйдут считанные секунды!"
+  },
+  "welcome_tryTitle": {
+    "message": "Попробовать сейчас! 🚀"
+  },
+  "welcome_trySubtitle": {
+    "message": "Выберите режим записи и нажмите кнопку ниже"
+  },
+  "welcome_tryFeatures": {
+    "message": "Без настройки • $SECONDS$‑секундный отсчёт • Профессиональное качество",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "welcome_modeTabDetail": {
+    "message": "Идеально для веб‑демо и обучающих материалов"
+  },
+  "welcome_modeWindowDetail": {
+    "message": "Включает адресную строку и панель инструментов"
+  },
+  "welcome_modeScreenDetail": {
+    "message": "Лучше всего для работы между приложениями"
+  },
+  "welcome_statusRecording": {
+    "message": "Запись идёт"
+  },
+  "welcome_modeLabel": {
+    "message": "Режим"
+  },
+  "welcome_readyTitle": {
+    "message": "🎬 Всё готово!"
+  },
+  "welcome_readyDesc": {
+    "message": "Вы выбрали режим $MODE$. Нажмите синюю кнопку сверху, чтобы начать первую запись!",
+    "placeholders": {
+      "mode": {
+        "content": "$1"
+      }
+    }
+  },
+  "welcome_readyTip": {
+    "message": "$SECONDS$‑секундный отсчёт перед началом",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "welcome_howTitle": {
+    "message": "Как это работает"
+  },
+  "welcome_howDesc": {
+    "message": "Три простых шага, чтобы раскрыть возможности расширения"
+  },
+  "welcome_step1Title": {
+    "message": "Закрепите расширение"
+  },
+  "welcome_step1Desc": {
+    "message": "Нажмите значок пазла 🧩 на панели браузера и закрепите расширение для быстрого доступа"
+  },
+  "welcome_step2Title": {
+    "message": "Выберите цель"
+  },
+  "welcome_step2Desc": {
+    "message": "Выберите, что записывать: текущую вкладку, всё окно или весь экран"
+  },
+  "welcome_step3Title": {
+    "message": "Нажмите «Запись»"
+  },
+  "welcome_step3Desc": {
+    "message": "Нажмите «$BTN$» и приготовьтесь — $SECONDS$‑секундный отсчёт даст время на подготовку!",
+    "placeholders": {
+      "btn": {
+        "content": "$1"
+      },
+      "seconds": {
+        "content": "$2"
+      }
+    }
+  },
+  "welcome_advancedTitle": {
+    "message": "Нужно больше контроля?"
+  },
+  "welcome_advancedDesc": {
+    "message": "Нажмите значок расширения на панели браузера, чтобы открыть полный контрольный центр"
+  },
+  "welcome_openControl": {
+    "message": "Открыть полный контрольный центр"
+  },
+  "welcome_footerHelp": {
+    "message": "Нужна помощь? Нажмите значок расширения, чтобы открыть панель с расширенными возможностями."
+  },
+  "welcome_footerMeta": {
+    "message": "Screen Recorder Studio • Создано для профессионалов"
+  },
+  "control_cameraAudioTitle": {
+    "message": "Camera & Microphone"
+  },
+  "control_cameraToggle": {
+    "message": "Enable camera"
+  },
+  "control_audioToggle": {
+    "message": "Enable microphone"
+  },
+  "control_selectCamera": {
+    "message": "Camera"
+  },
+  "control_selectMic": {
+    "message": "Microphone"
+  },
+  "control_cameraPreviewLoading": {
+    "message": "Initializing camera preview..."
+  },
+  "control_cameraPreviewError": {
+    "message": "Unable to preview camera"
+  }
 }

@@ -1,341 +1,1126 @@
 {
-  "appName": { "message": "Screen Recorder Studio" },
-  "appDesc": { "message": "Extensión de Chrome profesional para grabar pestañas, ventanas, pantallas, regiones y elementos" },
-  "action_defaultTitle": { "message": "Abrir panel de grabación" },
-
-  "control_headerTitle": { "message": "Grabadora de Pantalla" },
-  "control_headerDesc": { "message": "Selecciona un modo y comienza" },
-  "control_openDriveTooltip": { "message": "Abrir administrador de archivos" },
-  "control_closePanelTooltip": { "message": "Cerrar panel de control" },
-  "control_recordingMode": { "message": "Modo de grabación" },
-  "control_modeTab": { "message": "Pestaña" },
-  "control_modeTabDesc": { "message": "Graba la pestaña actual" },
-  "control_modeWindow": { "message": "Ventana" },
-  "control_modeWindowDesc": { "message": "Graba una ventana completa" },
-  "control_modeScreen": { "message": "Pantalla" },
-  "control_modeScreenDesc": { "message": "Graba toda la pantalla" },
-  "control_statusRecording": { "message": "Grabando" },
-  "control_statusPaused": { "message": "Grabación en pausa" },
-  "control_statusPreparing": { "message": "Preparando grabación..." },
-  "control_btnStart": { "message": "Iniciar grabación" },
-  "control_btnStop": { "message": "Detener grabación" },
-  "control_btnPause": { "message": "Pausar" },
-  "control_btnResume": { "message": "Reanudar" },
-  "control_btnPreparing": { "message": "Preparando..." },
-  "control_btnStarting": { "message": "Iniciando en $SECONDS$...", "placeholders": { "seconds": { "content": "$1" } } },
-  "control_countdownLabel": { "message": "Cuenta atrás" },
-  "control_tipsTitle": { "message": "Consejos:" },
-  "control_tipsSelectMode": { "message": "Modo $MODE$ seleccionado, haz clic en Iniciar.", "placeholders": { "mode": { "content": "$1" } } },
-  "control_tipsPreparing": { "message": "Esperando selección de pantalla..." },
-  "control_tipsCountdown": { "message": "¡Prepárate! La grabación comenzará en $SECONDS$ segundos.", "placeholders": { "seconds": { "content": "$1" } } },
-  "control_tipsPaused": { "message": "Grabación pausada, haz clic en Reanudar para continuar." },
-  "control_tipsRecording": { "message": "Grabación en curso, haz clic en Pausar para detener temporalmente." },
-  "control_overlayRecordingStarts": { "message": "La grabación comenzará pronto..." },
-
-  "drive_pageTitle": { "message": "Grabaciones - Screen Recorder" },
-  "drive_headerTitle": { "message": "Administrador de Grabaciones" },
-  "drive_errorSupport": { "message": "Tu navegador no soporta almacenamiento OPFS" },
-  "drive_errorMetaNotFound": { "message": "No se encontró meta.json" },
-  "drive_errorEmpty": { "message": "Archivo de grabación vacío" },
-  "drive_errorMetadata": { "message": "No se pudieron leer los metadatos" },
-  "drive_errorDataSize": { "message": "No se pudo obtener el tamaño del archivo" },
-  "drive_recordingNamePrefix": { "message": "Grabación de pantalla" },
-  "drive_logDeleted": { "message": "Grabación $ID$ eliminada", "placeholders": { "id": { "content": "$1" } } },
-  "drive_errorDelete": { "message": "Error al eliminar: $ERROR$", "placeholders": { "error": { "content": "$1" } } },
-  "drive_logBatchDelete": { "message": "Se eliminaron $COUNT$ grabaciones correctamente", "placeholders": { "count": { "content": "$1" } } },
-  "drive_errorLoad": { "message": "Ocurrió un error al cargar las grabaciones" },
-  "drive_errorLoadPrefix": { "message": "Error al cargar:" },
-
-  "studio_pageTitle": { "message": "Screen Recording Studio" },
-  "studio_headerTitle": { "message": "Screen Recorder Studio" },
-  "studio_githubTooltip": { "message": "Ver código en GitHub" },
-  "studio_githubText": { "message": "GitHub" },
-  "studio_feedbackTooltip": { "message": "Informar errores o sugerir funciones" },
-  "studio_feedbackText": { "message": "Feedback" },
-  "studio_helpTooltip": { "message": "Ayuda y documentación" },
-  "studio_helpText": { "message": "Ayuda" },
-  "studio_driveTooltip": { "message": "Abrir administrador de grabaciones" },
-  "studio_driveText": { "message": "Archivos" },
-  "studio_fullscreenEnterTooltip": { "message": "Pantalla completa" },
-  "studio_fullscreenExitTooltip": { "message": "Salir de pantalla completa" },
-  "studio_fullscreenEnterText": { "message": "Pantalla completa" },
-  "studio_fullscreenExitText": { "message": "Salir" },
-
-  "bg_title": { "message": "Fondo" },
-  "bg_tab_wallpaper": { "message": "Fondo" },
-  "bg_tab_gradient": { "message": "Degradado" },
-  "bg_tab_solid": { "message": "Sólido" },
-  "bg_tab_image": { "message": "Imagen" },
-
-  "radius_title": { "message": "Bordes redondeados" },
-  "radius_none": { "message": "Ninguno" },
-  "radius_small": { "message": "Pequeño" },
-  "radius_medium": { "message": "Medio" },
-  "radius_large": { "message": "Grande" },
-  "radius_xl": { "message": "Extra grande" },
-
-  "padding_title": { "message": "Margen (Padding)" },
-  "padding_none": { "message": "Ninguno" },
-  "padding_small": { "message": "Pequeño" },
-  "padding_medium": { "message": "Medio" },
-  "padding_large": { "message": "Grande" },
-  "padding_xl": { "message": "Extra grande" },
-
-  "ratio_yt": { "message": "YouTube Horizontal" },
-  "ratio_yt_desc": { "message": "YouTube, Bilibili, etc." },
-  "ratio_sq": { "message": "Instagram Cuadrado" },
-  "ratio_sq_desc": { "message": "Publicaciones de Instagram" },
-  "ratio_tiktok": { "message": "TikTok Vertical" },
-  "ratio_tiktok_desc": { "message": "TikTok, Reels, etc." },
-  "ratio_story": { "message": "Instagram Story" },
-  "ratio_story_desc": { "message": "Historias, Xiaohongshu" },
-
-  "shadow_title": { "message": "Sombra de video" },
-  "shadow_preset_title": { "message": "Efectos predeterminados" },
-  "shadow_custom_title": { "message": "Parámetros personalizados" },
-  "shadow_light": { "message": "Sombra suave" },
-  "shadow_standard": { "message": "Estándar" },
-  "shadow_deep": { "message": "Profunda" },
-  "shadow_distant": { "message": "Distante" },
-  "shadow_offset_x": { "message": "Desplazamiento X" },
-  "shadow_offset_y": { "message": "Desplazamiento Y" },
-  "shadow_blur": { "message": "Desenfoque" },
-  "shadow_color": { "message": "Color" },
-  "shadow_opacity": { "message": "Opacidad" },
-  "shadow_empty_state": { "message": "Activa el interruptor para configurar sombras" },
-
-  "color_tab_basic": { "message": "Básico" },
-  "color_tab_light": { "message": "Claro" },
-  "color_tab_business": { "message": "Negocios" },
-  "color_tab_creative": { "message": "Creativo" },
-  "color_custom": { "message": "Personalizado:" },
-
-  "gradient_tab_linear": { "message": "Lineal" },
-  "gradient_tab_radial": { "message": "Radial" },
-  "gradient_tab_conic": { "message": "Cónico" },
-  "gradient_tab_multi": { "message": "Multicolor" },
-  "gradient_current": { "message": "Actual:" },
-  "gradient_select_hint": { "message": "Selecciona un degradado" },
-  "gradient_colors_suffix": { "message": "colores" },
-
-  "wallpaper_tab_abstract": { "message": "Abstracto" },
-  "wallpaper_tab_minimal": { "message": "Mínimo" },
-  "wallpaper_tab_nature": { "message": "Naturaleza" },
-  "wallpaper_tab_business": { "message": "Negocios" },
-  "wallpaper_tab_tech": { "message": "Tecnología" },
-  "wallpaper_error": { "message": "Error al cargar fondo" },
-  "wallpaper_stats": { "message": "$COUNT$ fondos en esta categoría", "placeholders": { "count": { "content": "$1" } } },
-  "wallpaper_total": { "message": "$TOTAL$ en total", "placeholders": { "total": { "content": "$1" } } },
-
-  "upload_processing": { "message": "Procesando..." },
-  "upload_drop_hint": { "message": "Haz clic o arrastra una imagen" },
-  "upload_format_hint": { "message": "JPEG, PNG, WebP, GIF · Máx 5MB" },
-  "upload_error_select": { "message": "Por favor selecciona una imagen" },
-  "upload_error_failed": { "message": "Error al subir" },
-
-  "drive_delete_selected_btn": { "message": "Eliminar seleccionados ($COUNT$)", "placeholders": { "count": { "content": "$1" } } },
-  "drive_clear_selection": { "message": "Limpiar selección" },
-  "drive_refresh": { "message": "Actualizar" },
-  "drive_error_title": { "message": "Error" },
-  "drive_close_error": { "message": "Cerrar" },
-  "drive_loading": { "message": "Cargando grabaciones..." },
-  "drive_empty_title": { "message": "Sin grabaciones aún" },
-  "drive_empty_desc1": { "message": "Aún no tienes grabaciones de pantalla." },
-  "drive_empty_desc2": { "message": "Inicia una grabación y aparecerá aquí." },
-  "drive_start_recording_btn": { "message": "Iniciar grabación" },
-  "drive_select_all": { "message": "Seleccionar todo ($COUNT$ grabaciones)", "placeholders": { "count": { "content": "$1" } } },
-  "drive_sort_hint": { "message": "Ordenado por fecha (más reciente)" },
-  "drive_confirm_delete_title": { "message": "Confirmar eliminación" },
-  "drive_confirm_delete_selected": { "message": "¿Estás seguro de que quieres eliminar las $COUNT$ grabaciones seleccionadas?", "placeholders": { "count": { "content": "$1" } } },
-  "drive_confirm_delete_single": { "message": "¿Estás seguro de que quieres eliminar esta grabación?" },
-  "drive_action_undone": { "message": "Esta acción no se puede deshacer." },
-  "drive_cancel": { "message": "Cancelar" },
-  "drive_delete": { "message": "Eliminar" },
-
-  "card_status_completed": { "message": "Completado" },
-  "card_status_incomplete": { "message": "Incompleto" },
-  "card_label_created": { "message": "Creado:" },
-  "card_label_status": { "message": "Estado:" },
-  "card_label_codec": { "message": "Códec:" },
-  "card_label_resolution": { "message": "Resolución:" },
-  "card_label_fps": { "message": "FPS:" },
-  "card_label_size": { "message": "Tamaño:" },
-  "card_label_frames": { "message": "Cuadros totales:" },
-  "card_incomplete_title": { "message": "Grabación incompleta" },
-  "card_incomplete_desc": { "message": "Faltan datos de video" },
-  "card_preview_error": { "message": "No se puede cargar vista previa" },
-  "card_preview_loading": { "message": "Generando vista previa..." },
-  "card_btn_edit": { "message": "Editar" },
-  "card_btn_delete": { "message": "Eliminar" },
-  "card_edit_disabled_tooltip": { "message": "No se puede editar una grabación incompleta" },
-  "card_edit_tooltip": { "message": "Editar grabación" },
-  "card_preview_load_error": { "message": "Error al cargar datos: $ERROR$", "placeholders": { "error": { "content": "$1" } } },
-  "card_date_today": { "message": "Hoy $TIME$", "placeholders": { "time": { "content": "$1" } } },
-  "card_date_yesterday": { "message": "Ayer $TIME$", "placeholders": { "time": { "content": "$1" } } },
-  "card_date_days_ago": { "message": "Hace $DAYS$ días", "placeholders": { "days": { "content": "$1" } } },
-
-  "export_panel_tier_free": { "message": "GRATIS" },
-  "export_panel_tier_pro": { "message": "PRO" },
-  "export_panel_tier_trial": { "message": "PRUEBA PRO" },
-  "export_panel_btn": { "message": "Exportar" },
-  "export_panel_tooltip_incomplete": { "message": "Completa la grabación para exportar" },
-  "export_panel_tooltip_no_data": { "message": "Sin datos de video" },
-  "export_panel_btn_exporting": { "message": "Exportando..." },
-
-  "export_dialog_title": { "message": "Exportar Video" },
-  "export_source_res": { "message": "Resolución" },
-  "export_source_codec": { "message": "Códec" },
-  "export_source_duration": { "message": "Duración" },
-  "export_source_frames": { "message": "Cuadros" },
-  "export_badge_bg": { "message": "Fondo" },
-  "export_badge_trim": { "message": "Recortado" },
-  "export_format_mp4": { "message": "MP4" },
-  "export_format_webm": { "message": "WebM" },
-  "export_format_gif": { "message": "GIF" },
-  "export_quality_title": { "message": "Ajuste de calidad" },
-  "export_quality_draft": { "message": "Borrador" },
-  "export_quality_draft_desc": { "message": "Rápido, baja calidad" },
-  "export_quality_balanced": { "message": "Equilibrado" },
-  "export_quality_balanced_desc": { "message": "Buena calidad y velocidad" },
-  "export_quality_high": { "message": "Alta" },
-  "export_quality_high_desc": { "message": "Alta calidad, más lento" },
-  "export_quality_best": { "message": "Óptima" },
-  "export_quality_best_desc": { "message": "Máxima calidad, muy lento" },
-  "export_label_resolution": { "message": "Resolución" },
-  "export_res_source": { "message": "Igual a la fuente ($WIDTH$×$HEIGHT$)", "placeholders": { "width": { "content": "$1" }, "height": { "content": "$2" } } },
-  "export_label_framerate": { "message": "Cuadros por segundo" },
-  "export_fps_source": { "message": "$FPS$ fps (Fuente)", "placeholders": { "fps": { "content": "$1" } } },
-  "export_label_bitrate": { "message": "Tasa de bits (Bitrate)" },
-  "export_bitrate_auto": { "message": "Auto" },
-  "export_bitrate_manual": { "message": "Manual" },
-  "export_bitrate_auto_hint": { "message": "Auto: $RATE$ Mbps (según resolución)", "placeholders": { "rate": { "content": "$1" } } },
-  "export_label_speed": { "message": "Velocidad de codificación" },
-  "export_speed_fastest": { "message": "Extrema" },
-  "export_speed_fast": { "message": "Rápida" },
-  "export_speed_balanced": { "message": "Equilibrada" },
-  "export_speed_slow": { "message": "Lenta" },
-  "export_speed_slowest": { "message": "Muy lenta" },
-  "export_est_output": { "message": "Salida estimada" },
-  "export_est_size": { "message": "Tamaño est." },
-  "export_label_gif_quality": { "message": "Calidad GIF" },
-  "export_gif_best": { "message": "Óptima (Lenta)" },
-  "export_gif_high": { "message": "Alta" },
-  "export_gif_good": { "message": "Buena (Estándar)" },
-  "export_gif_fast": { "message": "Rápida" },
-  "export_gif_fastest": { "message": "Muy rápida" },
-  "export_label_scale": { "message": "Escala" },
-  "export_scale_original": { "message": "100% (Original)" },
-  "export_label_workers": { "message": "Hilos de proceso" },
-  "export_worker_singular": { "message": "$COUNT$ hilo", "placeholders": { "count": { "content": "$1" } } },
-  "export_worker_plural": { "message": "$COUNT$ hilos", "placeholders": { "count": { "content": "$1" } } },
-  "export_label_dither": { "message": "Tramado (Dither)" },
-  "export_dither_none": { "message": "Ninguno" },
-  "export_btn_cancel": { "message": "Cancelar" },
-  "export_btn_export_mp4": { "message": "Exportar MP4" },
-  "export_btn_export_webm": { "message": "Exportar WebM" },
-  "export_btn_export_gif": { "message": "Exportar GIF" },
-  "export_progress_preparing": { "message": "Preparando..." },
-  "export_progress_encoding": { "message": "Codificando..." },
-  "export_progress_muxing": { "message": "Generando archivo..." },
-  "export_progress_finalizing": { "message": "Finalizando..." },
-  "export_progress_frame": { "message": "Cuadro $CURRENT$ / $TOTAL$", "placeholders": { "current": { "content": "$1" }, "total": { "content": "$2" } } },
-  "export_progress_time": { "message": "~$SECONDS$s restantes", "placeholders": { "seconds": { "content": "$1" } } },
-  "export_progress_hint": { "message": "Por favor espera mientras exportamos tu video...", "placeholders": {} },
-
-  "wallpaper_cat_abstract_name": { "message": "Arte Abstracto" },
-  "wallpaper_cat_abstract_desc": { "message": "Patrones abstractos y diseños modernos" },
-  "wallpaper_cat_minimal_name": { "message": "Estilo Mínimo" },
-  "wallpaper_cat_minimal_desc": { "message": "Geometría limpia y estética pura" },
-  "wallpaper_cat_nature_name": { "message": "Naturaleza" },
-  "wallpaper_cat_nature_desc": { "message": "Paisajes naturales y texturas orgánicas" },
-  "wallpaper_cat_business_name": { "message": "Profesional" },
-  "wallpaper_cat_business_desc": { "message": "Ambientes de negocios y estilo corporativo" },
-  "wallpaper_cat_tech_name": { "message": "Tecnología" },
-  "wallpaper_cat_tech_desc": { "message": "Elementos tecnológicos y arte digital" },
-
-  "wallpaper_gradient_abstract_1_name": { "message": "Degradado Abstracto" },
-  "wallpaper_gradient_abstract_1_desc": { "message": "Fondo de degradado moderno" },
-  "wallpaper_geometric_pattern_1_name": { "message": "Patrón Geométrico" },
-  "wallpaper_geometric_pattern_1_desc": { "message": "Fondo geométrico limpio" },
-  "wallpaper_abstract_2425706_name": { "message": "Colores Abstractos" },
-  "wallpaper_abstract_2425706_desc": { "message": "Textura de colores vibrantes" },
-  "wallpaper_abstract_2512412_name": { "message": "Fluido Abstracto" },
-  "wallpaper_abstract_2512412_desc": { "message": "Fondo de colores fluidos" },
-  "wallpaper_abstract_6297317_name": { "message": "Formas Abstractas" },
-  "wallpaper_abstract_6297317_desc": { "message": "Composición de bloques de color" },
-  "wallpaper_ai_generated_9083808_name": { "message": "Arte por IA" },
-  "wallpaper_ai_generated_9083808_desc": { "message": "Fondo futurista generado por IA" },
-  "wallpaper_beach_4938036_name": { "message": "Playa" },
-  "wallpaper_beach_4938036_desc": { "message": "Paisaje de playa fresco" },
-  "wallpaper_bulb_5665770_name": { "message": "Bombilla Creativa" },
-  "wallpaper_bulb_5665770_desc": { "message": "Símbolo de creatividad" },
-  "wallpaper_cpu_8892400_name": { "message": "Circuito CPU" },
-  "wallpaper_cpu_8892400_desc": { "message": "Chip y placa de circuito" },
-  "wallpaper_feather_5488401_name": { "message": "Primer plano Pluma" },
-  "wallpaper_feather_5488401_desc": { "message": "Textura suave de pluma" },
-  "wallpaper_fractal_8902060_name": { "message": "Arte Fractal" },
-  "wallpaper_fractal_8902060_desc": { "message": "Patrones fractales brillantes" },
-  "wallpaper_orange_3036097_name": { "message": "Rodaja de Naranja" },
-  "wallpaper_orange_3036097_desc": { "message": "Rodajas de naranja vibrantes" },
-  "wallpaper_orange_6508617_name": { "message": "Fondo Naranja" },
-  "wallpaper_orange_6508617_desc": { "message": "Fondo naranja enérgico" },
-  "wallpaper_polar_lights_5858656_name": { "message": "Aurora" },
-  "wallpaper_polar_lights_5858656_desc": { "message": "Cielo nocturno con auroras" },
-  "wallpaper_spiral_3112405_name": { "message": "Patrón Espiral" },
-  "wallpaper_spiral_3112405_desc": { "message": "Textura espiral abstracta" },
-  "wallpaper_steelwool_458842_name": { "message": "Luz de Lana de Acero" },
-  "wallpaper_steelwool_458842_desc": { "message": "Efecto de pintura de luz" },
-  "wallpaper_swimming_pool_8306716_name": { "message": "Ondas de Piscina" },
-  "wallpaper_swimming_pool_8306716_desc": { "message": "Agua de piscina fresca" },
-  "wallpaper_abstract_2426502_name": { "message": "Colores Abstractos" },
-  "wallpaper_abstract_2426502_desc": { "message": "Diseño moderno abstracto" },
-  "wallpaper_camera_1248682_name": { "message": "Cámara" },
-  "wallpaper_camera_1248682_desc": { "message": "Primer plano de cámara tech" },
-  "wallpaper_circle_5090539_name": { "message": "Geometría Circular" },
-  "wallpaper_circle_5090539_desc": { "message": "Patrón circular limpio" },
-  "wallpaper_feather_7009025_name": { "message": "Textura de Pluma" },
-  "wallpaper_feather_7009025_desc": { "message": "Patrones naturales suaves" },
-  "wallpaper_fiber_4814456_name": { "message": "Líneas de Fibra" },
-  "wallpaper_fiber_4814456_desc": { "message": "Sensación tecnológica abstracta" },
-  "wallpaper_frost_6702335_name": { "message": "Textura de Escarcha" },
-  "wallpaper_frost_6702335_desc": { "message": "Fondo de escarcha fría" },
-  "wallpaper_leaves_4291098_name": { "message": "Hojas Verdes" },
-  "wallpaper_leaves_4291098_desc": { "message": "Textura natural de hojas" },
-  "wallpaper_light_1834289_name": { "message": "Bokeh de Luz" },
-  "wallpaper_light_1834289_desc": { "message": "Efecto bokeh atmosférico" },
-  "wallpaper_light_942231_name": { "message": "Estelas de Luz" },
-  "wallpaper_light_942231_desc": { "message": "Líneas de luz dinámicas" },
-  "wallpaper_luck_4397584_name": { "message": "Trébol de 4 hojas" },
-  "wallpaper_luck_4397584_desc": { "message": "Trébol de la suerte fresco" },
-  "wallpaper_waterdrop_2256201_name": { "message": "Gota de Agua" },
-  "wallpaper_waterdrop_2256201_desc": { "message": "Macro de gota de agua" },
-  "welcome_pageTitle": { "message": "Bienvenido a Screen Recorder Studio" },
-  "welcome_headerSubtitle": { "message": "Herramienta de grabación profesional para el navegador" },
-  "welcome_installSuccess": { "message": "Instalación completada" },
-  "welcome_headline": { "message": "¡Bienvenido a Screen Recorder Studio! 🎉" },
-  "welcome_subheadline": { "message": "¿Listo para crear tu primera grabación? Solo tardarás segundos en empezar." },
-  "welcome_tryTitle": { "message": "¡Pruébalo ahora! 🚀" },
-  "welcome_trySubtitle": { "message": "Selecciona tu modo de grabación y pulsa el botón de abajo" },
-  "welcome_tryFeatures": { "message": "Sin configuración • Cuenta regresiva de $SECONDS$ segundos • Calidad profesional", "placeholders": { "seconds": { "content": "$1" } } },
-  "welcome_modeTabDetail": { "message": "Perfecto para demos web y tutoriales" },
-  "welcome_modeWindowDetail": { "message": "Incluye barra de direcciones y herramientas" },
-  "welcome_modeScreenDetail": { "message": "Ideal para flujos entre aplicaciones" },
-  "welcome_statusRecording": { "message": "Grabando" },
-  "welcome_modeLabel": { "message": "Modo" },
-  "welcome_readyTitle": { "message": "🎬 ¡Todo listo!" },
-  "welcome_readyDesc": { "message": "Has elegido el modo $MODE$. Haz clic en el gran botón azul para iniciar tu primera grabación.", "placeholders": { "mode": { "content": "$1" } } },
-  "welcome_readyTip": { "message": "Cuenta regresiva de $SECONDS$ segundos antes de empezar", "placeholders": { "seconds": { "content": "$1" } } },
-  "welcome_howTitle": { "message": "Cómo funciona" },
-  "welcome_howDesc": { "message": "Tres pasos sencillos para aprovechar la extensión" },
-  "welcome_step1Title": { "message": "Fijar la extensión" },
-  "welcome_step1Desc": { "message": "Haz clic en el icono de rompecabezas 🧩 en la barra del navegador y fija la extensión para acceder rápido" },
-  "welcome_step2Title": { "message": "Elige el destino" },
-  "welcome_step2Desc": { "message": "Selecciona qué grabar: pestaña actual, ventana completa o pantalla completa" },
-  "welcome_step3Title": { "message": "Pulsa Grabar" },
-  "welcome_step3Desc": { "message": "Haz clic en «$BTN$» y prepárate: la cuenta regresiva de $SECONDS$ segundos te da tiempo.", "placeholders": { "btn": { "content": "$1" }, "seconds": { "content": "$2" } } },
-  "welcome_advancedTitle": { "message": "¿Necesitas más control?" },
-  "welcome_advancedDesc": { "message": "Haz clic en el icono de la extensión en la barra del navegador para abrir el panel completo" },
-  "welcome_openControl": { "message": "Abrir panel completo" },
-  "welcome_footerHelp": { "message": "¿Necesitas ayuda? Haz clic en el icono de la extensión para abrir el panel con funciones avanzadas." },
-  "welcome_footerMeta": { "message": "Screen Recorder Studio • Hecho para profesionales" }
+  "appName": {
+    "message": "Screen Recorder Studio"
+  },
+  "appDesc": {
+    "message": "Extensión de Chrome profesional para grabar pestañas, ventanas, pantallas, regiones y elementos"
+  },
+  "action_defaultTitle": {
+    "message": "Abrir panel de grabación"
+  },
+  "control_headerTitle": {
+    "message": "Grabadora de Pantalla"
+  },
+  "control_headerDesc": {
+    "message": "Selecciona un modo y comienza"
+  },
+  "control_openDriveTooltip": {
+    "message": "Abrir administrador de archivos"
+  },
+  "control_closePanelTooltip": {
+    "message": "Cerrar panel de control"
+  },
+  "control_recordingMode": {
+    "message": "Modo de grabación"
+  },
+  "control_modeTab": {
+    "message": "Pestaña"
+  },
+  "control_modeTabDesc": {
+    "message": "Graba la pestaña actual"
+  },
+  "control_modeWindow": {
+    "message": "Ventana"
+  },
+  "control_modeWindowDesc": {
+    "message": "Graba una ventana completa"
+  },
+  "control_modeScreen": {
+    "message": "Pantalla"
+  },
+  "control_modeScreenDesc": {
+    "message": "Graba toda la pantalla"
+  },
+  "control_statusRecording": {
+    "message": "Grabando"
+  },
+  "control_statusPaused": {
+    "message": "Grabación en pausa"
+  },
+  "control_statusPreparing": {
+    "message": "Preparando grabación..."
+  },
+  "control_btnStart": {
+    "message": "Iniciar grabación"
+  },
+  "control_btnStop": {
+    "message": "Detener grabación"
+  },
+  "control_btnPause": {
+    "message": "Pausar"
+  },
+  "control_btnResume": {
+    "message": "Reanudar"
+  },
+  "control_btnPreparing": {
+    "message": "Preparando..."
+  },
+  "control_btnStarting": {
+    "message": "Iniciando en $SECONDS$...",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_countdownLabel": {
+    "message": "Cuenta atrás"
+  },
+  "control_tipsTitle": {
+    "message": "Consejos:"
+  },
+  "control_tipsSelectMode": {
+    "message": "Modo $MODE$ seleccionado, haz clic en Iniciar.",
+    "placeholders": {
+      "mode": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_tipsPreparing": {
+    "message": "Esperando selección de pantalla..."
+  },
+  "control_tipsCountdown": {
+    "message": "¡Prepárate! La grabación comenzará en $SECONDS$ segundos.",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_tipsPaused": {
+    "message": "Grabación pausada, haz clic en Reanudar para continuar."
+  },
+  "control_tipsRecording": {
+    "message": "Grabación en curso, haz clic en Pausar para detener temporalmente."
+  },
+  "control_overlayRecordingStarts": {
+    "message": "La grabación comenzará pronto..."
+  },
+  "drive_pageTitle": {
+    "message": "Grabaciones - Screen Recorder"
+  },
+  "drive_headerTitle": {
+    "message": "Administrador de Grabaciones"
+  },
+  "drive_errorSupport": {
+    "message": "Tu navegador no soporta almacenamiento OPFS"
+  },
+  "drive_errorMetaNotFound": {
+    "message": "No se encontró meta.json"
+  },
+  "drive_errorEmpty": {
+    "message": "Archivo de grabación vacío"
+  },
+  "drive_errorMetadata": {
+    "message": "No se pudieron leer los metadatos"
+  },
+  "drive_errorDataSize": {
+    "message": "No se pudo obtener el tamaño del archivo"
+  },
+  "drive_recordingNamePrefix": {
+    "message": "Grabación de pantalla"
+  },
+  "drive_logDeleted": {
+    "message": "Grabación $ID$ eliminada",
+    "placeholders": {
+      "id": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_errorDelete": {
+    "message": "Error al eliminar: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_logBatchDelete": {
+    "message": "Se eliminaron $COUNT$ grabaciones correctamente",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_errorLoad": {
+    "message": "Ocurrió un error al cargar las grabaciones"
+  },
+  "drive_errorLoadPrefix": {
+    "message": "Error al cargar:"
+  },
+  "studio_pageTitle": {
+    "message": "Screen Recording Studio"
+  },
+  "studio_headerTitle": {
+    "message": "Screen Recorder Studio"
+  },
+  "studio_githubTooltip": {
+    "message": "Ver código en GitHub"
+  },
+  "studio_githubText": {
+    "message": "GitHub"
+  },
+  "studio_feedbackTooltip": {
+    "message": "Informar errores o sugerir funciones"
+  },
+  "studio_feedbackText": {
+    "message": "Feedback"
+  },
+  "studio_helpTooltip": {
+    "message": "Ayuda y documentación"
+  },
+  "studio_helpText": {
+    "message": "Ayuda"
+  },
+  "studio_driveTooltip": {
+    "message": "Abrir administrador de grabaciones"
+  },
+  "studio_driveText": {
+    "message": "Archivos"
+  },
+  "studio_fullscreenEnterTooltip": {
+    "message": "Pantalla completa"
+  },
+  "studio_fullscreenExitTooltip": {
+    "message": "Salir de pantalla completa"
+  },
+  "studio_fullscreenEnterText": {
+    "message": "Pantalla completa"
+  },
+  "studio_fullscreenExitText": {
+    "message": "Salir"
+  },
+  "bg_title": {
+    "message": "Fondo"
+  },
+  "bg_tab_wallpaper": {
+    "message": "Fondo"
+  },
+  "bg_tab_gradient": {
+    "message": "Degradado"
+  },
+  "bg_tab_solid": {
+    "message": "Sólido"
+  },
+  "bg_tab_image": {
+    "message": "Imagen"
+  },
+  "radius_title": {
+    "message": "Bordes redondeados"
+  },
+  "radius_none": {
+    "message": "Ninguno"
+  },
+  "radius_small": {
+    "message": "Pequeño"
+  },
+  "radius_medium": {
+    "message": "Medio"
+  },
+  "radius_large": {
+    "message": "Grande"
+  },
+  "radius_xl": {
+    "message": "Extra grande"
+  },
+  "padding_title": {
+    "message": "Margen (Padding)"
+  },
+  "padding_none": {
+    "message": "Ninguno"
+  },
+  "padding_small": {
+    "message": "Pequeño"
+  },
+  "padding_medium": {
+    "message": "Medio"
+  },
+  "padding_large": {
+    "message": "Grande"
+  },
+  "padding_xl": {
+    "message": "Extra grande"
+  },
+  "ratio_yt": {
+    "message": "YouTube Horizontal"
+  },
+  "ratio_yt_desc": {
+    "message": "YouTube, Bilibili, etc."
+  },
+  "ratio_sq": {
+    "message": "Instagram Cuadrado"
+  },
+  "ratio_sq_desc": {
+    "message": "Publicaciones de Instagram"
+  },
+  "ratio_tiktok": {
+    "message": "TikTok Vertical"
+  },
+  "ratio_tiktok_desc": {
+    "message": "TikTok, Reels, etc."
+  },
+  "ratio_story": {
+    "message": "Instagram Story"
+  },
+  "ratio_story_desc": {
+    "message": "Historias, Xiaohongshu"
+  },
+  "shadow_title": {
+    "message": "Sombra de video"
+  },
+  "shadow_preset_title": {
+    "message": "Efectos predeterminados"
+  },
+  "shadow_custom_title": {
+    "message": "Parámetros personalizados"
+  },
+  "shadow_light": {
+    "message": "Sombra suave"
+  },
+  "shadow_standard": {
+    "message": "Estándar"
+  },
+  "shadow_deep": {
+    "message": "Profunda"
+  },
+  "shadow_distant": {
+    "message": "Distante"
+  },
+  "shadow_offset_x": {
+    "message": "Desplazamiento X"
+  },
+  "shadow_offset_y": {
+    "message": "Desplazamiento Y"
+  },
+  "shadow_blur": {
+    "message": "Desenfoque"
+  },
+  "shadow_color": {
+    "message": "Color"
+  },
+  "shadow_opacity": {
+    "message": "Opacidad"
+  },
+  "shadow_empty_state": {
+    "message": "Activa el interruptor para configurar sombras"
+  },
+  "color_tab_basic": {
+    "message": "Básico"
+  },
+  "color_tab_light": {
+    "message": "Claro"
+  },
+  "color_tab_business": {
+    "message": "Negocios"
+  },
+  "color_tab_creative": {
+    "message": "Creativo"
+  },
+  "color_custom": {
+    "message": "Personalizado:"
+  },
+  "gradient_tab_linear": {
+    "message": "Lineal"
+  },
+  "gradient_tab_radial": {
+    "message": "Radial"
+  },
+  "gradient_tab_conic": {
+    "message": "Cónico"
+  },
+  "gradient_tab_multi": {
+    "message": "Multicolor"
+  },
+  "gradient_current": {
+    "message": "Actual:"
+  },
+  "gradient_select_hint": {
+    "message": "Selecciona un degradado"
+  },
+  "gradient_colors_suffix": {
+    "message": "colores"
+  },
+  "wallpaper_tab_abstract": {
+    "message": "Abstracto"
+  },
+  "wallpaper_tab_minimal": {
+    "message": "Mínimo"
+  },
+  "wallpaper_tab_nature": {
+    "message": "Naturaleza"
+  },
+  "wallpaper_tab_business": {
+    "message": "Negocios"
+  },
+  "wallpaper_tab_tech": {
+    "message": "Tecnología"
+  },
+  "wallpaper_error": {
+    "message": "Error al cargar fondo"
+  },
+  "wallpaper_stats": {
+    "message": "$COUNT$ fondos en esta categoría",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "wallpaper_total": {
+    "message": "$TOTAL$ en total",
+    "placeholders": {
+      "total": {
+        "content": "$1"
+      }
+    }
+  },
+  "upload_processing": {
+    "message": "Procesando..."
+  },
+  "upload_drop_hint": {
+    "message": "Haz clic o arrastra una imagen"
+  },
+  "upload_format_hint": {
+    "message": "JPEG, PNG, WebP, GIF · Máx 5MB"
+  },
+  "upload_error_select": {
+    "message": "Por favor selecciona una imagen"
+  },
+  "upload_error_failed": {
+    "message": "Error al subir"
+  },
+  "drive_delete_selected_btn": {
+    "message": "Eliminar seleccionados ($COUNT$)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_clear_selection": {
+    "message": "Limpiar selección"
+  },
+  "drive_refresh": {
+    "message": "Actualizar"
+  },
+  "drive_error_title": {
+    "message": "Error"
+  },
+  "drive_close_error": {
+    "message": "Cerrar"
+  },
+  "drive_loading": {
+    "message": "Cargando grabaciones..."
+  },
+  "drive_empty_title": {
+    "message": "Sin grabaciones aún"
+  },
+  "drive_empty_desc1": {
+    "message": "Aún no tienes grabaciones de pantalla."
+  },
+  "drive_empty_desc2": {
+    "message": "Inicia una grabación y aparecerá aquí."
+  },
+  "drive_start_recording_btn": {
+    "message": "Iniciar grabación"
+  },
+  "drive_select_all": {
+    "message": "Seleccionar todo ($COUNT$ grabaciones)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_sort_hint": {
+    "message": "Ordenado por fecha (más reciente)"
+  },
+  "drive_confirm_delete_title": {
+    "message": "Confirmar eliminación"
+  },
+  "drive_confirm_delete_selected": {
+    "message": "¿Estás seguro de que quieres eliminar las $COUNT$ grabaciones seleccionadas?",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_confirm_delete_single": {
+    "message": "¿Estás seguro de que quieres eliminar esta grabación?"
+  },
+  "drive_action_undone": {
+    "message": "Esta acción no se puede deshacer."
+  },
+  "drive_cancel": {
+    "message": "Cancelar"
+  },
+  "drive_delete": {
+    "message": "Eliminar"
+  },
+  "card_status_completed": {
+    "message": "Completado"
+  },
+  "card_status_incomplete": {
+    "message": "Incompleto"
+  },
+  "card_label_created": {
+    "message": "Creado:"
+  },
+  "card_label_status": {
+    "message": "Estado:"
+  },
+  "card_label_codec": {
+    "message": "Códec:"
+  },
+  "card_label_resolution": {
+    "message": "Resolución:"
+  },
+  "card_label_fps": {
+    "message": "FPS:"
+  },
+  "card_label_size": {
+    "message": "Tamaño:"
+  },
+  "card_label_frames": {
+    "message": "Cuadros totales:"
+  },
+  "card_incomplete_title": {
+    "message": "Grabación incompleta"
+  },
+  "card_incomplete_desc": {
+    "message": "Faltan datos de video"
+  },
+  "card_preview_error": {
+    "message": "No se puede cargar vista previa"
+  },
+  "card_preview_loading": {
+    "message": "Generando vista previa..."
+  },
+  "card_btn_edit": {
+    "message": "Editar"
+  },
+  "card_btn_delete": {
+    "message": "Eliminar"
+  },
+  "card_edit_disabled_tooltip": {
+    "message": "No se puede editar una grabación incompleta"
+  },
+  "card_edit_tooltip": {
+    "message": "Editar grabación"
+  },
+  "card_preview_load_error": {
+    "message": "Error al cargar datos: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_today": {
+    "message": "Hoy $TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_yesterday": {
+    "message": "Ayer $TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_days_ago": {
+    "message": "Hace $DAYS$ días",
+    "placeholders": {
+      "days": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_panel_tier_free": {
+    "message": "GRATIS"
+  },
+  "export_panel_tier_pro": {
+    "message": "PRO"
+  },
+  "export_panel_tier_trial": {
+    "message": "PRUEBA PRO"
+  },
+  "export_panel_btn": {
+    "message": "Exportar"
+  },
+  "export_panel_tooltip_incomplete": {
+    "message": "Completa la grabación para exportar"
+  },
+  "export_panel_tooltip_no_data": {
+    "message": "Sin datos de video"
+  },
+  "export_panel_btn_exporting": {
+    "message": "Exportando..."
+  },
+  "export_dialog_title": {
+    "message": "Exportar Video"
+  },
+  "export_source_res": {
+    "message": "Resolución"
+  },
+  "export_source_codec": {
+    "message": "Códec"
+  },
+  "export_source_duration": {
+    "message": "Duración"
+  },
+  "export_source_frames": {
+    "message": "Cuadros"
+  },
+  "export_badge_bg": {
+    "message": "Fondo"
+  },
+  "export_badge_trim": {
+    "message": "Recortado"
+  },
+  "export_format_mp4": {
+    "message": "MP4"
+  },
+  "export_format_webm": {
+    "message": "WebM"
+  },
+  "export_format_gif": {
+    "message": "GIF"
+  },
+  "export_quality_title": {
+    "message": "Ajuste de calidad"
+  },
+  "export_quality_draft": {
+    "message": "Borrador"
+  },
+  "export_quality_draft_desc": {
+    "message": "Rápido, baja calidad"
+  },
+  "export_quality_balanced": {
+    "message": "Equilibrado"
+  },
+  "export_quality_balanced_desc": {
+    "message": "Buena calidad y velocidad"
+  },
+  "export_quality_high": {
+    "message": "Alta"
+  },
+  "export_quality_high_desc": {
+    "message": "Alta calidad, más lento"
+  },
+  "export_quality_best": {
+    "message": "Óptima"
+  },
+  "export_quality_best_desc": {
+    "message": "Máxima calidad, muy lento"
+  },
+  "export_label_resolution": {
+    "message": "Resolución"
+  },
+  "export_res_source": {
+    "message": "Igual a la fuente ($WIDTH$×$HEIGHT$)",
+    "placeholders": {
+      "width": {
+        "content": "$1"
+      },
+      "height": {
+        "content": "$2"
+      }
+    }
+  },
+  "export_label_framerate": {
+    "message": "Cuadros por segundo"
+  },
+  "export_fps_source": {
+    "message": "$FPS$ fps (Fuente)",
+    "placeholders": {
+      "fps": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_bitrate": {
+    "message": "Tasa de bits (Bitrate)"
+  },
+  "export_bitrate_auto": {
+    "message": "Auto"
+  },
+  "export_bitrate_manual": {
+    "message": "Manual"
+  },
+  "export_bitrate_auto_hint": {
+    "message": "Auto: $RATE$ Mbps (según resolución)",
+    "placeholders": {
+      "rate": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_speed": {
+    "message": "Velocidad de codificación"
+  },
+  "export_speed_fastest": {
+    "message": "Extrema"
+  },
+  "export_speed_fast": {
+    "message": "Rápida"
+  },
+  "export_speed_balanced": {
+    "message": "Equilibrada"
+  },
+  "export_speed_slow": {
+    "message": "Lenta"
+  },
+  "export_speed_slowest": {
+    "message": "Muy lenta"
+  },
+  "export_est_output": {
+    "message": "Salida estimada"
+  },
+  "export_est_size": {
+    "message": "Tamaño est."
+  },
+  "export_label_gif_quality": {
+    "message": "Calidad GIF"
+  },
+  "export_gif_best": {
+    "message": "Óptima (Lenta)"
+  },
+  "export_gif_high": {
+    "message": "Alta"
+  },
+  "export_gif_good": {
+    "message": "Buena (Estándar)"
+  },
+  "export_gif_fast": {
+    "message": "Rápida"
+  },
+  "export_gif_fastest": {
+    "message": "Muy rápida"
+  },
+  "export_label_scale": {
+    "message": "Escala"
+  },
+  "export_scale_original": {
+    "message": "100% (Original)"
+  },
+  "export_label_workers": {
+    "message": "Hilos de proceso"
+  },
+  "export_worker_singular": {
+    "message": "$COUNT$ hilo",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_worker_plural": {
+    "message": "$COUNT$ hilos",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_dither": {
+    "message": "Tramado (Dither)"
+  },
+  "export_dither_none": {
+    "message": "Ninguno"
+  },
+  "export_btn_cancel": {
+    "message": "Cancelar"
+  },
+  "export_btn_export_mp4": {
+    "message": "Exportar MP4"
+  },
+  "export_btn_export_webm": {
+    "message": "Exportar WebM"
+  },
+  "export_btn_export_gif": {
+    "message": "Exportar GIF"
+  },
+  "export_progress_preparing": {
+    "message": "Preparando..."
+  },
+  "export_progress_encoding": {
+    "message": "Codificando..."
+  },
+  "export_progress_muxing": {
+    "message": "Generando archivo..."
+  },
+  "export_progress_finalizing": {
+    "message": "Finalizando..."
+  },
+  "export_progress_frame": {
+    "message": "Cuadro $CURRENT$ / $TOTAL$",
+    "placeholders": {
+      "current": {
+        "content": "$1"
+      },
+      "total": {
+        "content": "$2"
+      }
+    }
+  },
+  "export_progress_time": {
+    "message": "~$SECONDS$s restantes",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_progress_hint": {
+    "message": "Por favor espera mientras exportamos tu video...",
+    "placeholders": {}
+  },
+  "wallpaper_cat_abstract_name": {
+    "message": "Arte Abstracto"
+  },
+  "wallpaper_cat_abstract_desc": {
+    "message": "Patrones abstractos y diseños modernos"
+  },
+  "wallpaper_cat_minimal_name": {
+    "message": "Estilo Mínimo"
+  },
+  "wallpaper_cat_minimal_desc": {
+    "message": "Geometría limpia y estética pura"
+  },
+  "wallpaper_cat_nature_name": {
+    "message": "Naturaleza"
+  },
+  "wallpaper_cat_nature_desc": {
+    "message": "Paisajes naturales y texturas orgánicas"
+  },
+  "wallpaper_cat_business_name": {
+    "message": "Profesional"
+  },
+  "wallpaper_cat_business_desc": {
+    "message": "Ambientes de negocios y estilo corporativo"
+  },
+  "wallpaper_cat_tech_name": {
+    "message": "Tecnología"
+  },
+  "wallpaper_cat_tech_desc": {
+    "message": "Elementos tecnológicos y arte digital"
+  },
+  "wallpaper_gradient_abstract_1_name": {
+    "message": "Degradado Abstracto"
+  },
+  "wallpaper_gradient_abstract_1_desc": {
+    "message": "Fondo de degradado moderno"
+  },
+  "wallpaper_geometric_pattern_1_name": {
+    "message": "Patrón Geométrico"
+  },
+  "wallpaper_geometric_pattern_1_desc": {
+    "message": "Fondo geométrico limpio"
+  },
+  "wallpaper_abstract_2425706_name": {
+    "message": "Colores Abstractos"
+  },
+  "wallpaper_abstract_2425706_desc": {
+    "message": "Textura de colores vibrantes"
+  },
+  "wallpaper_abstract_2512412_name": {
+    "message": "Fluido Abstracto"
+  },
+  "wallpaper_abstract_2512412_desc": {
+    "message": "Fondo de colores fluidos"
+  },
+  "wallpaper_abstract_6297317_name": {
+    "message": "Formas Abstractas"
+  },
+  "wallpaper_abstract_6297317_desc": {
+    "message": "Composición de bloques de color"
+  },
+  "wallpaper_ai_generated_9083808_name": {
+    "message": "Arte por IA"
+  },
+  "wallpaper_ai_generated_9083808_desc": {
+    "message": "Fondo futurista generado por IA"
+  },
+  "wallpaper_beach_4938036_name": {
+    "message": "Playa"
+  },
+  "wallpaper_beach_4938036_desc": {
+    "message": "Paisaje de playa fresco"
+  },
+  "wallpaper_bulb_5665770_name": {
+    "message": "Bombilla Creativa"
+  },
+  "wallpaper_bulb_5665770_desc": {
+    "message": "Símbolo de creatividad"
+  },
+  "wallpaper_cpu_8892400_name": {
+    "message": "Circuito CPU"
+  },
+  "wallpaper_cpu_8892400_desc": {
+    "message": "Chip y placa de circuito"
+  },
+  "wallpaper_feather_5488401_name": {
+    "message": "Primer plano Pluma"
+  },
+  "wallpaper_feather_5488401_desc": {
+    "message": "Textura suave de pluma"
+  },
+  "wallpaper_fractal_8902060_name": {
+    "message": "Arte Fractal"
+  },
+  "wallpaper_fractal_8902060_desc": {
+    "message": "Patrones fractales brillantes"
+  },
+  "wallpaper_orange_3036097_name": {
+    "message": "Rodaja de Naranja"
+  },
+  "wallpaper_orange_3036097_desc": {
+    "message": "Rodajas de naranja vibrantes"
+  },
+  "wallpaper_orange_6508617_name": {
+    "message": "Fondo Naranja"
+  },
+  "wallpaper_orange_6508617_desc": {
+    "message": "Fondo naranja enérgico"
+  },
+  "wallpaper_polar_lights_5858656_name": {
+    "message": "Aurora"
+  },
+  "wallpaper_polar_lights_5858656_desc": {
+    "message": "Cielo nocturno con auroras"
+  },
+  "wallpaper_spiral_3112405_name": {
+    "message": "Patrón Espiral"
+  },
+  "wallpaper_spiral_3112405_desc": {
+    "message": "Textura espiral abstracta"
+  },
+  "wallpaper_steelwool_458842_name": {
+    "message": "Luz de Lana de Acero"
+  },
+  "wallpaper_steelwool_458842_desc": {
+    "message": "Efecto de pintura de luz"
+  },
+  "wallpaper_swimming_pool_8306716_name": {
+    "message": "Ondas de Piscina"
+  },
+  "wallpaper_swimming_pool_8306716_desc": {
+    "message": "Agua de piscina fresca"
+  },
+  "wallpaper_abstract_2426502_name": {
+    "message": "Colores Abstractos"
+  },
+  "wallpaper_abstract_2426502_desc": {
+    "message": "Diseño moderno abstracto"
+  },
+  "wallpaper_camera_1248682_name": {
+    "message": "Cámara"
+  },
+  "wallpaper_camera_1248682_desc": {
+    "message": "Primer plano de cámara tech"
+  },
+  "wallpaper_circle_5090539_name": {
+    "message": "Geometría Circular"
+  },
+  "wallpaper_circle_5090539_desc": {
+    "message": "Patrón circular limpio"
+  },
+  "wallpaper_feather_7009025_name": {
+    "message": "Textura de Pluma"
+  },
+  "wallpaper_feather_7009025_desc": {
+    "message": "Patrones naturales suaves"
+  },
+  "wallpaper_fiber_4814456_name": {
+    "message": "Líneas de Fibra"
+  },
+  "wallpaper_fiber_4814456_desc": {
+    "message": "Sensación tecnológica abstracta"
+  },
+  "wallpaper_frost_6702335_name": {
+    "message": "Textura de Escarcha"
+  },
+  "wallpaper_frost_6702335_desc": {
+    "message": "Fondo de escarcha fría"
+  },
+  "wallpaper_leaves_4291098_name": {
+    "message": "Hojas Verdes"
+  },
+  "wallpaper_leaves_4291098_desc": {
+    "message": "Textura natural de hojas"
+  },
+  "wallpaper_light_1834289_name": {
+    "message": "Bokeh de Luz"
+  },
+  "wallpaper_light_1834289_desc": {
+    "message": "Efecto bokeh atmosférico"
+  },
+  "wallpaper_light_942231_name": {
+    "message": "Estelas de Luz"
+  },
+  "wallpaper_light_942231_desc": {
+    "message": "Líneas de luz dinámicas"
+  },
+  "wallpaper_luck_4397584_name": {
+    "message": "Trébol de 4 hojas"
+  },
+  "wallpaper_luck_4397584_desc": {
+    "message": "Trébol de la suerte fresco"
+  },
+  "wallpaper_waterdrop_2256201_name": {
+    "message": "Gota de Agua"
+  },
+  "wallpaper_waterdrop_2256201_desc": {
+    "message": "Macro de gota de agua"
+  },
+  "welcome_pageTitle": {
+    "message": "Bienvenido a Screen Recorder Studio"
+  },
+  "welcome_headerSubtitle": {
+    "message": "Herramienta de grabación profesional para el navegador"
+  },
+  "welcome_installSuccess": {
+    "message": "Instalación completada"
+  },
+  "welcome_headline": {
+    "message": "¡Bienvenido a Screen Recorder Studio! 🎉"
+  },
+  "welcome_subheadline": {
+    "message": "¿Listo para crear tu primera grabación? Solo tardarás segundos en empezar."
+  },
+  "welcome_tryTitle": {
+    "message": "¡Pruébalo ahora! 🚀"
+  },
+  "welcome_trySubtitle": {
+    "message": "Selecciona tu modo de grabación y pulsa el botón de abajo"
+  },
+  "welcome_tryFeatures": {
+    "message": "Sin configuración • Cuenta regresiva de $SECONDS$ segundos • Calidad profesional",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "welcome_modeTabDetail": {
+    "message": "Perfecto para demos web y tutoriales"
+  },
+  "welcome_modeWindowDetail": {
+    "message": "Incluye barra de direcciones y herramientas"
+  },
+  "welcome_modeScreenDetail": {
+    "message": "Ideal para flujos entre aplicaciones"
+  },
+  "welcome_statusRecording": {
+    "message": "Grabando"
+  },
+  "welcome_modeLabel": {
+    "message": "Modo"
+  },
+  "welcome_readyTitle": {
+    "message": "🎬 ¡Todo listo!"
+  },
+  "welcome_readyDesc": {
+    "message": "Has elegido el modo $MODE$. Haz clic en el gran botón azul para iniciar tu primera grabación.",
+    "placeholders": {
+      "mode": {
+        "content": "$1"
+      }
+    }
+  },
+  "welcome_readyTip": {
+    "message": "Cuenta regresiva de $SECONDS$ segundos antes de empezar",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "welcome_howTitle": {
+    "message": "Cómo funciona"
+  },
+  "welcome_howDesc": {
+    "message": "Tres pasos sencillos para aprovechar la extensión"
+  },
+  "welcome_step1Title": {
+    "message": "Fijar la extensión"
+  },
+  "welcome_step1Desc": {
+    "message": "Haz clic en el icono de rompecabezas 🧩 en la barra del navegador y fija la extensión para acceder rápido"
+  },
+  "welcome_step2Title": {
+    "message": "Elige el destino"
+  },
+  "welcome_step2Desc": {
+    "message": "Selecciona qué grabar: pestaña actual, ventana completa o pantalla completa"
+  },
+  "welcome_step3Title": {
+    "message": "Pulsa Grabar"
+  },
+  "welcome_step3Desc": {
+    "message": "Haz clic en «$BTN$» y prepárate: la cuenta regresiva de $SECONDS$ segundos te da tiempo.",
+    "placeholders": {
+      "btn": {
+        "content": "$1"
+      },
+      "seconds": {
+        "content": "$2"
+      }
+    }
+  },
+  "welcome_advancedTitle": {
+    "message": "¿Necesitas más control?"
+  },
+  "welcome_advancedDesc": {
+    "message": "Haz clic en el icono de la extensión en la barra del navegador para abrir el panel completo"
+  },
+  "welcome_openControl": {
+    "message": "Abrir panel completo"
+  },
+  "welcome_footerHelp": {
+    "message": "¿Necesitas ayuda? Haz clic en el icono de la extensión para abrir el panel con funciones avanzadas."
+  },
+  "welcome_footerMeta": {
+    "message": "Screen Recorder Studio • Hecho para profesionales"
+  },
+  "control_cameraAudioTitle": {
+    "message": "Camera & Microphone"
+  },
+  "control_cameraToggle": {
+    "message": "Enable camera"
+  },
+  "control_audioToggle": {
+    "message": "Enable microphone"
+  },
+  "control_selectCamera": {
+    "message": "Camera"
+  },
+  "control_selectMic": {
+    "message": "Microphone"
+  },
+  "control_cameraPreviewLoading": {
+    "message": "Initializing camera preview..."
+  },
+  "control_cameraPreviewError": {
+    "message": "Unable to preview camera"
+  }
 }

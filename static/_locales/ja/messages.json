@@ -1,341 +1,1125 @@
 {
-  "appName": { "message": "Screen Recorder Studio" },
-  "appDesc": { "message": "タブ、ウィンドウ、画面全体、指定範囲や要素を録画できるプロ仕様のChrome拡張機能" },
-  "action_defaultTitle": { "message": "録画パネルを開く" },
-
-  "control_headerTitle": { "message": "スクリーンレコーダー" },
-  "control_headerDesc": { "message": "録画モードを選択して開始" },
-  "control_openDriveTooltip": { "message": "録画ファイル管理を開く" },
-  "control_closePanelTooltip": { "message": "コントロールパネルを閉じる" },
-  "control_recordingMode": { "message": "録画モード" },
-  "control_modeTab": { "message": "タブ" },
-  "control_modeTabDesc": { "message": "現在のタブを録画" },
-  "control_modeWindow": { "message": "ウィンドウ" },
-  "control_modeWindowDesc": { "message": "ウィンドウ全体を録画" },
-  "control_modeScreen": { "message": "画面全体" },
-  "control_modeScreenDesc": { "message": "ディスプレイ全体を録画" },
-  "control_statusRecording": { "message": "録画中" },
-  "control_statusPaused": { "message": "一時停止中" },
-  "control_statusPreparing": { "message": "録画の準備をしています..." },
-  "control_btnStart": { "message": "録画開始" },
-  "control_btnStop": { "message": "録画停止" },
-  "control_btnPause": { "message": "一時停止" },
-  "control_btnResume": { "message": "録画再開" },
-  "control_btnPreparing": { "message": "準備中..." },
-  "control_btnStarting": { "message": "$SECONDS$ 秒後に開始...", "placeholders": { "seconds": { "content": "$1" } } },
-  "control_countdownLabel": { "message": "カウントダウン" },
-  "control_tipsTitle": { "message": "録画のヒント:" },
-  "control_tipsSelectMode": { "message": "$MODE$ モードが選択されました。「録画開始」をクリックしてください。", "placeholders": { "mode": { "content": "$1" } } },
-  "control_tipsPreparing": { "message": "画面の選択を待機しています..." },
-  "control_tipsCountdown": { "message": "準備してください！ $SECONDS$ 秒後に録画が始まります。", "placeholders": { "seconds": { "content": "$1" } } },
-  "control_tipsPaused": { "message": "録画は一時停止中です。「録画再開」をクリックして続行します。" },
-  "control_tipsRecording": { "message": "録画が進行中です。一時停止ボタンで中断できます。" },
-  "control_overlayRecordingStarts": { "message": "まもなく録画を開始します..." },
-
-  "drive_pageTitle": { "message": "録画リスト - Screen Recorder" },
-  "drive_headerTitle": { "message": "録画マネージャー" },
-  "drive_errorSupport": { "message": "お使いのブラウザは OPFS ストレージをサポートしていません" },
-  "drive_errorMetaNotFound": { "message": "meta.json が見つかりません" },
-  "drive_errorEmpty": { "message": "録画ファイルが空です" },
-  "drive_errorMetadata": { "message": "メタデータの読み込みに失敗しました" },
-  "drive_errorDataSize": { "message": "データファイルサイズの取得に失敗しました" },
-  "drive_recordingNamePrefix": { "message": "画面録画" },
-  "drive_logDeleted": { "message": "録画 $ID$ を削除しました", "placeholders": { "id": { "content": "$1" } } },
-  "drive_errorDelete": { "message": "削除失敗: $ERROR$", "placeholders": { "error": { "content": "$1" } } },
-  "drive_logBatchDelete": { "message": "$COUNT$ 件の録画を削除しました", "placeholders": { "count": { "content": "$1" } } },
-  "drive_errorLoad": { "message": "録画の読み込み中にエラーが発生しました" },
-  "drive_errorLoadPrefix": { "message": "読み込み失敗:" },
-
-  "studio_pageTitle": { "message": "Screen Recording Studio" },
-  "studio_headerTitle": { "message": "Screen Recorder Studio" },
-  "studio_githubTooltip": { "message": "GitHubでソースを表示" },
-  "studio_githubText": { "message": "GitHub" },
-  "studio_feedbackTooltip": { "message": "バグ報告・機能提案" },
-  "studio_feedbackText": { "message": "フィードバック" },
-  "studio_helpTooltip": { "message": "ヘルプ・ドキュメント" },
-  "studio_helpText": { "message": "ヘルプ" },
-  "studio_driveTooltip": { "message": "録画ファイル管理を開く" },
-  "studio_driveText": { "message": "ドライブ" },
-  "studio_fullscreenEnterTooltip": { "message": "全画面表示" },
-  "studio_fullscreenExitTooltip": { "message": "全画面表示を終了" },
-  "studio_fullscreenEnterText": { "message": "全画面" },
-  "studio_fullscreenExitText": { "message": "終了" },
-
-  "bg_title": { "message": "背景設定" },
-  "bg_tab_wallpaper": { "message": "壁紙" },
-  "bg_tab_gradient": { "message": "グラデーション" },
-  "bg_tab_solid": { "message": "単色" },
-  "bg_tab_image": { "message": "画像" },
-
-  "radius_title": { "message": "角丸" },
-  "radius_none": { "message": "なし" },
-  "radius_small": { "message": "小" },
-  "radius_medium": { "message": "中" },
-  "radius_large": { "message": "大" },
-  "radius_xl": { "message": "特大" },
-
-  "padding_title": { "message": "余白 (パディング)" },
-  "padding_none": { "message": "なし" },
-  "padding_small": { "message": "小" },
-  "padding_medium": { "message": "中" },
-  "padding_large": { "message": "大" },
-  "padding_xl": { "message": "特大" },
-
-  "ratio_yt": { "message": "YouTube 横長" },
-  "ratio_yt_desc": { "message": "YouTube, Bilibili など" },
-  "ratio_sq": { "message": "Instagram 正方形" },
-  "ratio_sq_desc": { "message": "Instagram 投稿など" },
-  "ratio_tiktok": { "message": "TikTok 縦長" },
-  "ratio_tiktok_desc": { "message": "TikTok, Reels など" },
-  "ratio_story": { "message": "Instagram ストーリー" },
-  "ratio_story_desc": { "message": "Stories, 小紅書など" },
-
-  "shadow_title": { "message": "シャドウ (影)" },
-  "shadow_preset_title": { "message": "プリセット効果" },
-  "shadow_custom_title": { "message": "カスタム設定" },
-  "shadow_light": { "message": "ライト" },
-  "shadow_standard": { "message": "標準" },
-  "shadow_deep": { "message": "ディープ" },
-  "shadow_distant": { "message": "遠め" },
-  "shadow_offset_x": { "message": "Xオフセット" },
-  "shadow_offset_y": { "message": "Yオフセット" },
-  "shadow_blur": { "message": "ぼかし" },
-  "shadow_color": { "message": "色" },
-  "shadow_opacity": { "message": "不透明度" },
-  "shadow_empty_state": { "message": "スイッチをオンにしてシャドウを設定します" },
-
-  "color_tab_basic": { "message": "基本" },
-  "color_tab_light": { "message": "ライト" },
-  "color_tab_business": { "message": "ビジネス" },
-  "color_tab_creative": { "message": "クリエイティブ" },
-  "color_custom": { "message": "カスタム:" },
-
-  "gradient_tab_linear": { "message": "線形" },
-  "gradient_tab_radial": { "message": "放射状" },
-  "gradient_tab_conic": { "message": "円錐状" },
-  "gradient_tab_multi": { "message": "マルチカラー" },
-  "gradient_current": { "message": "現在:" },
-  "gradient_select_hint": { "message": "グラデーションを選択" },
-  "gradient_colors_suffix": { "message": "色" },
-
-  "wallpaper_tab_abstract": { "message": "抽象" },
-  "wallpaper_tab_minimal": { "message": "ミニマル" },
-  "wallpaper_tab_nature": { "message": "自然" },
-  "wallpaper_tab_business": { "message": "ビジネス" },
-  "wallpaper_tab_tech": { "message": "テック" },
-  "wallpaper_error": { "message": "壁紙の読み込みに失敗しました" },
-  "wallpaper_stats": { "message": "このカテゴリに $COUNT$ 個の壁紙", "placeholders": { "count": { "content": "$1" } } },
-  "wallpaper_total": { "message": "合計 $TOTAL$ 個", "placeholders": { "total": { "content": "$1" } } },
-
-  "upload_processing": { "message": "処理中..." },
-  "upload_drop_hint": { "message": "クリックまたは画像をドラッグ" },
-  "upload_format_hint": { "message": "JPEG, PNG, WebP, GIF · 最大 5MB" },
-  "upload_error_select": { "message": "画像ファイルを選択してください" },
-  "upload_error_failed": { "message": "アップロードに失敗しました" },
-
-  "drive_delete_selected_btn": { "message": "選択項目を削除 ($COUNT$)", "placeholders": { "count": { "content": "$1" } } },
-  "drive_clear_selection": { "message": "選択解除" },
-  "drive_refresh": { "message": "更新" },
-  "drive_error_title": { "message": "エラー" },
-  "drive_close_error": { "message": "閉じる" },
-  "drive_loading": { "message": "録画を読み込んでいます..." },
-  "drive_empty_title": { "message": "録画がまだありません" },
-  "drive_empty_desc1": { "message": "保存された画面録画はありません。" },
-  "drive_empty_desc2": { "message": "画面録画を開始すると、ここに表示されます。" },
-  "drive_start_recording_btn": { "message": "録画を開始する" },
-  "drive_select_all": { "message": "すべて選択 ($COUNT$ 件)", "placeholders": { "count": { "content": "$1" } } },
-  "drive_sort_hint": { "message": "新しい順に表示" },
-  "drive_confirm_delete_title": { "message": "削除の確認" },
-  "drive_confirm_delete_selected": { "message": "選択した $COUNT$ 件の録画を削除してもよろしいですか？", "placeholders": { "count": { "content": "$1" } } },
-  "drive_confirm_delete_single": { "message": "この録画を削除してもよろしいですか？" },
-  "drive_action_undone": { "message": "この操作は取り消せません。" },
-  "drive_cancel": { "message": "キャンセル" },
-  "drive_delete": { "message": "削除" },
-
-  "card_status_completed": { "message": "完了" },
-  "card_status_incomplete": { "message": "未完了" },
-  "card_label_created": { "message": "作成日時:" },
-  "card_label_status": { "message": "ステータス:" },
-  "card_label_codec": { "message": "コーデック:" },
-  "card_label_resolution": { "message": "解像度:" },
-  "card_label_fps": { "message": "FPS:" },
-  "card_label_size": { "message": "サイズ:" },
-  "card_label_frames": { "message": "総フレーム数:" },
-  "card_incomplete_title": { "message": "不完全な録画" },
-  "card_incomplete_desc": { "message": "ビデオデータが見つかりません" },
-  "card_preview_error": { "message": "プレビュー不可" },
-  "card_preview_loading": { "message": "プレビュー生成中..." },
-  "card_btn_edit": { "message": "編集" },
-  "card_btn_delete": { "message": "削除" },
-  "card_edit_disabled_tooltip": { "message": "不完全な録画は編集できません" },
-  "card_edit_tooltip": { "message": "録画を編集する" },
-  "card_preview_load_error": { "message": "プレビューの読み込み失敗: $ERROR$", "placeholders": { "error": { "content": "$1" } } },
-  "card_date_today": { "message": "今日 $TIME$", "placeholders": { "time": { "content": "$1" } } },
-  "card_date_yesterday": { "message": "昨日 $TIME$", "placeholders": { "time": { "content": "$1" } } },
-  "card_date_days_ago": { "message": "$DAYS$ 日前", "placeholders": { "days": { "content": "$1" } } },
-
-  "export_panel_tier_free": { "message": "無料版" },
-  "export_panel_tier_pro": { "message": "プロ版" },
-  "export_panel_tier_trial": { "message": "プロ試用版" },
-  "export_panel_btn": { "message": "書き出し" },
-  "export_panel_tooltip_incomplete": { "message": "録画を完了してから書き出してください" },
-  "export_panel_tooltip_no_data": { "message": "ビデオデータがありません" },
-  "export_panel_btn_exporting": { "message": "書き出し中..." },
-
-  "export_dialog_title": { "message": "ビデオの書き出し" },
-  "export_source_res": { "message": "解像度" },
-  "export_source_codec": { "message": "コーデック" },
-  "export_source_duration": { "message": "再生時間" },
-  "export_source_frames": { "message": "フレーム数" },
-  "export_badge_bg": { "message": "背景あり" },
-  "export_badge_trim": { "message": "カット済み" },
-  "export_format_mp4": { "message": "MP4" },
-  "export_format_webm": { "message": "WebM" },
-  "export_format_gif": { "message": "GIF" },
-  "export_quality_title": { "message": "画質プリセット" },
-  "export_quality_draft": { "message": "下書き" },
-  "export_quality_draft_desc": { "message": "高速、低画質" },
-  "export_quality_balanced": { "message": "バランス" },
-  "export_quality_balanced_desc": { "message": "標準的な画質と速度" },
-  "export_quality_high": { "message": "高画質" },
-  "export_quality_high_desc": { "message": "高品質、低速" },
-  "export_quality_best": { "message": "最高画質" },
-  "export_quality_best_desc": { "message": "最高のクオリティ、最も低速" },
-  "export_label_resolution": { "message": "書き出し解像度" },
-  "export_res_source": { "message": "ソースに合わせる ($WIDTH$×$HEIGHT$)", "placeholders": { "width": { "content": "$1" }, "height": { "content": "$2" } } },
-  "export_label_framerate": { "message": "フレームレート" },
-  "export_fps_source": { "message": "$FPS$ fps (ソース)", "placeholders": { "fps": { "content": "$1" } } },
-  "export_label_bitrate": { "message": "ビットレート" },
-  "export_bitrate_auto": { "message": "自動" },
-  "export_bitrate_manual": { "message": "手動" },
-  "export_bitrate_auto_hint": { "message": "自動: $RATE$ Mbps (解像度と画質に基づく)", "placeholders": { "rate": { "content": "$1" } } },
-  "export_label_speed": { "message": "エンコード速度" },
-  "export_speed_fastest": { "message": "最速" },
-  "export_speed_fast": { "message": "高速" },
-  "export_speed_balanced": { "message": "バランス" },
-  "export_speed_slow": { "message": "低速" },
-  "export_speed_slowest": { "message": "最微速" },
-  "export_est_output": { "message": "予想される出力" },
-  "export_est_size": { "message": "予想サイズ" },
-  "export_label_gif_quality": { "message": "GIF画質" },
-  "export_gif_best": { "message": "最高 (低速)" },
-  "export_gif_high": { "message": "高" },
-  "export_gif_good": { "message": "良 (標準)" },
-  "export_gif_fast": { "message": "速" },
-  "export_gif_fastest": { "message": "最速" },
-  "export_label_scale": { "message": "スケール" },
-  "export_scale_original": { "message": "100% (オリジナル)" },
-  "export_label_workers": { "message": "処理スレッド" },
-  "export_worker_singular": { "message": "$COUNT$ スレッド", "placeholders": { "count": { "content": "$1" } } },
-  "export_worker_plural": { "message": "$COUNT$ スレッド", "placeholders": { "count": { "content": "$1" } } },
-  "export_label_dither": { "message": "ディザリング" },
-  "export_dither_none": { "message": "なし" },
-  "export_btn_cancel": { "message": "キャンセル" },
-  "export_btn_export_mp4": { "message": "MP4を書き出す" },
-  "export_btn_export_webm": { "message": "WebMを書き出す" },
-  "export_btn_export_gif": { "message": "GIFを書き出す" },
-  "export_progress_preparing": { "message": "準備中..." },
-  "export_progress_encoding": { "message": "エンコード中..." },
-  "export_progress_muxing": { "message": "ファイル作成中..." },
-  "export_progress_finalizing": { "message": "最終処理中..." },
-  "export_progress_frame": { "message": "フレーム $CURRENT$ / $TOTAL$", "placeholders": { "current": { "content": "$1" }, "total": { "content": "$2" } } },
-  "export_progress_time": { "message": "残り約 $SECONDS$ 秒", "placeholders": { "seconds": { "content": "$1" } } },
-  "export_progress_hint": { "message": "ビデオを書き出しています。しばらくお待ちください..." },
-
-  "wallpaper_cat_abstract_name": { "message": "抽象芸術" },
-  "wallpaper_cat_abstract_desc": { "message": "抽象的なパターン、芸術的なデザイン" },
-  "wallpaper_cat_minimal_name": { "message": "ミニマル" },
-  "wallpaper_cat_minimal_desc": { "message": "シンプルな幾何学模様、ミニマリズム" },
-  "wallpaper_cat_nature_name": { "message": "自然風景" },
-  "wallpaper_cat_nature_desc": { "message": "自然の景観、植物のテクスチャ" },
-  "wallpaper_cat_business_name": { "message": "ビジネス" },
-  "wallpaper_cat_business_desc": { "message": "プロフェッショナルな雰囲気、企業スタイル" },
-  "wallpaper_cat_tech_name": { "message": "テック・未来" },
-  "wallpaper_cat_tech_desc": { "message": "テクノロジー、近未来的なデジタルアート" },
-
-  "wallpaper_gradient_abstract_1_name": { "message": "抽象グラデーション" },
-  "wallpaper_gradient_abstract_1_desc": { "message": "モダンな抽象グラデーション背景" },
-  "wallpaper_geometric_pattern_1_name": { "message": "幾何学模様" },
-  "wallpaper_geometric_pattern_1_desc": { "message": "クリーンな幾何学パターン" },
-  "wallpaper_abstract_2425706_name": { "message": "抽象カラー" },
-  "wallpaper_abstract_2425706_desc": { "message": "鮮やかな抽象的テクスチャ" },
-  "wallpaper_abstract_2512412_name": { "message": "抽象流体" },
-  "wallpaper_abstract_2512412_desc": { "message": "流れるようなカラー背景" },
-  "wallpaper_abstract_6297317_name": { "message": "抽象フォーム" },
-  "wallpaper_abstract_6297317_desc": { "message": "幾何学的な色面構成" },
-  "wallpaper_ai_generated_9083808_name": { "message": "AI生成アート" },
-  "wallpaper_ai_generated_9083808_desc": { "message": "AIによる未来的アート" },
-  "wallpaper_beach_4938036_name": { "message": "ビーチ" },
-  "wallpaper_beach_4938036_desc": { "message": "爽やかな海辺の風景" },
-  "wallpaper_bulb_5665770_name": { "message": "創造的な電球" },
-  "wallpaper_bulb_5665770_desc": { "message": "インスピレーションを象徴する電球" },
-  "wallpaper_cpu_8892400_name": { "message": "CPU回路" },
-  "wallpaper_cpu_8892400_desc": { "message": "ハイテクな電子基板" },
-  "wallpaper_feather_5488401_name": { "message": "羽毛のクローズアップ" },
-  "wallpaper_feather_5488401_desc": { "message": "ディテール豊かな羽毛" },
-  "wallpaper_fractal_8902060_name": { "message": "フラクタルアート" },
-  "wallpaper_fractal_8902060_desc": { "message": "煌びやかな幾何学的アート" },
-  "wallpaper_orange_3036097_name": { "message": "オレンジスライス" },
-  "wallpaper_orange_3036097_desc": { "message": "鮮やかなオレンジの断面" },
-  "wallpaper_orange_6508617_name": { "message": "オレンジ背景" },
-  "wallpaper_orange_6508617_desc": { "message": "エネルギッシュなオレンジ" },
-  "wallpaper_polar_lights_5858656_name": { "message": "オーロラ" },
-  "wallpaper_polar_lights_5858656_desc": { "message": "幻想的な北極光" },
-  "wallpaper_spiral_3112405_name": { "message": "スパイラル" },
-  "wallpaper_spiral_3112405_desc": { "message": "ダイナミックな渦巻き" },
-  "wallpaper_steelwool_458842_name": { "message": "スチールウール光絵" },
-  "wallpaper_steelwool_458842_desc": { "message": "幻想的な光の軌跡" },
-  "wallpaper_swimming_pool_8306716_name": { "message": "プール" },
-  "wallpaper_swimming_pool_8306716_desc": { "message": "涼しげな水面の波紋" },
-  "wallpaper_abstract_2426502_name": { "message": "抽象色面" },
-  "wallpaper_abstract_2426502_desc": { "message": "抽象的なカラーシェイプ" },
-  "wallpaper_camera_1248682_name": { "message": "カメラ" },
-  "wallpaper_camera_1248682_desc": { "message": "質感のあるテック系カメラ" },
-  "wallpaper_circle_5090539_name": { "message": "円形幾何学" },
-  "wallpaper_circle_5090539_desc": { "message": "統一感のある円形パターン" },
-  "wallpaper_feather_7009025_name": { "message": "羽毛の質感" },
-  "wallpaper_feather_7009025_desc": { "message": "繊細な自然のパターン" },
-  "wallpaper_fiber_4814456_name": { "message": "ファイバーライン" },
-  "wallpaper_fiber_4814456_desc": { "message": "抽象的な光ファイバー" },
-  "wallpaper_frost_6702335_name": { "message": "霜の紋様" },
-  "wallpaper_frost_6702335_desc": { "message": "冷たい質感の氷の花" },
-  "wallpaper_leaves_4291098_name": { "message": "緑の葉" },
-  "wallpaper_leaves_4291098_desc": { "message": "癒やしのグリーンテクスチャ" },
-  "wallpaper_light_1834289_name": { "message": "光のボケ" },
-  "wallpaper_light_1834289_desc": { "message": "雰囲気のある光の玉" },
-  "wallpaper_light_942231_name": { "message": "光の筋" },
-  "wallpaper_light_942231_desc": { "message": "流動的な光のライン" },
-  "wallpaper_luck_4397584_name": { "message": "四つ葉のクローバー" },
-  "wallpaper_luck_4397584_desc": { "message": "幸運のクローバー" },
-  "wallpaper_waterdrop_2256201_name": { "message": "水滴" },
-  "wallpaper_waterdrop_2256201_desc": { "message": "水滴の接写テクスチャ" },
-  "welcome_pageTitle": { "message": "Screen Recorder Studio へようこそ" },
-  "welcome_headerSubtitle": { "message": "プロ向けのブラウザー録画ツール" },
-  "welcome_installSuccess": { "message": "インストールに成功しました" },
-  "welcome_headline": { "message": "Screen Recorder Studio へようこそ！🎉" },
-  "welcome_subheadline": { "message": "初めての録画を始めましょう。準備は数秒で完了します。" },
-  "welcome_tryTitle": { "message": "今すぐ試す！🚀" },
-  "welcome_trySubtitle": { "message": "録画モードを選び、下のボタンを押してください" },
-  "welcome_tryFeatures": { "message": "設定不要 • $SECONDS$ 秒のカウントダウン • プロ品質", "placeholders": { "seconds": { "content": "$1" } } },
-  "welcome_modeTabDetail": { "message": "Web デモやチュートリアルに最適" },
-  "welcome_modeWindowDetail": { "message": "アドレスバーとツールバーも含めて録画" },
-  "welcome_modeScreenDetail": { "message": "複数アプリのワークフローに最適" },
-  "welcome_statusRecording": { "message": "録画中" },
-  "welcome_modeLabel": { "message": "モード" },
-  "welcome_readyTitle": { "message": "🎬 準備完了！" },
-  "welcome_readyDesc": { "message": "$MODE$ モードを選択しました。上の青いボタンを押して最初の録画を始めましょう！", "placeholders": { "mode": { "content": "$1" } } },
-  "welcome_readyTip": { "message": "録画開始まで $SECONDS$ 秒のカウントダウン", "placeholders": { "seconds": { "content": "$1" } } },
-  "welcome_howTitle": { "message": "使い方" },
-  "welcome_howDesc": { "message": "拡張機能を活用する 3 つのステップ" },
-  "welcome_step1Title": { "message": "拡張機能を固定" },
-  "welcome_step1Desc": { "message": "ブラウザーのツールバーにあるパズル 🧩 アイコンをクリックし、拡張機能をピン留めしてすぐにアクセス" },
-  "welcome_step2Title": { "message": "対象を選択" },
-  "welcome_step2Desc": { "message": "録画対象を選択：現在のタブ、ウィンドウ全体、または画面全体" },
-  "welcome_step3Title": { "message": "録画を開始" },
-  "welcome_step3Desc": { "message": "「$BTN$」をクリックして準備しましょう。$SECONDS$ 秒のカウントダウンで落ち着いて開始できます。", "placeholders": { "btn": { "content": "$1" }, "seconds": { "content": "$2" } } },
-  "welcome_advancedTitle": { "message": "さらに詳しく操作しますか？" },
-  "welcome_advancedDesc": { "message": "ツールバーの拡張機能アイコンをクリックしてフルコントロールパネルを開きます" },
-  "welcome_openControl": { "message": "フルコントロールパネルを開く" },
-  "welcome_footerHelp": { "message": "ヘルプが必要ですか？拡張機能アイコンをクリックして高度な機能付きのコントロールパネルを開いてください。" },
-  "welcome_footerMeta": { "message": "Screen Recorder Studio • プロ向けに作成" }
+  "appName": {
+    "message": "Screen Recorder Studio"
+  },
+  "appDesc": {
+    "message": "タブ、ウィンドウ、画面全体、指定範囲や要素を録画できるプロ仕様のChrome拡張機能"
+  },
+  "action_defaultTitle": {
+    "message": "録画パネルを開く"
+  },
+  "control_headerTitle": {
+    "message": "スクリーンレコーダー"
+  },
+  "control_headerDesc": {
+    "message": "録画モードを選択して開始"
+  },
+  "control_openDriveTooltip": {
+    "message": "録画ファイル管理を開く"
+  },
+  "control_closePanelTooltip": {
+    "message": "コントロールパネルを閉じる"
+  },
+  "control_recordingMode": {
+    "message": "録画モード"
+  },
+  "control_modeTab": {
+    "message": "タブ"
+  },
+  "control_modeTabDesc": {
+    "message": "現在のタブを録画"
+  },
+  "control_modeWindow": {
+    "message": "ウィンドウ"
+  },
+  "control_modeWindowDesc": {
+    "message": "ウィンドウ全体を録画"
+  },
+  "control_modeScreen": {
+    "message": "画面全体"
+  },
+  "control_modeScreenDesc": {
+    "message": "ディスプレイ全体を録画"
+  },
+  "control_statusRecording": {
+    "message": "録画中"
+  },
+  "control_statusPaused": {
+    "message": "一時停止中"
+  },
+  "control_statusPreparing": {
+    "message": "録画の準備をしています..."
+  },
+  "control_btnStart": {
+    "message": "録画開始"
+  },
+  "control_btnStop": {
+    "message": "録画停止"
+  },
+  "control_btnPause": {
+    "message": "一時停止"
+  },
+  "control_btnResume": {
+    "message": "録画再開"
+  },
+  "control_btnPreparing": {
+    "message": "準備中..."
+  },
+  "control_btnStarting": {
+    "message": "$SECONDS$ 秒後に開始...",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_countdownLabel": {
+    "message": "カウントダウン"
+  },
+  "control_tipsTitle": {
+    "message": "録画のヒント:"
+  },
+  "control_tipsSelectMode": {
+    "message": "$MODE$ モードが選択されました。「録画開始」をクリックしてください。",
+    "placeholders": {
+      "mode": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_tipsPreparing": {
+    "message": "画面の選択を待機しています..."
+  },
+  "control_tipsCountdown": {
+    "message": "準備してください！ $SECONDS$ 秒後に録画が始まります。",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_tipsPaused": {
+    "message": "録画は一時停止中です。「録画再開」をクリックして続行します。"
+  },
+  "control_tipsRecording": {
+    "message": "録画が進行中です。一時停止ボタンで中断できます。"
+  },
+  "control_overlayRecordingStarts": {
+    "message": "まもなく録画を開始します..."
+  },
+  "drive_pageTitle": {
+    "message": "録画リスト - Screen Recorder"
+  },
+  "drive_headerTitle": {
+    "message": "録画マネージャー"
+  },
+  "drive_errorSupport": {
+    "message": "お使いのブラウザは OPFS ストレージをサポートしていません"
+  },
+  "drive_errorMetaNotFound": {
+    "message": "meta.json が見つかりません"
+  },
+  "drive_errorEmpty": {
+    "message": "録画ファイルが空です"
+  },
+  "drive_errorMetadata": {
+    "message": "メタデータの読み込みに失敗しました"
+  },
+  "drive_errorDataSize": {
+    "message": "データファイルサイズの取得に失敗しました"
+  },
+  "drive_recordingNamePrefix": {
+    "message": "画面録画"
+  },
+  "drive_logDeleted": {
+    "message": "録画 $ID$ を削除しました",
+    "placeholders": {
+      "id": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_errorDelete": {
+    "message": "削除失敗: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_logBatchDelete": {
+    "message": "$COUNT$ 件の録画を削除しました",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_errorLoad": {
+    "message": "録画の読み込み中にエラーが発生しました"
+  },
+  "drive_errorLoadPrefix": {
+    "message": "読み込み失敗:"
+  },
+  "studio_pageTitle": {
+    "message": "Screen Recording Studio"
+  },
+  "studio_headerTitle": {
+    "message": "Screen Recorder Studio"
+  },
+  "studio_githubTooltip": {
+    "message": "GitHubでソースを表示"
+  },
+  "studio_githubText": {
+    "message": "GitHub"
+  },
+  "studio_feedbackTooltip": {
+    "message": "バグ報告・機能提案"
+  },
+  "studio_feedbackText": {
+    "message": "フィードバック"
+  },
+  "studio_helpTooltip": {
+    "message": "ヘルプ・ドキュメント"
+  },
+  "studio_helpText": {
+    "message": "ヘルプ"
+  },
+  "studio_driveTooltip": {
+    "message": "録画ファイル管理を開く"
+  },
+  "studio_driveText": {
+    "message": "ドライブ"
+  },
+  "studio_fullscreenEnterTooltip": {
+    "message": "全画面表示"
+  },
+  "studio_fullscreenExitTooltip": {
+    "message": "全画面表示を終了"
+  },
+  "studio_fullscreenEnterText": {
+    "message": "全画面"
+  },
+  "studio_fullscreenExitText": {
+    "message": "終了"
+  },
+  "bg_title": {
+    "message": "背景設定"
+  },
+  "bg_tab_wallpaper": {
+    "message": "壁紙"
+  },
+  "bg_tab_gradient": {
+    "message": "グラデーション"
+  },
+  "bg_tab_solid": {
+    "message": "単色"
+  },
+  "bg_tab_image": {
+    "message": "画像"
+  },
+  "radius_title": {
+    "message": "角丸"
+  },
+  "radius_none": {
+    "message": "なし"
+  },
+  "radius_small": {
+    "message": "小"
+  },
+  "radius_medium": {
+    "message": "中"
+  },
+  "radius_large": {
+    "message": "大"
+  },
+  "radius_xl": {
+    "message": "特大"
+  },
+  "padding_title": {
+    "message": "余白 (パディング)"
+  },
+  "padding_none": {
+    "message": "なし"
+  },
+  "padding_small": {
+    "message": "小"
+  },
+  "padding_medium": {
+    "message": "中"
+  },
+  "padding_large": {
+    "message": "大"
+  },
+  "padding_xl": {
+    "message": "特大"
+  },
+  "ratio_yt": {
+    "message": "YouTube 横長"
+  },
+  "ratio_yt_desc": {
+    "message": "YouTube, Bilibili など"
+  },
+  "ratio_sq": {
+    "message": "Instagram 正方形"
+  },
+  "ratio_sq_desc": {
+    "message": "Instagram 投稿など"
+  },
+  "ratio_tiktok": {
+    "message": "TikTok 縦長"
+  },
+  "ratio_tiktok_desc": {
+    "message": "TikTok, Reels など"
+  },
+  "ratio_story": {
+    "message": "Instagram ストーリー"
+  },
+  "ratio_story_desc": {
+    "message": "Stories, 小紅書など"
+  },
+  "shadow_title": {
+    "message": "シャドウ (影)"
+  },
+  "shadow_preset_title": {
+    "message": "プリセット効果"
+  },
+  "shadow_custom_title": {
+    "message": "カスタム設定"
+  },
+  "shadow_light": {
+    "message": "ライト"
+  },
+  "shadow_standard": {
+    "message": "標準"
+  },
+  "shadow_deep": {
+    "message": "ディープ"
+  },
+  "shadow_distant": {
+    "message": "遠め"
+  },
+  "shadow_offset_x": {
+    "message": "Xオフセット"
+  },
+  "shadow_offset_y": {
+    "message": "Yオフセット"
+  },
+  "shadow_blur": {
+    "message": "ぼかし"
+  },
+  "shadow_color": {
+    "message": "色"
+  },
+  "shadow_opacity": {
+    "message": "不透明度"
+  },
+  "shadow_empty_state": {
+    "message": "スイッチをオンにしてシャドウを設定します"
+  },
+  "color_tab_basic": {
+    "message": "基本"
+  },
+  "color_tab_light": {
+    "message": "ライト"
+  },
+  "color_tab_business": {
+    "message": "ビジネス"
+  },
+  "color_tab_creative": {
+    "message": "クリエイティブ"
+  },
+  "color_custom": {
+    "message": "カスタム:"
+  },
+  "gradient_tab_linear": {
+    "message": "線形"
+  },
+  "gradient_tab_radial": {
+    "message": "放射状"
+  },
+  "gradient_tab_conic": {
+    "message": "円錐状"
+  },
+  "gradient_tab_multi": {
+    "message": "マルチカラー"
+  },
+  "gradient_current": {
+    "message": "現在:"
+  },
+  "gradient_select_hint": {
+    "message": "グラデーションを選択"
+  },
+  "gradient_colors_suffix": {
+    "message": "色"
+  },
+  "wallpaper_tab_abstract": {
+    "message": "抽象"
+  },
+  "wallpaper_tab_minimal": {
+    "message": "ミニマル"
+  },
+  "wallpaper_tab_nature": {
+    "message": "自然"
+  },
+  "wallpaper_tab_business": {
+    "message": "ビジネス"
+  },
+  "wallpaper_tab_tech": {
+    "message": "テック"
+  },
+  "wallpaper_error": {
+    "message": "壁紙の読み込みに失敗しました"
+  },
+  "wallpaper_stats": {
+    "message": "このカテゴリに $COUNT$ 個の壁紙",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "wallpaper_total": {
+    "message": "合計 $TOTAL$ 個",
+    "placeholders": {
+      "total": {
+        "content": "$1"
+      }
+    }
+  },
+  "upload_processing": {
+    "message": "処理中..."
+  },
+  "upload_drop_hint": {
+    "message": "クリックまたは画像をドラッグ"
+  },
+  "upload_format_hint": {
+    "message": "JPEG, PNG, WebP, GIF · 最大 5MB"
+  },
+  "upload_error_select": {
+    "message": "画像ファイルを選択してください"
+  },
+  "upload_error_failed": {
+    "message": "アップロードに失敗しました"
+  },
+  "drive_delete_selected_btn": {
+    "message": "選択項目を削除 ($COUNT$)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_clear_selection": {
+    "message": "選択解除"
+  },
+  "drive_refresh": {
+    "message": "更新"
+  },
+  "drive_error_title": {
+    "message": "エラー"
+  },
+  "drive_close_error": {
+    "message": "閉じる"
+  },
+  "drive_loading": {
+    "message": "録画を読み込んでいます..."
+  },
+  "drive_empty_title": {
+    "message": "録画がまだありません"
+  },
+  "drive_empty_desc1": {
+    "message": "保存された画面録画はありません。"
+  },
+  "drive_empty_desc2": {
+    "message": "画面録画を開始すると、ここに表示されます。"
+  },
+  "drive_start_recording_btn": {
+    "message": "録画を開始する"
+  },
+  "drive_select_all": {
+    "message": "すべて選択 ($COUNT$ 件)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_sort_hint": {
+    "message": "新しい順に表示"
+  },
+  "drive_confirm_delete_title": {
+    "message": "削除の確認"
+  },
+  "drive_confirm_delete_selected": {
+    "message": "選択した $COUNT$ 件の録画を削除してもよろしいですか？",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_confirm_delete_single": {
+    "message": "この録画を削除してもよろしいですか？"
+  },
+  "drive_action_undone": {
+    "message": "この操作は取り消せません。"
+  },
+  "drive_cancel": {
+    "message": "キャンセル"
+  },
+  "drive_delete": {
+    "message": "削除"
+  },
+  "card_status_completed": {
+    "message": "完了"
+  },
+  "card_status_incomplete": {
+    "message": "未完了"
+  },
+  "card_label_created": {
+    "message": "作成日時:"
+  },
+  "card_label_status": {
+    "message": "ステータス:"
+  },
+  "card_label_codec": {
+    "message": "コーデック:"
+  },
+  "card_label_resolution": {
+    "message": "解像度:"
+  },
+  "card_label_fps": {
+    "message": "FPS:"
+  },
+  "card_label_size": {
+    "message": "サイズ:"
+  },
+  "card_label_frames": {
+    "message": "総フレーム数:"
+  },
+  "card_incomplete_title": {
+    "message": "不完全な録画"
+  },
+  "card_incomplete_desc": {
+    "message": "ビデオデータが見つかりません"
+  },
+  "card_preview_error": {
+    "message": "プレビュー不可"
+  },
+  "card_preview_loading": {
+    "message": "プレビュー生成中..."
+  },
+  "card_btn_edit": {
+    "message": "編集"
+  },
+  "card_btn_delete": {
+    "message": "削除"
+  },
+  "card_edit_disabled_tooltip": {
+    "message": "不完全な録画は編集できません"
+  },
+  "card_edit_tooltip": {
+    "message": "録画を編集する"
+  },
+  "card_preview_load_error": {
+    "message": "プレビューの読み込み失敗: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_today": {
+    "message": "今日 $TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_yesterday": {
+    "message": "昨日 $TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_days_ago": {
+    "message": "$DAYS$ 日前",
+    "placeholders": {
+      "days": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_panel_tier_free": {
+    "message": "無料版"
+  },
+  "export_panel_tier_pro": {
+    "message": "プロ版"
+  },
+  "export_panel_tier_trial": {
+    "message": "プロ試用版"
+  },
+  "export_panel_btn": {
+    "message": "書き出し"
+  },
+  "export_panel_tooltip_incomplete": {
+    "message": "録画を完了してから書き出してください"
+  },
+  "export_panel_tooltip_no_data": {
+    "message": "ビデオデータがありません"
+  },
+  "export_panel_btn_exporting": {
+    "message": "書き出し中..."
+  },
+  "export_dialog_title": {
+    "message": "ビデオの書き出し"
+  },
+  "export_source_res": {
+    "message": "解像度"
+  },
+  "export_source_codec": {
+    "message": "コーデック"
+  },
+  "export_source_duration": {
+    "message": "再生時間"
+  },
+  "export_source_frames": {
+    "message": "フレーム数"
+  },
+  "export_badge_bg": {
+    "message": "背景あり"
+  },
+  "export_badge_trim": {
+    "message": "カット済み"
+  },
+  "export_format_mp4": {
+    "message": "MP4"
+  },
+  "export_format_webm": {
+    "message": "WebM"
+  },
+  "export_format_gif": {
+    "message": "GIF"
+  },
+  "export_quality_title": {
+    "message": "画質プリセット"
+  },
+  "export_quality_draft": {
+    "message": "下書き"
+  },
+  "export_quality_draft_desc": {
+    "message": "高速、低画質"
+  },
+  "export_quality_balanced": {
+    "message": "バランス"
+  },
+  "export_quality_balanced_desc": {
+    "message": "標準的な画質と速度"
+  },
+  "export_quality_high": {
+    "message": "高画質"
+  },
+  "export_quality_high_desc": {
+    "message": "高品質、低速"
+  },
+  "export_quality_best": {
+    "message": "最高画質"
+  },
+  "export_quality_best_desc": {
+    "message": "最高のクオリティ、最も低速"
+  },
+  "export_label_resolution": {
+    "message": "書き出し解像度"
+  },
+  "export_res_source": {
+    "message": "ソースに合わせる ($WIDTH$×$HEIGHT$)",
+    "placeholders": {
+      "width": {
+        "content": "$1"
+      },
+      "height": {
+        "content": "$2"
+      }
+    }
+  },
+  "export_label_framerate": {
+    "message": "フレームレート"
+  },
+  "export_fps_source": {
+    "message": "$FPS$ fps (ソース)",
+    "placeholders": {
+      "fps": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_bitrate": {
+    "message": "ビットレート"
+  },
+  "export_bitrate_auto": {
+    "message": "自動"
+  },
+  "export_bitrate_manual": {
+    "message": "手動"
+  },
+  "export_bitrate_auto_hint": {
+    "message": "自動: $RATE$ Mbps (解像度と画質に基づく)",
+    "placeholders": {
+      "rate": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_speed": {
+    "message": "エンコード速度"
+  },
+  "export_speed_fastest": {
+    "message": "最速"
+  },
+  "export_speed_fast": {
+    "message": "高速"
+  },
+  "export_speed_balanced": {
+    "message": "バランス"
+  },
+  "export_speed_slow": {
+    "message": "低速"
+  },
+  "export_speed_slowest": {
+    "message": "最微速"
+  },
+  "export_est_output": {
+    "message": "予想される出力"
+  },
+  "export_est_size": {
+    "message": "予想サイズ"
+  },
+  "export_label_gif_quality": {
+    "message": "GIF画質"
+  },
+  "export_gif_best": {
+    "message": "最高 (低速)"
+  },
+  "export_gif_high": {
+    "message": "高"
+  },
+  "export_gif_good": {
+    "message": "良 (標準)"
+  },
+  "export_gif_fast": {
+    "message": "速"
+  },
+  "export_gif_fastest": {
+    "message": "最速"
+  },
+  "export_label_scale": {
+    "message": "スケール"
+  },
+  "export_scale_original": {
+    "message": "100% (オリジナル)"
+  },
+  "export_label_workers": {
+    "message": "処理スレッド"
+  },
+  "export_worker_singular": {
+    "message": "$COUNT$ スレッド",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_worker_plural": {
+    "message": "$COUNT$ スレッド",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_dither": {
+    "message": "ディザリング"
+  },
+  "export_dither_none": {
+    "message": "なし"
+  },
+  "export_btn_cancel": {
+    "message": "キャンセル"
+  },
+  "export_btn_export_mp4": {
+    "message": "MP4を書き出す"
+  },
+  "export_btn_export_webm": {
+    "message": "WebMを書き出す"
+  },
+  "export_btn_export_gif": {
+    "message": "GIFを書き出す"
+  },
+  "export_progress_preparing": {
+    "message": "準備中..."
+  },
+  "export_progress_encoding": {
+    "message": "エンコード中..."
+  },
+  "export_progress_muxing": {
+    "message": "ファイル作成中..."
+  },
+  "export_progress_finalizing": {
+    "message": "最終処理中..."
+  },
+  "export_progress_frame": {
+    "message": "フレーム $CURRENT$ / $TOTAL$",
+    "placeholders": {
+      "current": {
+        "content": "$1"
+      },
+      "total": {
+        "content": "$2"
+      }
+    }
+  },
+  "export_progress_time": {
+    "message": "残り約 $SECONDS$ 秒",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_progress_hint": {
+    "message": "ビデオを書き出しています。しばらくお待ちください..."
+  },
+  "wallpaper_cat_abstract_name": {
+    "message": "抽象芸術"
+  },
+  "wallpaper_cat_abstract_desc": {
+    "message": "抽象的なパターン、芸術的なデザイン"
+  },
+  "wallpaper_cat_minimal_name": {
+    "message": "ミニマル"
+  },
+  "wallpaper_cat_minimal_desc": {
+    "message": "シンプルな幾何学模様、ミニマリズム"
+  },
+  "wallpaper_cat_nature_name": {
+    "message": "自然風景"
+  },
+  "wallpaper_cat_nature_desc": {
+    "message": "自然の景観、植物のテクスチャ"
+  },
+  "wallpaper_cat_business_name": {
+    "message": "ビジネス"
+  },
+  "wallpaper_cat_business_desc": {
+    "message": "プロフェッショナルな雰囲気、企業スタイル"
+  },
+  "wallpaper_cat_tech_name": {
+    "message": "テック・未来"
+  },
+  "wallpaper_cat_tech_desc": {
+    "message": "テクノロジー、近未来的なデジタルアート"
+  },
+  "wallpaper_gradient_abstract_1_name": {
+    "message": "抽象グラデーション"
+  },
+  "wallpaper_gradient_abstract_1_desc": {
+    "message": "モダンな抽象グラデーション背景"
+  },
+  "wallpaper_geometric_pattern_1_name": {
+    "message": "幾何学模様"
+  },
+  "wallpaper_geometric_pattern_1_desc": {
+    "message": "クリーンな幾何学パターン"
+  },
+  "wallpaper_abstract_2425706_name": {
+    "message": "抽象カラー"
+  },
+  "wallpaper_abstract_2425706_desc": {
+    "message": "鮮やかな抽象的テクスチャ"
+  },
+  "wallpaper_abstract_2512412_name": {
+    "message": "抽象流体"
+  },
+  "wallpaper_abstract_2512412_desc": {
+    "message": "流れるようなカラー背景"
+  },
+  "wallpaper_abstract_6297317_name": {
+    "message": "抽象フォーム"
+  },
+  "wallpaper_abstract_6297317_desc": {
+    "message": "幾何学的な色面構成"
+  },
+  "wallpaper_ai_generated_9083808_name": {
+    "message": "AI生成アート"
+  },
+  "wallpaper_ai_generated_9083808_desc": {
+    "message": "AIによる未来的アート"
+  },
+  "wallpaper_beach_4938036_name": {
+    "message": "ビーチ"
+  },
+  "wallpaper_beach_4938036_desc": {
+    "message": "爽やかな海辺の風景"
+  },
+  "wallpaper_bulb_5665770_name": {
+    "message": "創造的な電球"
+  },
+  "wallpaper_bulb_5665770_desc": {
+    "message": "インスピレーションを象徴する電球"
+  },
+  "wallpaper_cpu_8892400_name": {
+    "message": "CPU回路"
+  },
+  "wallpaper_cpu_8892400_desc": {
+    "message": "ハイテクな電子基板"
+  },
+  "wallpaper_feather_5488401_name": {
+    "message": "羽毛のクローズアップ"
+  },
+  "wallpaper_feather_5488401_desc": {
+    "message": "ディテール豊かな羽毛"
+  },
+  "wallpaper_fractal_8902060_name": {
+    "message": "フラクタルアート"
+  },
+  "wallpaper_fractal_8902060_desc": {
+    "message": "煌びやかな幾何学的アート"
+  },
+  "wallpaper_orange_3036097_name": {
+    "message": "オレンジスライス"
+  },
+  "wallpaper_orange_3036097_desc": {
+    "message": "鮮やかなオレンジの断面"
+  },
+  "wallpaper_orange_6508617_name": {
+    "message": "オレンジ背景"
+  },
+  "wallpaper_orange_6508617_desc": {
+    "message": "エネルギッシュなオレンジ"
+  },
+  "wallpaper_polar_lights_5858656_name": {
+    "message": "オーロラ"
+  },
+  "wallpaper_polar_lights_5858656_desc": {
+    "message": "幻想的な北極光"
+  },
+  "wallpaper_spiral_3112405_name": {
+    "message": "スパイラル"
+  },
+  "wallpaper_spiral_3112405_desc": {
+    "message": "ダイナミックな渦巻き"
+  },
+  "wallpaper_steelwool_458842_name": {
+    "message": "スチールウール光絵"
+  },
+  "wallpaper_steelwool_458842_desc": {
+    "message": "幻想的な光の軌跡"
+  },
+  "wallpaper_swimming_pool_8306716_name": {
+    "message": "プール"
+  },
+  "wallpaper_swimming_pool_8306716_desc": {
+    "message": "涼しげな水面の波紋"
+  },
+  "wallpaper_abstract_2426502_name": {
+    "message": "抽象色面"
+  },
+  "wallpaper_abstract_2426502_desc": {
+    "message": "抽象的なカラーシェイプ"
+  },
+  "wallpaper_camera_1248682_name": {
+    "message": "カメラ"
+  },
+  "wallpaper_camera_1248682_desc": {
+    "message": "質感のあるテック系カメラ"
+  },
+  "wallpaper_circle_5090539_name": {
+    "message": "円形幾何学"
+  },
+  "wallpaper_circle_5090539_desc": {
+    "message": "統一感のある円形パターン"
+  },
+  "wallpaper_feather_7009025_name": {
+    "message": "羽毛の質感"
+  },
+  "wallpaper_feather_7009025_desc": {
+    "message": "繊細な自然のパターン"
+  },
+  "wallpaper_fiber_4814456_name": {
+    "message": "ファイバーライン"
+  },
+  "wallpaper_fiber_4814456_desc": {
+    "message": "抽象的な光ファイバー"
+  },
+  "wallpaper_frost_6702335_name": {
+    "message": "霜の紋様"
+  },
+  "wallpaper_frost_6702335_desc": {
+    "message": "冷たい質感の氷の花"
+  },
+  "wallpaper_leaves_4291098_name": {
+    "message": "緑の葉"
+  },
+  "wallpaper_leaves_4291098_desc": {
+    "message": "癒やしのグリーンテクスチャ"
+  },
+  "wallpaper_light_1834289_name": {
+    "message": "光のボケ"
+  },
+  "wallpaper_light_1834289_desc": {
+    "message": "雰囲気のある光の玉"
+  },
+  "wallpaper_light_942231_name": {
+    "message": "光の筋"
+  },
+  "wallpaper_light_942231_desc": {
+    "message": "流動的な光のライン"
+  },
+  "wallpaper_luck_4397584_name": {
+    "message": "四つ葉のクローバー"
+  },
+  "wallpaper_luck_4397584_desc": {
+    "message": "幸運のクローバー"
+  },
+  "wallpaper_waterdrop_2256201_name": {
+    "message": "水滴"
+  },
+  "wallpaper_waterdrop_2256201_desc": {
+    "message": "水滴の接写テクスチャ"
+  },
+  "welcome_pageTitle": {
+    "message": "Screen Recorder Studio へようこそ"
+  },
+  "welcome_headerSubtitle": {
+    "message": "プロ向けのブラウザー録画ツール"
+  },
+  "welcome_installSuccess": {
+    "message": "インストールに成功しました"
+  },
+  "welcome_headline": {
+    "message": "Screen Recorder Studio へようこそ！🎉"
+  },
+  "welcome_subheadline": {
+    "message": "初めての録画を始めましょう。準備は数秒で完了します。"
+  },
+  "welcome_tryTitle": {
+    "message": "今すぐ試す！🚀"
+  },
+  "welcome_trySubtitle": {
+    "message": "録画モードを選び、下のボタンを押してください"
+  },
+  "welcome_tryFeatures": {
+    "message": "設定不要 • $SECONDS$ 秒のカウントダウン • プロ品質",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "welcome_modeTabDetail": {
+    "message": "Web デモやチュートリアルに最適"
+  },
+  "welcome_modeWindowDetail": {
+    "message": "アドレスバーとツールバーも含めて録画"
+  },
+  "welcome_modeScreenDetail": {
+    "message": "複数アプリのワークフローに最適"
+  },
+  "welcome_statusRecording": {
+    "message": "録画中"
+  },
+  "welcome_modeLabel": {
+    "message": "モード"
+  },
+  "welcome_readyTitle": {
+    "message": "🎬 準備完了！"
+  },
+  "welcome_readyDesc": {
+    "message": "$MODE$ モードを選択しました。上の青いボタンを押して最初の録画を始めましょう！",
+    "placeholders": {
+      "mode": {
+        "content": "$1"
+      }
+    }
+  },
+  "welcome_readyTip": {
+    "message": "録画開始まで $SECONDS$ 秒のカウントダウン",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "welcome_howTitle": {
+    "message": "使い方"
+  },
+  "welcome_howDesc": {
+    "message": "拡張機能を活用する 3 つのステップ"
+  },
+  "welcome_step1Title": {
+    "message": "拡張機能を固定"
+  },
+  "welcome_step1Desc": {
+    "message": "ブラウザーのツールバーにあるパズル 🧩 アイコンをクリックし、拡張機能をピン留めしてすぐにアクセス"
+  },
+  "welcome_step2Title": {
+    "message": "対象を選択"
+  },
+  "welcome_step2Desc": {
+    "message": "録画対象を選択：現在のタブ、ウィンドウ全体、または画面全体"
+  },
+  "welcome_step3Title": {
+    "message": "録画を開始"
+  },
+  "welcome_step3Desc": {
+    "message": "「$BTN$」をクリックして準備しましょう。$SECONDS$ 秒のカウントダウンで落ち着いて開始できます。",
+    "placeholders": {
+      "btn": {
+        "content": "$1"
+      },
+      "seconds": {
+        "content": "$2"
+      }
+    }
+  },
+  "welcome_advancedTitle": {
+    "message": "さらに詳しく操作しますか？"
+  },
+  "welcome_advancedDesc": {
+    "message": "ツールバーの拡張機能アイコンをクリックしてフルコントロールパネルを開きます"
+  },
+  "welcome_openControl": {
+    "message": "フルコントロールパネルを開く"
+  },
+  "welcome_footerHelp": {
+    "message": "ヘルプが必要ですか？拡張機能アイコンをクリックして高度な機能付きのコントロールパネルを開いてください。"
+  },
+  "welcome_footerMeta": {
+    "message": "Screen Recorder Studio • プロ向けに作成"
+  },
+  "control_cameraAudioTitle": {
+    "message": "Camera & Microphone"
+  },
+  "control_cameraToggle": {
+    "message": "Enable camera"
+  },
+  "control_audioToggle": {
+    "message": "Enable microphone"
+  },
+  "control_selectCamera": {
+    "message": "Camera"
+  },
+  "control_selectMic": {
+    "message": "Microphone"
+  },
+  "control_cameraPreviewLoading": {
+    "message": "Initializing camera preview..."
+  },
+  "control_cameraPreviewError": {
+    "message": "Unable to preview camera"
+  }
 }

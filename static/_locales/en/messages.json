@@ -31,6 +31,13 @@
   "control_tipsPaused": { "message": "Recording is paused, click Resume Recording to continue." },
   "control_tipsRecording": { "message": "Recording in progress, click Pause to pause recording." },
   "control_overlayRecordingStarts": { "message": "Recording starts soon..." },
+  "control_cameraAudioTitle": { "message": "Camera & Microphone" },
+  "control_cameraToggle": { "message": "Enable camera" },
+  "control_audioToggle": { "message": "Enable microphone" },
+  "control_selectCamera": { "message": "Camera" },
+  "control_selectMic": { "message": "Microphone" },
+  "control_cameraPreviewLoading": { "message": "Initializing camera preview..." },
+  "control_cameraPreviewError": { "message": "Unable to preview camera" },
 
   "drive_pageTitle": { "message": "Recordings - Screen Recorder Extension" },
   "drive_headerTitle": { "message": "Recording Manager" },

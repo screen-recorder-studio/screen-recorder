@@ -1,341 +1,1125 @@
 {
-  "appName": { "message": "Screen Recorder Studio" },
-  "appDesc": { "message": "탭, 창, 전체 화면 및 특정 영역 녹화를 위한 전문가용 Chrome 확장 프로그램" },
-  "action_defaultTitle": { "message": "녹화 패널 열기" },
-
-  "control_headerTitle": { "message": "스크린 레코더" },
-  "control_headerDesc": { "message": "녹화 모드를 선택하고 시작하세요" },
-  "control_openDriveTooltip": { "message": "파일 관리자 열기" },
-  "control_closePanelTooltip": { "message": "제어판 닫기" },
-  "control_recordingMode": { "message": "녹화 모드" },
-  "control_modeTab": { "message": "탭" },
-  "control_modeTabDesc": { "message": "현재 탭 녹화" },
-  "control_modeWindow": { "message": "창" },
-  "control_modeWindowDesc": { "message": "전체 창 녹화" },
-  "control_modeScreen": { "message": "전체 화면" },
-  "control_modeScreenDesc": { "message": "전체 화면 녹화" },
-  "control_statusRecording": { "message": "녹화 중" },
-  "control_statusPaused": { "message": "녹화 일시 중지됨" },
-  "control_statusPreparing": { "message": "녹화 준비 중..." },
-  "control_btnStart": { "message": "녹화 시작" },
-  "control_btnStop": { "message": "녹화 중지" },
-  "control_btnPause": { "message": "일시 중지" },
-  "control_btnResume": { "message": "재개" },
-  "control_btnPreparing": { "message": "준비 중..." },
-  "control_btnStarting": { "message": "$SECONDS$초 후 시작...", "placeholders": { "seconds": { "content": "$1" } } },
-  "control_countdownLabel": { "message": "카운트다운" },
-  "control_tipsTitle": { "message": "녹화 팁:" },
-  "control_tipsSelectMode": { "message": "$MODE$ 모드가 선택되었습니다. 시작하려면 녹화 시작을 클릭하세요.", "placeholders": { "mode": { "content": "$1" } } },
-  "control_tipsPreparing": { "message": "화면 선택을 기다리는 중..." },
-  "control_tipsCountdown": { "message": "준비하세요! $SECONDS$초 후에 녹화가 시작됩니다.", "placeholders": { "seconds": { "content": "$1" } } },
-  "control_tipsPaused": { "message": "녹화가 일시 중지되었습니다. 계속하려면 재개를 클릭하세요." },
-  "control_tipsRecording": { "message": "녹화가 진행 중입니다. 일시 중지를 클릭하여 멈출 수 있습니다." },
-  "control_overlayRecordingStarts": { "message": "곧 녹화가 시작됩니다..." },
-
-  "drive_pageTitle": { "message": "녹화 목록 - Screen Recorder" },
-  "drive_headerTitle": { "message": "녹화 관리자" },
-  "drive_errorSupport": { "message": "브라우저가 OPFS 스토리지를 지원하지 않습니다" },
-  "drive_errorMetaNotFound": { "message": "meta.json을 찾을 수 없습니다" },
-  "drive_errorEmpty": { "message": "녹화 파일이 비어 있습니다" },
-  "drive_errorMetadata": { "message": "메타데이터를 읽을 수 없습니다" },
-  "drive_errorDataSize": { "message": "파일 크기를 가져올 수 없습니다" },
-  "drive_recordingNamePrefix": { "message": "화면 녹화" },
-  "drive_logDeleted": { "message": "$ID$ 녹화가 삭제되었습니다", "placeholders": { "id": { "content": "$1" } } },
-  "drive_errorDelete": { "message": "삭제 실패: $ERROR$", "placeholders": { "error": { "content": "$1" } } },
-  "drive_logBatchDelete": { "message": "$COUNT$개의 녹화를 성공적으로 삭제했습니다", "placeholders": { "count": { "content": "$1" } } },
-  "drive_errorLoad": { "message": "녹화를 불러오는 중 오류가 발생했습니다" },
-  "drive_errorLoadPrefix": { "message": "불러오기 실패:" },
-
-  "studio_pageTitle": { "message": "Screen Recording Studio" },
-  "studio_headerTitle": { "message": "Screen Recorder Studio" },
-  "studio_githubTooltip": { "message": "GitHub에서 소스 보기" },
-  "studio_githubText": { "message": "GitHub" },
-  "studio_feedbackTooltip": { "message": "버그 신고 또는 기능 제안" },
-  "studio_feedbackText": { "message": "피드백" },
-  "studio_helpTooltip": { "message": "도움말 및 문서" },
-  "studio_helpText": { "message": "도움말" },
-  "studio_driveTooltip": { "message": "파일 관리자 열기" },
-  "studio_driveText": { "message": "파일" },
-  "studio_fullscreenEnterTooltip": { "message": "전체 화면" },
-  "studio_fullscreenExitTooltip": { "message": "전체 화면 종료" },
-  "studio_fullscreenEnterText": { "message": "전체 화면" },
-  "studio_fullscreenExitText": { "message": "종료" },
-
-  "bg_title": { "message": "배경 설정" },
-  "bg_tab_wallpaper": { "message": "배경화면" },
-  "bg_tab_gradient": { "message": "그라데이션" },
-  "bg_tab_solid": { "message": "단색" },
-  "bg_tab_image": { "message": "이미지" },
-
-  "radius_title": { "message": "비디오 테두리 곡률" },
-  "radius_none": { "message": "없음" },
-  "radius_small": { "message": "작게" },
-  "radius_medium": { "message": "중간" },
-  "radius_large": { "message": "크게" },
-  "radius_xl": { "message": "매우 크게" },
-
-  "padding_title": { "message": "비디오 여백" },
-  "padding_none": { "message": "없음" },
-  "padding_small": { "message": "작게" },
-  "padding_medium": { "message": "중간" },
-  "padding_large": { "message": "크게" },
-  "padding_xl": { "message": "매우 크게" },
-
-  "ratio_yt": { "message": "YouTube 가로형" },
-  "ratio_yt_desc": { "message": "YouTube, Bilibili 등" },
-  "ratio_sq": { "message": "Instagram 정사각형" },
-  "ratio_sq_desc": { "message": "Instagram 게시물" },
-  "ratio_tiktok": { "message": "TikTok 세로형" },
-  "ratio_tiktok_desc": { "message": "TikTok, 릴스 등" },
-  "ratio_story": { "message": "Instagram 스토리" },
-  "ratio_story_desc": { "message": "스토리, 샤오홍슈 등" },
-
-  "shadow_title": { "message": "비디오 그림자" },
-  "shadow_preset_title": { "message": "프리셋 효과" },
-  "shadow_custom_title": { "message": "사용자 설정" },
-  "shadow_light": { "message": "가벼운 그림자" },
-  "shadow_standard": { "message": "기본 그림자" },
-  "shadow_deep": { "message": "깊은 그림자" },
-  "shadow_distant": { "message": "먼 그림자" },
-  "shadow_offset_x": { "message": "가로 위치" },
-  "shadow_offset_y": { "message": "세로 위치" },
-  "shadow_blur": { "message": "흐림 정도" },
-  "shadow_color": { "message": "색상" },
-  "shadow_opacity": { "message": "불투명도" },
-  "shadow_empty_state": { "message": "스위치를 켜서 그림자를 설정하세요" },
-
-  "color_tab_basic": { "message": "기본" },
-  "color_tab_light": { "message": "밝음" },
-  "color_tab_business": { "message": "비즈니스" },
-  "color_tab_creative": { "message": "크리에이티브" },
-  "color_custom": { "message": "사용자 지정:" },
-
-  "gradient_tab_linear": { "message": "선형" },
-  "gradient_tab_radial": { "message": "방사형" },
-  "gradient_tab_conic": { "message": "원뿔형" },
-  "gradient_tab_multi": { "message": "다채로운 색상" },
-  "gradient_current": { "message": "현재:" },
-  "gradient_select_hint": { "message": "그라데이션을 선택하세요" },
-  "gradient_colors_suffix": { "message": "색상" },
-
-  "wallpaper_tab_abstract": { "message": "추상" },
-  "wallpaper_tab_minimal": { "message": "미니멀" },
-  "wallpaper_tab_nature": { "message": "자연" },
-  "wallpaper_tab_business": { "message": "비즈니스" },
-  "wallpaper_tab_tech": { "message": "테크" },
-  "wallpaper_error": { "message": "배경화면 로드 실패" },
-  "wallpaper_stats": { "message": "이 카테고리에 $COUNT$개의 배경화면", "placeholders": { "count": { "content": "$1" } } },
-  "wallpaper_total": { "message": "총 $TOTAL$개", "placeholders": { "total": { "content": "$1" } } },
-
-  "upload_processing": { "message": "처리 중..." },
-  "upload_drop_hint": { "message": "클릭하거나 이미지를 끌어다 놓으세요" },
-  "upload_format_hint": { "message": "JPEG, PNG, WebP, GIF · 최대 5MB" },
-  "upload_error_select": { "message": "이미지 파일을 선택해 주세요" },
-  "upload_error_failed": { "message": "업로드 실패" },
-
-  "drive_delete_selected_btn": { "message": "선택 삭제 ($COUNT$)", "placeholders": { "count": { "content": "$1" } } },
-  "drive_clear_selection": { "message": "선택 해제" },
-  "drive_refresh": { "message": "새로고침" },
-  "drive_error_title": { "message": "오류" },
-  "drive_close_error": { "message": "닫기" },
-  "drive_loading": { "message": "녹화 목록을 불러오는 중..." },
-  "drive_empty_title": { "message": "녹화된 파일이 없습니다" },
-  "drive_empty_desc1": { "message": "아직 화면 녹화 파일이 없습니다." },
-  "drive_empty_desc2": { "message": "화면 녹화를 시작하면 여기에 표시됩니다." },
-  "drive_start_recording_btn": { "message": "녹화 시작하기" },
-  "drive_select_all": { "message": "전체 선택 ($COUNT$개)", "placeholders": { "count": { "content": "$1" } } },
-  "drive_sort_hint": { "message": "최신순 정렬" },
-  "drive_confirm_delete_title": { "message": "삭제 확인" },
-  "drive_confirm_delete_selected": { "message": "선택한 $COUNT$개의 녹화 파일을 삭제하시겠습니까?", "placeholders": { "count": { "content": "$1" } } },
-  "drive_confirm_delete_single": { "message": "이 녹화 파일을 삭제하시겠습니까?" },
-  "drive_action_undone": { "message": "이 작업은 되돌릴 수 없습니다." },
-  "drive_cancel": { "message": "취소" },
-  "drive_delete": { "message": "삭제" },
-
-  "card_status_completed": { "message": "완료" },
-  "card_status_incomplete": { "message": "미완료" },
-  "card_label_created": { "message": "생성일:" },
-  "card_label_status": { "message": "상태:" },
-  "card_label_codec": { "message": "코덱:" },
-  "card_label_resolution": { "message": "해상도:" },
-  "card_label_fps": { "message": "FPS:" },
-  "card_label_size": { "message": "파일 크기:" },
-  "card_label_frames": { "message": "총 프레임:" },
-  "card_incomplete_title": { "message": "불완전한 녹화" },
-  "card_incomplete_desc": { "message": "비디오 데이터 누락" },
-  "card_preview_error": { "message": "미리보기를 불러올 수 없음" },
-  "card_preview_loading": { "message": "미리보기 생성 중..." },
-  "card_btn_edit": { "message": "편집" },
-  "card_btn_delete": { "message": "삭제" },
-  "card_edit_disabled_tooltip": { "message": "불완전한 녹화는 편집할 수 없습니다" },
-  "card_edit_tooltip": { "message": "녹화 편집" },
-  "card_preview_load_error": { "message": "데이터 로드 실패: $ERROR$", "placeholders": { "error": { "content": "$1" } } },
-  "card_date_today": { "message": "오늘 $TIME$", "placeholders": { "time": { "content": "$1" } } },
-  "card_date_yesterday": { "message": "어제 $TIME$", "placeholders": { "time": { "content": "$1" } } },
-  "card_date_days_ago": { "message": "$DAYS$일 전", "placeholders": { "days": { "content": "$1" } } },
-
-  "export_panel_tier_free": { "message": "무료" },
-  "export_panel_tier_pro": { "message": "프로" },
-  "export_panel_tier_trial": { "message": "프로 체험" },
-  "export_panel_btn": { "message": "내보내기" },
-  "export_panel_tooltip_incomplete": { "message": "녹화를 완료한 후 내보내세요" },
-  "export_panel_tooltip_no_data": { "message": "비디오 데이터 없음" },
-  "export_panel_btn_exporting": { "message": "내보내는 중..." },
-
-  "export_dialog_title": { "message": "비디오 내보내기" },
-  "export_source_res": { "message": "해상도" },
-  "export_source_codec": { "message": "코덱" },
-  "export_source_duration": { "message": "길이" },
-  "export_source_frames": { "message": "프레임" },
-  "export_badge_bg": { "message": "배경 포함" },
-  "export_badge_trim": { "message": "자르기 적용됨" },
-  "export_format_mp4": { "message": "MP4" },
-  "export_format_webm": { "message": "WebM" },
-  "export_format_gif": { "message": "GIF" },
-  "export_quality_title": { "message": "화질 설정" },
-  "export_quality_draft": { "message": "초안" },
-  "export_quality_draft_desc": { "message": "가장 빠름, 낮은 화질" },
-  "export_quality_balanced": { "message": "균형" },
-  "export_quality_balanced_desc": { "message": "좋은 화질과 속도" },
-  "export_quality_high": { "message": "고화질" },
-  "export_quality_high_desc": { "message": "높은 화질, 느린 속도" },
-  "export_quality_best": { "message": "최고" },
-  "export_quality_best_desc": { "message": "최상의 화질, 매우 느림" },
-  "export_label_resolution": { "message": "내보내기 해상도" },
-  "export_res_source": { "message": "원본 유지 ($WIDTH$×$HEIGHT$)", "placeholders": { "width": { "content": "$1" }, "height": { "content": "$2" } } },
-  "export_label_framerate": { "message": "프레임 속도 (FPS)" },
-  "export_fps_source": { "message": "$FPS$ fps (원본)", "placeholders": { "fps": { "content": "$1" } } },
-  "export_label_bitrate": { "message": "비트레이트" },
-  "export_bitrate_auto": { "message": "자동" },
-  "export_bitrate_manual": { "message": "수동" },
-  "export_bitrate_auto_hint": { "message": "자동: $RATE$ Mbps (해상도 기반)", "placeholders": { "rate": { "content": "$1" } } },
-  "export_label_speed": { "message": "인코딩 속도" },
-  "export_speed_fastest": { "message": "가장 빠름" },
-  "export_speed_fast": { "message": "빠름" },
-  "export_speed_balanced": { "message": "균형" },
-  "export_speed_slow": { "message": "느림" },
-  "export_speed_slowest": { "message": "가장 느림" },
-  "export_est_output": { "message": "예상 출력" },
-  "export_est_size": { "message": "예상 크기" },
-  "export_label_gif_quality": { "message": "GIF 품질" },
-  "export_gif_best": { "message": "최고 (느림)" },
-  "export_gif_high": { "message": "높음" },
-  "export_gif_good": { "message": "좋음 (기본)" },
-  "export_gif_fast": { "message": "빠름" },
-  "export_gif_fastest": { "message": "가장 빠름" },
-  "export_label_scale": { "message": "크기 조절" },
-  "export_scale_original": { "message": "100% (원본)" },
-  "export_label_workers": { "message": "프로세스 스레드" },
-  "export_worker_singular": { "message": "$COUNT$개 스레드", "placeholders": { "count": { "content": "$1" } } },
-  "export_worker_plural": { "message": "$COUNT$개 스레드", "placeholders": { "count": { "content": "$1" } } },
-  "export_label_dither": { "message": "디더링" },
-  "export_dither_none": { "message": "없음" },
-  "export_btn_cancel": { "message": "취소" },
-  "export_btn_export_mp4": { "message": "MP4로 내보내기" },
-  "export_btn_export_webm": { "message": "WebM으로 내보내기" },
-  "export_btn_export_gif": { "message": "GIF로 내보내기" },
-  "export_progress_preparing": { "message": "준비 중..." },
-  "export_progress_encoding": { "message": "인코딩 중..." },
-  "export_progress_muxing": { "message": "파일 생성 중..." },
-  "export_progress_finalizing": { "message": "마무리 중..." },
-  "export_progress_frame": { "message": "프레임 $CURRENT$ / $TOTAL$", "placeholders": { "current": { "content": "$1" }, "total": { "content": "$2" } } },
-  "export_progress_time": { "message": "남은 시간 약 $SECONDS$초", "placeholders": { "seconds": { "content": "$1" } } },
-  "export_progress_hint": { "message": "비디오를 내보내는 동안 잠시만 기다려 주세요..." },
-
-  "wallpaper_cat_abstract_name": { "message": "추상 예술" },
-  "wallpaper_cat_abstract_desc": { "message": "추상적인 패턴과 현대적인 디자인" },
-  "wallpaper_cat_minimal_name": { "message": "미니멀" },
-  "wallpaper_cat_minimal_desc": { "message": "깔끔한 기하학적 형태와 미니멀리즘" },
-  "wallpaper_cat_nature_name": { "message": "자연 풍경" },
-  "wallpaper_cat_nature_desc": { "message": "자연의 경관과 식물 질감" },
-  "wallpaper_cat_business_name": { "message": "비즈니스" },
-  "wallpaper_cat_business_desc": { "message": "전문적인 분위기와 기업 스타일" },
-  "wallpaper_cat_tech_name": { "message": "테크 미래" },
-  "wallpaper_cat_tech_desc": { "message": "기술 요소와 디지털 아트" },
-
-  "wallpaper_gradient_abstract_1_name": { "message": "추상 그라데이션" },
-  "wallpaper_gradient_abstract_1_desc": { "message": "현대적인 추상 그라데이션 배경" },
-  "wallpaper_geometric_pattern_1_name": { "message": "기하학 패턴" },
-  "wallpaper_geometric_pattern_1_desc": { "message": "깔끔한 기하학 패턴 배경" },
-  "wallpaper_abstract_2425706_name": { "message": "추상적인 색상" },
-  "wallpaper_abstract_2425706_desc": { "message": "활기찬 추상 색상 텍스처" },
-  "wallpaper_abstract_2512412_name": { "message": "추상 유체" },
-  "wallpaper_abstract_2512412_desc": { "message": "흐르는 듯한 색상 배경" },
-  "wallpaper_abstract_6297317_name": { "message": "추상 형태" },
-  "wallpaper_abstract_6297317_desc": { "message": "기하학적 색면 구성" },
-  "wallpaper_ai_generated_9083808_name": { "message": "AI 생성 아트" },
-  "wallpaper_ai_generated_9083808_desc": { "message": "AI로 생성된 미래형 배경" },
-  "wallpaper_beach_4938036_name": { "message": "해변" },
-  "wallpaper_beach_4938036_desc": { "message": "시원한 해변 풍경" },
-  "wallpaper_bulb_5665770_name": { "message": "창의적인 전구" },
-  "wallpaper_bulb_5665770_desc": { "message": "창의성의 상징" },
-  "wallpaper_cpu_8892400_name": { "message": "CPU 회로" },
-  "wallpaper_cpu_8892400_desc": { "message": "칩과 회로 기판" },
-  "wallpaper_feather_5488401_name": { "message": "깃털 근접 촬영" },
-  "wallpaper_feather_5488401_desc": { "message": "부드러운 깃털 질감" },
-  "wallpaper_fractal_8902060_name": { "message": "프랙탈 아트" },
-  "wallpaper_fractal_8902060_desc": { "message": "찬란한 프랙탈 패턴" },
-  "wallpaper_orange_3036097_name": { "message": "오렌지 단면" },
-  "wallpaper_orange_3036097_desc": { "message": "활기찬 오렌지 단면" },
-  "wallpaper_orange_6508617_name": { "message": "오렌지 배경" },
-  "wallpaper_orange_6508617_desc": { "message": "에너지 넘치는 오렌지색" },
-  "wallpaper_polar_lights_5858656_name": { "message": "오로라" },
-  "wallpaper_polar_lights_5858656_desc": { "message": "몽환적인 북극광 밤하늘" },
-  "wallpaper_spiral_3112405_name": { "message": "나선 패턴" },
-  "wallpaper_spiral_3112405_desc": { "message": "역동적인 나선형 텍스처" },
-  "wallpaper_steelwool_458842_name": { "message": "라이트 페인팅" },
-  "wallpaper_steelwool_458842_desc": { "message": "추상적인 빛의 궤적" },
-  "wallpaper_swimming_pool_8306716_name": { "message": "수영장 물결" },
-  "wallpaper_swimming_pool_8306716_desc": { "message": "시원한 수영장 물결" },
-  "wallpaper_abstract_2426502_name": { "message": "추상 색면" },
-  "wallpaper_abstract_2426502_desc": { "message": "현대적인 추상 디자인" },
-  "wallpaper_camera_1248682_name": { "message": "카메라" },
-  "wallpaper_camera_1248682_desc": { "message": "테크니컬 카메라 근접 촬영" },
-  "wallpaper_circle_5090539_name": { "message": "원형 기하학" },
-  "wallpaper_circle_5090539_desc": { "message": "깔끔한 원형 패턴" },
-  "wallpaper_feather_7009025_name": { "message": "깃털 질감" },
-  "wallpaper_feather_7009025_desc": { "message": "섬세한 자연의 패턴" },
-  "wallpaper_fiber_4814456_name": { "message": "광섬유 라인" },
-  "wallpaper_fiber_4814456_desc": { "message": "추상적인 테크 느낌" },
-  "wallpaper_frost_6702335_name": { "message": "서리 무늬" },
-  "wallpaper_frost_6702335_desc": { "message": "차가운 얼음 결정 배경" },
-  "wallpaper_leaves_4291098_name": { "message": "초록 잎" },
-  "wallpaper_leaves_4291098_desc": { "message": "싱그러운 나뭇잎 질감" },
-  "wallpaper_light_1834289_name": { "message": "빛망울" },
-  "wallpaper_light_1834289_desc": { "message": "분위기 있는 보케 효과" },
-  "wallpaper_light_942231_name": { "message": "빛의 궤적" },
-  "wallpaper_light_942231_desc": { "message": "흐르는 듯한 빛의 라인" },
-  "wallpaper_luck_4397584_name": { "message": "네잎클로버" },
-  "wallpaper_luck_4397584_desc": { "message": "싱그러운 행운의 클로버" },
-  "wallpaper_waterdrop_2256201_name": { "message": "물방울" },
-  "wallpaper_waterdrop_2256201_desc": { "message": "물방울 접사 텍스처" },
-  "welcome_pageTitle": { "message": "Screen Recorder Studio에 오신 것을 환영합니다" },
-  "welcome_headerSubtitle": { "message": "전문가용 브라우저 녹화 도구" },
-  "welcome_installSuccess": { "message": "설치 완료" },
-  "welcome_headline": { "message": "Screen Recorder Studio에 오신 것을 환영합니다! 🎉" },
-  "welcome_subheadline": { "message": "첫 녹화를 시작할 준비가 되셨나요? 몇 초면 충분합니다!" },
-  "welcome_tryTitle": { "message": "지금 바로 시작하세요! 🚀" },
-  "welcome_trySubtitle": { "message": "녹화 모드를 선택하고 아래 버튼을 누르세요" },
-  "welcome_tryFeatures": { "message": "설정 불필요 • $SECONDS$초 카운트다운 • 전문가 품질", "placeholders": { "seconds": { "content": "$1" } } },
-  "welcome_modeTabDetail": { "message": "웹 데모와 튜토리얼에 적합" },
-  "welcome_modeWindowDetail": { "message": "주소 표시줄과 도구 모음을 포함" },
-  "welcome_modeScreenDetail": { "message": "크로스 앱 워크플로에 최적" },
-  "welcome_statusRecording": { "message": "녹화 중" },
-  "welcome_modeLabel": { "message": "모드" },
-  "welcome_readyTitle": { "message": "🎬 모든 준비 완료!" },
-  "welcome_readyDesc": { "message": "$MODE$ 모드를 선택했습니다. 위의 파란 버튼을 눌러 첫 녹화를 시작하세요!", "placeholders": { "mode": { "content": "$1" } } },
-  "welcome_readyTip": { "message": "녹화 시작 전 $SECONDS$초 카운트다운", "placeholders": { "seconds": { "content": "$1" } } },
-  "welcome_howTitle": { "message": "사용 방법" },
-  "welcome_howDesc": { "message": "확장 프로그램을 최대한 활용하는 3단계" },
-  "welcome_step1Title": { "message": "확장 프로그램 고정" },
-  "welcome_step1Desc": { "message": "브라우저 도구 모음의 퍼즐 🧩 아이콘을 클릭해 확장 프로그램을 고정하세요" },
-  "welcome_step2Title": { "message": "대상 선택" },
-  "welcome_step2Desc": { "message": "녹화 대상을 선택하세요: 현재 탭, 전체 창 또는 전체 화면" },
-  "welcome_step3Title": { "message": "녹화 시작" },
-  "welcome_step3Desc": { "message": "“$BTN$”을 클릭하고 준비하세요—$SECONDS$초 카운트다운으로 여유를 드립니다!", "placeholders": { "btn": { "content": "$1" }, "seconds": { "content": "$2" } } },
-  "welcome_advancedTitle": { "message": "더 많은 제어가 필요하세요?" },
-  "welcome_advancedDesc": { "message": "브라우저 도구 모음의 확장 아이콘을 클릭해 전체 제어 패널을 엽니다" },
-  "welcome_openControl": { "message": "전체 제어 패널 열기" },
-  "welcome_footerHelp": { "message": "도움이 필요하세요? 확장 아이콘을 클릭해 고급 기능이 있는 제어 패널을 열어보세요." },
-  "welcome_footerMeta": { "message": "Screen Recorder Studio • 전문가를 위해 제작" }
+  "appName": {
+    "message": "Screen Recorder Studio"
+  },
+  "appDesc": {
+    "message": "탭, 창, 전체 화면 및 특정 영역 녹화를 위한 전문가용 Chrome 확장 프로그램"
+  },
+  "action_defaultTitle": {
+    "message": "녹화 패널 열기"
+  },
+  "control_headerTitle": {
+    "message": "스크린 레코더"
+  },
+  "control_headerDesc": {
+    "message": "녹화 모드를 선택하고 시작하세요"
+  },
+  "control_openDriveTooltip": {
+    "message": "파일 관리자 열기"
+  },
+  "control_closePanelTooltip": {
+    "message": "제어판 닫기"
+  },
+  "control_recordingMode": {
+    "message": "녹화 모드"
+  },
+  "control_modeTab": {
+    "message": "탭"
+  },
+  "control_modeTabDesc": {
+    "message": "현재 탭 녹화"
+  },
+  "control_modeWindow": {
+    "message": "창"
+  },
+  "control_modeWindowDesc": {
+    "message": "전체 창 녹화"
+  },
+  "control_modeScreen": {
+    "message": "전체 화면"
+  },
+  "control_modeScreenDesc": {
+    "message": "전체 화면 녹화"
+  },
+  "control_statusRecording": {
+    "message": "녹화 중"
+  },
+  "control_statusPaused": {
+    "message": "녹화 일시 중지됨"
+  },
+  "control_statusPreparing": {
+    "message": "녹화 준비 중..."
+  },
+  "control_btnStart": {
+    "message": "녹화 시작"
+  },
+  "control_btnStop": {
+    "message": "녹화 중지"
+  },
+  "control_btnPause": {
+    "message": "일시 중지"
+  },
+  "control_btnResume": {
+    "message": "재개"
+  },
+  "control_btnPreparing": {
+    "message": "준비 중..."
+  },
+  "control_btnStarting": {
+    "message": "$SECONDS$초 후 시작...",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_countdownLabel": {
+    "message": "카운트다운"
+  },
+  "control_tipsTitle": {
+    "message": "녹화 팁:"
+  },
+  "control_tipsSelectMode": {
+    "message": "$MODE$ 모드가 선택되었습니다. 시작하려면 녹화 시작을 클릭하세요.",
+    "placeholders": {
+      "mode": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_tipsPreparing": {
+    "message": "화면 선택을 기다리는 중..."
+  },
+  "control_tipsCountdown": {
+    "message": "준비하세요! $SECONDS$초 후에 녹화가 시작됩니다.",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_tipsPaused": {
+    "message": "녹화가 일시 중지되었습니다. 계속하려면 재개를 클릭하세요."
+  },
+  "control_tipsRecording": {
+    "message": "녹화가 진행 중입니다. 일시 중지를 클릭하여 멈출 수 있습니다."
+  },
+  "control_overlayRecordingStarts": {
+    "message": "곧 녹화가 시작됩니다..."
+  },
+  "drive_pageTitle": {
+    "message": "녹화 목록 - Screen Recorder"
+  },
+  "drive_headerTitle": {
+    "message": "녹화 관리자"
+  },
+  "drive_errorSupport": {
+    "message": "브라우저가 OPFS 스토리지를 지원하지 않습니다"
+  },
+  "drive_errorMetaNotFound": {
+    "message": "meta.json을 찾을 수 없습니다"
+  },
+  "drive_errorEmpty": {
+    "message": "녹화 파일이 비어 있습니다"
+  },
+  "drive_errorMetadata": {
+    "message": "메타데이터를 읽을 수 없습니다"
+  },
+  "drive_errorDataSize": {
+    "message": "파일 크기를 가져올 수 없습니다"
+  },
+  "drive_recordingNamePrefix": {
+    "message": "화면 녹화"
+  },
+  "drive_logDeleted": {
+    "message": "$ID$ 녹화가 삭제되었습니다",
+    "placeholders": {
+      "id": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_errorDelete": {
+    "message": "삭제 실패: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_logBatchDelete": {
+    "message": "$COUNT$개의 녹화를 성공적으로 삭제했습니다",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_errorLoad": {
+    "message": "녹화를 불러오는 중 오류가 발생했습니다"
+  },
+  "drive_errorLoadPrefix": {
+    "message": "불러오기 실패:"
+  },
+  "studio_pageTitle": {
+    "message": "Screen Recording Studio"
+  },
+  "studio_headerTitle": {
+    "message": "Screen Recorder Studio"
+  },
+  "studio_githubTooltip": {
+    "message": "GitHub에서 소스 보기"
+  },
+  "studio_githubText": {
+    "message": "GitHub"
+  },
+  "studio_feedbackTooltip": {
+    "message": "버그 신고 또는 기능 제안"
+  },
+  "studio_feedbackText": {
+    "message": "피드백"
+  },
+  "studio_helpTooltip": {
+    "message": "도움말 및 문서"
+  },
+  "studio_helpText": {
+    "message": "도움말"
+  },
+  "studio_driveTooltip": {
+    "message": "파일 관리자 열기"
+  },
+  "studio_driveText": {
+    "message": "파일"
+  },
+  "studio_fullscreenEnterTooltip": {
+    "message": "전체 화면"
+  },
+  "studio_fullscreenExitTooltip": {
+    "message": "전체 화면 종료"
+  },
+  "studio_fullscreenEnterText": {
+    "message": "전체 화면"
+  },
+  "studio_fullscreenExitText": {
+    "message": "종료"
+  },
+  "bg_title": {
+    "message": "배경 설정"
+  },
+  "bg_tab_wallpaper": {
+    "message": "배경화면"
+  },
+  "bg_tab_gradient": {
+    "message": "그라데이션"
+  },
+  "bg_tab_solid": {
+    "message": "단색"
+  },
+  "bg_tab_image": {
+    "message": "이미지"
+  },
+  "radius_title": {
+    "message": "비디오 테두리 곡률"
+  },
+  "radius_none": {
+    "message": "없음"
+  },
+  "radius_small": {
+    "message": "작게"
+  },
+  "radius_medium": {
+    "message": "중간"
+  },
+  "radius_large": {
+    "message": "크게"
+  },
+  "radius_xl": {
+    "message": "매우 크게"
+  },
+  "padding_title": {
+    "message": "비디오 여백"
+  },
+  "padding_none": {
+    "message": "없음"
+  },
+  "padding_small": {
+    "message": "작게"
+  },
+  "padding_medium": {
+    "message": "중간"
+  },
+  "padding_large": {
+    "message": "크게"
+  },
+  "padding_xl": {
+    "message": "매우 크게"
+  },
+  "ratio_yt": {
+    "message": "YouTube 가로형"
+  },
+  "ratio_yt_desc": {
+    "message": "YouTube, Bilibili 등"
+  },
+  "ratio_sq": {
+    "message": "Instagram 정사각형"
+  },
+  "ratio_sq_desc": {
+    "message": "Instagram 게시물"
+  },
+  "ratio_tiktok": {
+    "message": "TikTok 세로형"
+  },
+  "ratio_tiktok_desc": {
+    "message": "TikTok, 릴스 등"
+  },
+  "ratio_story": {
+    "message": "Instagram 스토리"
+  },
+  "ratio_story_desc": {
+    "message": "스토리, 샤오홍슈 등"
+  },
+  "shadow_title": {
+    "message": "비디오 그림자"
+  },
+  "shadow_preset_title": {
+    "message": "프리셋 효과"
+  },
+  "shadow_custom_title": {
+    "message": "사용자 설정"
+  },
+  "shadow_light": {
+    "message": "가벼운 그림자"
+  },
+  "shadow_standard": {
+    "message": "기본 그림자"
+  },
+  "shadow_deep": {
+    "message": "깊은 그림자"
+  },
+  "shadow_distant": {
+    "message": "먼 그림자"
+  },
+  "shadow_offset_x": {
+    "message": "가로 위치"
+  },
+  "shadow_offset_y": {
+    "message": "세로 위치"
+  },
+  "shadow_blur": {
+    "message": "흐림 정도"
+  },
+  "shadow_color": {
+    "message": "색상"
+  },
+  "shadow_opacity": {
+    "message": "불투명도"
+  },
+  "shadow_empty_state": {
+    "message": "스위치를 켜서 그림자를 설정하세요"
+  },
+  "color_tab_basic": {
+    "message": "기본"
+  },
+  "color_tab_light": {
+    "message": "밝음"
+  },
+  "color_tab_business": {
+    "message": "비즈니스"
+  },
+  "color_tab_creative": {
+    "message": "크리에이티브"
+  },
+  "color_custom": {
+    "message": "사용자 지정:"
+  },
+  "gradient_tab_linear": {
+    "message": "선형"
+  },
+  "gradient_tab_radial": {
+    "message": "방사형"
+  },
+  "gradient_tab_conic": {
+    "message": "원뿔형"
+  },
+  "gradient_tab_multi": {
+    "message": "다채로운 색상"
+  },
+  "gradient_current": {
+    "message": "현재:"
+  },
+  "gradient_select_hint": {
+    "message": "그라데이션을 선택하세요"
+  },
+  "gradient_colors_suffix": {
+    "message": "색상"
+  },
+  "wallpaper_tab_abstract": {
+    "message": "추상"
+  },
+  "wallpaper_tab_minimal": {
+    "message": "미니멀"
+  },
+  "wallpaper_tab_nature": {
+    "message": "자연"
+  },
+  "wallpaper_tab_business": {
+    "message": "비즈니스"
+  },
+  "wallpaper_tab_tech": {
+    "message": "테크"
+  },
+  "wallpaper_error": {
+    "message": "배경화면 로드 실패"
+  },
+  "wallpaper_stats": {
+    "message": "이 카테고리에 $COUNT$개의 배경화면",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "wallpaper_total": {
+    "message": "총 $TOTAL$개",
+    "placeholders": {
+      "total": {
+        "content": "$1"
+      }
+    }
+  },
+  "upload_processing": {
+    "message": "처리 중..."
+  },
+  "upload_drop_hint": {
+    "message": "클릭하거나 이미지를 끌어다 놓으세요"
+  },
+  "upload_format_hint": {
+    "message": "JPEG, PNG, WebP, GIF · 최대 5MB"
+  },
+  "upload_error_select": {
+    "message": "이미지 파일을 선택해 주세요"
+  },
+  "upload_error_failed": {
+    "message": "업로드 실패"
+  },
+  "drive_delete_selected_btn": {
+    "message": "선택 삭제 ($COUNT$)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_clear_selection": {
+    "message": "선택 해제"
+  },
+  "drive_refresh": {
+    "message": "새로고침"
+  },
+  "drive_error_title": {
+    "message": "오류"
+  },
+  "drive_close_error": {
+    "message": "닫기"
+  },
+  "drive_loading": {
+    "message": "녹화 목록을 불러오는 중..."
+  },
+  "drive_empty_title": {
+    "message": "녹화된 파일이 없습니다"
+  },
+  "drive_empty_desc1": {
+    "message": "아직 화면 녹화 파일이 없습니다."
+  },
+  "drive_empty_desc2": {
+    "message": "화면 녹화를 시작하면 여기에 표시됩니다."
+  },
+  "drive_start_recording_btn": {
+    "message": "녹화 시작하기"
+  },
+  "drive_select_all": {
+    "message": "전체 선택 ($COUNT$개)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_sort_hint": {
+    "message": "최신순 정렬"
+  },
+  "drive_confirm_delete_title": {
+    "message": "삭제 확인"
+  },
+  "drive_confirm_delete_selected": {
+    "message": "선택한 $COUNT$개의 녹화 파일을 삭제하시겠습니까?",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_confirm_delete_single": {
+    "message": "이 녹화 파일을 삭제하시겠습니까?"
+  },
+  "drive_action_undone": {
+    "message": "이 작업은 되돌릴 수 없습니다."
+  },
+  "drive_cancel": {
+    "message": "취소"
+  },
+  "drive_delete": {
+    "message": "삭제"
+  },
+  "card_status_completed": {
+    "message": "완료"
+  },
+  "card_status_incomplete": {
+    "message": "미완료"
+  },
+  "card_label_created": {
+    "message": "생성일:"
+  },
+  "card_label_status": {
+    "message": "상태:"
+  },
+  "card_label_codec": {
+    "message": "코덱:"
+  },
+  "card_label_resolution": {
+    "message": "해상도:"
+  },
+  "card_label_fps": {
+    "message": "FPS:"
+  },
+  "card_label_size": {
+    "message": "파일 크기:"
+  },
+  "card_label_frames": {
+    "message": "총 프레임:"
+  },
+  "card_incomplete_title": {
+    "message": "불완전한 녹화"
+  },
+  "card_incomplete_desc": {
+    "message": "비디오 데이터 누락"
+  },
+  "card_preview_error": {
+    "message": "미리보기를 불러올 수 없음"
+  },
+  "card_preview_loading": {
+    "message": "미리보기 생성 중..."
+  },
+  "card_btn_edit": {
+    "message": "편집"
+  },
+  "card_btn_delete": {
+    "message": "삭제"
+  },
+  "card_edit_disabled_tooltip": {
+    "message": "불완전한 녹화는 편집할 수 없습니다"
+  },
+  "card_edit_tooltip": {
+    "message": "녹화 편집"
+  },
+  "card_preview_load_error": {
+    "message": "데이터 로드 실패: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_today": {
+    "message": "오늘 $TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_yesterday": {
+    "message": "어제 $TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_days_ago": {
+    "message": "$DAYS$일 전",
+    "placeholders": {
+      "days": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_panel_tier_free": {
+    "message": "무료"
+  },
+  "export_panel_tier_pro": {
+    "message": "프로"
+  },
+  "export_panel_tier_trial": {
+    "message": "프로 체험"
+  },
+  "export_panel_btn": {
+    "message": "내보내기"
+  },
+  "export_panel_tooltip_incomplete": {
+    "message": "녹화를 완료한 후 내보내세요"
+  },
+  "export_panel_tooltip_no_data": {
+    "message": "비디오 데이터 없음"
+  },
+  "export_panel_btn_exporting": {
+    "message": "내보내는 중..."
+  },
+  "export_dialog_title": {
+    "message": "비디오 내보내기"
+  },
+  "export_source_res": {
+    "message": "해상도"
+  },
+  "export_source_codec": {
+    "message": "코덱"
+  },
+  "export_source_duration": {
+    "message": "길이"
+  },
+  "export_source_frames": {
+    "message": "프레임"
+  },
+  "export_badge_bg": {
+    "message": "배경 포함"
+  },
+  "export_badge_trim": {
+    "message": "자르기 적용됨"
+  },
+  "export_format_mp4": {
+    "message": "MP4"
+  },
+  "export_format_webm": {
+    "message": "WebM"
+  },
+  "export_format_gif": {
+    "message": "GIF"
+  },
+  "export_quality_title": {
+    "message": "화질 설정"
+  },
+  "export_quality_draft": {
+    "message": "초안"
+  },
+  "export_quality_draft_desc": {
+    "message": "가장 빠름, 낮은 화질"
+  },
+  "export_quality_balanced": {
+    "message": "균형"
+  },
+  "export_quality_balanced_desc": {
+    "message": "좋은 화질과 속도"
+  },
+  "export_quality_high": {
+    "message": "고화질"
+  },
+  "export_quality_high_desc": {
+    "message": "높은 화질, 느린 속도"
+  },
+  "export_quality_best": {
+    "message": "최고"
+  },
+  "export_quality_best_desc": {
+    "message": "최상의 화질, 매우 느림"
+  },
+  "export_label_resolution": {
+    "message": "내보내기 해상도"
+  },
+  "export_res_source": {
+    "message": "원본 유지 ($WIDTH$×$HEIGHT$)",
+    "placeholders": {
+      "width": {
+        "content": "$1"
+      },
+      "height": {
+        "content": "$2"
+      }
+    }
+  },
+  "export_label_framerate": {
+    "message": "프레임 속도 (FPS)"
+  },
+  "export_fps_source": {
+    "message": "$FPS$ fps (원본)",
+    "placeholders": {
+      "fps": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_bitrate": {
+    "message": "비트레이트"
+  },
+  "export_bitrate_auto": {
+    "message": "자동"
+  },
+  "export_bitrate_manual": {
+    "message": "수동"
+  },
+  "export_bitrate_auto_hint": {
+    "message": "자동: $RATE$ Mbps (해상도 기반)",
+    "placeholders": {
+      "rate": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_speed": {
+    "message": "인코딩 속도"
+  },
+  "export_speed_fastest": {
+    "message": "가장 빠름"
+  },
+  "export_speed_fast": {
+    "message": "빠름"
+  },
+  "export_speed_balanced": {
+    "message": "균형"
+  },
+  "export_speed_slow": {
+    "message": "느림"
+  },
+  "export_speed_slowest": {
+    "message": "가장 느림"
+  },
+  "export_est_output": {
+    "message": "예상 출력"
+  },
+  "export_est_size": {
+    "message": "예상 크기"
+  },
+  "export_label_gif_quality": {
+    "message": "GIF 품질"
+  },
+  "export_gif_best": {
+    "message": "최고 (느림)"
+  },
+  "export_gif_high": {
+    "message": "높음"
+  },
+  "export_gif_good": {
+    "message": "좋음 (기본)"
+  },
+  "export_gif_fast": {
+    "message": "빠름"
+  },
+  "export_gif_fastest": {
+    "message": "가장 빠름"
+  },
+  "export_label_scale": {
+    "message": "크기 조절"
+  },
+  "export_scale_original": {
+    "message": "100% (원본)"
+  },
+  "export_label_workers": {
+    "message": "프로세스 스레드"
+  },
+  "export_worker_singular": {
+    "message": "$COUNT$개 스레드",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_worker_plural": {
+    "message": "$COUNT$개 스레드",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_dither": {
+    "message": "디더링"
+  },
+  "export_dither_none": {
+    "message": "없음"
+  },
+  "export_btn_cancel": {
+    "message": "취소"
+  },
+  "export_btn_export_mp4": {
+    "message": "MP4로 내보내기"
+  },
+  "export_btn_export_webm": {
+    "message": "WebM으로 내보내기"
+  },
+  "export_btn_export_gif": {
+    "message": "GIF로 내보내기"
+  },
+  "export_progress_preparing": {
+    "message": "준비 중..."
+  },
+  "export_progress_encoding": {
+    "message": "인코딩 중..."
+  },
+  "export_progress_muxing": {
+    "message": "파일 생성 중..."
+  },
+  "export_progress_finalizing": {
+    "message": "마무리 중..."
+  },
+  "export_progress_frame": {
+    "message": "프레임 $CURRENT$ / $TOTAL$",
+    "placeholders": {
+      "current": {
+        "content": "$1"
+      },
+      "total": {
+        "content": "$2"
+      }
+    }
+  },
+  "export_progress_time": {
+    "message": "남은 시간 약 $SECONDS$초",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_progress_hint": {
+    "message": "비디오를 내보내는 동안 잠시만 기다려 주세요..."
+  },
+  "wallpaper_cat_abstract_name": {
+    "message": "추상 예술"
+  },
+  "wallpaper_cat_abstract_desc": {
+    "message": "추상적인 패턴과 현대적인 디자인"
+  },
+  "wallpaper_cat_minimal_name": {
+    "message": "미니멀"
+  },
+  "wallpaper_cat_minimal_desc": {
+    "message": "깔끔한 기하학적 형태와 미니멀리즘"
+  },
+  "wallpaper_cat_nature_name": {
+    "message": "자연 풍경"
+  },
+  "wallpaper_cat_nature_desc": {
+    "message": "자연의 경관과 식물 질감"
+  },
+  "wallpaper_cat_business_name": {
+    "message": "비즈니스"
+  },
+  "wallpaper_cat_business_desc": {
+    "message": "전문적인 분위기와 기업 스타일"
+  },
+  "wallpaper_cat_tech_name": {
+    "message": "테크 미래"
+  },
+  "wallpaper_cat_tech_desc": {
+    "message": "기술 요소와 디지털 아트"
+  },
+  "wallpaper_gradient_abstract_1_name": {
+    "message": "추상 그라데이션"
+  },
+  "wallpaper_gradient_abstract_1_desc": {
+    "message": "현대적인 추상 그라데이션 배경"
+  },
+  "wallpaper_geometric_pattern_1_name": {
+    "message": "기하학 패턴"
+  },
+  "wallpaper_geometric_pattern_1_desc": {
+    "message": "깔끔한 기하학 패턴 배경"
+  },
+  "wallpaper_abstract_2425706_name": {
+    "message": "추상적인 색상"
+  },
+  "wallpaper_abstract_2425706_desc": {
+    "message": "활기찬 추상 색상 텍스처"
+  },
+  "wallpaper_abstract_2512412_name": {
+    "message": "추상 유체"
+  },
+  "wallpaper_abstract_2512412_desc": {
+    "message": "흐르는 듯한 색상 배경"
+  },
+  "wallpaper_abstract_6297317_name": {
+    "message": "추상 형태"
+  },
+  "wallpaper_abstract_6297317_desc": {
+    "message": "기하학적 색면 구성"
+  },
+  "wallpaper_ai_generated_9083808_name": {
+    "message": "AI 생성 아트"
+  },
+  "wallpaper_ai_generated_9083808_desc": {
+    "message": "AI로 생성된 미래형 배경"
+  },
+  "wallpaper_beach_4938036_name": {
+    "message": "해변"
+  },
+  "wallpaper_beach_4938036_desc": {
+    "message": "시원한 해변 풍경"
+  },
+  "wallpaper_bulb_5665770_name": {
+    "message": "창의적인 전구"
+  },
+  "wallpaper_bulb_5665770_desc": {
+    "message": "창의성의 상징"
+  },
+  "wallpaper_cpu_8892400_name": {
+    "message": "CPU 회로"
+  },
+  "wallpaper_cpu_8892400_desc": {
+    "message": "칩과 회로 기판"
+  },
+  "wallpaper_feather_5488401_name": {
+    "message": "깃털 근접 촬영"
+  },
+  "wallpaper_feather_5488401_desc": {
+    "message": "부드러운 깃털 질감"
+  },
+  "wallpaper_fractal_8902060_name": {
+    "message": "프랙탈 아트"
+  },
+  "wallpaper_fractal_8902060_desc": {
+    "message": "찬란한 프랙탈 패턴"
+  },
+  "wallpaper_orange_3036097_name": {
+    "message": "오렌지 단면"
+  },
+  "wallpaper_orange_3036097_desc": {
+    "message": "활기찬 오렌지 단면"
+  },
+  "wallpaper_orange_6508617_name": {
+    "message": "오렌지 배경"
+  },
+  "wallpaper_orange_6508617_desc": {
+    "message": "에너지 넘치는 오렌지색"
+  },
+  "wallpaper_polar_lights_5858656_name": {
+    "message": "오로라"
+  },
+  "wallpaper_polar_lights_5858656_desc": {
+    "message": "몽환적인 북극광 밤하늘"
+  },
+  "wallpaper_spiral_3112405_name": {
+    "message": "나선 패턴"
+  },
+  "wallpaper_spiral_3112405_desc": {
+    "message": "역동적인 나선형 텍스처"
+  },
+  "wallpaper_steelwool_458842_name": {
+    "message": "라이트 페인팅"
+  },
+  "wallpaper_steelwool_458842_desc": {
+    "message": "추상적인 빛의 궤적"
+  },
+  "wallpaper_swimming_pool_8306716_name": {
+    "message": "수영장 물결"
+  },
+  "wallpaper_swimming_pool_8306716_desc": {
+    "message": "시원한 수영장 물결"
+  },
+  "wallpaper_abstract_2426502_name": {
+    "message": "추상 색면"
+  },
+  "wallpaper_abstract_2426502_desc": {
+    "message": "현대적인 추상 디자인"
+  },
+  "wallpaper_camera_1248682_name": {
+    "message": "카메라"
+  },
+  "wallpaper_camera_1248682_desc": {
+    "message": "테크니컬 카메라 근접 촬영"
+  },
+  "wallpaper_circle_5090539_name": {
+    "message": "원형 기하학"
+  },
+  "wallpaper_circle_5090539_desc": {
+    "message": "깔끔한 원형 패턴"
+  },
+  "wallpaper_feather_7009025_name": {
+    "message": "깃털 질감"
+  },
+  "wallpaper_feather_7009025_desc": {
+    "message": "섬세한 자연의 패턴"
+  },
+  "wallpaper_fiber_4814456_name": {
+    "message": "광섬유 라인"
+  },
+  "wallpaper_fiber_4814456_desc": {
+    "message": "추상적인 테크 느낌"
+  },
+  "wallpaper_frost_6702335_name": {
+    "message": "서리 무늬"
+  },
+  "wallpaper_frost_6702335_desc": {
+    "message": "차가운 얼음 결정 배경"
+  },
+  "wallpaper_leaves_4291098_name": {
+    "message": "초록 잎"
+  },
+  "wallpaper_leaves_4291098_desc": {
+    "message": "싱그러운 나뭇잎 질감"
+  },
+  "wallpaper_light_1834289_name": {
+    "message": "빛망울"
+  },
+  "wallpaper_light_1834289_desc": {
+    "message": "분위기 있는 보케 효과"
+  },
+  "wallpaper_light_942231_name": {
+    "message": "빛의 궤적"
+  },
+  "wallpaper_light_942231_desc": {
+    "message": "흐르는 듯한 빛의 라인"
+  },
+  "wallpaper_luck_4397584_name": {
+    "message": "네잎클로버"
+  },
+  "wallpaper_luck_4397584_desc": {
+    "message": "싱그러운 행운의 클로버"
+  },
+  "wallpaper_waterdrop_2256201_name": {
+    "message": "물방울"
+  },
+  "wallpaper_waterdrop_2256201_desc": {
+    "message": "물방울 접사 텍스처"
+  },
+  "welcome_pageTitle": {
+    "message": "Screen Recorder Studio에 오신 것을 환영합니다"
+  },
+  "welcome_headerSubtitle": {
+    "message": "전문가용 브라우저 녹화 도구"
+  },
+  "welcome_installSuccess": {
+    "message": "설치 완료"
+  },
+  "welcome_headline": {
+    "message": "Screen Recorder Studio에 오신 것을 환영합니다! 🎉"
+  },
+  "welcome_subheadline": {
+    "message": "첫 녹화를 시작할 준비가 되셨나요? 몇 초면 충분합니다!"
+  },
+  "welcome_tryTitle": {
+    "message": "지금 바로 시작하세요! 🚀"
+  },
+  "welcome_trySubtitle": {
+    "message": "녹화 모드를 선택하고 아래 버튼을 누르세요"
+  },
+  "welcome_tryFeatures": {
+    "message": "설정 불필요 • $SECONDS$초 카운트다운 • 전문가 품질",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "welcome_modeTabDetail": {
+    "message": "웹 데모와 튜토리얼에 적합"
+  },
+  "welcome_modeWindowDetail": {
+    "message": "주소 표시줄과 도구 모음을 포함"
+  },
+  "welcome_modeScreenDetail": {
+    "message": "크로스 앱 워크플로에 최적"
+  },
+  "welcome_statusRecording": {
+    "message": "녹화 중"
+  },
+  "welcome_modeLabel": {
+    "message": "모드"
+  },
+  "welcome_readyTitle": {
+    "message": "🎬 모든 준비 완료!"
+  },
+  "welcome_readyDesc": {
+    "message": "$MODE$ 모드를 선택했습니다. 위의 파란 버튼을 눌러 첫 녹화를 시작하세요!",
+    "placeholders": {
+      "mode": {
+        "content": "$1"
+      }
+    }
+  },
+  "welcome_readyTip": {
+    "message": "녹화 시작 전 $SECONDS$초 카운트다운",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "welcome_howTitle": {
+    "message": "사용 방법"
+  },
+  "welcome_howDesc": {
+    "message": "확장 프로그램을 최대한 활용하는 3단계"
+  },
+  "welcome_step1Title": {
+    "message": "확장 프로그램 고정"
+  },
+  "welcome_step1Desc": {
+    "message": "브라우저 도구 모음의 퍼즐 🧩 아이콘을 클릭해 확장 프로그램을 고정하세요"
+  },
+  "welcome_step2Title": {
+    "message": "대상 선택"
+  },
+  "welcome_step2Desc": {
+    "message": "녹화 대상을 선택하세요: 현재 탭, 전체 창 또는 전체 화면"
+  },
+  "welcome_step3Title": {
+    "message": "녹화 시작"
+  },
+  "welcome_step3Desc": {
+    "message": "“$BTN$”을 클릭하고 준비하세요—$SECONDS$초 카운트다운으로 여유를 드립니다!",
+    "placeholders": {
+      "btn": {
+        "content": "$1"
+      },
+      "seconds": {
+        "content": "$2"
+      }
+    }
+  },
+  "welcome_advancedTitle": {
+    "message": "더 많은 제어가 필요하세요?"
+  },
+  "welcome_advancedDesc": {
+    "message": "브라우저 도구 모음의 확장 아이콘을 클릭해 전체 제어 패널을 엽니다"
+  },
+  "welcome_openControl": {
+    "message": "전체 제어 패널 열기"
+  },
+  "welcome_footerHelp": {
+    "message": "도움이 필요하세요? 확장 아이콘을 클릭해 고급 기능이 있는 제어 패널을 열어보세요."
+  },
+  "welcome_footerMeta": {
+    "message": "Screen Recorder Studio • 전문가를 위해 제작"
+  },
+  "control_cameraAudioTitle": {
+    "message": "Camera & Microphone"
+  },
+  "control_cameraToggle": {
+    "message": "Enable camera"
+  },
+  "control_audioToggle": {
+    "message": "Enable microphone"
+  },
+  "control_selectCamera": {
+    "message": "Camera"
+  },
+  "control_selectMic": {
+    "message": "Microphone"
+  },
+  "control_cameraPreviewLoading": {
+    "message": "Initializing camera preview..."
+  },
+  "control_cameraPreviewError": {
+    "message": "Unable to preview camera"
+  }
 }

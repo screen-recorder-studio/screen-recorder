@@ -1,341 +1,1125 @@
 {
-  "appName": { "message": "Screen Recorder Studio" },
-  "appDesc": { "message": "टैब, विंडो, स्क्रीन, क्षेत्रों और तत्वों को रिकॉर्ड करने के लिए पेशेवर क्रोम एक्सटेंशन" },
-  "action_defaultTitle": { "message": "रिकॉर्डिंग पैनल खोलें" },
-
-  "control_headerTitle": { "message": "स्क्रीन रिकॉर्डर" },
-  "control_headerDesc": { "message": "रिकॉर्डिंग मोड चुनें और शुरू करें" },
-  "control_openDriveTooltip": { "message": "फ़ाइल प्रबंधक खोलें" },
-  "control_closePanelTooltip": { "message": "कंट्रोल पैनल बंद करें" },
-  "control_recordingMode": { "message": "रिकॉर्डिंग मोड" },
-  "control_modeTab": { "message": "टैब" },
-  "control_modeTabDesc": { "message": "वर्तमान टैब रिकॉर्ड करें" },
-  "control_modeWindow": { "message": "विंडो" },
-  "control_modeWindowDesc": { "message": "पूरी विंडो रिकॉर्ड करें" },
-  "control_modeScreen": { "message": "स्क्रीन" },
-  "control_modeScreenDesc": { "message": "पूरी स्क्रीन रिकॉर्ड करें" },
-  "control_statusRecording": { "message": "रिकॉर्डिंग हो रही है" },
-  "control_statusPaused": { "message": "रिकॉर्डिंग रुकी हुई है" },
-  "control_statusPreparing": { "message": "रिकॉर्डिंग की तैयारी हो रही है..." },
-  "control_btnStart": { "message": "रिकॉर्डिंग शुरू करें" },
-  "control_btnStop": { "message": "रिकॉर्डिंग रोकें" },
-  "control_btnPause": { "message": "विराम" },
-  "control_btnResume": { "message": "फिर से शुरू करें" },
-  "control_btnPreparing": { "message": "तैयारी..." },
-  "control_btnStarting": { "message": "$SECONDS$ सेकंड में शुरू हो रहा है...", "placeholders": { "seconds": { "content": "$1" } } },
-  "control_countdownLabel": { "message": "काउंटडाउन" },
-  "control_tipsTitle": { "message": "रिकॉर्डिंग टिप्स:" },
-  "control_tipsSelectMode": { "message": "$MODE$ मोड चुना गया है, शुरू करने के लिए रिकॉर्डिंग शुरू करें पर क्लिक करें।", "placeholders": { "mode": { "content": "$1" } } },
-  "control_tipsPreparing": { "message": "स्क्रीन चयन की प्रतीक्षा है..." },
-  "control_tipsCountdown": { "message": "तैयार हो जाइए! रिकॉर्डिंग $SECONDS$ सेकंड में शुरू होगी।", "placeholders": { "seconds": { "content": "$1" } } },
-  "control_tipsPaused": { "message": "रिकॉर्डिंग रुकी हुई है, जारी रखने के लिए फिर से शुरू करें पर क्लिक करें।" },
-  "control_tipsRecording": { "message": "रिकॉर्डिंग जारी है, ज़रूरत पड़ने पर पॉज़ करें।" },
-  "control_overlayRecordingStarts": { "message": "रिकॉर्डिंग जल्द ही शुरू होगी..." },
-
-  "drive_pageTitle": { "message": "रिकॉर्डिंग सूची - Screen Recorder" },
-  "drive_headerTitle": { "message": "रिकॉर्डिंग प्रबंधक" },
-  "drive_errorSupport": { "message": "आपका ब्राउज़र OPFS स्टोरेज का समर्थन नहीं करता है" },
-  "drive_errorMetaNotFound": { "message": "meta.json नहीं मिला" },
-  "drive_errorEmpty": { "message": "रिकॉर्डिंग फ़ाइल खाली है" },
-  "drive_errorMetadata": { "message": "मेटाडेटा पढ़ने में असमर्थ" },
-  "drive_errorDataSize": { "message": "फ़ाइल का आकार प्राप्त करने में असमर्थ" },
-  "drive_recordingNamePrefix": { "message": "स्क्रीन रिकॉर्डिंग" },
-  "drive_logDeleted": { "message": "रिकॉर्डिंग $ID$ हटा दी गई", "placeholders": { "id": { "content": "$1" } } },
-  "drive_errorDelete": { "message": "हटाने में विफलता: $ERROR$", "placeholders": { "error": { "content": "$1" } } },
-  "drive_logBatchDelete": { "message": "$COUNT$ रिकॉर्डिंग सफलतापूर्वक हटा दी गई", "placeholders": { "count": { "content": "$1" } } },
-  "drive_errorLoad": { "message": "रिकॉर्डिंग लोड करते समय त्रुटि हुई" },
-  "drive_errorLoadPrefix": { "message": "लोड करने में विफल:" },
-
-  "studio_pageTitle": { "message": "Screen Recording Studio" },
-  "studio_headerTitle": { "message": "Screen Recorder Studio" },
-  "studio_githubTooltip": { "message": "GitHub पर सोर्स देखें" },
-  "studio_githubText": { "message": "GitHub" },
-  "studio_feedbackTooltip": { "message": "बग रिपोर्ट करें या सुविधा का सुझाव दें" },
-  "studio_feedbackText": { "message": "फ़ीडबैक" },
-  "studio_helpTooltip": { "message": "सहायता और दस्तावेज़" },
-  "studio_helpText": { "message": "सहायता" },
-  "studio_driveTooltip": { "message": "रिकॉर्डिंग प्रबंधक खोलें" },
-  "studio_driveText": { "message": "ड्राइव" },
-  "studio_fullscreenEnterTooltip": { "message": "फुल स्क्रीन" },
-  "studio_fullscreenExitTooltip": { "message": "फुल स्क्रीन से बाहर निकलें" },
-  "studio_fullscreenEnterText": { "message": "स्क्रीन" },
-  "studio_fullscreenExitText": { "message": "बाहर" },
-
-  "bg_title": { "message": "पृष्ठभूमि सेटिंग्स" },
-  "bg_tab_wallpaper": { "message": "वॉलपेपर" },
-  "bg_tab_gradient": { "message": "ग्रेडिएंट" },
-  "bg_tab_solid": { "message": "ठोस रंग" },
-  "bg_tab_image": { "message": "चित्र" },
-
-  "radius_title": { "message": "कोने की गोलाई" },
-  "radius_none": { "message": "कोई नहीं" },
-  "radius_small": { "message": "छोटा" },
-  "radius_medium": { "message": "मध्यम" },
-  "radius_large": { "message": "बड़ा" },
-  "radius_xl": { "message": "बहुत बड़ा" },
-
-  "padding_title": { "message": "वीडियो पैडिंग" },
-  "padding_none": { "message": "कोई नहीं" },
-  "padding_small": { "message": "कम" },
-  "padding_medium": { "message": "मध्यम" },
-  "padding_large": { "message": "ज़्यादा" },
-  "padding_xl": { "message": "अधिकतम" },
-
-  "ratio_yt": { "message": "YouTube लैंडस्केप" },
-  "ratio_yt_desc": { "message": "YouTube, Bilibili आदि" },
-  "ratio_sq": { "message": "Instagram स्क्वायर" },
-  "ratio_sq_desc": { "message": "Instagram पोस्ट" },
-  "ratio_tiktok": { "message": "TikTok पोर्ट्रेट" },
-  "ratio_tiktok_desc": { "message": "TikTok, Reels आदि" },
-  "ratio_story": { "message": "Instagram स्टोरी" },
-  "ratio_story_desc": { "message": "Stories, Xiaohongshu" },
-
-  "shadow_title": { "message": "वीडियो छाया" },
-  "shadow_preset_title": { "message": "प्रिसेट प्रभाव" },
-  "shadow_custom_title": { "message": "कस्टम पैरामीटर्स" },
-  "shadow_light": { "message": "हल्की छाया" },
-  "shadow_standard": { "message": "मानक" },
-  "shadow_deep": { "message": "गहरी" },
-  "shadow_distant": { "message": "दूर" },
-  "shadow_offset_x": { "message": "X ऑफसेट" },
-  "shadow_offset_y": { "message": "Y ऑफसेट" },
-  "shadow_blur": { "message": "धुंधलापन" },
-  "shadow_color": { "message": "रंग" },
-  "shadow_opacity": { "message": "अपारदर्शिता" },
-  "shadow_empty_state": { "message": "छाया सेट करने के लिए स्विच ऑन करें" },
-
-  "color_tab_basic": { "message": "बेसिक" },
-  "color_tab_light": { "message": "हल्का" },
-  "color_tab_business": { "message": "बिज़नेस" },
-  "color_tab_creative": { "message": "रचनात्मक" },
-  "color_custom": { "message": "कस्टम:" },
-
-  "gradient_tab_linear": { "message": "लीनियर" },
-  "gradient_tab_radial": { "message": "रेडियल" },
-  "gradient_tab_conic": { "message": "कोनिक" },
-  "gradient_tab_multi": { "message": "बहुरंगी" },
-  "gradient_current": { "message": "वर्तमान:" },
-  "gradient_select_hint": { "message": "ग्रेडिएंट चुनें" },
-  "gradient_colors_suffix": { "message": "रंग" },
-
-  "wallpaper_tab_abstract": { "message": "अमूर्त" },
-  "wallpaper_tab_minimal": { "message": "न्यूनतम" },
-  "wallpaper_tab_nature": { "message": "प्रकृति" },
-  "wallpaper_tab_business": { "message": "बिज़नेस" },
-  "wallpaper_tab_tech": { "message": "टेक" },
-  "wallpaper_error": { "message": "वॉलपेपर लोड करने में विफल" },
-  "wallpaper_stats": { "message": "इस श्रेणी में $COUNT$ वॉलपेपर", "placeholders": { "count": { "content": "$1" } } },
-  "wallpaper_total": { "message": "कुल $TOTAL$", "placeholders": { "total": { "content": "$1" } } },
-
-  "upload_processing": { "message": "प्रसंस्करण..." },
-  "upload_drop_hint": { "message": "क्लिक करें या फोटो खींचें" },
-  "upload_format_hint": { "message": "JPEG, PNG, WebP, GIF · अधिकतम 5MB" },
-  "upload_error_select": { "message": "कृपया एक चित्र फ़ाइल चुनें" },
-  "upload_error_failed": { "message": "अपलोड विफल" },
-
-  "drive_delete_selected_btn": { "message": "चयनित हटाएं ($COUNT$)", "placeholders": { "count": { "content": "$1" } } },
-  "drive_clear_selection": { "message": "चयन साफ करें" },
-  "drive_refresh": { "message": "रिफ्रेश करें" },
-  "drive_error_title": { "message": "त्रुटि" },
-  "drive_close_error": { "message": "बंद करें" },
-  "drive_loading": { "message": "रिकॉर्डिंग लोड हो रही है..." },
-  "drive_empty_title": { "message": "अभी तक कोई रिकॉर्डिंग नहीं" },
-  "drive_empty_desc1": { "message": "आपके पास अभी तक कोई स्क्रीन रिकॉर्डिंग नहीं है।" },
-  "drive_empty_desc2": { "message": "रिकॉर्डिंग शुरू करें, और वे यहाँ दिखाई देंगी।" },
-  "drive_start_recording_btn": { "message": "रिकॉर्डिंग शुरू करें" },
-  "drive_select_all": { "message": "सभी चुनें ($COUNT$ रिकॉर्डिंग)", "placeholders": { "count": { "content": "$1" } } },
-  "drive_sort_hint": { "message": "समय के अनुसार क्रमित (नवीनतम पहले)" },
-  "drive_confirm_delete_title": { "message": "हटाने की पुष्टि करें" },
-  "drive_confirm_delete_selected": { "message": "क्या आप वाकई $COUNT$ चयनित रिकॉर्डिंग हटाना चाहते हैं?", "placeholders": { "count": { "content": "$1" } } },
-  "drive_confirm_delete_single": { "message": "क्या आप वाकई इस रिकॉर्डिंग को हटाना चाहते हैं?" },
-  "drive_action_undone": { "message": "यह क्रिया वापस नहीं ली जा सकती।" },
-  "drive_cancel": { "message": "रद्द करें" },
-  "drive_delete": { "message": "हटाएं" },
-
-  "card_status_completed": { "message": "पूरा हुआ" },
-  "card_status_incomplete": { "message": "अधूरा" },
-  "card_label_created": { "message": "बनाया गया:" },
-  "card_label_status": { "message": "स्थिति:" },
-  "card_label_codec": { "message": "कोडेक:" },
-  "card_label_resolution": { "message": "रिज़ॉल्यूशन:" },
-  "card_label_fps": { "message": "FPS:" },
-  "card_label_size": { "message": "आकार:" },
-  "card_label_frames": { "message": "कुल फ्रेम्स:" },
-  "card_incomplete_title": { "message": "अधूरी रिकॉर्डिंग" },
-  "card_incomplete_desc": { "message": "वीडियो डेटा गायब है" },
-  "card_preview_error": { "message": "पूर्वावलोकन लोड नहीं हो सका" },
-  "card_preview_loading": { "message": "पूर्वावलोकन बन रहा है..." },
-  "card_btn_edit": { "message": "एडिट करें" },
-  "card_btn_delete": { "message": "हटाएं" },
-  "card_edit_disabled_tooltip": { "message": "अधूरी रिकॉर्डिंग एडिट नहीं की जा सकती" },
-  "card_edit_tooltip": { "message": "रिकॉर्डिंग एडिट करें" },
-  "card_preview_load_error": { "message": "डेटा लोड करने में विफल: $ERROR$", "placeholders": { "error": { "content": "$1" } } },
-  "card_date_today": { "message": "आज $TIME$", "placeholders": { "time": { "content": "$1" } } },
-  "card_date_yesterday": { "message": "कल $TIME$", "placeholders": { "time": { "content": "$1" } } },
-  "card_date_days_ago": { "message": "$DAYS$ दिन पहले", "placeholders": { "days": { "content": "$1" } } },
-
-  "export_panel_tier_free": { "message": "फ्री" },
-  "export_panel_tier_pro": { "message": "PRO" },
-  "export_panel_tier_trial": { "message": "PRO ट्रायल" },
-  "export_panel_btn": { "message": "एक्सपोर्ट" },
-  "export_panel_tooltip_incomplete": { "message": "एक्सपोर्ट करने के लिए रिकॉर्डिंग पूरी करें" },
-  "export_panel_tooltip_no_data": { "message": "कोई वीडियो डेटा नहीं" },
-  "export_panel_btn_exporting": { "message": "एक्सपोर्ट हो रहा है..." },
-
-  "export_dialog_title": { "message": "वीडियो एक्सपोर्ट करें" },
-  "export_source_res": { "message": "रिज़ॉल्यूशन" },
-  "export_source_codec": { "message": "कोडेक" },
-  "export_source_duration": { "message": "अवधि" },
-  "export_source_frames": { "message": "फ्रेम्स" },
-  "export_badge_bg": { "message": "बैकग्राउंड" },
-  "export_badge_trim": { "message": "ट्रिम किया गया" },
-  "export_format_mp4": { "message": "MP4" },
-  "export_format_webm": { "message": "WebM" },
-  "export_format_gif": { "message": "GIF" },
-  "export_quality_title": { "message": "क्वालिटी प्रिसेट" },
-  "export_quality_draft": { "message": "ड्राफ्ट" },
-  "export_quality_draft_desc": { "message": "सबसे तेज़, कम क्वालिटी" },
-  "export_quality_balanced": { "message": "संतुलित" },
-  "export_quality_balanced_desc": { "message": "अच्छी क्वालिटी और गति" },
-  "export_quality_high": { "message": "उच्च" },
-  "export_quality_high_desc": { "message": "उच्च क्वालिटी, धीमी" },
-  "export_quality_best": { "message": "सर्वश्रेष्ठ" },
-  "export_quality_best_desc": { "message": "अधिकतम क्वालिटी, सबसे धीमी" },
-  "export_label_resolution": { "message": "रिज़ॉल्यूशन" },
-  "export_res_source": { "message": "सोर्स के अनुसार ($WIDTH$×$HEIGHT$)", "placeholders": { "width": { "content": "$1" }, "height": { "content": "$2" } } },
-  "export_label_framerate": { "message": "फ्रेम रेट" },
-  "export_fps_source": { "message": "$FPS$ fps (सोर्स)", "placeholders": { "fps": { "content": "$1" } } },
-  "export_label_bitrate": { "message": "बिटरेट" },
-  "export_bitrate_auto": { "message": "ऑटो" },
-  "export_bitrate_manual": { "message": "मैनुअल" },
-  "export_bitrate_auto_hint": { "message": "ऑटो: $RATE$ Mbps (रिज़ॉल्यूशन आधारित)", "placeholders": { "rate": { "content": "$1" } } },
-  "export_label_speed": { "message": "एन्कोडिंग गति" },
-  "export_speed_fastest": { "message": "सबसे तेज़" },
-  "export_speed_fast": { "message": "तेज़" },
-  "export_speed_balanced": { "message": "संतुलित" },
-  "export_speed_slow": { "message": "धीमी" },
-  "export_speed_slowest": { "message": "सबसे धीमी" },
-  "export_est_output": { "message": "अनुमानित आउटपुट" },
-  "export_est_size": { "message": "अनुमानित आकार" },
-  "export_label_gif_quality": { "message": "GIF क्वालिटी" },
-  "export_gif_best": { "message": "सर्वश्रेष्ठ (धीमी)" },
-  "export_gif_high": { "message": "उच्च" },
-  "export_gif_good": { "message": "अच्छी (डिफ़ॉल्ट)" },
-  "export_gif_fast": { "message": "तेज़" },
-  "export_gif_fastest": { "message": "सबसे तेज़" },
-  "export_label_scale": { "message": "स्केल" },
-  "export_scale_original": { "message": "100% (ओरिजिनल)" },
-  "export_label_workers": { "message": "प्रोसेस थ्रेड्स" },
-  "export_worker_singular": { "message": "$COUNT$ थ्रेड", "placeholders": { "count": { "content": "$1" } } },
-  "export_worker_plural": { "message": "$COUNT$ थ्रेड", "placeholders": { "count": { "content": "$1" } } },
-  "export_label_dither": { "message": "डिदरिंग" },
-  "export_dither_none": { "message": "कोई नहीं" },
-  "export_btn_cancel": { "message": "रद्द करें" },
-  "export_btn_export_mp4": { "message": "MP4 एक्सपोर्ट करें" },
-  "export_btn_export_webm": { "message": "WebM एक्सपोर्ट करें" },
-  "export_btn_export_gif": { "message": "GIF एक्सपोर्ट करें" },
-  "export_progress_preparing": { "message": "तैयारी..." },
-  "export_progress_encoding": { "message": "फ्रेम्स एन्कोड हो रहे हैं..." },
-  "export_progress_muxing": { "message": "फ़ाइल बन रही है..." },
-  "export_progress_finalizing": { "message": "अंतिम रूप दिया जा रहा है..." },
-  "export_progress_frame": { "message": "फ्रेम $CURRENT$ / $TOTAL$", "placeholders": { "current": { "content": "$1" }, "total": { "content": "$2" } } },
-  "export_progress_time": { "message": "लगभग ~$SECONDS$s शेष", "placeholders": { "seconds": { "content": "$1" } } },
-  "export_progress_hint": { "message": "कृपया प्रतीक्षा करें, वीडियो एक्सपोर्ट हो रहा है..." },
-
-  "wallpaper_cat_abstract_name": { "message": "अमूर्त कला" },
-  "wallpaper_cat_abstract_desc": { "message": "अमूर्त पैटर्न और आधुनिक डिज़ाइन" },
-  "wallpaper_cat_minimal_name": { "message": "न्यूनतम" },
-  "wallpaper_cat_minimal_desc": { "message": "साफ ज्यामिति और न्यूनतम सौंदर्य" },
-  "wallpaper_cat_nature_name": { "message": "प्रकृति" },
-  "wallpaper_cat_nature_desc": { "message": "प्राकृतिक दृश्य और पौधों की बनावट" },
-  "wallpaper_cat_business_name": { "message": "बिज़नेस" },
-  "wallpaper_cat_business_desc": { "message": "पेशेवर बिज़नेस माहौल" },
-  "wallpaper_cat_tech_name": { "message": "टेक भविष्य" },
-  "wallpaper_cat_tech_desc": { "message": "तकनीकी तत्व और डिजिटल कला" },
-
-  "wallpaper_gradient_abstract_1_name": { "message": "अमूर्त ग्रेडिएंट" },
-  "wallpaper_gradient_abstract_1_desc": { "message": "आधुनिक अमूर्त ग्रेडिएंट पृष्ठभूमि" },
-  "wallpaper_geometric_pattern_1_name": { "message": "ज्यामितीय पैटर्न" },
-  "wallpaper_geometric_pattern_1_desc": { "message": "साफ ज्यामितीय पैटर्न पृष्ठभूमि" },
-  "wallpaper_abstract_2425706_name": { "message": "अमूर्त रंग" },
-  "wallpaper_abstract_2425706_desc": { "message": "जीवंत अमूर्त रंग बनावट" },
-  "wallpaper_abstract_2512412_name": { "message": "तरल अमूर्त" },
-  "wallpaper_abstract_2512412_desc": { "message": "बहते रंगों वाली पृष्ठभूमि" },
-  "wallpaper_abstract_6297317_name": { "message": "अमूर्त रूप" },
-  "wallpaper_abstract_6297317_desc": { "message": "रंग ब्लॉक संरचना" },
-  "wallpaper_ai_generated_9083808_name": { "message": "AI जनित कला" },
-  "wallpaper_ai_generated_9083808_desc": { "message": "AI द्वारा बनाई गई भविष्यवादी पृष्ठभूमि" },
-  "wallpaper_beach_4938036_name": { "message": "समुद्र तट" },
-  "wallpaper_beach_4938036_desc": { "message": "ताज़ा समुद्र तटीय दृश्य" },
-  "wallpaper_bulb_5665770_name": { "message": "रचनात्मक बल्ब" },
-  "wallpaper_bulb_5665770_desc": { "message": "रचनात्मकता का प्रतीक" },
-  "wallpaper_cpu_8892400_name": { "message": "CPU सर्किट" },
-  "wallpaper_cpu_8892400_desc": { "message": "चिप और सर्किट बोर्ड" },
-  "wallpaper_feather_5488401_name": { "message": "पंख का क्लोज़-अप" },
-  "wallpaper_feather_5488401_desc": { "message": "कोमल पंख की बनावट" },
-  "wallpaper_fractal_8902060_name": { "message": "फ्रैक्टल कला" },
-  "wallpaper_fractal_8902060_desc": { "message": "शानदार फ्रैक्टल पैटर्न" },
-  "wallpaper_orange_3036097_name": { "message": "संतरे का स्लाइस" },
-  "wallpaper_orange_3036097_desc": { "message": "जीवंत संतरे के स्लाइस" },
-  "wallpaper_orange_6508617_name": { "message": "नारंगी पृष्ठभूमि" },
-  "wallpaper_orange_6508617_desc": { "message": "ऊर्जावान नारंगी पृष्ठभूमि" },
-  "wallpaper_polar_lights_5858656_name": { "message": "अरोरा" },
-  "wallpaper_polar_lights_5858656_desc": { "message": "सपनों जैसा उत्तरी प्रकाश" },
-  "wallpaper_spiral_3112405_name": { "message": "सर्पिल पैटर्न" },
-  "wallpaper_spiral_3112405_desc": { "message": "गतिशील सर्पिल बनावट" },
-  "wallpaper_steelwool_458842_name": { "message": "लाइट पेंटिंग" },
-  "wallpaper_steelwool_458842_desc": { "message": "प्रकाश के निशान का प्रभाव" },
-  "wallpaper_swimming_pool_8306716_name": { "message": "पूल की लहरें" },
-  "wallpaper_swimming_pool_8306716_desc": { "message": "ठंडा स्विमिंग पूल का पानी" },
-  "wallpaper_abstract_2426502_name": { "message": "अमूर्त रंग ब्लॉक" },
-  "wallpaper_abstract_2426502_desc": { "message": "आधुनिक अमूर्त डिज़ाइन" },
-  "wallpaper_camera_1248682_name": { "message": "कैमरा" },
-  "wallpaper_camera_1248682_desc": { "message": "तकनीकी कैमरा क्लोज़-अप" },
-  "wallpaper_circle_5090539_name": { "message": "वृत्ताकार ज्यामिति" },
-  "wallpaper_circle_5090539_desc": { "message": "साफ वृत्ताकार पैटर्न" },
-  "wallpaper_feather_7009025_name": { "message": "पंख की बनावट" },
-  "wallpaper_feather_7009025_desc": { "message": "नाजुक प्राकृतिक पैटर्न" },
-  "wallpaper_fiber_4814456_name": { "message": "फाइबर लाइन्स" },
-  "wallpaper_fiber_4814456_desc": { "message": "अमूर्त तकनीकी अनुभव" },
-  "wallpaper_frost_6702335_name": { "message": "फ्रॉस्ट टेक्सचर" },
-  "wallpaper_frost_6702335_desc": { "message": "बर्फ के क्रिस्टल की पृष्ठभूमि" },
-  "wallpaper_leaves_4291098_name": { "message": "हरी पत्तियां" },
-  "wallpaper_leaves_4291098_desc": { "message": "ताजी पत्तियों की बनावट" },
-  "wallpaper_light_1834289_name": { "message": "लाइट बोके" },
-  "wallpaper_light_1834289_desc": { "message": "वायुमंडलीय बोके प्रभाव" },
-  "wallpaper_light_942231_name": { "message": "लाइट स्ट्रीक्स" },
-  "wallpaper_light_942231_desc": { "message": "गतिशील प्रकाश रेखाएं" },
-  "wallpaper_luck_4397584_name": { "message": "चार पत्तियों वाला क्लोवर" },
-  "wallpaper_luck_4397584_desc": { "message": "भाग्यशाली क्लोवर" },
-  "wallpaper_waterdrop_2256201_name": { "message": "पानी की बूंद" },
-  "wallpaper_waterdrop_2256201_desc": { "message": "पानी की बूंद की मैक्रो बनावट" },
-  "welcome_pageTitle": { "message": "Screen Recorder Studio में आपका स्वागत है" },
-  "welcome_headerSubtitle": { "message": "पेशेवर ब्राउज़र रिकॉर्डिंग टूल" },
-  "welcome_installSuccess": { "message": "इंस्टॉलेशन सफल" },
-  "welcome_headline": { "message": "Screen Recorder Studio में आपका स्वागत है! 🎉" },
-  "welcome_subheadline": { "message": "क्या आप अपनी पहली रिकॉर्डिंग के लिए तैयार हैं? शुरू करने में कुछ सेकंड ही लगते हैं!" },
-  "welcome_tryTitle": { "message": "अभी आज़माएँ! 🚀" },
-  "welcome_trySubtitle": { "message": "अपना रिकॉर्डिंग मोड चुनें और नीचे दिए बटन पर क्लिक करें" },
-  "welcome_tryFeatures": { "message": "कोई सेटअप नहीं • $SECONDS$-सेकंड की काउंटडाउन • प्रोफेशनल गुणवत्ता", "placeholders": { "seconds": { "content": "$1" } } },
-  "welcome_modeTabDetail": { "message": "वेब डेमो और ट्यूटोरियल के लिए बिल्कुल सही" },
-  "welcome_modeWindowDetail": { "message": "ऐड्रेस बार और टूलबार शामिल" },
-  "welcome_modeScreenDetail": { "message": "क्रॉस-ऐप वर्कफ़्लो के लिए सबसे अच्छा" },
-  "welcome_statusRecording": { "message": "रिकॉर्डिंग जारी है" },
-  "welcome_modeLabel": { "message": "मोड" },
-  "welcome_readyTitle": { "message": "🎬 सब तैयार है!" },
-  "welcome_readyDesc": { "message": "आपने $MODE$ मोड चुना है। ऊपर नीले बटन पर क्लिक करके अपनी पहली रिकॉर्डिंग शुरू करें!", "placeholders": { "mode": { "content": "$1" } } },
-  "welcome_readyTip": { "message": "रिकॉर्डिंग शुरू होने से पहले $SECONDS$-सेकंड की काउंटडाउन", "placeholders": { "seconds": { "content": "$1" } } },
-  "welcome_howTitle": { "message": "कैसे काम करता है" },
-  "welcome_howDesc": { "message": "एक्सटेंशन का पूरा लाभ उठाने के तीन आसान कदम" },
-  "welcome_step1Title": { "message": "एक्सटेंशन पिन करें" },
-  "welcome_step1Desc": { "message": "ब्राउज़र टूलबार में पज़ल आइकन 🧩 पर क्लिक करें और त्वरित पहुँच के लिए एक्सटेंशन पिन करें" },
-  "welcome_step2Title": { "message": "अपना लक्ष्य चुनें" },
-  "welcome_step2Desc": { "message": "क्या रिकॉर्ड करना है चुनें: वर्तमान टैब, पूरी विंडो या पूरा स्क्रीन" },
-  "welcome_step3Title": { "message": "रिकॉर्ड दबाएँ" },
-  "welcome_step3Desc": { "message": "“$BTN$” पर क्लिक करें और तैयार हो जाएँ — $SECONDS$-सेकंड की काउंटडाउन आपको समय देती है!", "placeholders": { "btn": { "content": "$1" }, "seconds": { "content": "$2" } } },
-  "welcome_advancedTitle": { "message": "और नियंत्रण चाहिए?" },
-  "welcome_advancedDesc": { "message": "पूर्ण नियंत्रण पैनल खोलने के लिए ब्राउज़र टूलबार में एक्सटेंशन आइकन पर क्लिक करें" },
-  "welcome_openControl": { "message": "पूर्ण नियंत्रण पैनल खोलें" },
-  "welcome_footerHelp": { "message": "मदद चाहिए? उन्नत सुविधाओं वाले नियंत्रण पैनल के लिए एक्सटेंशन आइकन पर क्लिक करें।" },
-  "welcome_footerMeta": { "message": "Screen Recorder Studio • पेशेवरों के लिए बनाया गया" }
+  "appName": {
+    "message": "Screen Recorder Studio"
+  },
+  "appDesc": {
+    "message": "टैब, विंडो, स्क्रीन, क्षेत्रों और तत्वों को रिकॉर्ड करने के लिए पेशेवर क्रोम एक्सटेंशन"
+  },
+  "action_defaultTitle": {
+    "message": "रिकॉर्डिंग पैनल खोलें"
+  },
+  "control_headerTitle": {
+    "message": "स्क्रीन रिकॉर्डर"
+  },
+  "control_headerDesc": {
+    "message": "रिकॉर्डिंग मोड चुनें और शुरू करें"
+  },
+  "control_openDriveTooltip": {
+    "message": "फ़ाइल प्रबंधक खोलें"
+  },
+  "control_closePanelTooltip": {
+    "message": "कंट्रोल पैनल बंद करें"
+  },
+  "control_recordingMode": {
+    "message": "रिकॉर्डिंग मोड"
+  },
+  "control_modeTab": {
+    "message": "टैब"
+  },
+  "control_modeTabDesc": {
+    "message": "वर्तमान टैब रिकॉर्ड करें"
+  },
+  "control_modeWindow": {
+    "message": "विंडो"
+  },
+  "control_modeWindowDesc": {
+    "message": "पूरी विंडो रिकॉर्ड करें"
+  },
+  "control_modeScreen": {
+    "message": "स्क्रीन"
+  },
+  "control_modeScreenDesc": {
+    "message": "पूरी स्क्रीन रिकॉर्ड करें"
+  },
+  "control_statusRecording": {
+    "message": "रिकॉर्डिंग हो रही है"
+  },
+  "control_statusPaused": {
+    "message": "रिकॉर्डिंग रुकी हुई है"
+  },
+  "control_statusPreparing": {
+    "message": "रिकॉर्डिंग की तैयारी हो रही है..."
+  },
+  "control_btnStart": {
+    "message": "रिकॉर्डिंग शुरू करें"
+  },
+  "control_btnStop": {
+    "message": "रिकॉर्डिंग रोकें"
+  },
+  "control_btnPause": {
+    "message": "विराम"
+  },
+  "control_btnResume": {
+    "message": "फिर से शुरू करें"
+  },
+  "control_btnPreparing": {
+    "message": "तैयारी..."
+  },
+  "control_btnStarting": {
+    "message": "$SECONDS$ सेकंड में शुरू हो रहा है...",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_countdownLabel": {
+    "message": "काउंटडाउन"
+  },
+  "control_tipsTitle": {
+    "message": "रिकॉर्डिंग टिप्स:"
+  },
+  "control_tipsSelectMode": {
+    "message": "$MODE$ मोड चुना गया है, शुरू करने के लिए रिकॉर्डिंग शुरू करें पर क्लिक करें।",
+    "placeholders": {
+      "mode": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_tipsPreparing": {
+    "message": "स्क्रीन चयन की प्रतीक्षा है..."
+  },
+  "control_tipsCountdown": {
+    "message": "तैयार हो जाइए! रिकॉर्डिंग $SECONDS$ सेकंड में शुरू होगी।",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_tipsPaused": {
+    "message": "रिकॉर्डिंग रुकी हुई है, जारी रखने के लिए फिर से शुरू करें पर क्लिक करें।"
+  },
+  "control_tipsRecording": {
+    "message": "रिकॉर्डिंग जारी है, ज़रूरत पड़ने पर पॉज़ करें।"
+  },
+  "control_overlayRecordingStarts": {
+    "message": "रिकॉर्डिंग जल्द ही शुरू होगी..."
+  },
+  "drive_pageTitle": {
+    "message": "रिकॉर्डिंग सूची - Screen Recorder"
+  },
+  "drive_headerTitle": {
+    "message": "रिकॉर्डिंग प्रबंधक"
+  },
+  "drive_errorSupport": {
+    "message": "आपका ब्राउज़र OPFS स्टोरेज का समर्थन नहीं करता है"
+  },
+  "drive_errorMetaNotFound": {
+    "message": "meta.json नहीं मिला"
+  },
+  "drive_errorEmpty": {
+    "message": "रिकॉर्डिंग फ़ाइल खाली है"
+  },
+  "drive_errorMetadata": {
+    "message": "मेटाडेटा पढ़ने में असमर्थ"
+  },
+  "drive_errorDataSize": {
+    "message": "फ़ाइल का आकार प्राप्त करने में असमर्थ"
+  },
+  "drive_recordingNamePrefix": {
+    "message": "स्क्रीन रिकॉर्डिंग"
+  },
+  "drive_logDeleted": {
+    "message": "रिकॉर्डिंग $ID$ हटा दी गई",
+    "placeholders": {
+      "id": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_errorDelete": {
+    "message": "हटाने में विफलता: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_logBatchDelete": {
+    "message": "$COUNT$ रिकॉर्डिंग सफलतापूर्वक हटा दी गई",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_errorLoad": {
+    "message": "रिकॉर्डिंग लोड करते समय त्रुटि हुई"
+  },
+  "drive_errorLoadPrefix": {
+    "message": "लोड करने में विफल:"
+  },
+  "studio_pageTitle": {
+    "message": "Screen Recording Studio"
+  },
+  "studio_headerTitle": {
+    "message": "Screen Recorder Studio"
+  },
+  "studio_githubTooltip": {
+    "message": "GitHub पर सोर्स देखें"
+  },
+  "studio_githubText": {
+    "message": "GitHub"
+  },
+  "studio_feedbackTooltip": {
+    "message": "बग रिपोर्ट करें या सुविधा का सुझाव दें"
+  },
+  "studio_feedbackText": {
+    "message": "फ़ीडबैक"
+  },
+  "studio_helpTooltip": {
+    "message": "सहायता और दस्तावेज़"
+  },
+  "studio_helpText": {
+    "message": "सहायता"
+  },
+  "studio_driveTooltip": {
+    "message": "रिकॉर्डिंग प्रबंधक खोलें"
+  },
+  "studio_driveText": {
+    "message": "ड्राइव"
+  },
+  "studio_fullscreenEnterTooltip": {
+    "message": "फुल स्क्रीन"
+  },
+  "studio_fullscreenExitTooltip": {
+    "message": "फुल स्क्रीन से बाहर निकलें"
+  },
+  "studio_fullscreenEnterText": {
+    "message": "स्क्रीन"
+  },
+  "studio_fullscreenExitText": {
+    "message": "बाहर"
+  },
+  "bg_title": {
+    "message": "पृष्ठभूमि सेटिंग्स"
+  },
+  "bg_tab_wallpaper": {
+    "message": "वॉलपेपर"
+  },
+  "bg_tab_gradient": {
+    "message": "ग्रेडिएंट"
+  },
+  "bg_tab_solid": {
+    "message": "ठोस रंग"
+  },
+  "bg_tab_image": {
+    "message": "चित्र"
+  },
+  "radius_title": {
+    "message": "कोने की गोलाई"
+  },
+  "radius_none": {
+    "message": "कोई नहीं"
+  },
+  "radius_small": {
+    "message": "छोटा"
+  },
+  "radius_medium": {
+    "message": "मध्यम"
+  },
+  "radius_large": {
+    "message": "बड़ा"
+  },
+  "radius_xl": {
+    "message": "बहुत बड़ा"
+  },
+  "padding_title": {
+    "message": "वीडियो पैडिंग"
+  },
+  "padding_none": {
+    "message": "कोई नहीं"
+  },
+  "padding_small": {
+    "message": "कम"
+  },
+  "padding_medium": {
+    "message": "मध्यम"
+  },
+  "padding_large": {
+    "message": "ज़्यादा"
+  },
+  "padding_xl": {
+    "message": "अधिकतम"
+  },
+  "ratio_yt": {
+    "message": "YouTube लैंडस्केप"
+  },
+  "ratio_yt_desc": {
+    "message": "YouTube, Bilibili आदि"
+  },
+  "ratio_sq": {
+    "message": "Instagram स्क्वायर"
+  },
+  "ratio_sq_desc": {
+    "message": "Instagram पोस्ट"
+  },
+  "ratio_tiktok": {
+    "message": "TikTok पोर्ट्रेट"
+  },
+  "ratio_tiktok_desc": {
+    "message": "TikTok, Reels आदि"
+  },
+  "ratio_story": {
+    "message": "Instagram स्टोरी"
+  },
+  "ratio_story_desc": {
+    "message": "Stories, Xiaohongshu"
+  },
+  "shadow_title": {
+    "message": "वीडियो छाया"
+  },
+  "shadow_preset_title": {
+    "message": "प्रिसेट प्रभाव"
+  },
+  "shadow_custom_title": {
+    "message": "कस्टम पैरामीटर्स"
+  },
+  "shadow_light": {
+    "message": "हल्की छाया"
+  },
+  "shadow_standard": {
+    "message": "मानक"
+  },
+  "shadow_deep": {
+    "message": "गहरी"
+  },
+  "shadow_distant": {
+    "message": "दूर"
+  },
+  "shadow_offset_x": {
+    "message": "X ऑफसेट"
+  },
+  "shadow_offset_y": {
+    "message": "Y ऑफसेट"
+  },
+  "shadow_blur": {
+    "message": "धुंधलापन"
+  },
+  "shadow_color": {
+    "message": "रंग"
+  },
+  "shadow_opacity": {
+    "message": "अपारदर्शिता"
+  },
+  "shadow_empty_state": {
+    "message": "छाया सेट करने के लिए स्विच ऑन करें"
+  },
+  "color_tab_basic": {
+    "message": "बेसिक"
+  },
+  "color_tab_light": {
+    "message": "हल्का"
+  },
+  "color_tab_business": {
+    "message": "बिज़नेस"
+  },
+  "color_tab_creative": {
+    "message": "रचनात्मक"
+  },
+  "color_custom": {
+    "message": "कस्टम:"
+  },
+  "gradient_tab_linear": {
+    "message": "लीनियर"
+  },
+  "gradient_tab_radial": {
+    "message": "रेडियल"
+  },
+  "gradient_tab_conic": {
+    "message": "कोनिक"
+  },
+  "gradient_tab_multi": {
+    "message": "बहुरंगी"
+  },
+  "gradient_current": {
+    "message": "वर्तमान:"
+  },
+  "gradient_select_hint": {
+    "message": "ग्रेडिएंट चुनें"
+  },
+  "gradient_colors_suffix": {
+    "message": "रंग"
+  },
+  "wallpaper_tab_abstract": {
+    "message": "अमूर्त"
+  },
+  "wallpaper_tab_minimal": {
+    "message": "न्यूनतम"
+  },
+  "wallpaper_tab_nature": {
+    "message": "प्रकृति"
+  },
+  "wallpaper_tab_business": {
+    "message": "बिज़नेस"
+  },
+  "wallpaper_tab_tech": {
+    "message": "टेक"
+  },
+  "wallpaper_error": {
+    "message": "वॉलपेपर लोड करने में विफल"
+  },
+  "wallpaper_stats": {
+    "message": "इस श्रेणी में $COUNT$ वॉलपेपर",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "wallpaper_total": {
+    "message": "कुल $TOTAL$",
+    "placeholders": {
+      "total": {
+        "content": "$1"
+      }
+    }
+  },
+  "upload_processing": {
+    "message": "प्रसंस्करण..."
+  },
+  "upload_drop_hint": {
+    "message": "क्लिक करें या फोटो खींचें"
+  },
+  "upload_format_hint": {
+    "message": "JPEG, PNG, WebP, GIF · अधिकतम 5MB"
+  },
+  "upload_error_select": {
+    "message": "कृपया एक चित्र फ़ाइल चुनें"
+  },
+  "upload_error_failed": {
+    "message": "अपलोड विफल"
+  },
+  "drive_delete_selected_btn": {
+    "message": "चयनित हटाएं ($COUNT$)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_clear_selection": {
+    "message": "चयन साफ करें"
+  },
+  "drive_refresh": {
+    "message": "रिफ्रेश करें"
+  },
+  "drive_error_title": {
+    "message": "त्रुटि"
+  },
+  "drive_close_error": {
+    "message": "बंद करें"
+  },
+  "drive_loading": {
+    "message": "रिकॉर्डिंग लोड हो रही है..."
+  },
+  "drive_empty_title": {
+    "message": "अभी तक कोई रिकॉर्डिंग नहीं"
+  },
+  "drive_empty_desc1": {
+    "message": "आपके पास अभी तक कोई स्क्रीन रिकॉर्डिंग नहीं है।"
+  },
+  "drive_empty_desc2": {
+    "message": "रिकॉर्डिंग शुरू करें, और वे यहाँ दिखाई देंगी।"
+  },
+  "drive_start_recording_btn": {
+    "message": "रिकॉर्डिंग शुरू करें"
+  },
+  "drive_select_all": {
+    "message": "सभी चुनें ($COUNT$ रिकॉर्डिंग)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_sort_hint": {
+    "message": "समय के अनुसार क्रमित (नवीनतम पहले)"
+  },
+  "drive_confirm_delete_title": {
+    "message": "हटाने की पुष्टि करें"
+  },
+  "drive_confirm_delete_selected": {
+    "message": "क्या आप वाकई $COUNT$ चयनित रिकॉर्डिंग हटाना चाहते हैं?",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_confirm_delete_single": {
+    "message": "क्या आप वाकई इस रिकॉर्डिंग को हटाना चाहते हैं?"
+  },
+  "drive_action_undone": {
+    "message": "यह क्रिया वापस नहीं ली जा सकती।"
+  },
+  "drive_cancel": {
+    "message": "रद्द करें"
+  },
+  "drive_delete": {
+    "message": "हटाएं"
+  },
+  "card_status_completed": {
+    "message": "पूरा हुआ"
+  },
+  "card_status_incomplete": {
+    "message": "अधूरा"
+  },
+  "card_label_created": {
+    "message": "बनाया गया:"
+  },
+  "card_label_status": {
+    "message": "स्थिति:"
+  },
+  "card_label_codec": {
+    "message": "कोडेक:"
+  },
+  "card_label_resolution": {
+    "message": "रिज़ॉल्यूशन:"
+  },
+  "card_label_fps": {
+    "message": "FPS:"
+  },
+  "card_label_size": {
+    "message": "आकार:"
+  },
+  "card_label_frames": {
+    "message": "कुल फ्रेम्स:"
+  },
+  "card_incomplete_title": {
+    "message": "अधूरी रिकॉर्डिंग"
+  },
+  "card_incomplete_desc": {
+    "message": "वीडियो डेटा गायब है"
+  },
+  "card_preview_error": {
+    "message": "पूर्वावलोकन लोड नहीं हो सका"
+  },
+  "card_preview_loading": {
+    "message": "पूर्वावलोकन बन रहा है..."
+  },
+  "card_btn_edit": {
+    "message": "एडिट करें"
+  },
+  "card_btn_delete": {
+    "message": "हटाएं"
+  },
+  "card_edit_disabled_tooltip": {
+    "message": "अधूरी रिकॉर्डिंग एडिट नहीं की जा सकती"
+  },
+  "card_edit_tooltip": {
+    "message": "रिकॉर्डिंग एडिट करें"
+  },
+  "card_preview_load_error": {
+    "message": "डेटा लोड करने में विफल: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_today": {
+    "message": "आज $TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_yesterday": {
+    "message": "कल $TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_days_ago": {
+    "message": "$DAYS$ दिन पहले",
+    "placeholders": {
+      "days": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_panel_tier_free": {
+    "message": "फ्री"
+  },
+  "export_panel_tier_pro": {
+    "message": "PRO"
+  },
+  "export_panel_tier_trial": {
+    "message": "PRO ट्रायल"
+  },
+  "export_panel_btn": {
+    "message": "एक्सपोर्ट"
+  },
+  "export_panel_tooltip_incomplete": {
+    "message": "एक्सपोर्ट करने के लिए रिकॉर्डिंग पूरी करें"
+  },
+  "export_panel_tooltip_no_data": {
+    "message": "कोई वीडियो डेटा नहीं"
+  },
+  "export_panel_btn_exporting": {
+    "message": "एक्सपोर्ट हो रहा है..."
+  },
+  "export_dialog_title": {
+    "message": "वीडियो एक्सपोर्ट करें"
+  },
+  "export_source_res": {
+    "message": "रिज़ॉल्यूशन"
+  },
+  "export_source_codec": {
+    "message": "कोडेक"
+  },
+  "export_source_duration": {
+    "message": "अवधि"
+  },
+  "export_source_frames": {
+    "message": "फ्रेम्स"
+  },
+  "export_badge_bg": {
+    "message": "बैकग्राउंड"
+  },
+  "export_badge_trim": {
+    "message": "ट्रिम किया गया"
+  },
+  "export_format_mp4": {
+    "message": "MP4"
+  },
+  "export_format_webm": {
+    "message": "WebM"
+  },
+  "export_format_gif": {
+    "message": "GIF"
+  },
+  "export_quality_title": {
+    "message": "क्वालिटी प्रिसेट"
+  },
+  "export_quality_draft": {
+    "message": "ड्राफ्ट"
+  },
+  "export_quality_draft_desc": {
+    "message": "सबसे तेज़, कम क्वालिटी"
+  },
+  "export_quality_balanced": {
+    "message": "संतुलित"
+  },
+  "export_quality_balanced_desc": {
+    "message": "अच्छी क्वालिटी और गति"
+  },
+  "export_quality_high": {
+    "message": "उच्च"
+  },
+  "export_quality_high_desc": {
+    "message": "उच्च क्वालिटी, धीमी"
+  },
+  "export_quality_best": {
+    "message": "सर्वश्रेष्ठ"
+  },
+  "export_quality_best_desc": {
+    "message": "अधिकतम क्वालिटी, सबसे धीमी"
+  },
+  "export_label_resolution": {
+    "message": "रिज़ॉल्यूशन"
+  },
+  "export_res_source": {
+    "message": "सोर्स के अनुसार ($WIDTH$×$HEIGHT$)",
+    "placeholders": {
+      "width": {
+        "content": "$1"
+      },
+      "height": {
+        "content": "$2"
+      }
+    }
+  },
+  "export_label_framerate": {
+    "message": "फ्रेम रेट"
+  },
+  "export_fps_source": {
+    "message": "$FPS$ fps (सोर्स)",
+    "placeholders": {
+      "fps": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_bitrate": {
+    "message": "बिटरेट"
+  },
+  "export_bitrate_auto": {
+    "message": "ऑटो"
+  },
+  "export_bitrate_manual": {
+    "message": "मैनुअल"
+  },
+  "export_bitrate_auto_hint": {
+    "message": "ऑटो: $RATE$ Mbps (रिज़ॉल्यूशन आधारित)",
+    "placeholders": {
+      "rate": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_speed": {
+    "message": "एन्कोडिंग गति"
+  },
+  "export_speed_fastest": {
+    "message": "सबसे तेज़"
+  },
+  "export_speed_fast": {
+    "message": "तेज़"
+  },
+  "export_speed_balanced": {
+    "message": "संतुलित"
+  },
+  "export_speed_slow": {
+    "message": "धीमी"
+  },
+  "export_speed_slowest": {
+    "message": "सबसे धीमी"
+  },
+  "export_est_output": {
+    "message": "अनुमानित आउटपुट"
+  },
+  "export_est_size": {
+    "message": "अनुमानित आकार"
+  },
+  "export_label_gif_quality": {
+    "message": "GIF क्वालिटी"
+  },
+  "export_gif_best": {
+    "message": "सर्वश्रेष्ठ (धीमी)"
+  },
+  "export_gif_high": {
+    "message": "उच्च"
+  },
+  "export_gif_good": {
+    "message": "अच्छी (डिफ़ॉल्ट)"
+  },
+  "export_gif_fast": {
+    "message": "तेज़"
+  },
+  "export_gif_fastest": {
+    "message": "सबसे तेज़"
+  },
+  "export_label_scale": {
+    "message": "स्केल"
+  },
+  "export_scale_original": {
+    "message": "100% (ओरिजिनल)"
+  },
+  "export_label_workers": {
+    "message": "प्रोसेस थ्रेड्स"
+  },
+  "export_worker_singular": {
+    "message": "$COUNT$ थ्रेड",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_worker_plural": {
+    "message": "$COUNT$ थ्रेड",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_dither": {
+    "message": "डिदरिंग"
+  },
+  "export_dither_none": {
+    "message": "कोई नहीं"
+  },
+  "export_btn_cancel": {
+    "message": "रद्द करें"
+  },
+  "export_btn_export_mp4": {
+    "message": "MP4 एक्सपोर्ट करें"
+  },
+  "export_btn_export_webm": {
+    "message": "WebM एक्सपोर्ट करें"
+  },
+  "export_btn_export_gif": {
+    "message": "GIF एक्सपोर्ट करें"
+  },
+  "export_progress_preparing": {
+    "message": "तैयारी..."
+  },
+  "export_progress_encoding": {
+    "message": "फ्रेम्स एन्कोड हो रहे हैं..."
+  },
+  "export_progress_muxing": {
+    "message": "फ़ाइल बन रही है..."
+  },
+  "export_progress_finalizing": {
+    "message": "अंतिम रूप दिया जा रहा है..."
+  },
+  "export_progress_frame": {
+    "message": "फ्रेम $CURRENT$ / $TOTAL$",
+    "placeholders": {
+      "current": {
+        "content": "$1"
+      },
+      "total": {
+        "content": "$2"
+      }
+    }
+  },
+  "export_progress_time": {
+    "message": "लगभग ~$SECONDS$s शेष",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_progress_hint": {
+    "message": "कृपया प्रतीक्षा करें, वीडियो एक्सपोर्ट हो रहा है..."
+  },
+  "wallpaper_cat_abstract_name": {
+    "message": "अमूर्त कला"
+  },
+  "wallpaper_cat_abstract_desc": {
+    "message": "अमूर्त पैटर्न और आधुनिक डिज़ाइन"
+  },
+  "wallpaper_cat_minimal_name": {
+    "message": "न्यूनतम"
+  },
+  "wallpaper_cat_minimal_desc": {
+    "message": "साफ ज्यामिति और न्यूनतम सौंदर्य"
+  },
+  "wallpaper_cat_nature_name": {
+    "message": "प्रकृति"
+  },
+  "wallpaper_cat_nature_desc": {
+    "message": "प्राकृतिक दृश्य और पौधों की बनावट"
+  },
+  "wallpaper_cat_business_name": {
+    "message": "बिज़नेस"
+  },
+  "wallpaper_cat_business_desc": {
+    "message": "पेशेवर बिज़नेस माहौल"
+  },
+  "wallpaper_cat_tech_name": {
+    "message": "टेक भविष्य"
+  },
+  "wallpaper_cat_tech_desc": {
+    "message": "तकनीकी तत्व और डिजिटल कला"
+  },
+  "wallpaper_gradient_abstract_1_name": {
+    "message": "अमूर्त ग्रेडिएंट"
+  },
+  "wallpaper_gradient_abstract_1_desc": {
+    "message": "आधुनिक अमूर्त ग्रेडिएंट पृष्ठभूमि"
+  },
+  "wallpaper_geometric_pattern_1_name": {
+    "message": "ज्यामितीय पैटर्न"
+  },
+  "wallpaper_geometric_pattern_1_desc": {
+    "message": "साफ ज्यामितीय पैटर्न पृष्ठभूमि"
+  },
+  "wallpaper_abstract_2425706_name": {
+    "message": "अमूर्त रंग"
+  },
+  "wallpaper_abstract_2425706_desc": {
+    "message": "जीवंत अमूर्त रंग बनावट"
+  },
+  "wallpaper_abstract_2512412_name": {
+    "message": "तरल अमूर्त"
+  },
+  "wallpaper_abstract_2512412_desc": {
+    "message": "बहते रंगों वाली पृष्ठभूमि"
+  },
+  "wallpaper_abstract_6297317_name": {
+    "message": "अमूर्त रूप"
+  },
+  "wallpaper_abstract_6297317_desc": {
+    "message": "रंग ब्लॉक संरचना"
+  },
+  "wallpaper_ai_generated_9083808_name": {
+    "message": "AI जनित कला"
+  },
+  "wallpaper_ai_generated_9083808_desc": {
+    "message": "AI द्वारा बनाई गई भविष्यवादी पृष्ठभूमि"
+  },
+  "wallpaper_beach_4938036_name": {
+    "message": "समुद्र तट"
+  },
+  "wallpaper_beach_4938036_desc": {
+    "message": "ताज़ा समुद्र तटीय दृश्य"
+  },
+  "wallpaper_bulb_5665770_name": {
+    "message": "रचनात्मक बल्ब"
+  },
+  "wallpaper_bulb_5665770_desc": {
+    "message": "रचनात्मकता का प्रतीक"
+  },
+  "wallpaper_cpu_8892400_name": {
+    "message": "CPU सर्किट"
+  },
+  "wallpaper_cpu_8892400_desc": {
+    "message": "चिप और सर्किट बोर्ड"
+  },
+  "wallpaper_feather_5488401_name": {
+    "message": "पंख का क्लोज़-अप"
+  },
+  "wallpaper_feather_5488401_desc": {
+    "message": "कोमल पंख की बनावट"
+  },
+  "wallpaper_fractal_8902060_name": {
+    "message": "फ्रैक्टल कला"
+  },
+  "wallpaper_fractal_8902060_desc": {
+    "message": "शानदार फ्रैक्टल पैटर्न"
+  },
+  "wallpaper_orange_3036097_name": {
+    "message": "संतरे का स्लाइस"
+  },
+  "wallpaper_orange_3036097_desc": {
+    "message": "जीवंत संतरे के स्लाइस"
+  },
+  "wallpaper_orange_6508617_name": {
+    "message": "नारंगी पृष्ठभूमि"
+  },
+  "wallpaper_orange_6508617_desc": {
+    "message": "ऊर्जावान नारंगी पृष्ठभूमि"
+  },
+  "wallpaper_polar_lights_5858656_name": {
+    "message": "अरोरा"
+  },
+  "wallpaper_polar_lights_5858656_desc": {
+    "message": "सपनों जैसा उत्तरी प्रकाश"
+  },
+  "wallpaper_spiral_3112405_name": {
+    "message": "सर्पिल पैटर्न"
+  },
+  "wallpaper_spiral_3112405_desc": {
+    "message": "गतिशील सर्पिल बनावट"
+  },
+  "wallpaper_steelwool_458842_name": {
+    "message": "लाइट पेंटिंग"
+  },
+  "wallpaper_steelwool_458842_desc": {
+    "message": "प्रकाश के निशान का प्रभाव"
+  },
+  "wallpaper_swimming_pool_8306716_name": {
+    "message": "पूल की लहरें"
+  },
+  "wallpaper_swimming_pool_8306716_desc": {
+    "message": "ठंडा स्विमिंग पूल का पानी"
+  },
+  "wallpaper_abstract_2426502_name": {
+    "message": "अमूर्त रंग ब्लॉक"
+  },
+  "wallpaper_abstract_2426502_desc": {
+    "message": "आधुनिक अमूर्त डिज़ाइन"
+  },
+  "wallpaper_camera_1248682_name": {
+    "message": "कैमरा"
+  },
+  "wallpaper_camera_1248682_desc": {
+    "message": "तकनीकी कैमरा क्लोज़-अप"
+  },
+  "wallpaper_circle_5090539_name": {
+    "message": "वृत्ताकार ज्यामिति"
+  },
+  "wallpaper_circle_5090539_desc": {
+    "message": "साफ वृत्ताकार पैटर्न"
+  },
+  "wallpaper_feather_7009025_name": {
+    "message": "पंख की बनावट"
+  },
+  "wallpaper_feather_7009025_desc": {
+    "message": "नाजुक प्राकृतिक पैटर्न"
+  },
+  "wallpaper_fiber_4814456_name": {
+    "message": "फाइबर लाइन्स"
+  },
+  "wallpaper_fiber_4814456_desc": {
+    "message": "अमूर्त तकनीकी अनुभव"
+  },
+  "wallpaper_frost_6702335_name": {
+    "message": "फ्रॉस्ट टेक्सचर"
+  },
+  "wallpaper_frost_6702335_desc": {
+    "message": "बर्फ के क्रिस्टल की पृष्ठभूमि"
+  },
+  "wallpaper_leaves_4291098_name": {
+    "message": "हरी पत्तियां"
+  },
+  "wallpaper_leaves_4291098_desc": {
+    "message": "ताजी पत्तियों की बनावट"
+  },
+  "wallpaper_light_1834289_name": {
+    "message": "लाइट बोके"
+  },
+  "wallpaper_light_1834289_desc": {
+    "message": "वायुमंडलीय बोके प्रभाव"
+  },
+  "wallpaper_light_942231_name": {
+    "message": "लाइट स्ट्रीक्स"
+  },
+  "wallpaper_light_942231_desc": {
+    "message": "गतिशील प्रकाश रेखाएं"
+  },
+  "wallpaper_luck_4397584_name": {
+    "message": "चार पत्तियों वाला क्लोवर"
+  },
+  "wallpaper_luck_4397584_desc": {
+    "message": "भाग्यशाली क्लोवर"
+  },
+  "wallpaper_waterdrop_2256201_name": {
+    "message": "पानी की बूंद"
+  },
+  "wallpaper_waterdrop_2256201_desc": {
+    "message": "पानी की बूंद की मैक्रो बनावट"
+  },
+  "welcome_pageTitle": {
+    "message": "Screen Recorder Studio में आपका स्वागत है"
+  },
+  "welcome_headerSubtitle": {
+    "message": "पेशेवर ब्राउज़र रिकॉर्डिंग टूल"
+  },
+  "welcome_installSuccess": {
+    "message": "इंस्टॉलेशन सफल"
+  },
+  "welcome_headline": {
+    "message": "Screen Recorder Studio में आपका स्वागत है! 🎉"
+  },
+  "welcome_subheadline": {
+    "message": "क्या आप अपनी पहली रिकॉर्डिंग के लिए तैयार हैं? शुरू करने में कुछ सेकंड ही लगते हैं!"
+  },
+  "welcome_tryTitle": {
+    "message": "अभी आज़माएँ! 🚀"
+  },
+  "welcome_trySubtitle": {
+    "message": "अपना रिकॉर्डिंग मोड चुनें और नीचे दिए बटन पर क्लिक करें"
+  },
+  "welcome_tryFeatures": {
+    "message": "कोई सेटअप नहीं • $SECONDS$-सेकंड की काउंटडाउन • प्रोफेशनल गुणवत्ता",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "welcome_modeTabDetail": {
+    "message": "वेब डेमो और ट्यूटोरियल के लिए बिल्कुल सही"
+  },
+  "welcome_modeWindowDetail": {
+    "message": "ऐड्रेस बार और टूलबार शामिल"
+  },
+  "welcome_modeScreenDetail": {
+    "message": "क्रॉस-ऐप वर्कफ़्लो के लिए सबसे अच्छा"
+  },
+  "welcome_statusRecording": {
+    "message": "रिकॉर्डिंग जारी है"
+  },
+  "welcome_modeLabel": {
+    "message": "मोड"
+  },
+  "welcome_readyTitle": {
+    "message": "🎬 सब तैयार है!"
+  },
+  "welcome_readyDesc": {
+    "message": "आपने $MODE$ मोड चुना है। ऊपर नीले बटन पर क्लिक करके अपनी पहली रिकॉर्डिंग शुरू करें!",
+    "placeholders": {
+      "mode": {
+        "content": "$1"
+      }
+    }
+  },
+  "welcome_readyTip": {
+    "message": "रिकॉर्डिंग शुरू होने से पहले $SECONDS$-सेकंड की काउंटडाउन",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "welcome_howTitle": {
+    "message": "कैसे काम करता है"
+  },
+  "welcome_howDesc": {
+    "message": "एक्सटेंशन का पूरा लाभ उठाने के तीन आसान कदम"
+  },
+  "welcome_step1Title": {
+    "message": "एक्सटेंशन पिन करें"
+  },
+  "welcome_step1Desc": {
+    "message": "ब्राउज़र टूलबार में पज़ल आइकन 🧩 पर क्लिक करें और त्वरित पहुँच के लिए एक्सटेंशन पिन करें"
+  },
+  "welcome_step2Title": {
+    "message": "अपना लक्ष्य चुनें"
+  },
+  "welcome_step2Desc": {
+    "message": "क्या रिकॉर्ड करना है चुनें: वर्तमान टैब, पूरी विंडो या पूरा स्क्रीन"
+  },
+  "welcome_step3Title": {
+    "message": "रिकॉर्ड दबाएँ"
+  },
+  "welcome_step3Desc": {
+    "message": "“$BTN$” पर क्लिक करें और तैयार हो जाएँ — $SECONDS$-सेकंड की काउंटडाउन आपको समय देती है!",
+    "placeholders": {
+      "btn": {
+        "content": "$1"
+      },
+      "seconds": {
+        "content": "$2"
+      }
+    }
+  },
+  "welcome_advancedTitle": {
+    "message": "और नियंत्रण चाहिए?"
+  },
+  "welcome_advancedDesc": {
+    "message": "पूर्ण नियंत्रण पैनल खोलने के लिए ब्राउज़र टूलबार में एक्सटेंशन आइकन पर क्लिक करें"
+  },
+  "welcome_openControl": {
+    "message": "पूर्ण नियंत्रण पैनल खोलें"
+  },
+  "welcome_footerHelp": {
+    "message": "मदद चाहिए? उन्नत सुविधाओं वाले नियंत्रण पैनल के लिए एक्सटेंशन आइकन पर क्लिक करें।"
+  },
+  "welcome_footerMeta": {
+    "message": "Screen Recorder Studio • पेशेवरों के लिए बनाया गया"
+  },
+  "control_cameraAudioTitle": {
+    "message": "Camera & Microphone"
+  },
+  "control_cameraToggle": {
+    "message": "Enable camera"
+  },
+  "control_audioToggle": {
+    "message": "Enable microphone"
+  },
+  "control_selectCamera": {
+    "message": "Camera"
+  },
+  "control_selectMic": {
+    "message": "Microphone"
+  },
+  "control_cameraPreviewLoading": {
+    "message": "Initializing camera preview..."
+  },
+  "control_cameraPreviewError": {
+    "message": "Unable to preview camera"
+  }
 }

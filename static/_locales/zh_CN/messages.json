@@ -1,341 +1,1125 @@
 {
-  "appName": { "message": "Screen Recorder Studio" },
-  "appDesc": { "message": "Chrome 扩展程序，用于录制标签页、窗口、屏幕、页面区域和元素" },
-  "action_defaultTitle": { "message": "打开录制面板" },
-
-  "control_headerTitle": { "message": "屏幕录制" },
-  "control_headerDesc": { "message": "选择录制模式并开始" },
-  "control_openDriveTooltip": { "message": "打开录制文件管理" },
-  "control_closePanelTooltip": { "message": "关闭控制面板" },
-  "control_recordingMode": { "message": "录制模式" },
-  "control_modeTab": { "message": "标签页" },
-  "control_modeTabDesc": { "message": "录制当前标签页" },
-  "control_modeWindow": { "message": "窗口" },
-  "control_modeWindowDesc": { "message": "录制整个窗口" },
-  "control_modeScreen": { "message": "屏幕" },
-  "control_modeScreenDesc": { "message": "录制整个屏幕" },
-  "control_statusRecording": { "message": "录制中" },
-  "control_statusPaused": { "message": "录制已暂停" },
-  "control_statusPreparing": { "message": "正在准备录制..." },
-  "control_btnStart": { "message": "开始录制" },
-  "control_btnStop": { "message": "停止录制" },
-  "control_btnPause": { "message": "暂停录制" },
-  "control_btnResume": { "message": "恢复录制" },
-  "control_btnPreparing": { "message": "准备中..." },
-  "control_btnStarting": { "message": "$SECONDS$ 秒后开始...", "placeholders": { "seconds": { "content": "$1" } } },
-  "control_countdownLabel": { "message": "倒计时" },
-  "control_tipsTitle": { "message": "录制提示：" },
-  "control_tipsSelectMode": { "message": "已选择 $MODE$ 模式，点击开始录制即可。", "placeholders": { "mode": { "content": "$1" } } },
-  "control_tipsPreparing": { "message": "等待屏幕选择..." },
-  "control_tipsCountdown": { "message": "准备！录制将在 $SECONDS$ 秒后开始。", "placeholders": { "seconds": { "content": "$1" } } },
-  "control_tipsPaused": { "message": "录制已暂停，点击恢复录制继续。" },
-  "control_tipsRecording": { "message": "录制进行中，点击暂停可暂停录制。" },
-  "control_overlayRecordingStarts": { "message": "录制即将开始..." },
-
-  "drive_pageTitle": { "message": "录制列表 - Screen Recorder" },
-  "drive_headerTitle": { "message": "录制管理" },
-  "drive_errorSupport": { "message": "您的浏览器不支持 OPFS 存储" },
-  "drive_errorMetaNotFound": { "message": "未找到 meta.json" },
-  "drive_errorEmpty": { "message": "录制文件为空" },
-  "drive_errorMetadata": { "message": "无法读取录制元数据" },
-  "drive_errorDataSize": { "message": "无法获取数据文件大小" },
-  "drive_recordingNamePrefix": { "message": "屏幕录制" },
-  "drive_logDeleted": { "message": "录制 $ID$ 已删除", "placeholders": { "id": { "content": "$1" } } },
-  "drive_errorDelete": { "message": "删除失败：$ERROR$", "placeholders": { "error": { "content": "$1" } } },
-  "drive_logBatchDelete": { "message": "成功删除 $COUNT$ 个录制", "placeholders": { "count": { "content": "$1" } } },
-  "drive_errorLoad": { "message": "加载录制时发生错误" },
-  "drive_errorLoadPrefix": { "message": "加载录制失败：" },
-
-  "studio_pageTitle": { "message": "屏幕录制工作室" },
-  "studio_headerTitle": { "message": "屏幕录制工作室" },
-  "studio_githubTooltip": { "message": "查看 GitHub 源码" },
-  "studio_githubText": { "message": "GitHub" },
-  "studio_feedbackTooltip": { "message": "报告 Bug 或建议功能" },
-  "studio_feedbackText": { "message": "反馈" },
-  "studio_helpTooltip": { "message": "帮助文档" },
-  "studio_helpText": { "message": "帮助" },
-  "studio_driveTooltip": { "message": "打开录制文件管理" },
-  "studio_driveText": { "message": "文件" },
-  "studio_fullscreenEnterTooltip": { "message": "进入全屏" },
-  "studio_fullscreenExitTooltip": { "message": "退出全屏" },
-  "studio_fullscreenEnterText": { "message": "全屏" },
-  "studio_fullscreenExitText": { "message": "退出" },
-
-  "bg_title": { "message": "背景设置" },
-  "bg_tab_wallpaper": { "message": "壁纸" },
-  "bg_tab_gradient": { "message": "渐变" },
-  "bg_tab_solid": { "message": "纯色" },
-  "bg_tab_image": { "message": "图片" },
-
-  "radius_title": { "message": "视频圆角" },
-  "radius_none": { "message": "无圆角" },
-  "radius_small": { "message": "小圆角" },
-  "radius_medium": { "message": "中圆角" },
-  "radius_large": { "message": "大圆角" },
-  "radius_xl": { "message": "超大圆角" },
-
-  "padding_title": { "message": "视频内边距" },
-  "padding_none": { "message": "无边距" },
-  "padding_small": { "message": "小边距" },
-  "padding_medium": { "message": "中边距" },
-  "padding_large": { "message": "大边距" },
-  "padding_xl": { "message": "超大边距" },
-
-  "ratio_yt": { "message": "YouTube 横屏" },
-  "ratio_yt_desc": { "message": "YouTube, B站, 爱奇艺等" },
-  "ratio_sq": { "message": "Instagram 正方形" },
-  "ratio_sq_desc": { "message": "Instagram 帖子, 微信朋友圈" },
-  "ratio_tiktok": { "message": "TikTok 竖屏" },
-  "ratio_tiktok_desc": { "message": "抖音, TikTok, 快手" },
-  "ratio_story": { "message": "Instagram Story" },
-  "ratio_story_desc": { "message": "Instagram Stories, 小红书" },
-
-  "shadow_title": { "message": "视频阴影" },
-  "shadow_preset_title": { "message": "预设效果" },
-  "shadow_custom_title": { "message": "自定义参数" },
-  "shadow_light": { "message": "轻微阴影" },
-  "shadow_standard": { "message": "标准阴影" },
-  "shadow_deep": { "message": "深度阴影" },
-  "shadow_distant": { "message": "远距离阴影" },
-  "shadow_offset_x": { "message": "水平偏移" },
-  "shadow_offset_y": { "message": "垂直偏移" },
-  "shadow_blur": { "message": "模糊半径" },
-  "shadow_color": { "message": "颜色" },
-  "shadow_opacity": { "message": "不透明度" },
-  "shadow_empty_state": { "message": "开启阴影开关以配置阴影效果" },
-
-  "color_tab_basic": { "message": "基础" },
-  "color_tab_light": { "message": "明亮" },
-  "color_tab_business": { "message": "商务" },
-  "color_tab_creative": { "message": "创意" },
-  "color_custom": { "message": "自定义：" },
-
-  "gradient_tab_linear": { "message": "线性" },
-  "gradient_tab_radial": { "message": "径向" },
-  "gradient_tab_conic": { "message": "圆锥" },
-  "gradient_tab_multi": { "message": "多彩" },
-  "gradient_current": { "message": "当前：" },
-  "gradient_select_hint": { "message": "选择一个渐变" },
-  "gradient_colors_suffix": { "message": "色" },
-
-  "wallpaper_tab_abstract": { "message": "抽象" },
-  "wallpaper_tab_minimal": { "message": "极简" },
-  "wallpaper_tab_nature": { "message": "自然" },
-  "wallpaper_tab_business": { "message": "商务" },
-  "wallpaper_tab_tech": { "message": "科技" },
-  "wallpaper_error": { "message": "壁纸加载失败" },
-  "wallpaper_stats": { "message": "本分类共 $COUNT$ 张", "placeholders": { "count": { "content": "$1" } } },
-  "wallpaper_total": { "message": "共 $TOTAL$ 张", "placeholders": { "total": { "content": "$1" } } },
-
-  "upload_processing": { "message": "处理中..." },
-  "upload_drop_hint": { "message": "点击或拖拽图片到此处" },
-  "upload_format_hint": { "message": "支持 JPEG, PNG, WebP, GIF · 最大 5MB" },
-  "upload_error_select": { "message": "请选择图片文件" },
-  "upload_error_failed": { "message": "上传失败" },
-
-  "drive_delete_selected_btn": { "message": "删除已选 ($COUNT$)", "placeholders": { "count": { "content": "$1" } } },
-  "drive_clear_selection": { "message": "取消选择" },
-  "drive_refresh": { "message": "刷新" },
-  "drive_error_title": { "message": "错误" },
-  "drive_close_error": { "message": "关闭" },
-  "drive_loading": { "message": "正在加载录制..." },
-  "drive_empty_title": { "message": "暂无录制" },
-  "drive_empty_desc1": { "message": "您还没有任何屏幕录制。" },
-  "drive_empty_desc2": { "message": "开始录制屏幕，您的录制将显示在这里。" },
-  "drive_start_recording_btn": { "message": "开始录制" },
-  "drive_select_all": { "message": "全选 ($COUNT$ 个录制)", "placeholders": { "count": { "content": "$1" } } },
-  "drive_sort_hint": { "message": "按时间排序（最新的在前面）" },
-  "drive_confirm_delete_title": { "message": "确认删除" },
-  "drive_confirm_delete_selected": { "message": "确定要删除选中的 $COUNT$ 个录制吗？", "placeholders": { "count": { "content": "$1" } } },
-  "drive_confirm_delete_single": { "message": "确定要删除此录制吗？" },
-  "drive_action_undone": { "message": "此操作无法撤销。" },
-  "drive_cancel": { "message": "取消" },
-  "drive_delete": { "message": "删除" },
-
-  "card_status_completed": { "message": "已完成" },
-  "card_status_incomplete": { "message": "未完成" },
-  "card_label_created": { "message": "创建时间：" },
-  "card_label_status": { "message": "状态：" },
-  "card_label_codec": { "message": "编码：" },
-  "card_label_resolution": { "message": "分辨率：" },
-  "card_label_fps": { "message": "帧率：" },
-  "card_label_size": { "message": "文件大小：" },
-  "card_label_frames": { "message": "总帧数：" },
-  "card_incomplete_title": { "message": "录制不完整" },
-  "card_incomplete_desc": { "message": "缺少视频数据" },
-  "card_preview_error": { "message": "无法加载预览" },
-  "card_preview_loading": { "message": "生成预览中..." },
-  "card_btn_edit": { "message": "编辑" },
-  "card_btn_delete": { "message": "删除" },
-  "card_edit_disabled_tooltip": { "message": "无法编辑不完整的录制" },
-  "card_edit_tooltip": { "message": "编辑录制" },
-  "card_preview_load_error": { "message": "加载预览数据失败：$ERROR$", "placeholders": { "error": { "content": "$1" } } },
-  "card_date_today": { "message": "今天 $TIME$", "placeholders": { "time": { "content": "$1" } } },
-  "card_date_yesterday": { "message": "昨天 $TIME$", "placeholders": { "time": { "content": "$1" } } },
-  "card_date_days_ago": { "message": "$DAYS$ 天前", "placeholders": { "days": { "content": "$1" } } },
-
-  "export_panel_tier_free": { "message": "免费版" },
-  "export_panel_tier_pro": { "message": "专业版" },
-  "export_panel_tier_trial": { "message": "专业试用" },
-  "export_panel_btn": { "message": "导出" },
-  "export_panel_tooltip_incomplete": { "message": "录制未完成，无法导出" },
-  "export_panel_tooltip_no_data": { "message": "无视频数据" },
-  "export_panel_btn_exporting": { "message": "导出中..." },
-
-  "export_dialog_title": { "message": "导出视频" },
-  "export_source_res": { "message": "分辨率" },
-  "export_source_codec": { "message": "编码" },
-  "export_source_duration": { "message": "时长" },
-  "export_source_frames": { "message": "帧数" },
-  "export_badge_bg": { "message": "背景" },
-  "export_badge_trim": { "message": "裁剪" },
-  "export_format_mp4": { "message": "MP4" },
-  "export_format_webm": { "message": "WebM" },
-  "export_format_gif": { "message": "GIF" },
-  "export_quality_title": { "message": "画质预设" },
-  "export_quality_draft": { "message": "草稿" },
-  "export_quality_draft_desc": { "message": "导出最快，画质较低" },
-  "export_quality_balanced": { "message": "平衡" },
-  "export_quality_balanced_desc": { "message": "画质良好，速度适中" },
-  "export_quality_high": { "message": "高清" },
-  "export_quality_high_desc": { "message": "高质量，速度较慢" },
-  "export_quality_best": { "message": "最佳" },
-  "export_quality_best_desc": { "message": "最高画质，速度最慢" },
-  "export_label_resolution": { "message": "分辨率" },
-  "export_res_source": { "message": "原画质 ($WIDTH$×$HEIGHT$)", "placeholders": { "width": { "content": "$1" }, "height": { "content": "$2" } } },
-  "export_label_framerate": { "message": "帧率" },
-  "export_fps_source": { "message": "$FPS$ fps (源)", "placeholders": { "fps": { "content": "$1" } } },
-  "export_label_bitrate": { "message": "码率" },
-  "export_bitrate_auto": { "message": "自动" },
-  "export_bitrate_manual": { "message": "手动" },
-  "export_bitrate_auto_hint": { "message": "自动：$RATE$ Mbps (基于分辨率和画质)", "placeholders": { "rate": { "content": "$1" } } },
-  "export_label_speed": { "message": "编码速度" },
-  "export_speed_fastest": { "message": "最快" },
-  "export_speed_fast": { "message": "较快" },
-  "export_speed_balanced": { "message": "平衡" },
-  "export_speed_slow": { "message": "较慢" },
-  "export_speed_slowest": { "message": "最慢" },
-  "export_est_output": { "message": "预计输出" },
-  "export_est_size": { "message": "预计大小" },
-  "export_label_gif_quality": { "message": "画质" },
-  "export_gif_best": { "message": "最佳 (最慢)" },
-  "export_gif_high": { "message": "高清" },
-  "export_gif_good": { "message": "良好 (默认)" },
-  "export_gif_fast": { "message": "快速" },
-  "export_gif_fastest": { "message": "最快" },
-  "export_label_scale": { "message": "缩放" },
-  "export_scale_original": { "message": "100% (原始)" },
-  "export_label_workers": { "message": "线程数" },
-  "export_worker_singular": { "message": "$COUNT$ 线程", "placeholders": { "count": { "content": "$1" } } },
-  "export_worker_plural": { "message": "$COUNT$ 线程", "placeholders": { "count": { "content": "$1" } } },
-  "export_label_dither": { "message": "抖动算法" },
-  "export_dither_none": { "message": "无" },
-  "export_btn_cancel": { "message": "取消" },
-  "export_btn_export_mp4": { "message": "导出 MP4" },
-  "export_btn_export_webm": { "message": "导出 WebM" },
-  "export_btn_export_gif": { "message": "导出 GIF" },
-  "export_progress_preparing": { "message": "准备中..." },
-  "export_progress_encoding": { "message": "正在编码..." },
-  "export_progress_muxing": { "message": "正在封装..." },
-  "export_progress_finalizing": { "message": "正在完成..." },
-  "export_progress_frame": { "message": "帧 $CURRENT$ / $TOTAL$", "placeholders": { "current": { "content": "$1" }, "total": { "content": "$2" } } },
-  "export_progress_time": { "message": "剩余约 $SECONDS$ 秒", "placeholders": { "seconds": { "content": "$1" } } },
-  "export_progress_hint": { "message": "请稍候，您的视频正在导出..." },
-
-  "wallpaper_cat_abstract_name": { "message": "抽象艺术" },
-  "wallpaper_cat_abstract_desc": { "message": "抽象图案、艺术创作和现代设计" },
-  "wallpaper_cat_minimal_name": { "message": "极简风格" },
-  "wallpaper_cat_minimal_desc": { "message": "简洁几何、极简设计和纯粹美学" },
-  "wallpaper_cat_nature_name": { "message": "自然风光" },
-  "wallpaper_cat_nature_desc": { "message": "自然景观、植物纹理和有机形态" },
-  "wallpaper_cat_business_name": { "message": "商务专业" },
-  "wallpaper_cat_business_desc": { "message": "商务场景、职业氛围和企业风格" },
-  "wallpaper_cat_tech_name": { "message": "科技未来" },
-  "wallpaper_cat_tech_desc": { "message": "科技元素、未来感和数字艺术" },
-
-  "wallpaper_gradient_abstract_1_name": { "message": "抽象渐变" },
-  "wallpaper_gradient_abstract_1_desc": { "message": "现代抽象渐变背景，适合科技和创意内容" },
-  "wallpaper_geometric_pattern_1_name": { "message": "几何图案" },
-  "wallpaper_geometric_pattern_1_desc": { "message": "简洁几何图案背景，适合商务和专业内容" },
-  "wallpaper_abstract_2425706_name": { "message": "抽象色彩" },
-  "wallpaper_abstract_2425706_desc": { "message": "充满活力的抽象色彩纹理，视觉冲击力强" },
-  "wallpaper_abstract_2512412_name": { "message": "抽象流彩" },
-  "wallpaper_abstract_2512412_desc": { "message": "流动的抽象色彩背景，适合创意内容" },
-  "wallpaper_abstract_6297317_name": { "message": "抽象形态" },
-  "wallpaper_abstract_6297317_desc": { "message": "抽象几何形态与色块组合" },
-  "wallpaper_ai_generated_9083808_name": { "message": "AI 生成艺术" },
-  "wallpaper_ai_generated_9083808_desc": { "message": "AI 生成的未来主义艺术背景" },
-  "wallpaper_beach_4938036_name": { "message": "海滩" },
-  "wallpaper_beach_4938036_desc": { "message": "自然海滩风光，沙滩与海浪，清新舒适" },
-  "wallpaper_bulb_5665770_name": { "message": "创意灯泡" },
-  "wallpaper_bulb_5665770_desc": { "message": "象征创意与灵感的灯泡主题" },
-  "wallpaper_cpu_8892400_name": { "message": "CPU 电路" },
-  "wallpaper_cpu_8892400_desc": { "message": "CPU 芯片与电路板，科技感十足" },
-  "wallpaper_feather_5488401_name": { "message": "羽毛特写" },
-  "wallpaper_feather_5488401_desc": { "message": "柔和的羽毛纹理，细节丰富" },
-  "wallpaper_fractal_8902060_name": { "message": "分形艺术" },
-  "wallpaper_fractal_8902060_desc": { "message": "绚丽的分形图案，抽象艺术风格" },
-  "wallpaper_orange_3036097_name": { "message": "橙子切片" },
-  "wallpaper_orange_3036097_desc": { "message": "充满活力的橙子切片，色彩明亮" },
-  "wallpaper_orange_6508617_name": { "message": "橙色背景" },
-  "wallpaper_orange_6508617_desc": { "message": "明亮的橙色主题背景，充满活力" },
-  "wallpaper_polar_lights_5858656_name": { "message": "极光" },
-  "wallpaper_polar_lights_5858656_desc": { "message": "北极光夜空，梦幻的自然现象" },
-  "wallpaper_spiral_3112405_name": { "message": "螺旋图案" },
-  "wallpaper_spiral_3112405_desc": { "message": "抽象螺旋纹理，具有动态层次感" },
-  "wallpaper_steelwool_458842_name": { "message": "钢丝棉光绘" },
-  "wallpaper_steelwool_458842_desc": { "message": "长曝光光绘效果，抽象动感" },
-  "wallpaper_swimming_pool_8306716_name": { "message": "泳池波纹" },
-  "wallpaper_swimming_pool_8306716_desc": { "message": "游泳池水波纹，清凉夏日氛围" },
-  "wallpaper_abstract_2426502_name": { "message": "抽象色块" },
-  "wallpaper_abstract_2426502_desc": { "message": "现代设计的抽象色彩与形状" },
-  "wallpaper_camera_1248682_name": { "message": "相机特写" },
-  "wallpaper_camera_1248682_desc": { "message": "相机与镜头特写，质感科技风" },
-  "wallpaper_circle_5090539_name": { "message": "圆形几何" },
-  "wallpaper_circle_5090539_desc": { "message": "简洁的圆形几何图案，适合视觉统一" },
-  "wallpaper_feather_7009025_name": { "message": "羽毛纹理" },
-  "wallpaper_feather_7009025_desc": { "message": "柔和的羽毛纹理，细腻自然图案" },
-  "wallpaper_fiber_4814456_name": { "message": "光纤线条" },
-  "wallpaper_fiber_4814456_desc": { "message": "光纤与线条的抽象科技感" },
-  "wallpaper_frost_6702335_name": { "message": "霜冻纹理" },
-  "wallpaper_frost_6702335_desc": { "message": "寒冷的霜冻冰花纹理背景" },
-  "wallpaper_leaves_4291098_name": { "message": "绿叶" },
-  "wallpaper_leaves_4291098_desc": { "message": "绿色叶片的自然纹理，清新治愈" },
-  "wallpaper_light_1834289_name": { "message": "光影散景" },
-  "wallpaper_light_1834289_desc": { "message": "光影斑驳的散景效果，氛围感抽象背景" },
-  "wallpaper_light_942231_name": { "message": "光流" },
-  "wallpaper_light_942231_desc": { "message": "流动的光线线条，动感抽象背景" },
-  "wallpaper_luck_4397584_name": { "message": "四叶草" },
-  "wallpaper_luck_4397584_desc": { "message": "幸运四叶草，清新自然绿色调" },
-  "wallpaper_waterdrop_2256201_name": { "message": "水滴特写" },
-  "wallpaper_waterdrop_2256201_desc": { "message": "水滴与表面张力的微距纹理" },
-  "welcome_pageTitle": { "message": "欢迎使用 Screen Recorder Studio" },
-  "welcome_headerSubtitle": { "message": "专业浏览器录制工具" },
-  "welcome_installSuccess": { "message": "安装成功" },
-  "welcome_headline": { "message": "欢迎使用 Screen Recorder Studio！🎉" },
-  "welcome_subheadline": { "message": "准备好开始你的首次录制了吗？只需几秒就能上手！" },
-  "welcome_tryTitle": { "message": "立即体验！🚀" },
-  "welcome_trySubtitle": { "message": "选择录制模式并点击下方按钮" },
-  "welcome_tryFeatures": { "message": "无需设置 • $SECONDS$ 秒倒计时 • 专业画质", "placeholders": { "seconds": { "content": "$1" } } },
-  "welcome_modeTabDetail": { "message": "适合网页演示和教程" },
-  "welcome_modeWindowDetail": { "message": "包含地址栏和工具栏" },
-  "welcome_modeScreenDetail": { "message": "最适合跨应用场景" },
-  "welcome_statusRecording": { "message": "正在录制" },
-  "welcome_modeLabel": { "message": "模式" },
-  "welcome_readyTitle": { "message": "🎬 一切就绪！" },
-  "welcome_readyDesc": { "message": "你已选择 $MODE$ 模式。点击上方蓝色按钮即可开始首次录制！", "placeholders": { "mode": { "content": "$1" } } },
-  "welcome_readyTip": { "message": "录制前有 $SECONDS$ 秒倒计时", "placeholders": { "seconds": { "content": "$1" } } },
-  "welcome_howTitle": { "message": "使用指南" },
-  "welcome_howDesc": { "message": "三个简单步骤，充分利用此扩展" },
-  "welcome_step1Title": { "message": "固定扩展" },
-  "welcome_step1Desc": { "message": "点击浏览器工具栏的拼图 🧩 图标，将此扩展固定以便快速访问" },
-  "welcome_step2Title": { "message": "选择目标" },
-  "welcome_step2Desc": { "message": "选择要录制的内容：当前标签页、整个窗口或全屏，随心所欲" },
-  "welcome_step3Title": { "message": "开始录制" },
-  "welcome_step3Desc": { "message": "点击“$BTN$”并准备好——$SECONDS$ 秒倒计时让你从容就绪！", "placeholders": { "btn": { "content": "$1" }, "seconds": { "content": "$2" } } },
-  "welcome_advancedTitle": { "message": "需要更多控制？" },
-  "welcome_advancedDesc": { "message": "点击浏览器工具栏中的扩展图标打开完整控制面板" },
-  "welcome_openControl": { "message": "打开完整控制面板" },
-  "welcome_footerHelp": { "message": "需要帮助？点击扩展图标，打开带高级功能的控制面板。" },
-  "welcome_footerMeta": { "message": "Screen Recorder Studio • 为专业人士打造" }
+  "appName": {
+    "message": "Screen Recorder Studio"
+  },
+  "appDesc": {
+    "message": "Chrome 扩展程序，用于录制标签页、窗口、屏幕、页面区域和元素"
+  },
+  "action_defaultTitle": {
+    "message": "打开录制面板"
+  },
+  "control_headerTitle": {
+    "message": "屏幕录制"
+  },
+  "control_headerDesc": {
+    "message": "选择录制模式并开始"
+  },
+  "control_openDriveTooltip": {
+    "message": "打开录制文件管理"
+  },
+  "control_closePanelTooltip": {
+    "message": "关闭控制面板"
+  },
+  "control_recordingMode": {
+    "message": "录制模式"
+  },
+  "control_modeTab": {
+    "message": "标签页"
+  },
+  "control_modeTabDesc": {
+    "message": "录制当前标签页"
+  },
+  "control_modeWindow": {
+    "message": "窗口"
+  },
+  "control_modeWindowDesc": {
+    "message": "录制整个窗口"
+  },
+  "control_modeScreen": {
+    "message": "屏幕"
+  },
+  "control_modeScreenDesc": {
+    "message": "录制整个屏幕"
+  },
+  "control_statusRecording": {
+    "message": "录制中"
+  },
+  "control_statusPaused": {
+    "message": "录制已暂停"
+  },
+  "control_statusPreparing": {
+    "message": "正在准备录制..."
+  },
+  "control_btnStart": {
+    "message": "开始录制"
+  },
+  "control_btnStop": {
+    "message": "停止录制"
+  },
+  "control_btnPause": {
+    "message": "暂停录制"
+  },
+  "control_btnResume": {
+    "message": "恢复录制"
+  },
+  "control_btnPreparing": {
+    "message": "准备中..."
+  },
+  "control_btnStarting": {
+    "message": "$SECONDS$ 秒后开始...",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_countdownLabel": {
+    "message": "倒计时"
+  },
+  "control_tipsTitle": {
+    "message": "录制提示："
+  },
+  "control_tipsSelectMode": {
+    "message": "已选择 $MODE$ 模式，点击开始录制即可。",
+    "placeholders": {
+      "mode": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_tipsPreparing": {
+    "message": "等待屏幕选择..."
+  },
+  "control_tipsCountdown": {
+    "message": "准备！录制将在 $SECONDS$ 秒后开始。",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_tipsPaused": {
+    "message": "录制已暂停，点击恢复录制继续。"
+  },
+  "control_tipsRecording": {
+    "message": "录制进行中，点击暂停可暂停录制。"
+  },
+  "control_overlayRecordingStarts": {
+    "message": "录制即将开始..."
+  },
+  "drive_pageTitle": {
+    "message": "录制列表 - Screen Recorder"
+  },
+  "drive_headerTitle": {
+    "message": "录制管理"
+  },
+  "drive_errorSupport": {
+    "message": "您的浏览器不支持 OPFS 存储"
+  },
+  "drive_errorMetaNotFound": {
+    "message": "未找到 meta.json"
+  },
+  "drive_errorEmpty": {
+    "message": "录制文件为空"
+  },
+  "drive_errorMetadata": {
+    "message": "无法读取录制元数据"
+  },
+  "drive_errorDataSize": {
+    "message": "无法获取数据文件大小"
+  },
+  "drive_recordingNamePrefix": {
+    "message": "屏幕录制"
+  },
+  "drive_logDeleted": {
+    "message": "录制 $ID$ 已删除",
+    "placeholders": {
+      "id": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_errorDelete": {
+    "message": "删除失败：$ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_logBatchDelete": {
+    "message": "成功删除 $COUNT$ 个录制",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_errorLoad": {
+    "message": "加载录制时发生错误"
+  },
+  "drive_errorLoadPrefix": {
+    "message": "加载录制失败："
+  },
+  "studio_pageTitle": {
+    "message": "屏幕录制工作室"
+  },
+  "studio_headerTitle": {
+    "message": "屏幕录制工作室"
+  },
+  "studio_githubTooltip": {
+    "message": "查看 GitHub 源码"
+  },
+  "studio_githubText": {
+    "message": "GitHub"
+  },
+  "studio_feedbackTooltip": {
+    "message": "报告 Bug 或建议功能"
+  },
+  "studio_feedbackText": {
+    "message": "反馈"
+  },
+  "studio_helpTooltip": {
+    "message": "帮助文档"
+  },
+  "studio_helpText": {
+    "message": "帮助"
+  },
+  "studio_driveTooltip": {
+    "message": "打开录制文件管理"
+  },
+  "studio_driveText": {
+    "message": "文件"
+  },
+  "studio_fullscreenEnterTooltip": {
+    "message": "进入全屏"
+  },
+  "studio_fullscreenExitTooltip": {
+    "message": "退出全屏"
+  },
+  "studio_fullscreenEnterText": {
+    "message": "全屏"
+  },
+  "studio_fullscreenExitText": {
+    "message": "退出"
+  },
+  "bg_title": {
+    "message": "背景设置"
+  },
+  "bg_tab_wallpaper": {
+    "message": "壁纸"
+  },
+  "bg_tab_gradient": {
+    "message": "渐变"
+  },
+  "bg_tab_solid": {
+    "message": "纯色"
+  },
+  "bg_tab_image": {
+    "message": "图片"
+  },
+  "radius_title": {
+    "message": "视频圆角"
+  },
+  "radius_none": {
+    "message": "无圆角"
+  },
+  "radius_small": {
+    "message": "小圆角"
+  },
+  "radius_medium": {
+    "message": "中圆角"
+  },
+  "radius_large": {
+    "message": "大圆角"
+  },
+  "radius_xl": {
+    "message": "超大圆角"
+  },
+  "padding_title": {
+    "message": "视频内边距"
+  },
+  "padding_none": {
+    "message": "无边距"
+  },
+  "padding_small": {
+    "message": "小边距"
+  },
+  "padding_medium": {
+    "message": "中边距"
+  },
+  "padding_large": {
+    "message": "大边距"
+  },
+  "padding_xl": {
+    "message": "超大边距"
+  },
+  "ratio_yt": {
+    "message": "YouTube 横屏"
+  },
+  "ratio_yt_desc": {
+    "message": "YouTube, B站, 爱奇艺等"
+  },
+  "ratio_sq": {
+    "message": "Instagram 正方形"
+  },
+  "ratio_sq_desc": {
+    "message": "Instagram 帖子, 微信朋友圈"
+  },
+  "ratio_tiktok": {
+    "message": "TikTok 竖屏"
+  },
+  "ratio_tiktok_desc": {
+    "message": "抖音, TikTok, 快手"
+  },
+  "ratio_story": {
+    "message": "Instagram Story"
+  },
+  "ratio_story_desc": {
+    "message": "Instagram Stories, 小红书"
+  },
+  "shadow_title": {
+    "message": "视频阴影"
+  },
+  "shadow_preset_title": {
+    "message": "预设效果"
+  },
+  "shadow_custom_title": {
+    "message": "自定义参数"
+  },
+  "shadow_light": {
+    "message": "轻微阴影"
+  },
+  "shadow_standard": {
+    "message": "标准阴影"
+  },
+  "shadow_deep": {
+    "message": "深度阴影"
+  },
+  "shadow_distant": {
+    "message": "远距离阴影"
+  },
+  "shadow_offset_x": {
+    "message": "水平偏移"
+  },
+  "shadow_offset_y": {
+    "message": "垂直偏移"
+  },
+  "shadow_blur": {
+    "message": "模糊半径"
+  },
+  "shadow_color": {
+    "message": "颜色"
+  },
+  "shadow_opacity": {
+    "message": "不透明度"
+  },
+  "shadow_empty_state": {
+    "message": "开启阴影开关以配置阴影效果"
+  },
+  "color_tab_basic": {
+    "message": "基础"
+  },
+  "color_tab_light": {
+    "message": "明亮"
+  },
+  "color_tab_business": {
+    "message": "商务"
+  },
+  "color_tab_creative": {
+    "message": "创意"
+  },
+  "color_custom": {
+    "message": "自定义："
+  },
+  "gradient_tab_linear": {
+    "message": "线性"
+  },
+  "gradient_tab_radial": {
+    "message": "径向"
+  },
+  "gradient_tab_conic": {
+    "message": "圆锥"
+  },
+  "gradient_tab_multi": {
+    "message": "多彩"
+  },
+  "gradient_current": {
+    "message": "当前："
+  },
+  "gradient_select_hint": {
+    "message": "选择一个渐变"
+  },
+  "gradient_colors_suffix": {
+    "message": "色"
+  },
+  "wallpaper_tab_abstract": {
+    "message": "抽象"
+  },
+  "wallpaper_tab_minimal": {
+    "message": "极简"
+  },
+  "wallpaper_tab_nature": {
+    "message": "自然"
+  },
+  "wallpaper_tab_business": {
+    "message": "商务"
+  },
+  "wallpaper_tab_tech": {
+    "message": "科技"
+  },
+  "wallpaper_error": {
+    "message": "壁纸加载失败"
+  },
+  "wallpaper_stats": {
+    "message": "本分类共 $COUNT$ 张",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "wallpaper_total": {
+    "message": "共 $TOTAL$ 张",
+    "placeholders": {
+      "total": {
+        "content": "$1"
+      }
+    }
+  },
+  "upload_processing": {
+    "message": "处理中..."
+  },
+  "upload_drop_hint": {
+    "message": "点击或拖拽图片到此处"
+  },
+  "upload_format_hint": {
+    "message": "支持 JPEG, PNG, WebP, GIF · 最大 5MB"
+  },
+  "upload_error_select": {
+    "message": "请选择图片文件"
+  },
+  "upload_error_failed": {
+    "message": "上传失败"
+  },
+  "drive_delete_selected_btn": {
+    "message": "删除已选 ($COUNT$)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_clear_selection": {
+    "message": "取消选择"
+  },
+  "drive_refresh": {
+    "message": "刷新"
+  },
+  "drive_error_title": {
+    "message": "错误"
+  },
+  "drive_close_error": {
+    "message": "关闭"
+  },
+  "drive_loading": {
+    "message": "正在加载录制..."
+  },
+  "drive_empty_title": {
+    "message": "暂无录制"
+  },
+  "drive_empty_desc1": {
+    "message": "您还没有任何屏幕录制。"
+  },
+  "drive_empty_desc2": {
+    "message": "开始录制屏幕，您的录制将显示在这里。"
+  },
+  "drive_start_recording_btn": {
+    "message": "开始录制"
+  },
+  "drive_select_all": {
+    "message": "全选 ($COUNT$ 个录制)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_sort_hint": {
+    "message": "按时间排序（最新的在前面）"
+  },
+  "drive_confirm_delete_title": {
+    "message": "确认删除"
+  },
+  "drive_confirm_delete_selected": {
+    "message": "确定要删除选中的 $COUNT$ 个录制吗？",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_confirm_delete_single": {
+    "message": "确定要删除此录制吗？"
+  },
+  "drive_action_undone": {
+    "message": "此操作无法撤销。"
+  },
+  "drive_cancel": {
+    "message": "取消"
+  },
+  "drive_delete": {
+    "message": "删除"
+  },
+  "card_status_completed": {
+    "message": "已完成"
+  },
+  "card_status_incomplete": {
+    "message": "未完成"
+  },
+  "card_label_created": {
+    "message": "创建时间："
+  },
+  "card_label_status": {
+    "message": "状态："
+  },
+  "card_label_codec": {
+    "message": "编码："
+  },
+  "card_label_resolution": {
+    "message": "分辨率："
+  },
+  "card_label_fps": {
+    "message": "帧率："
+  },
+  "card_label_size": {
+    "message": "文件大小："
+  },
+  "card_label_frames": {
+    "message": "总帧数："
+  },
+  "card_incomplete_title": {
+    "message": "录制不完整"
+  },
+  "card_incomplete_desc": {
+    "message": "缺少视频数据"
+  },
+  "card_preview_error": {
+    "message": "无法加载预览"
+  },
+  "card_preview_loading": {
+    "message": "生成预览中..."
+  },
+  "card_btn_edit": {
+    "message": "编辑"
+  },
+  "card_btn_delete": {
+    "message": "删除"
+  },
+  "card_edit_disabled_tooltip": {
+    "message": "无法编辑不完整的录制"
+  },
+  "card_edit_tooltip": {
+    "message": "编辑录制"
+  },
+  "card_preview_load_error": {
+    "message": "加载预览数据失败：$ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_today": {
+    "message": "今天 $TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_yesterday": {
+    "message": "昨天 $TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_days_ago": {
+    "message": "$DAYS$ 天前",
+    "placeholders": {
+      "days": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_panel_tier_free": {
+    "message": "免费版"
+  },
+  "export_panel_tier_pro": {
+    "message": "专业版"
+  },
+  "export_panel_tier_trial": {
+    "message": "专业试用"
+  },
+  "export_panel_btn": {
+    "message": "导出"
+  },
+  "export_panel_tooltip_incomplete": {
+    "message": "录制未完成，无法导出"
+  },
+  "export_panel_tooltip_no_data": {
+    "message": "无视频数据"
+  },
+  "export_panel_btn_exporting": {
+    "message": "导出中..."
+  },
+  "export_dialog_title": {
+    "message": "导出视频"
+  },
+  "export_source_res": {
+    "message": "分辨率"
+  },
+  "export_source_codec": {
+    "message": "编码"
+  },
+  "export_source_duration": {
+    "message": "时长"
+  },
+  "export_source_frames": {
+    "message": "帧数"
+  },
+  "export_badge_bg": {
+    "message": "背景"
+  },
+  "export_badge_trim": {
+    "message": "裁剪"
+  },
+  "export_format_mp4": {
+    "message": "MP4"
+  },
+  "export_format_webm": {
+    "message": "WebM"
+  },
+  "export_format_gif": {
+    "message": "GIF"
+  },
+  "export_quality_title": {
+    "message": "画质预设"
+  },
+  "export_quality_draft": {
+    "message": "草稿"
+  },
+  "export_quality_draft_desc": {
+    "message": "导出最快，画质较低"
+  },
+  "export_quality_balanced": {
+    "message": "平衡"
+  },
+  "export_quality_balanced_desc": {
+    "message": "画质良好，速度适中"
+  },
+  "export_quality_high": {
+    "message": "高清"
+  },
+  "export_quality_high_desc": {
+    "message": "高质量，速度较慢"
+  },
+  "export_quality_best": {
+    "message": "最佳"
+  },
+  "export_quality_best_desc": {
+    "message": "最高画质，速度最慢"
+  },
+  "export_label_resolution": {
+    "message": "分辨率"
+  },
+  "export_res_source": {
+    "message": "原画质 ($WIDTH$×$HEIGHT$)",
+    "placeholders": {
+      "width": {
+        "content": "$1"
+      },
+      "height": {
+        "content": "$2"
+      }
+    }
+  },
+  "export_label_framerate": {
+    "message": "帧率"
+  },
+  "export_fps_source": {
+    "message": "$FPS$ fps (源)",
+    "placeholders": {
+      "fps": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_bitrate": {
+    "message": "码率"
+  },
+  "export_bitrate_auto": {
+    "message": "自动"
+  },
+  "export_bitrate_manual": {
+    "message": "手动"
+  },
+  "export_bitrate_auto_hint": {
+    "message": "自动：$RATE$ Mbps (基于分辨率和画质)",
+    "placeholders": {
+      "rate": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_speed": {
+    "message": "编码速度"
+  },
+  "export_speed_fastest": {
+    "message": "最快"
+  },
+  "export_speed_fast": {
+    "message": "较快"
+  },
+  "export_speed_balanced": {
+    "message": "平衡"
+  },
+  "export_speed_slow": {
+    "message": "较慢"
+  },
+  "export_speed_slowest": {
+    "message": "最慢"
+  },
+  "export_est_output": {
+    "message": "预计输出"
+  },
+  "export_est_size": {
+    "message": "预计大小"
+  },
+  "export_label_gif_quality": {
+    "message": "画质"
+  },
+  "export_gif_best": {
+    "message": "最佳 (最慢)"
+  },
+  "export_gif_high": {
+    "message": "高清"
+  },
+  "export_gif_good": {
+    "message": "良好 (默认)"
+  },
+  "export_gif_fast": {
+    "message": "快速"
+  },
+  "export_gif_fastest": {
+    "message": "最快"
+  },
+  "export_label_scale": {
+    "message": "缩放"
+  },
+  "export_scale_original": {
+    "message": "100% (原始)"
+  },
+  "export_label_workers": {
+    "message": "线程数"
+  },
+  "export_worker_singular": {
+    "message": "$COUNT$ 线程",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_worker_plural": {
+    "message": "$COUNT$ 线程",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_dither": {
+    "message": "抖动算法"
+  },
+  "export_dither_none": {
+    "message": "无"
+  },
+  "export_btn_cancel": {
+    "message": "取消"
+  },
+  "export_btn_export_mp4": {
+    "message": "导出 MP4"
+  },
+  "export_btn_export_webm": {
+    "message": "导出 WebM"
+  },
+  "export_btn_export_gif": {
+    "message": "导出 GIF"
+  },
+  "export_progress_preparing": {
+    "message": "准备中..."
+  },
+  "export_progress_encoding": {
+    "message": "正在编码..."
+  },
+  "export_progress_muxing": {
+    "message": "正在封装..."
+  },
+  "export_progress_finalizing": {
+    "message": "正在完成..."
+  },
+  "export_progress_frame": {
+    "message": "帧 $CURRENT$ / $TOTAL$",
+    "placeholders": {
+      "current": {
+        "content": "$1"
+      },
+      "total": {
+        "content": "$2"
+      }
+    }
+  },
+  "export_progress_time": {
+    "message": "剩余约 $SECONDS$ 秒",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_progress_hint": {
+    "message": "请稍候，您的视频正在导出..."
+  },
+  "wallpaper_cat_abstract_name": {
+    "message": "抽象艺术"
+  },
+  "wallpaper_cat_abstract_desc": {
+    "message": "抽象图案、艺术创作和现代设计"
+  },
+  "wallpaper_cat_minimal_name": {
+    "message": "极简风格"
+  },
+  "wallpaper_cat_minimal_desc": {
+    "message": "简洁几何、极简设计和纯粹美学"
+  },
+  "wallpaper_cat_nature_name": {
+    "message": "自然风光"
+  },
+  "wallpaper_cat_nature_desc": {
+    "message": "自然景观、植物纹理和有机形态"
+  },
+  "wallpaper_cat_business_name": {
+    "message": "商务专业"
+  },
+  "wallpaper_cat_business_desc": {
+    "message": "商务场景、职业氛围和企业风格"
+  },
+  "wallpaper_cat_tech_name": {
+    "message": "科技未来"
+  },
+  "wallpaper_cat_tech_desc": {
+    "message": "科技元素、未来感和数字艺术"
+  },
+  "wallpaper_gradient_abstract_1_name": {
+    "message": "抽象渐变"
+  },
+  "wallpaper_gradient_abstract_1_desc": {
+    "message": "现代抽象渐变背景，适合科技和创意内容"
+  },
+  "wallpaper_geometric_pattern_1_name": {
+    "message": "几何图案"
+  },
+  "wallpaper_geometric_pattern_1_desc": {
+    "message": "简洁几何图案背景，适合商务和专业内容"
+  },
+  "wallpaper_abstract_2425706_name": {
+    "message": "抽象色彩"
+  },
+  "wallpaper_abstract_2425706_desc": {
+    "message": "充满活力的抽象色彩纹理，视觉冲击力强"
+  },
+  "wallpaper_abstract_2512412_name": {
+    "message": "抽象流彩"
+  },
+  "wallpaper_abstract_2512412_desc": {
+    "message": "流动的抽象色彩背景，适合创意内容"
+  },
+  "wallpaper_abstract_6297317_name": {
+    "message": "抽象形态"
+  },
+  "wallpaper_abstract_6297317_desc": {
+    "message": "抽象几何形态与色块组合"
+  },
+  "wallpaper_ai_generated_9083808_name": {
+    "message": "AI 生成艺术"
+  },
+  "wallpaper_ai_generated_9083808_desc": {
+    "message": "AI 生成的未来主义艺术背景"
+  },
+  "wallpaper_beach_4938036_name": {
+    "message": "海滩"
+  },
+  "wallpaper_beach_4938036_desc": {
+    "message": "自然海滩风光，沙滩与海浪，清新舒适"
+  },
+  "wallpaper_bulb_5665770_name": {
+    "message": "创意灯泡"
+  },
+  "wallpaper_bulb_5665770_desc": {
+    "message": "象征创意与灵感的灯泡主题"
+  },
+  "wallpaper_cpu_8892400_name": {
+    "message": "CPU 电路"
+  },
+  "wallpaper_cpu_8892400_desc": {
+    "message": "CPU 芯片与电路板，科技感十足"
+  },
+  "wallpaper_feather_5488401_name": {
+    "message": "羽毛特写"
+  },
+  "wallpaper_feather_5488401_desc": {
+    "message": "柔和的羽毛纹理，细节丰富"
+  },
+  "wallpaper_fractal_8902060_name": {
+    "message": "分形艺术"
+  },
+  "wallpaper_fractal_8902060_desc": {
+    "message": "绚丽的分形图案，抽象艺术风格"
+  },
+  "wallpaper_orange_3036097_name": {
+    "message": "橙子切片"
+  },
+  "wallpaper_orange_3036097_desc": {
+    "message": "充满活力的橙子切片，色彩明亮"
+  },
+  "wallpaper_orange_6508617_name": {
+    "message": "橙色背景"
+  },
+  "wallpaper_orange_6508617_desc": {
+    "message": "明亮的橙色主题背景，充满活力"
+  },
+  "wallpaper_polar_lights_5858656_name": {
+    "message": "极光"
+  },
+  "wallpaper_polar_lights_5858656_desc": {
+    "message": "北极光夜空，梦幻的自然现象"
+  },
+  "wallpaper_spiral_3112405_name": {
+    "message": "螺旋图案"
+  },
+  "wallpaper_spiral_3112405_desc": {
+    "message": "抽象螺旋纹理，具有动态层次感"
+  },
+  "wallpaper_steelwool_458842_name": {
+    "message": "钢丝棉光绘"
+  },
+  "wallpaper_steelwool_458842_desc": {
+    "message": "长曝光光绘效果，抽象动感"
+  },
+  "wallpaper_swimming_pool_8306716_name": {
+    "message": "泳池波纹"
+  },
+  "wallpaper_swimming_pool_8306716_desc": {
+    "message": "游泳池水波纹，清凉夏日氛围"
+  },
+  "wallpaper_abstract_2426502_name": {
+    "message": "抽象色块"
+  },
+  "wallpaper_abstract_2426502_desc": {
+    "message": "现代设计的抽象色彩与形状"
+  },
+  "wallpaper_camera_1248682_name": {
+    "message": "相机特写"
+  },
+  "wallpaper_camera_1248682_desc": {
+    "message": "相机与镜头特写，质感科技风"
+  },
+  "wallpaper_circle_5090539_name": {
+    "message": "圆形几何"
+  },
+  "wallpaper_circle_5090539_desc": {
+    "message": "简洁的圆形几何图案，适合视觉统一"
+  },
+  "wallpaper_feather_7009025_name": {
+    "message": "羽毛纹理"
+  },
+  "wallpaper_feather_7009025_desc": {
+    "message": "柔和的羽毛纹理，细腻自然图案"
+  },
+  "wallpaper_fiber_4814456_name": {
+    "message": "光纤线条"
+  },
+  "wallpaper_fiber_4814456_desc": {
+    "message": "光纤与线条的抽象科技感"
+  },
+  "wallpaper_frost_6702335_name": {
+    "message": "霜冻纹理"
+  },
+  "wallpaper_frost_6702335_desc": {
+    "message": "寒冷的霜冻冰花纹理背景"
+  },
+  "wallpaper_leaves_4291098_name": {
+    "message": "绿叶"
+  },
+  "wallpaper_leaves_4291098_desc": {
+    "message": "绿色叶片的自然纹理，清新治愈"
+  },
+  "wallpaper_light_1834289_name": {
+    "message": "光影散景"
+  },
+  "wallpaper_light_1834289_desc": {
+    "message": "光影斑驳的散景效果，氛围感抽象背景"
+  },
+  "wallpaper_light_942231_name": {
+    "message": "光流"
+  },
+  "wallpaper_light_942231_desc": {
+    "message": "流动的光线线条，动感抽象背景"
+  },
+  "wallpaper_luck_4397584_name": {
+    "message": "四叶草"
+  },
+  "wallpaper_luck_4397584_desc": {
+    "message": "幸运四叶草，清新自然绿色调"
+  },
+  "wallpaper_waterdrop_2256201_name": {
+    "message": "水滴特写"
+  },
+  "wallpaper_waterdrop_2256201_desc": {
+    "message": "水滴与表面张力的微距纹理"
+  },
+  "welcome_pageTitle": {
+    "message": "欢迎使用 Screen Recorder Studio"
+  },
+  "welcome_headerSubtitle": {
+    "message": "专业浏览器录制工具"
+  },
+  "welcome_installSuccess": {
+    "message": "安装成功"
+  },
+  "welcome_headline": {
+    "message": "欢迎使用 Screen Recorder Studio！🎉"
+  },
+  "welcome_subheadline": {
+    "message": "准备好开始你的首次录制了吗？只需几秒就能上手！"
+  },
+  "welcome_tryTitle": {
+    "message": "立即体验！🚀"
+  },
+  "welcome_trySubtitle": {
+    "message": "选择录制模式并点击下方按钮"
+  },
+  "welcome_tryFeatures": {
+    "message": "无需设置 • $SECONDS$ 秒倒计时 • 专业画质",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "welcome_modeTabDetail": {
+    "message": "适合网页演示和教程"
+  },
+  "welcome_modeWindowDetail": {
+    "message": "包含地址栏和工具栏"
+  },
+  "welcome_modeScreenDetail": {
+    "message": "最适合跨应用场景"
+  },
+  "welcome_statusRecording": {
+    "message": "正在录制"
+  },
+  "welcome_modeLabel": {
+    "message": "模式"
+  },
+  "welcome_readyTitle": {
+    "message": "🎬 一切就绪！"
+  },
+  "welcome_readyDesc": {
+    "message": "你已选择 $MODE$ 模式。点击上方蓝色按钮即可开始首次录制！",
+    "placeholders": {
+      "mode": {
+        "content": "$1"
+      }
+    }
+  },
+  "welcome_readyTip": {
+    "message": "录制前有 $SECONDS$ 秒倒计时",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "welcome_howTitle": {
+    "message": "使用指南"
+  },
+  "welcome_howDesc": {
+    "message": "三个简单步骤，充分利用此扩展"
+  },
+  "welcome_step1Title": {
+    "message": "固定扩展"
+  },
+  "welcome_step1Desc": {
+    "message": "点击浏览器工具栏的拼图 🧩 图标，将此扩展固定以便快速访问"
+  },
+  "welcome_step2Title": {
+    "message": "选择目标"
+  },
+  "welcome_step2Desc": {
+    "message": "选择要录制的内容：当前标签页、整个窗口或全屏，随心所欲"
+  },
+  "welcome_step3Title": {
+    "message": "开始录制"
+  },
+  "welcome_step3Desc": {
+    "message": "点击“$BTN$”并准备好——$SECONDS$ 秒倒计时让你从容就绪！",
+    "placeholders": {
+      "btn": {
+        "content": "$1"
+      },
+      "seconds": {
+        "content": "$2"
+      }
+    }
+  },
+  "welcome_advancedTitle": {
+    "message": "需要更多控制？"
+  },
+  "welcome_advancedDesc": {
+    "message": "点击浏览器工具栏中的扩展图标打开完整控制面板"
+  },
+  "welcome_openControl": {
+    "message": "打开完整控制面板"
+  },
+  "welcome_footerHelp": {
+    "message": "需要帮助？点击扩展图标，打开带高级功能的控制面板。"
+  },
+  "welcome_footerMeta": {
+    "message": "Screen Recorder Studio • 为专业人士打造"
+  },
+  "control_cameraAudioTitle": {
+    "message": "Camera & Microphone"
+  },
+  "control_cameraToggle": {
+    "message": "Enable camera"
+  },
+  "control_audioToggle": {
+    "message": "Enable microphone"
+  },
+  "control_selectCamera": {
+    "message": "Camera"
+  },
+  "control_selectMic": {
+    "message": "Microphone"
+  },
+  "control_cameraPreviewLoading": {
+    "message": "Initializing camera preview..."
+  },
+  "control_cameraPreviewError": {
+    "message": "Unable to preview camera"
+  }
 }

@@ -27,6 +27,16 @@
   let countdownValue = $state(0)
   // Phase: 'idle' | 'preparing' | 'countdown' | 'recording'
   let phase = $state<'idle' | 'preparing' | 'countdown' | 'recording'>('idle')
+  // Camera & audio
+  let cameraEnabled = $state(false)
+  let audioEnabled = $state(false)
+  let cameras = $state<MediaDeviceInfo[]>([])
+  let microphones = $state<MediaDeviceInfo[]>([])
+  let selectedCameraId = $state('')
+  let selectedMicrophoneId = $state('')
+  let previewStream = $state<MediaStream | null>(null)
+  let previewVideoEl = $state<HTMLVideoElement | null>(null)
+  let previewError = $state('')
 
   function clampCountdown(v: number) {
     if (isNaN(v)) return 3
@@ -48,31 +58,104 @@
     }
   }
 
+  async function enumerateDevices() {
+    if (!navigator.mediaDevices?.enumerateDevices) return
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices()
+      cameras = devices.filter((d) => d.kind === 'videoinput')
+      microphones = devices.filter((d) => d.kind === 'audioinput')
+      if (!selectedCameraId && cameras[0]) selectedCameraId = cameras[0].deviceId
+      if (!selectedMicrophoneId && microphones[0]) selectedMicrophoneId = microphones[0].deviceId
+    } catch (e) {
+      console.warn('Failed to enumerate devices', e)
+    }
+  }
+
+  function stopPreview() {
+    if (previewStream) {
+      try {
+        previewStream.getTracks().forEach((t) => t.stop())
+      } catch {}
+      previewStream = null
+    }
+    if (previewVideoEl) {
+      try {
+        previewVideoEl.pause()
+        previewVideoEl.srcObject = null
+      } catch {}
+    }
+  }
+
+  async function startPreview() {
+    if (!cameraEnabled || !navigator.mediaDevices?.getUserMedia) return
+    try {
+      stopPreview()
+      previewError = ''
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          deviceId: selectedCameraId ? { exact: selectedCameraId } : undefined,
+          width: { ideal: 320 },
+          height: { ideal: 180 }
+        },
+        audio: false
+      })
+      previewStream = stream
+      if (previewVideoEl) {
+        previewVideoEl.srcObject = stream
+        try {
+          await previewVideoEl.play()
+        } catch {}
+      }
+    } catch (e) {
+      previewError = t('control_cameraPreviewError')
+      console.warn('Preview camera failed', e)
+      stopPreview()
+    }
+  }
+
   // Disable switching modes during recording
   function isModeDisabledLocal(modeId: typeof selectedMode) {
     return isRecording && selectedMode !== modeId
   }
 
   // Initialize: sync background state
-  onMount(async () => {
-    try {
-      // Load settings to restore countdownSeconds
+  onMount(() => {
+    let disposed = false
+    const run = async () => {
       try {
-        const stored = await new Promise<any>((res) =>
-          chrome.storage.local.get(['settings'], (r) => res(r))
-        )
-        const v = stored?.settings?.countdownSeconds
-        if (typeof v === 'number') countdownSeconds = clampCountdown(v)
-      } catch {}
-      // Get current recording state from background
-      const resp = await chrome.runtime.sendMessage({ type: 'REQUEST_RECORDING_STATE' })
-      isRecording = !!resp?.state?.isRecording
-      isPaused = !!resp?.state?.isPaused
-      if (isRecording) {
-        phase = 'recording'
+        // Load settings to restore countdownSeconds
+        try {
+          const stored = await new Promise<any>((res) =>
+            chrome.storage.local.get(['settings'], (r) => res(r))
+          )
+          const v = stored?.settings?.countdownSeconds
+          if (typeof v === 'number') countdownSeconds = clampCountdown(v)
+        } catch {}
+        await enumerateDevices()
+        if (!disposed) {
+          try {
+            navigator.mediaDevices?.addEventListener?.('devicechange', enumerateDevices)
+          } catch {}
+        }
+        // Get current recording state from background
+        const resp = await chrome.runtime.sendMessage({ type: 'REQUEST_RECORDING_STATE' })
+        if (disposed) return
+        isRecording = !!resp?.state?.isRecording
+        isPaused = !!resp?.state?.isPaused
+        if (isRecording) {
+          phase = 'recording'
+        }
+      } catch (e) {
+        console.warn('Failed to initialize recording state', e)
       }
-    } catch (e) {
-      console.warn('Failed to initialize recording state', e)
+    }
+    void run()
+    return () => {
+      disposed = true
+      try {
+        navigator.mediaDevices?.removeEventListener?.('devicechange', enumerateDevices)
+      } catch {}
+      stopPreview()
     }
   })
 
@@ -147,6 +230,23 @@
     }
     chrome.runtime.onMessage.addListener(handler)
     return () => chrome.runtime.onMessage.removeListener(handler)
+  })
+
+  $effect(() => {
+    if (cameraEnabled) {
+      void startPreview()
+    } else {
+      stopPreview()
+    }
+  })
+
+  $effect(() => {
+    if (previewStream && previewVideoEl) {
+      previewVideoEl.srcObject = previewStream
+      try {
+        previewVideoEl.play()
+      } catch {}
+    }
   })
 
   // Countdown timer logic
@@ -229,7 +329,18 @@
     try {
       await chrome.runtime.sendMessage({
         type: 'REQUEST_START_RECORDING',
-        payload: { options: { mode: selectedMode, video: true, audio: false, countdown: countdownSeconds } }
+        payload: {
+          options: {
+            mode: selectedMode,
+            video: true,
+            audio: audioEnabled,
+            cameraEnabled,
+            audioEnabled,
+            cameraDeviceId: cameraEnabled ? selectedCameraId : undefined,
+            microphoneDeviceId: audioEnabled ? selectedMicrophoneId : undefined,
+            countdown: countdownSeconds
+          }
+        }
       })
     } catch (error) {
       console.error('Failed to start recording:', error)
@@ -382,6 +493,54 @@
             </span>
           </button>
         {/each}
+      </div>
+    </div>
+
+    <!-- Camera & Audio -->
+    <div class="flex-shrink-0 px-4 pb-4 space-y-3">
+      <h2 class="text-sm font-medium text-gray-700">{t('control_cameraAudioTitle')}</h2>
+      <div class="space-y-2">
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" bind:checked={cameraEnabled} class="accent-blue-600" />
+          <span>{t('control_cameraToggle')}</span>
+        </label>
+        {#if cameraEnabled}
+          <select
+            bind:value={selectedCameraId}
+            class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {#each cameras as cam}
+              <option value={cam.deviceId}>{cam.label || `${t('control_selectCamera')} ${cam.deviceId.slice(0, 8)}`}</option>
+            {/each}
+          </select>
+          <div class="mt-2 rounded-lg border border-gray-200 bg-black/80 overflow-hidden flex items-center justify-center min-h-24">
+            {#if previewStream}
+              <video bind:this={previewVideoEl} autoplay playsinline muted class="w-full h-full object-cover"></video>
+            {:else}
+              <div class="py-6 text-xs text-gray-300">{previewError || t('control_cameraPreviewLoading')}</div>
+            {/if}
+          </div>
+          {#if previewError}
+            <p class="text-xs text-red-600 mt-1">{previewError}</p>
+          {/if}
+        {/if}
+      </div>
+
+      <div class="space-y-2">
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" bind:checked={audioEnabled} class="accent-blue-600" />
+          <span>{t('control_audioToggle')}</span>
+        </label>
+        {#if audioEnabled}
+          <select
+            bind:value={selectedMicrophoneId}
+            class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {#each microphones as mic}
+              <option value={mic.deviceId}>{mic.label || `${t('control_selectMic')} ${mic.deviceId.slice(0, 8)}`}</option>
+            {/each}
+          </select>
+        {/if}
       </div>
     </div>
 

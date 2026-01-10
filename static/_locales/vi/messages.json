@@ -1,341 +1,1125 @@
 {
-  "appName": { "message": "Screen Recorder Studio" },
-  "appDesc": { "message": "Tiện ích Chrome chuyên nghiệp để quay tab, cửa sổ, màn hình và các vùng chỉ định" },
-  "action_defaultTitle": { "message": "Mở bảng điều khiển quay phim" },
-
-  "control_headerTitle": { "message": "Quay màn hình" },
-  "control_headerDesc": { "message": "Chọn chế độ và bắt đầu quay" },
-  "control_openDriveTooltip": { "message": "Mở quản lý tệp tin" },
-  "control_closePanelTooltip": { "message": "Đóng bảng điều khiển" },
-  "control_recordingMode": { "message": "Chế độ quay" },
-  "control_modeTab": { "message": "Tab" },
-  "control_modeTabDesc": { "message": "Quay tab hiện tại" },
-  "control_modeWindow": { "message": "Cửa sổ" },
-  "control_modeWindowDesc": { "message": "Quay toàn bộ cửa sổ" },
-  "control_modeScreen": { "message": "Màn hình" },
-  "control_modeScreenDesc": { "message": "Quay toàn bộ màn hình" },
-  "control_statusRecording": { "message": "Đang quay" },
-  "control_statusPaused": { "message": "Đã tạm dừng" },
-  "control_statusPreparing": { "message": "Đang chuẩn bị..." },
-  "control_btnStart": { "message": "Bắt đầu quay" },
-  "control_btnStop": { "message": "Dừng quay" },
-  "control_btnPause": { "message": "Tạm dừng" },
-  "control_btnResume": { "message": "Tiếp tục" },
-  "control_btnPreparing": { "message": "Đang chuẩn bị..." },
-  "control_btnStarting": { "message": "Bắt đầu sau $SECONDS$ giây...", "placeholders": { "seconds": { "content": "$1" } } },
-  "control_countdownLabel": { "message": "Đếm ngược" },
-  "control_tipsTitle": { "message": "Mẹo quay phim:" },
-  "control_tipsSelectMode": { "message": "Đã chọn chế độ $MODE$, nhấn Bắt đầu để quay.", "placeholders": { "mode": { "content": "$1" } } },
-  "control_tipsPreparing": { "message": "Đang chờ chọn màn hình..." },
-  "control_tipsCountdown": { "message": "Chuẩn bị! Quá trình quay sẽ bắt đầu sau $SECONDS$ giây.", "placeholders": { "seconds": { "content": "$1" } } },
-  "control_tipsPaused": { "message": "Đã tạm dừng, nhấn Tiếp tục để quay lại." },
-  "control_tipsRecording": { "message": "Đang quay, nhấn Tạm dừng nếu cần thiết." },
-  "control_overlayRecordingStarts": { "message": "Sắp bắt đầu quay..." },
-
-  "drive_pageTitle": { "message": "Danh sách quay phim - Screen Recorder" },
-  "drive_headerTitle": { "message": "Quản lý bản quay" },
-  "drive_errorSupport": { "message": "Trình duyệt không hỗ trợ lưu trữ OPFS" },
-  "drive_errorMetaNotFound": { "message": "Không tìm thấy tệp meta.json" },
-  "drive_errorEmpty": { "message": "Tệp bản quay trống" },
-  "drive_errorMetadata": { "message": "Không thể đọc dữ liệu bản quay" },
-  "drive_errorDataSize": { "message": "Không thể lấy kích thước tệp" },
-  "drive_recordingNamePrefix": { "message": "Quay màn hình" },
-  "drive_logDeleted": { "message": "Đã xóa bản quay $ID$", "placeholders": { "id": { "content": "$1" } } },
-  "drive_errorDelete": { "message": "Xóa thất bại: $ERROR$", "placeholders": { "error": { "content": "$1" } } },
-  "drive_logBatchDelete": { "message": "Đã xóa thành công $COUNT$ bản quay", "placeholders": { "count": { "content": "$1" } } },
-  "drive_errorLoad": { "message": "Có lỗi xảy ra khi tải danh sách" },
-  "drive_errorLoadPrefix": { "message": "Tải danh sách thất bại:" },
-
-  "studio_pageTitle": { "message": "Screen Recording Studio" },
-  "studio_headerTitle": { "message": "Screen Recorder Studio" },
-  "studio_githubTooltip": { "message": "Xem mã nguồn trên GitHub" },
-  "studio_githubText": { "message": "GitHub" },
-  "studio_feedbackTooltip": { "message": "Báo lỗi hoặc đề xuất tính năng" },
-  "studio_feedbackText": { "message": "Phản hồi" },
-  "studio_helpTooltip": { "message": "Trợ giúp & Tài liệu" },
-  "studio_helpText": { "message": "Trợ giúp" },
-  "studio_driveTooltip": { "message": "Mở quản lý tệp tin" },
-  "studio_driveText": { "message": "Ổ đĩa" },
-  "studio_fullscreenEnterTooltip": { "message": "Toàn màn hình" },
-  "studio_fullscreenExitTooltip": { "message": "Thoát toàn màn hình" },
-  "studio_fullscreenEnterText": { "message": "Toàn màn hình" },
-  "studio_fullscreenExitText": { "message": "Thoát" },
-
-  "bg_title": { "message": "Cài đặt nền" },
-  "bg_tab_wallpaper": { "message": "Hình nền" },
-  "bg_tab_gradient": { "message": "Chuyển sắc" },
-  "bg_tab_solid": { "message": "Màu đơn" },
-  "bg_tab_image": { "message": "Hình ảnh" },
-
-  "radius_title": { "message": "Bo góc video" },
-  "radius_none": { "message": "Không" },
-  "radius_small": { "message": "Nhỏ" },
-  "radius_medium": { "message": "Vừa" },
-  "radius_large": { "message": "Lớn" },
-  "radius_xl": { "message": "Rất lớn" },
-
-  "padding_title": { "message": "Lề video (Padding)" },
-  "padding_none": { "message": "Không" },
-  "padding_small": { "message": "Nhỏ" },
-  "padding_medium": { "message": "Vừa" },
-  "padding_large": { "message": "Lớn" },
-  "padding_xl": { "message": "Rất lớn" },
-
-  "ratio_yt": { "message": "YouTube Ngang" },
-  "ratio_yt_desc": { "message": "YouTube, Bilibili, v.v." },
-  "ratio_sq": { "message": "Instagram Vuông" },
-  "ratio_sq_desc": { "message": "Bài đăng Instagram" },
-  "ratio_tiktok": { "message": "TikTok Dọc" },
-  "ratio_tiktok_desc": { "message": "TikTok, Reels, v.v." },
-  "ratio_story": { "message": "Instagram Story" },
-  "ratio_story_desc": { "message": "Stories, Xiaohongshu" },
-
-  "shadow_title": { "message": "Đổ bóng video" },
-  "shadow_preset_title": { "message": "Hiệu ứng sẵn có" },
-  "shadow_custom_title": { "message": "Thông số tùy chỉnh" },
-  "shadow_light": { "message": "Bóng nhẹ" },
-  "shadow_standard": { "message": "Tiêu chuẩn" },
-  "shadow_deep": { "message": "Bóng sâu" },
-  "shadow_distant": { "message": "Bóng xa" },
-  "shadow_offset_x": { "message": "Lệch ngang" },
-  "shadow_offset_y": { "message": "Lệch dọc" },
-  "shadow_blur": { "message": "Độ nhòe" },
-  "shadow_color": { "message": "Màu sắc" },
-  "shadow_opacity": { "message": "Độ trong suốt" },
-  "shadow_empty_state": { "message": "Bật công tắc để cài đặt đổ bóng" },
-
-  "color_tab_basic": { "message": "Cơ bản" },
-  "color_tab_light": { "message": "Sáng" },
-  "color_tab_business": { "message": "Công việc" },
-  "color_tab_creative": { "message": "Sáng tạo" },
-  "color_custom": { "message": "Tùy chỉnh:" },
-
-  "gradient_tab_linear": { "message": "Tuyến tính" },
-  "gradient_tab_radial": { "message": "Tỏa tròn" },
-  "gradient_tab_conic": { "message": "Hình nón" },
-  "gradient_tab_multi": { "message": "Đa màu" },
-  "gradient_current": { "message": "Hiện tại:" },
-  "gradient_select_hint": { "message": "Chọn một kiểu nền" },
-  "gradient_colors_suffix": { "message": "màu" },
-
-  "wallpaper_tab_abstract": { "message": "Trừu tượng" },
-  "wallpaper_tab_minimal": { "message": "Tối giản" },
-  "wallpaper_tab_nature": { "message": "Tự nhiên" },
-  "wallpaper_tab_business": { "message": "Công sở" },
-  "wallpaper_tab_tech": { "message": "Công nghệ" },
-  "wallpaper_error": { "message": "Tải hình nền thất bại" },
-  "wallpaper_stats": { "message": "Có $COUNT$ hình nền trong mục này", "placeholders": { "count": { "content": "$1" } } },
-  "wallpaper_total": { "message": "Tổng cộng $TOTAL$", "placeholders": { "total": { "content": "$1" } } },
-
-  "upload_processing": { "message": "Đang xử lý..." },
-  "upload_drop_hint": { "message": "Bấm hoặc kéo ảnh vào đây" },
-  "upload_format_hint": { "message": "JPEG, PNG, WebP, GIF · Tối đa 5MB" },
-  "upload_error_select": { "message": "Vui lòng chọn một tệp ảnh" },
-  "upload_error_failed": { "message": "Tải lên thất bại" },
-
-  "drive_delete_selected_btn": { "message": "Xóa mục đã chọn ($COUNT$)", "placeholders": { "count": { "content": "$1" } } },
-  "drive_clear_selection": { "message": "Bỏ chọn" },
-  "drive_refresh": { "message": "Làm mới" },
-  "drive_error_title": { "message": "Lỗi" },
-  "drive_close_error": { "message": "Đóng" },
-  "drive_loading": { "message": "Đang tải bản quay..." },
-  "drive_empty_title": { "message": "Chưa có bản quay nào" },
-  "drive_empty_desc1": { "message": "Bạn chưa có bản quay màn hình nào được lưu." },
-  "drive_empty_desc2": { "message": "Bắt đầu quay và chúng sẽ hiện ở đây." },
-  "drive_start_recording_btn": { "message": "Bắt đầu quay" },
-  "drive_select_all": { "message": "Chọn tất cả ($COUNT$ bản quay)", "placeholders": { "count": { "content": "$1" } } },
-  "drive_sort_hint": { "message": "Sắp xếp theo thời gian (mới nhất)" },
-  "drive_confirm_delete_title": { "message": "Xác nhận xóa" },
-  "drive_confirm_delete_selected": { "message": "Bạn có chắc muốn xóa $COUNT$ bản quay đã chọn?", "placeholders": { "count": { "content": "$1" } } },
-  "drive_confirm_delete_single": { "message": "Bạn có chắc muốn xóa bản quay này?" },
-  "drive_action_undone": { "message": "Hành động này không thể hoàn tác." },
-  "drive_cancel": { "message": "Hủy" },
-  "drive_delete": { "message": "Xóa" },
-
-  "card_status_completed": { "message": "Đã hoàn thành" },
-  "card_status_incomplete": { "message": "Chưa xong" },
-  "card_label_created": { "message": "Đã tạo:" },
-  "card_label_status": { "message": "Trạng thái:" },
-  "card_label_codec": { "message": "Codec:" },
-  "card_label_resolution": { "message": "Độ phân giải:" },
-  "card_label_fps": { "message": "FPS:" },
-  "card_label_size": { "message": "Dung lượng:" },
-  "card_label_frames": { "message": "Tổng số khung hình:" },
-  "card_incomplete_title": { "message": "Bản quay chưa xong" },
-  "card_incomplete_desc": { "message": "Thiếu dữ liệu video" },
-  "card_preview_error": { "message": "Không thể xem trước" },
-  "card_preview_loading": { "message": "Đang tạo xem trước..." },
-  "card_btn_edit": { "message": "Chỉnh sửa" },
-  "card_btn_delete": { "message": "Xóa" },
-  "card_edit_disabled_tooltip": { "message": "Không thể sửa bản quay chưa xong" },
-  "card_edit_tooltip": { "message": "Sửa bản quay" },
-  "card_preview_load_error": { "message": "Lỗi tải dữ liệu: $ERROR$", "placeholders": { "error": { "content": "$1" } } },
-  "card_date_today": { "message": "Hôm nay $TIME$", "placeholders": { "time": { "content": "$1" } } },
-  "card_date_yesterday": { "message": "Hôm qua $TIME$", "placeholders": { "time": { "content": "$1" } } },
-  "card_date_days_ago": { "message": "$DAYS$ ngày trước", "placeholders": { "days": { "content": "$1" } } },
-
-  "export_panel_tier_free": { "message": "MIỄN PHÍ" },
-  "export_panel_tier_pro": { "message": "PRO" },
-  "export_panel_tier_trial": { "message": "THỬ NGHIỆM PRO" },
-  "export_panel_btn": { "message": "Xuất video" },
-  "export_panel_tooltip_incomplete": { "message": "Hoàn thành quay để xuất video" },
-  "export_panel_tooltip_no_data": { "message": "Không có dữ liệu video" },
-  "export_panel_btn_exporting": { "message": "Đang xuất..." },
-
-  "export_dialog_title": { "message": "Xuất Video" },
-  "export_source_res": { "message": "Độ phân giải" },
-  "export_source_codec": { "message": "Định dạng" },
-  "export_source_duration": { "message": "Thời lượng" },
-  "export_source_frames": { "message": "Số khung hình" },
-  "export_badge_bg": { "message": "Có nền" },
-  "export_badge_trim": { "message": "Đã cắt" },
-  "export_format_mp4": { "message": "MP4" },
-  "export_format_webm": { "message": "WebM" },
-  "export_format_gif": { "message": "GIF" },
-  "export_quality_title": { "message": "Chất lượng" },
-  "export_quality_draft": { "message": "Nháp" },
-  "export_quality_draft_desc": { "message": "Nhanh nhất, chất lượng thấp" },
-  "export_quality_balanced": { "message": "Cân bằng" },
-  "export_quality_balanced_desc": { "message": "Chất lượng và tốc độ tốt" },
-  "export_quality_high": { "message": "Cao" },
-  "export_quality_high_desc": { "message": "Chất lượng cao, chậm hơn" },
-  "export_quality_best": { "message": "Tốt nhất" },
-  "export_quality_best_desc": { "message": "Chất lượng tối đa, rất chậm" },
-  "export_label_resolution": { "message": "Độ phân giải" },
-  "export_res_source": { "message": "Giống nguồn ($WIDTH$×$HEIGHT$)", "placeholders": { "width": { "content": "$1" }, "height": { "content": "$2" } } },
-  "export_label_framerate": { "message": "Tỷ lệ khung hình" },
-  "export_fps_source": { "message": "$FPS$ fps (Nguồn)", "placeholders": { "fps": { "content": "$1" } } },
-  "export_label_bitrate": { "message": "Bitrate" },
-  "export_bitrate_auto": { "message": "Tự động" },
-  "export_bitrate_manual": { "message": "Thủ công" },
-  "export_bitrate_auto_hint": { "message": "Tự động: $RATE$ Mbps (theo độ phân giải)", "placeholders": { "rate": { "content": "$1" } } },
-  "export_label_speed": { "message": "Tốc độ mã hóa" },
-  "export_speed_fastest": { "message": "Nhanh nhất" },
-  "export_speed_fast": { "message": "Nhanh" },
-  "export_speed_balanced": { "message": "Cân bằng" },
-  "export_speed_slow": { "message": "Chậm" },
-  "export_speed_slowest": { "message": "Rất chậm" },
-  "export_est_output": { "message": "Đầu ra dự kiến" },
-  "export_est_size": { "message": "Dung lượng dự kiến" },
-  "export_label_gif_quality": { "message": "Chất lượng GIF" },
-  "export_gif_best": { "message": "Tốt nhất (Chậm)" },
-  "export_gif_high": { "message": "Cao" },
-  "export_gif_good": { "message": "Tốt (Mặc định)" },
-  "export_gif_fast": { "message": "Nhanh" },
-  "export_gif_fastest": { "message": "Nhanh nhất" },
-  "export_label_scale": { "message": "Tỷ lệ" },
-  "export_scale_original": { "message": "100% (Gốc)" },
-  "export_label_workers": { "message": "Luồng xử lý" },
-  "export_worker_singular": { "message": "$COUNT$ luồng", "placeholders": { "count": { "content": "$1" } } },
-  "export_worker_plural": { "message": "$COUNT$ luồng", "placeholders": { "count": { "content": "$1" } } },
-  "export_label_dither": { "message": "Dithering" },
-  "export_dither_none": { "message": "Không" },
-  "export_btn_cancel": { "message": "Hủy" },
-  "export_btn_export_mp4": { "message": "Xuất file MP4" },
-  "export_btn_export_webm": { "message": "Xuất file WebM" },
-  "export_btn_export_gif": { "message": "Xuất file GIF" },
-  "export_progress_preparing": { "message": "Đang chuẩn bị..." },
-  "export_progress_encoding": { "message": "Đang mã hóa khung hình..." },
-  "export_progress_muxing": { "message": "Đang tạo tệp..." },
-  "export_progress_finalizing": { "message": "Đang hoàn tất..." },
-  "export_progress_frame": { "message": "Khung hình $CURRENT$ / $TOTAL$", "placeholders": { "current": { "content": "$1" }, "total": { "content": "$2" } } },
-  "export_progress_time": { "message": "Còn khoảng ~$SECONDS$ giây", "placeholders": { "seconds": { "content": "$1" } } },
-  "export_progress_hint": { "message": "Vui lòng đợi trong khi video đang được xuất..." },
-
-  "wallpaper_cat_abstract_name": { "message": "Trừu tượng" },
-  "wallpaper_cat_abstract_desc": { "message": "Họa tiết trừu tượng và thiết kế hiện đại" },
-  "wallpaper_cat_minimal_name": { "message": "Tối giản" },
-  "wallpaper_cat_minimal_desc": { "message": "Hình khối sạch sẽ và thẩm mỹ tối giản" },
-  "wallpaper_cat_nature_name": { "message": "Thiên nhiên" },
-  "wallpaper_cat_nature_desc": { "message": "Cảnh quan thiên nhiên và cây cỏ" },
-  "wallpaper_cat_business_name": { "message": "Công sở" },
-  "wallpaper_cat_business_desc": { "message": "Không gian làm việc chuyên nghiệp" },
-  "wallpaper_cat_tech_name": { "message": "Công nghệ" },
-  "wallpaper_cat_tech_desc": { "message": "Yếu tố công nghệ và nghệ thuật số" },
-
-  "wallpaper_gradient_abstract_1_name": { "message": "Trừu tượng Chuyển sắc" },
-  "wallpaper_gradient_abstract_1_desc": { "message": "Nền trừu tượng hiện đại" },
-  "wallpaper_geometric_pattern_1_name": { "message": "Họa tiết Hình học" },
-  "wallpaper_geometric_pattern_1_desc": { "message": "Nền hình học sạch sẽ" },
-  "wallpaper_abstract_2425706_name": { "message": "Màu sắc Trừu tượng" },
-  "wallpaper_abstract_2425706_desc": { "message": "Kết cấu màu sắc rực rỡ" },
-  "wallpaper_abstract_2512412_name": { "message": "Dòng chảy Trừu tượng" },
-  "wallpaper_abstract_2512412_desc": { "message": "Nền màu sắc uốn lượn" },
-  "wallpaper_abstract_6297317_name": { "message": "Hình khối Trừu tượng" },
-  "wallpaper_abstract_6297317_desc": { "message": "Bố cục các mảng màu" },
-  "wallpaper_ai_generated_9083808_name": { "message": "Nghệ thuật AI" },
-  "wallpaper_ai_generated_9083808_desc": { "message": "Nền tương lai tạo bởi AI" },
-  "wallpaper_beach_4938036_name": { "message": "Bãi biển" },
-  "wallpaper_beach_4938036_desc": { "message": "Cảnh biển tươi mát" },
-  "wallpaper_bulb_5665770_name": { "message": "Bóng đèn Sáng tạo" },
-  "wallpaper_bulb_5665770_desc": { "message": "Biểu tượng của ý tưởng" },
-  "wallpaper_cpu_8892400_name": { "message": "Mạch CPU" },
-  "wallpaper_cpu_8892400_desc": { "message": "Chip và bảng mạch" },
-  "wallpaper_feather_5488401_name": { "message": "Cận cảnh Lông vũ" },
-  "wallpaper_feather_5488401_desc": { "message": "Kết cấu lông vũ mềm mại" },
-  "wallpaper_fractal_8902060_name": { "message": "Nghệ thuật Fractal" },
-  "wallpaper_fractal_8902060_desc": { "message": "Họa tiết hình học rực rỡ" },
-  "wallpaper_orange_3036097_name": { "message": "Lát Cam" },
-  "wallpaper_orange_3036097_desc": { "message": "Lát cam tươi tắn" },
-  "wallpaper_orange_6508617_name": { "message": "Nền Cam" },
-  "wallpaper_orange_6508617_desc": { "message": "Nền màu cam năng động" },
-  "wallpaper_polar_lights_5858656_name": { "message": "Cực quang" },
-  "wallpaper_polar_lights_5858656_desc": { "message": "Bầu trời cực quang thơ mộng" },
-  "wallpaper_spiral_3112405_name": { "message": "Vòng xoắn" },
-  "wallpaper_spiral_3112405_desc": { "message": "Kết cấu xoắn ốc động" },
-  "wallpaper_steelwool_458842_name": { "message": "Vẽ ánh sáng" },
-  "wallpaper_steelwool_458842_desc": { "message": "Hiệu ứng phơi sáng ánh sáng" },
-  "wallpaper_swimming_pool_8306716_name": { "message": "Gợn nước Hồ bơi" },
-  "wallpaper_swimming_pool_8306716_desc": { "message": "Làn nước hồ bơi mát lạnh" },
-  "wallpaper_abstract_2426502_name": { "message": "Mảng màu Trừu tượng" },
-  "wallpaper_abstract_2426502_desc": { "message": "Thiết kế hiện đại trừu tượng" },
-  "wallpaper_camera_1248682_name": { "message": "Máy ảnh" },
-  "wallpaper_camera_1248682_desc": { "message": "Cận cảnh máy ảnh công nghệ" },
-  "wallpaper_circle_5090539_name": { "message": "Hình tròn" },
-  "wallpaper_circle_5090539_desc": { "message": "Họa tiết vòng tròn sạch sẽ" },
-  "wallpaper_feather_7009025_name": { "message": "Kết cấu Lông vũ" },
-  "wallpaper_feather_7009025_desc": { "message": "Họa tiết tự nhiên tinh tế" },
-  "wallpaper_fiber_4814456_name": { "message": "Sợi Quang" },
-  "wallpaper_fiber_4814456_desc": { "message": "Cảm giác công nghệ trừu tượng" },
-  "wallpaper_frost_6702335_name": { "message": "Băng giá" },
-  "wallpaper_frost_6702335_desc": { "message": "Nền tinh thể băng lạnh" },
-  "wallpaper_leaves_4291098_name": { "message": "Lá xanh" },
-  "wallpaper_leaves_4291098_desc": { "message": "Kết cấu lá xanh tươi" },
-  "wallpaper_light_1834289_name": { "message": "Bokeh Ánh sáng" },
-  "wallpaper_light_1834289_desc": { "message": "Hiệu ứng bokeh lung linh" },
-  "wallpaper_light_942231_name": { "message": "Vệt sáng" },
-  "wallpaper_light_942231_desc": { "message": "Dòng ánh sáng chuyển động" },
-  "wallpaper_luck_4397584_name": { "message": "Cỏ bốn lá" },
-  "wallpaper_luck_4397584_desc": { "message": "Cỏ bốn lá may mắn" },
-  "wallpaper_waterdrop_2256201_name": { "message": "Giọt nước" },
-  "wallpaper_waterdrop_2256201_desc": { "message": "Kết cấu macro giọt nước" },
-  "welcome_pageTitle": { "message": "Chào mừng đến với Screen Recorder Studio" },
-  "welcome_headerSubtitle": { "message": "Công cụ ghi hình trình duyệt chuyên nghiệp" },
-  "welcome_installSuccess": { "message": "Cài đặt thành công" },
-  "welcome_headline": { "message": "Chào mừng đến với Screen Recorder Studio! 🎉" },
-  "welcome_subheadline": { "message": "Sẵn sàng cho bản ghi đầu tiên? Chỉ mất vài giây để bắt đầu!" },
-  "welcome_tryTitle": { "message": "Thử ngay! 🚀" },
-  "welcome_trySubtitle": { "message": "Chọn chế độ ghi và nhấn nút bên dưới" },
-  "welcome_tryFeatures": { "message": "Không cần thiết lập • Đếm ngược $SECONDS$ giây • Chất lượng chuyên nghiệp", "placeholders": { "seconds": { "content": "$1" } } },
-  "welcome_modeTabDetail": { "message": "Hoàn hảo cho demo web và hướng dẫn" },
-  "welcome_modeWindowDetail": { "message": "Bao gồm thanh địa chỉ và thanh công cụ" },
-  "welcome_modeScreenDetail": { "message": "Tốt nhất cho quy trình làm việc giữa các ứng dụng" },
-  "welcome_statusRecording": { "message": "Đang ghi" },
-  "welcome_modeLabel": { "message": "Chế độ" },
-  "welcome_readyTitle": { "message": "🎬 Mọi thứ đã sẵn sàng!" },
-  "welcome_readyDesc": { "message": "Bạn đã chọn chế độ $MODE$. Nhấp nút xanh phía trên để bắt đầu bản ghi đầu tiên!", "placeholders": { "mode": { "content": "$1" } } },
-  "welcome_readyTip": { "message": "Đếm ngược $SECONDS$ giây trước khi bắt đầu ghi", "placeholders": { "seconds": { "content": "$1" } } },
-  "welcome_howTitle": { "message": "Cách hoạt động" },
-  "welcome_howDesc": { "message": "Ba bước đơn giản để tận dụng tối đa tiện ích mở rộng" },
-  "welcome_step1Title": { "message": "Ghim tiện ích" },
-  "welcome_step1Desc": { "message": "Nhấp vào biểu tượng mảnh ghép 🧩 trên thanh công cụ và ghim tiện ích để truy cập nhanh" },
-  "welcome_step2Title": { "message": "Chọn đối tượng" },
-  "welcome_step2Desc": { "message": "Chọn nội dung cần ghi: tab hiện tại, toàn bộ cửa sổ hoặc toàn màn hình" },
-  "welcome_step3Title": { "message": "Nhấn Ghi" },
-  "welcome_step3Desc": { "message": "Nhấp “$BTN$” và chuẩn bị — đếm ngược $SECONDS$ giây giúp bạn sẵn sàng!", "placeholders": { "btn": { "content": "$1" }, "seconds": { "content": "$2" } } },
-  "welcome_advancedTitle": { "message": "Cần kiểm soát nhiều hơn?" },
-  "welcome_advancedDesc": { "message": "Nhấp vào biểu tượng tiện ích trên thanh công cụ để mở bảng điều khiển đầy đủ" },
-  "welcome_openControl": { "message": "Mở bảng điều khiển đầy đủ" },
-  "welcome_footerHelp": { "message": "Cần trợ giúp? Nhấp vào biểu tượng tiện ích để mở bảng điều khiển với các tính năng nâng cao." },
-  "welcome_footerMeta": { "message": "Screen Recorder Studio • Dành cho người dùng chuyên nghiệp" }
+  "appName": {
+    "message": "Screen Recorder Studio"
+  },
+  "appDesc": {
+    "message": "Tiện ích Chrome chuyên nghiệp để quay tab, cửa sổ, màn hình và các vùng chỉ định"
+  },
+  "action_defaultTitle": {
+    "message": "Mở bảng điều khiển quay phim"
+  },
+  "control_headerTitle": {
+    "message": "Quay màn hình"
+  },
+  "control_headerDesc": {
+    "message": "Chọn chế độ và bắt đầu quay"
+  },
+  "control_openDriveTooltip": {
+    "message": "Mở quản lý tệp tin"
+  },
+  "control_closePanelTooltip": {
+    "message": "Đóng bảng điều khiển"
+  },
+  "control_recordingMode": {
+    "message": "Chế độ quay"
+  },
+  "control_modeTab": {
+    "message": "Tab"
+  },
+  "control_modeTabDesc": {
+    "message": "Quay tab hiện tại"
+  },
+  "control_modeWindow": {
+    "message": "Cửa sổ"
+  },
+  "control_modeWindowDesc": {
+    "message": "Quay toàn bộ cửa sổ"
+  },
+  "control_modeScreen": {
+    "message": "Màn hình"
+  },
+  "control_modeScreenDesc": {
+    "message": "Quay toàn bộ màn hình"
+  },
+  "control_statusRecording": {
+    "message": "Đang quay"
+  },
+  "control_statusPaused": {
+    "message": "Đã tạm dừng"
+  },
+  "control_statusPreparing": {
+    "message": "Đang chuẩn bị..."
+  },
+  "control_btnStart": {
+    "message": "Bắt đầu quay"
+  },
+  "control_btnStop": {
+    "message": "Dừng quay"
+  },
+  "control_btnPause": {
+    "message": "Tạm dừng"
+  },
+  "control_btnResume": {
+    "message": "Tiếp tục"
+  },
+  "control_btnPreparing": {
+    "message": "Đang chuẩn bị..."
+  },
+  "control_btnStarting": {
+    "message": "Bắt đầu sau $SECONDS$ giây...",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_countdownLabel": {
+    "message": "Đếm ngược"
+  },
+  "control_tipsTitle": {
+    "message": "Mẹo quay phim:"
+  },
+  "control_tipsSelectMode": {
+    "message": "Đã chọn chế độ $MODE$, nhấn Bắt đầu để quay.",
+    "placeholders": {
+      "mode": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_tipsPreparing": {
+    "message": "Đang chờ chọn màn hình..."
+  },
+  "control_tipsCountdown": {
+    "message": "Chuẩn bị! Quá trình quay sẽ bắt đầu sau $SECONDS$ giây.",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_tipsPaused": {
+    "message": "Đã tạm dừng, nhấn Tiếp tục để quay lại."
+  },
+  "control_tipsRecording": {
+    "message": "Đang quay, nhấn Tạm dừng nếu cần thiết."
+  },
+  "control_overlayRecordingStarts": {
+    "message": "Sắp bắt đầu quay..."
+  },
+  "drive_pageTitle": {
+    "message": "Danh sách quay phim - Screen Recorder"
+  },
+  "drive_headerTitle": {
+    "message": "Quản lý bản quay"
+  },
+  "drive_errorSupport": {
+    "message": "Trình duyệt không hỗ trợ lưu trữ OPFS"
+  },
+  "drive_errorMetaNotFound": {
+    "message": "Không tìm thấy tệp meta.json"
+  },
+  "drive_errorEmpty": {
+    "message": "Tệp bản quay trống"
+  },
+  "drive_errorMetadata": {
+    "message": "Không thể đọc dữ liệu bản quay"
+  },
+  "drive_errorDataSize": {
+    "message": "Không thể lấy kích thước tệp"
+  },
+  "drive_recordingNamePrefix": {
+    "message": "Quay màn hình"
+  },
+  "drive_logDeleted": {
+    "message": "Đã xóa bản quay $ID$",
+    "placeholders": {
+      "id": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_errorDelete": {
+    "message": "Xóa thất bại: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_logBatchDelete": {
+    "message": "Đã xóa thành công $COUNT$ bản quay",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_errorLoad": {
+    "message": "Có lỗi xảy ra khi tải danh sách"
+  },
+  "drive_errorLoadPrefix": {
+    "message": "Tải danh sách thất bại:"
+  },
+  "studio_pageTitle": {
+    "message": "Screen Recording Studio"
+  },
+  "studio_headerTitle": {
+    "message": "Screen Recorder Studio"
+  },
+  "studio_githubTooltip": {
+    "message": "Xem mã nguồn trên GitHub"
+  },
+  "studio_githubText": {
+    "message": "GitHub"
+  },
+  "studio_feedbackTooltip": {
+    "message": "Báo lỗi hoặc đề xuất tính năng"
+  },
+  "studio_feedbackText": {
+    "message": "Phản hồi"
+  },
+  "studio_helpTooltip": {
+    "message": "Trợ giúp & Tài liệu"
+  },
+  "studio_helpText": {
+    "message": "Trợ giúp"
+  },
+  "studio_driveTooltip": {
+    "message": "Mở quản lý tệp tin"
+  },
+  "studio_driveText": {
+    "message": "Ổ đĩa"
+  },
+  "studio_fullscreenEnterTooltip": {
+    "message": "Toàn màn hình"
+  },
+  "studio_fullscreenExitTooltip": {
+    "message": "Thoát toàn màn hình"
+  },
+  "studio_fullscreenEnterText": {
+    "message": "Toàn màn hình"
+  },
+  "studio_fullscreenExitText": {
+    "message": "Thoát"
+  },
+  "bg_title": {
+    "message": "Cài đặt nền"
+  },
+  "bg_tab_wallpaper": {
+    "message": "Hình nền"
+  },
+  "bg_tab_gradient": {
+    "message": "Chuyển sắc"
+  },
+  "bg_tab_solid": {
+    "message": "Màu đơn"
+  },
+  "bg_tab_image": {
+    "message": "Hình ảnh"
+  },
+  "radius_title": {
+    "message": "Bo góc video"
+  },
+  "radius_none": {
+    "message": "Không"
+  },
+  "radius_small": {
+    "message": "Nhỏ"
+  },
+  "radius_medium": {
+    "message": "Vừa"
+  },
+  "radius_large": {
+    "message": "Lớn"
+  },
+  "radius_xl": {
+    "message": "Rất lớn"
+  },
+  "padding_title": {
+    "message": "Lề video (Padding)"
+  },
+  "padding_none": {
+    "message": "Không"
+  },
+  "padding_small": {
+    "message": "Nhỏ"
+  },
+  "padding_medium": {
+    "message": "Vừa"
+  },
+  "padding_large": {
+    "message": "Lớn"
+  },
+  "padding_xl": {
+    "message": "Rất lớn"
+  },
+  "ratio_yt": {
+    "message": "YouTube Ngang"
+  },
+  "ratio_yt_desc": {
+    "message": "YouTube, Bilibili, v.v."
+  },
+  "ratio_sq": {
+    "message": "Instagram Vuông"
+  },
+  "ratio_sq_desc": {
+    "message": "Bài đăng Instagram"
+  },
+  "ratio_tiktok": {
+    "message": "TikTok Dọc"
+  },
+  "ratio_tiktok_desc": {
+    "message": "TikTok, Reels, v.v."
+  },
+  "ratio_story": {
+    "message": "Instagram Story"
+  },
+  "ratio_story_desc": {
+    "message": "Stories, Xiaohongshu"
+  },
+  "shadow_title": {
+    "message": "Đổ bóng video"
+  },
+  "shadow_preset_title": {
+    "message": "Hiệu ứng sẵn có"
+  },
+  "shadow_custom_title": {
+    "message": "Thông số tùy chỉnh"
+  },
+  "shadow_light": {
+    "message": "Bóng nhẹ"
+  },
+  "shadow_standard": {
+    "message": "Tiêu chuẩn"
+  },
+  "shadow_deep": {
+    "message": "Bóng sâu"
+  },
+  "shadow_distant": {
+    "message": "Bóng xa"
+  },
+  "shadow_offset_x": {
+    "message": "Lệch ngang"
+  },
+  "shadow_offset_y": {
+    "message": "Lệch dọc"
+  },
+  "shadow_blur": {
+    "message": "Độ nhòe"
+  },
+  "shadow_color": {
+    "message": "Màu sắc"
+  },
+  "shadow_opacity": {
+    "message": "Độ trong suốt"
+  },
+  "shadow_empty_state": {
+    "message": "Bật công tắc để cài đặt đổ bóng"
+  },
+  "color_tab_basic": {
+    "message": "Cơ bản"
+  },
+  "color_tab_light": {
+    "message": "Sáng"
+  },
+  "color_tab_business": {
+    "message": "Công việc"
+  },
+  "color_tab_creative": {
+    "message": "Sáng tạo"
+  },
+  "color_custom": {
+    "message": "Tùy chỉnh:"
+  },
+  "gradient_tab_linear": {
+    "message": "Tuyến tính"
+  },
+  "gradient_tab_radial": {
+    "message": "Tỏa tròn"
+  },
+  "gradient_tab_conic": {
+    "message": "Hình nón"
+  },
+  "gradient_tab_multi": {
+    "message": "Đa màu"
+  },
+  "gradient_current": {
+    "message": "Hiện tại:"
+  },
+  "gradient_select_hint": {
+    "message": "Chọn một kiểu nền"
+  },
+  "gradient_colors_suffix": {
+    "message": "màu"
+  },
+  "wallpaper_tab_abstract": {
+    "message": "Trừu tượng"
+  },
+  "wallpaper_tab_minimal": {
+    "message": "Tối giản"
+  },
+  "wallpaper_tab_nature": {
+    "message": "Tự nhiên"
+  },
+  "wallpaper_tab_business": {
+    "message": "Công sở"
+  },
+  "wallpaper_tab_tech": {
+    "message": "Công nghệ"
+  },
+  "wallpaper_error": {
+    "message": "Tải hình nền thất bại"
+  },
+  "wallpaper_stats": {
+    "message": "Có $COUNT$ hình nền trong mục này",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "wallpaper_total": {
+    "message": "Tổng cộng $TOTAL$",
+    "placeholders": {
+      "total": {
+        "content": "$1"
+      }
+    }
+  },
+  "upload_processing": {
+    "message": "Đang xử lý..."
+  },
+  "upload_drop_hint": {
+    "message": "Bấm hoặc kéo ảnh vào đây"
+  },
+  "upload_format_hint": {
+    "message": "JPEG, PNG, WebP, GIF · Tối đa 5MB"
+  },
+  "upload_error_select": {
+    "message": "Vui lòng chọn một tệp ảnh"
+  },
+  "upload_error_failed": {
+    "message": "Tải lên thất bại"
+  },
+  "drive_delete_selected_btn": {
+    "message": "Xóa mục đã chọn ($COUNT$)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_clear_selection": {
+    "message": "Bỏ chọn"
+  },
+  "drive_refresh": {
+    "message": "Làm mới"
+  },
+  "drive_error_title": {
+    "message": "Lỗi"
+  },
+  "drive_close_error": {
+    "message": "Đóng"
+  },
+  "drive_loading": {
+    "message": "Đang tải bản quay..."
+  },
+  "drive_empty_title": {
+    "message": "Chưa có bản quay nào"
+  },
+  "drive_empty_desc1": {
+    "message": "Bạn chưa có bản quay màn hình nào được lưu."
+  },
+  "drive_empty_desc2": {
+    "message": "Bắt đầu quay và chúng sẽ hiện ở đây."
+  },
+  "drive_start_recording_btn": {
+    "message": "Bắt đầu quay"
+  },
+  "drive_select_all": {
+    "message": "Chọn tất cả ($COUNT$ bản quay)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_sort_hint": {
+    "message": "Sắp xếp theo thời gian (mới nhất)"
+  },
+  "drive_confirm_delete_title": {
+    "message": "Xác nhận xóa"
+  },
+  "drive_confirm_delete_selected": {
+    "message": "Bạn có chắc muốn xóa $COUNT$ bản quay đã chọn?",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_confirm_delete_single": {
+    "message": "Bạn có chắc muốn xóa bản quay này?"
+  },
+  "drive_action_undone": {
+    "message": "Hành động này không thể hoàn tác."
+  },
+  "drive_cancel": {
+    "message": "Hủy"
+  },
+  "drive_delete": {
+    "message": "Xóa"
+  },
+  "card_status_completed": {
+    "message": "Đã hoàn thành"
+  },
+  "card_status_incomplete": {
+    "message": "Chưa xong"
+  },
+  "card_label_created": {
+    "message": "Đã tạo:"
+  },
+  "card_label_status": {
+    "message": "Trạng thái:"
+  },
+  "card_label_codec": {
+    "message": "Codec:"
+  },
+  "card_label_resolution": {
+    "message": "Độ phân giải:"
+  },
+  "card_label_fps": {
+    "message": "FPS:"
+  },
+  "card_label_size": {
+    "message": "Dung lượng:"
+  },
+  "card_label_frames": {
+    "message": "Tổng số khung hình:"
+  },
+  "card_incomplete_title": {
+    "message": "Bản quay chưa xong"
+  },
+  "card_incomplete_desc": {
+    "message": "Thiếu dữ liệu video"
+  },
+  "card_preview_error": {
+    "message": "Không thể xem trước"
+  },
+  "card_preview_loading": {
+    "message": "Đang tạo xem trước..."
+  },
+  "card_btn_edit": {
+    "message": "Chỉnh sửa"
+  },
+  "card_btn_delete": {
+    "message": "Xóa"
+  },
+  "card_edit_disabled_tooltip": {
+    "message": "Không thể sửa bản quay chưa xong"
+  },
+  "card_edit_tooltip": {
+    "message": "Sửa bản quay"
+  },
+  "card_preview_load_error": {
+    "message": "Lỗi tải dữ liệu: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_today": {
+    "message": "Hôm nay $TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_yesterday": {
+    "message": "Hôm qua $TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_days_ago": {
+    "message": "$DAYS$ ngày trước",
+    "placeholders": {
+      "days": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_panel_tier_free": {
+    "message": "MIỄN PHÍ"
+  },
+  "export_panel_tier_pro": {
+    "message": "PRO"
+  },
+  "export_panel_tier_trial": {
+    "message": "THỬ NGHIỆM PRO"
+  },
+  "export_panel_btn": {
+    "message": "Xuất video"
+  },
+  "export_panel_tooltip_incomplete": {
+    "message": "Hoàn thành quay để xuất video"
+  },
+  "export_panel_tooltip_no_data": {
+    "message": "Không có dữ liệu video"
+  },
+  "export_panel_btn_exporting": {
+    "message": "Đang xuất..."
+  },
+  "export_dialog_title": {
+    "message": "Xuất Video"
+  },
+  "export_source_res": {
+    "message": "Độ phân giải"
+  },
+  "export_source_codec": {
+    "message": "Định dạng"
+  },
+  "export_source_duration": {
+    "message": "Thời lượng"
+  },
+  "export_source_frames": {
+    "message": "Số khung hình"
+  },
+  "export_badge_bg": {
+    "message": "Có nền"
+  },
+  "export_badge_trim": {
+    "message": "Đã cắt"
+  },
+  "export_format_mp4": {
+    "message": "MP4"
+  },
+  "export_format_webm": {
+    "message": "WebM"
+  },
+  "export_format_gif": {
+    "message": "GIF"
+  },
+  "export_quality_title": {
+    "message": "Chất lượng"
+  },
+  "export_quality_draft": {
+    "message": "Nháp"
+  },
+  "export_quality_draft_desc": {
+    "message": "Nhanh nhất, chất lượng thấp"
+  },
+  "export_quality_balanced": {
+    "message": "Cân bằng"
+  },
+  "export_quality_balanced_desc": {
+    "message": "Chất lượng và tốc độ tốt"
+  },
+  "export_quality_high": {
+    "message": "Cao"
+  },
+  "export_quality_high_desc": {
+    "message": "Chất lượng cao, chậm hơn"
+  },
+  "export_quality_best": {
+    "message": "Tốt nhất"
+  },
+  "export_quality_best_desc": {
+    "message": "Chất lượng tối đa, rất chậm"
+  },
+  "export_label_resolution": {
+    "message": "Độ phân giải"
+  },
+  "export_res_source": {
+    "message": "Giống nguồn ($WIDTH$×$HEIGHT$)",
+    "placeholders": {
+      "width": {
+        "content": "$1"
+      },
+      "height": {
+        "content": "$2"
+      }
+    }
+  },
+  "export_label_framerate": {
+    "message": "Tỷ lệ khung hình"
+  },
+  "export_fps_source": {
+    "message": "$FPS$ fps (Nguồn)",
+    "placeholders": {
+      "fps": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_bitrate": {
+    "message": "Bitrate"
+  },
+  "export_bitrate_auto": {
+    "message": "Tự động"
+  },
+  "export_bitrate_manual": {
+    "message": "Thủ công"
+  },
+  "export_bitrate_auto_hint": {
+    "message": "Tự động: $RATE$ Mbps (theo độ phân giải)",
+    "placeholders": {
+      "rate": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_speed": {
+    "message": "Tốc độ mã hóa"
+  },
+  "export_speed_fastest": {
+    "message": "Nhanh nhất"
+  },
+  "export_speed_fast": {
+    "message": "Nhanh"
+  },
+  "export_speed_balanced": {
+    "message": "Cân bằng"
+  },
+  "export_speed_slow": {
+    "message": "Chậm"
+  },
+  "export_speed_slowest": {
+    "message": "Rất chậm"
+  },
+  "export_est_output": {
+    "message": "Đầu ra dự kiến"
+  },
+  "export_est_size": {
+    "message": "Dung lượng dự kiến"
+  },
+  "export_label_gif_quality": {
+    "message": "Chất lượng GIF"
+  },
+  "export_gif_best": {
+    "message": "Tốt nhất (Chậm)"
+  },
+  "export_gif_high": {
+    "message": "Cao"
+  },
+  "export_gif_good": {
+    "message": "Tốt (Mặc định)"
+  },
+  "export_gif_fast": {
+    "message": "Nhanh"
+  },
+  "export_gif_fastest": {
+    "message": "Nhanh nhất"
+  },
+  "export_label_scale": {
+    "message": "Tỷ lệ"
+  },
+  "export_scale_original": {
+    "message": "100% (Gốc)"
+  },
+  "export_label_workers": {
+    "message": "Luồng xử lý"
+  },
+  "export_worker_singular": {
+    "message": "$COUNT$ luồng",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_worker_plural": {
+    "message": "$COUNT$ luồng",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_dither": {
+    "message": "Dithering"
+  },
+  "export_dither_none": {
+    "message": "Không"
+  },
+  "export_btn_cancel": {
+    "message": "Hủy"
+  },
+  "export_btn_export_mp4": {
+    "message": "Xuất file MP4"
+  },
+  "export_btn_export_webm": {
+    "message": "Xuất file WebM"
+  },
+  "export_btn_export_gif": {
+    "message": "Xuất file GIF"
+  },
+  "export_progress_preparing": {
+    "message": "Đang chuẩn bị..."
+  },
+  "export_progress_encoding": {
+    "message": "Đang mã hóa khung hình..."
+  },
+  "export_progress_muxing": {
+    "message": "Đang tạo tệp..."
+  },
+  "export_progress_finalizing": {
+    "message": "Đang hoàn tất..."
+  },
+  "export_progress_frame": {
+    "message": "Khung hình $CURRENT$ / $TOTAL$",
+    "placeholders": {
+      "current": {
+        "content": "$1"
+      },
+      "total": {
+        "content": "$2"
+      }
+    }
+  },
+  "export_progress_time": {
+    "message": "Còn khoảng ~$SECONDS$ giây",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_progress_hint": {
+    "message": "Vui lòng đợi trong khi video đang được xuất..."
+  },
+  "wallpaper_cat_abstract_name": {
+    "message": "Trừu tượng"
+  },
+  "wallpaper_cat_abstract_desc": {
+    "message": "Họa tiết trừu tượng và thiết kế hiện đại"
+  },
+  "wallpaper_cat_minimal_name": {
+    "message": "Tối giản"
+  },
+  "wallpaper_cat_minimal_desc": {
+    "message": "Hình khối sạch sẽ và thẩm mỹ tối giản"
+  },
+  "wallpaper_cat_nature_name": {
+    "message": "Thiên nhiên"
+  },
+  "wallpaper_cat_nature_desc": {
+    "message": "Cảnh quan thiên nhiên và cây cỏ"
+  },
+  "wallpaper_cat_business_name": {
+    "message": "Công sở"
+  },
+  "wallpaper_cat_business_desc": {
+    "message": "Không gian làm việc chuyên nghiệp"
+  },
+  "wallpaper_cat_tech_name": {
+    "message": "Công nghệ"
+  },
+  "wallpaper_cat_tech_desc": {
+    "message": "Yếu tố công nghệ và nghệ thuật số"
+  },
+  "wallpaper_gradient_abstract_1_name": {
+    "message": "Trừu tượng Chuyển sắc"
+  },
+  "wallpaper_gradient_abstract_1_desc": {
+    "message": "Nền trừu tượng hiện đại"
+  },
+  "wallpaper_geometric_pattern_1_name": {
+    "message": "Họa tiết Hình học"
+  },
+  "wallpaper_geometric_pattern_1_desc": {
+    "message": "Nền hình học sạch sẽ"
+  },
+  "wallpaper_abstract_2425706_name": {
+    "message": "Màu sắc Trừu tượng"
+  },
+  "wallpaper_abstract_2425706_desc": {
+    "message": "Kết cấu màu sắc rực rỡ"
+  },
+  "wallpaper_abstract_2512412_name": {
+    "message": "Dòng chảy Trừu tượng"
+  },
+  "wallpaper_abstract_2512412_desc": {
+    "message": "Nền màu sắc uốn lượn"
+  },
+  "wallpaper_abstract_6297317_name": {
+    "message": "Hình khối Trừu tượng"
+  },
+  "wallpaper_abstract_6297317_desc": {
+    "message": "Bố cục các mảng màu"
+  },
+  "wallpaper_ai_generated_9083808_name": {
+    "message": "Nghệ thuật AI"
+  },
+  "wallpaper_ai_generated_9083808_desc": {
+    "message": "Nền tương lai tạo bởi AI"
+  },
+  "wallpaper_beach_4938036_name": {
+    "message": "Bãi biển"
+  },
+  "wallpaper_beach_4938036_desc": {
+    "message": "Cảnh biển tươi mát"
+  },
+  "wallpaper_bulb_5665770_name": {
+    "message": "Bóng đèn Sáng tạo"
+  },
+  "wallpaper_bulb_5665770_desc": {
+    "message": "Biểu tượng của ý tưởng"
+  },
+  "wallpaper_cpu_8892400_name": {
+    "message": "Mạch CPU"
+  },
+  "wallpaper_cpu_8892400_desc": {
+    "message": "Chip và bảng mạch"
+  },
+  "wallpaper_feather_5488401_name": {
+    "message": "Cận cảnh Lông vũ"
+  },
+  "wallpaper_feather_5488401_desc": {
+    "message": "Kết cấu lông vũ mềm mại"
+  },
+  "wallpaper_fractal_8902060_name": {
+    "message": "Nghệ thuật Fractal"
+  },
+  "wallpaper_fractal_8902060_desc": {
+    "message": "Họa tiết hình học rực rỡ"
+  },
+  "wallpaper_orange_3036097_name": {
+    "message": "Lát Cam"
+  },
+  "wallpaper_orange_3036097_desc": {
+    "message": "Lát cam tươi tắn"
+  },
+  "wallpaper_orange_6508617_name": {
+    "message": "Nền Cam"
+  },
+  "wallpaper_orange_6508617_desc": {
+    "message": "Nền màu cam năng động"
+  },
+  "wallpaper_polar_lights_5858656_name": {
+    "message": "Cực quang"
+  },
+  "wallpaper_polar_lights_5858656_desc": {
+    "message": "Bầu trời cực quang thơ mộng"
+  },
+  "wallpaper_spiral_3112405_name": {
+    "message": "Vòng xoắn"
+  },
+  "wallpaper_spiral_3112405_desc": {
+    "message": "Kết cấu xoắn ốc động"
+  },
+  "wallpaper_steelwool_458842_name": {
+    "message": "Vẽ ánh sáng"
+  },
+  "wallpaper_steelwool_458842_desc": {
+    "message": "Hiệu ứng phơi sáng ánh sáng"
+  },
+  "wallpaper_swimming_pool_8306716_name": {
+    "message": "Gợn nước Hồ bơi"
+  },
+  "wallpaper_swimming_pool_8306716_desc": {
+    "message": "Làn nước hồ bơi mát lạnh"
+  },
+  "wallpaper_abstract_2426502_name": {
+    "message": "Mảng màu Trừu tượng"
+  },
+  "wallpaper_abstract_2426502_desc": {
+    "message": "Thiết kế hiện đại trừu tượng"
+  },
+  "wallpaper_camera_1248682_name": {
+    "message": "Máy ảnh"
+  },
+  "wallpaper_camera_1248682_desc": {
+    "message": "Cận cảnh máy ảnh công nghệ"
+  },
+  "wallpaper_circle_5090539_name": {
+    "message": "Hình tròn"
+  },
+  "wallpaper_circle_5090539_desc": {
+    "message": "Họa tiết vòng tròn sạch sẽ"
+  },
+  "wallpaper_feather_7009025_name": {
+    "message": "Kết cấu Lông vũ"
+  },
+  "wallpaper_feather_7009025_desc": {
+    "message": "Họa tiết tự nhiên tinh tế"
+  },
+  "wallpaper_fiber_4814456_name": {
+    "message": "Sợi Quang"
+  },
+  "wallpaper_fiber_4814456_desc": {
+    "message": "Cảm giác công nghệ trừu tượng"
+  },
+  "wallpaper_frost_6702335_name": {
+    "message": "Băng giá"
+  },
+  "wallpaper_frost_6702335_desc": {
+    "message": "Nền tinh thể băng lạnh"
+  },
+  "wallpaper_leaves_4291098_name": {
+    "message": "Lá xanh"
+  },
+  "wallpaper_leaves_4291098_desc": {
+    "message": "Kết cấu lá xanh tươi"
+  },
+  "wallpaper_light_1834289_name": {
+    "message": "Bokeh Ánh sáng"
+  },
+  "wallpaper_light_1834289_desc": {
+    "message": "Hiệu ứng bokeh lung linh"
+  },
+  "wallpaper_light_942231_name": {
+    "message": "Vệt sáng"
+  },
+  "wallpaper_light_942231_desc": {
+    "message": "Dòng ánh sáng chuyển động"
+  },
+  "wallpaper_luck_4397584_name": {
+    "message": "Cỏ bốn lá"
+  },
+  "wallpaper_luck_4397584_desc": {
+    "message": "Cỏ bốn lá may mắn"
+  },
+  "wallpaper_waterdrop_2256201_name": {
+    "message": "Giọt nước"
+  },
+  "wallpaper_waterdrop_2256201_desc": {
+    "message": "Kết cấu macro giọt nước"
+  },
+  "welcome_pageTitle": {
+    "message": "Chào mừng đến với Screen Recorder Studio"
+  },
+  "welcome_headerSubtitle": {
+    "message": "Công cụ ghi hình trình duyệt chuyên nghiệp"
+  },
+  "welcome_installSuccess": {
+    "message": "Cài đặt thành công"
+  },
+  "welcome_headline": {
+    "message": "Chào mừng đến với Screen Recorder Studio! 🎉"
+  },
+  "welcome_subheadline": {
+    "message": "Sẵn sàng cho bản ghi đầu tiên? Chỉ mất vài giây để bắt đầu!"
+  },
+  "welcome_tryTitle": {
+    "message": "Thử ngay! 🚀"
+  },
+  "welcome_trySubtitle": {
+    "message": "Chọn chế độ ghi và nhấn nút bên dưới"
+  },
+  "welcome_tryFeatures": {
+    "message": "Không cần thiết lập • Đếm ngược $SECONDS$ giây • Chất lượng chuyên nghiệp",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "welcome_modeTabDetail": {
+    "message": "Hoàn hảo cho demo web và hướng dẫn"
+  },
+  "welcome_modeWindowDetail": {
+    "message": "Bao gồm thanh địa chỉ và thanh công cụ"
+  },
+  "welcome_modeScreenDetail": {
+    "message": "Tốt nhất cho quy trình làm việc giữa các ứng dụng"
+  },
+  "welcome_statusRecording": {
+    "message": "Đang ghi"
+  },
+  "welcome_modeLabel": {
+    "message": "Chế độ"
+  },
+  "welcome_readyTitle": {
+    "message": "🎬 Mọi thứ đã sẵn sàng!"
+  },
+  "welcome_readyDesc": {
+    "message": "Bạn đã chọn chế độ $MODE$. Nhấp nút xanh phía trên để bắt đầu bản ghi đầu tiên!",
+    "placeholders": {
+      "mode": {
+        "content": "$1"
+      }
+    }
+  },
+  "welcome_readyTip": {
+    "message": "Đếm ngược $SECONDS$ giây trước khi bắt đầu ghi",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "welcome_howTitle": {
+    "message": "Cách hoạt động"
+  },
+  "welcome_howDesc": {
+    "message": "Ba bước đơn giản để tận dụng tối đa tiện ích mở rộng"
+  },
+  "welcome_step1Title": {
+    "message": "Ghim tiện ích"
+  },
+  "welcome_step1Desc": {
+    "message": "Nhấp vào biểu tượng mảnh ghép 🧩 trên thanh công cụ và ghim tiện ích để truy cập nhanh"
+  },
+  "welcome_step2Title": {
+    "message": "Chọn đối tượng"
+  },
+  "welcome_step2Desc": {
+    "message": "Chọn nội dung cần ghi: tab hiện tại, toàn bộ cửa sổ hoặc toàn màn hình"
+  },
+  "welcome_step3Title": {
+    "message": "Nhấn Ghi"
+  },
+  "welcome_step3Desc": {
+    "message": "Nhấp “$BTN$” và chuẩn bị — đếm ngược $SECONDS$ giây giúp bạn sẵn sàng!",
+    "placeholders": {
+      "btn": {
+        "content": "$1"
+      },
+      "seconds": {
+        "content": "$2"
+      }
+    }
+  },
+  "welcome_advancedTitle": {
+    "message": "Cần kiểm soát nhiều hơn?"
+  },
+  "welcome_advancedDesc": {
+    "message": "Nhấp vào biểu tượng tiện ích trên thanh công cụ để mở bảng điều khiển đầy đủ"
+  },
+  "welcome_openControl": {
+    "message": "Mở bảng điều khiển đầy đủ"
+  },
+  "welcome_footerHelp": {
+    "message": "Cần trợ giúp? Nhấp vào biểu tượng tiện ích để mở bảng điều khiển với các tính năng nâng cao."
+  },
+  "welcome_footerMeta": {
+    "message": "Screen Recorder Studio • Dành cho người dùng chuyên nghiệp"
+  },
+  "control_cameraAudioTitle": {
+    "message": "Camera & Microphone"
+  },
+  "control_cameraToggle": {
+    "message": "Enable camera"
+  },
+  "control_audioToggle": {
+    "message": "Enable microphone"
+  },
+  "control_selectCamera": {
+    "message": "Camera"
+  },
+  "control_selectMic": {
+    "message": "Microphone"
+  },
+  "control_cameraPreviewLoading": {
+    "message": "Initializing camera preview..."
+  },
+  "control_cameraPreviewError": {
+    "message": "Unable to preview camera"
+  }
 }
