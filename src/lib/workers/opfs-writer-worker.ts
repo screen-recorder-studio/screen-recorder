@@ -60,7 +60,7 @@ let lastTimestamp = -1
 // ✅ 批量写入缓冲（0.5~1s）
 const DATA_FLUSH_INTERVAL_MS = 700
 let pendingDataQueue: Array<{ offset: number; data: Uint8Array }> = []
-let dataFlushTimer: any = null
+let dataFlushTimer: ReturnType<typeof setTimeout> | null = null
 let flushInFlight: Promise<void> | null = null
 
 // Fallback buffers when SyncAccessHandle is unavailable; we flush to file on finalize
@@ -121,25 +121,28 @@ function scheduleDataFlush() {
   dataFlushTimer = setTimeout(() => { dataFlushTimer = null; void flushPendingData() }, DATA_FLUSH_INTERVAL_MS)
 }
 
+async function writePendingParts(parts: Array<{ offset: number; data: Uint8Array }>) {
+  if (parts.length === 0) return
+  if (dataSyncHandle) {
+    const total = parts.reduce((acc, p) => acc + p.data.byteLength, 0)
+    const merged = new Uint8Array(total)
+    let cursor = 0
+    for (const p of parts) { merged.set(p.data, cursor); cursor += p.data.byteLength }
+    const startOffset = parts[0].offset
+    try { dataSyncHandle.write(merged, { at: startOffset }) } catch (e) { console.error(`[OPFS] data write failed at offset ${startOffset}, size ${merged.byteLength}`, e) }
+  } else {
+    // Fallback: keep in memory; will flush to file on finalize
+    for (const p of parts) fallbackDataParts.push(p.data)
+  }
+}
+
 async function flushPendingData(force = false) {
   if (dataFlushTimer && force) { clearTimeout(dataFlushTimer); dataFlushTimer = null }
   if (flushInFlight) await flushInFlight
-  const queue = pendingDataQueue
-  if (queue.length === 0) return
-  flushInFlight = (async () => {
-    const parts = queue.splice(0, queue.length)
-    if (dataSyncHandle) {
-      const total = parts.reduce((acc, p) => acc + p.data.byteLength, 0)
-      const merged = new Uint8Array(total)
-      let cursor = 0
-      for (const p of parts) { merged.set(p.data, cursor); cursor += p.data.byteLength }
-      const startOffset = parts[0].offset
-      try { dataSyncHandle.write(merged, { at: startOffset }) } catch (e) { console.error('[OPFS] data write failed', e) }
-    } else {
-      // Fallback: keep in memory; will flush to file on finalize
-      for (const p of parts) fallbackDataParts.push(p.data)
-    }
-  })()
+  if (pendingDataQueue.length === 0) return
+  const parts = pendingDataQueue
+  pendingDataQueue = []
+  flushInFlight = writePendingParts(parts)
   await flushInFlight
   flushInFlight = null
 }
