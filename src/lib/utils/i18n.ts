@@ -77,6 +77,7 @@ function hasChromeI18n(): boolean {
 /**
  * Initialize i18n for web mode (non-extension)
  * Call this at app startup to preload locale messages
+ * Returns a promise that resolves when initialization is complete
  */
 export async function initI18n(): Promise<void> {
   // Skip if chrome.i18n is available (extension mode)
@@ -85,7 +86,7 @@ export async function initI18n(): Promise<void> {
     return
   }
 
-  // Avoid duplicate initialization
+  // Return existing promise if already initializing
   if (localeInitPromise) return localeInitPromise
 
   localeInitPromise = (async () => {
@@ -93,9 +94,20 @@ export async function initI18n(): Promise<void> {
     console.log('[i18n] Initializing web mode with language:', lang)
     cachedMessages = await loadLocaleMessages(lang)
     localeInitialized = true
+    console.log('[i18n] Initialization complete, loaded', Object.keys(cachedMessages).length, 'messages')
   })()
 
   return localeInitPromise
+}
+
+/**
+ * Wait for i18n to be initialized (useful for components)
+ */
+export async function waitForI18n(): Promise<void> {
+  if (localeInitialized) return
+  if (localeInitPromise) return localeInitPromise
+  // If not initialized and no promise, trigger initialization
+  return initI18n()
 }
 
 /**
@@ -146,7 +158,7 @@ export function _t(
 }
 
 // Auto-initialize i18n when module loads (for web mode)
-// This ensures translations are available as soon as possible
+// This ensures translations start loading as early as possible
 if (typeof window !== 'undefined' && !hasChromeI18n()) {
   initI18n().catch(e => console.error('[i18n] Auto-init failed:', e))
 }
