@@ -57,6 +57,12 @@ let initialMeta: any = {}
 let firstTimestamp = -1
 let lastTimestamp = -1
 
+// ✅ 批量写入缓冲（0.5~1s）
+const DATA_FLUSH_INTERVAL_MS = 700
+let pendingDataQueue: Array<{ offset: number; data: Uint8Array }> = []
+let dataFlushTimer: any = null
+let flushInFlight: Promise<void> | null = null
+
 // Fallback buffers when SyncAccessHandle is unavailable; we flush to file on finalize
 let fallbackDataParts: Uint8Array[] = []
 
@@ -110,16 +116,32 @@ async function openDataFile() {
   }
 }
 
-async function appendData(u8: Uint8Array) {
-  if (dataSyncHandle) {
-    // SyncAccessHandle.write() is synchronous and takes Uint8Array directly
-    const written = dataSyncHandle.write(u8, { at: dataOffset })
-    dataOffset += (typeof written === 'number' ? written : u8.byteLength)
-  } else {
-    // Fallback: keep in memory; will flush to file on finalize
-    fallbackDataParts.push(u8)
-    dataOffset += u8.byteLength
-  }
+function scheduleDataFlush() {
+  if (dataFlushTimer) return
+  dataFlushTimer = setTimeout(() => { dataFlushTimer = null; void flushPendingData() }, DATA_FLUSH_INTERVAL_MS)
+}
+
+async function flushPendingData(force = false) {
+  if (dataFlushTimer && force) { clearTimeout(dataFlushTimer); dataFlushTimer = null }
+  if (flushInFlight) await flushInFlight
+  const queue = pendingDataQueue
+  if (queue.length === 0) return
+  flushInFlight = (async () => {
+    const parts = queue.splice(0, queue.length)
+    if (dataSyncHandle) {
+      const total = parts.reduce((acc, p) => acc + p.data.byteLength, 0)
+      const merged = new Uint8Array(total)
+      let cursor = 0
+      for (const p of parts) { merged.set(p.data, cursor); cursor += p.data.byteLength }
+      const startOffset = parts[0].offset
+      try { dataSyncHandle.write(merged, { at: startOffset }) } catch (e) { console.error('[OPFS] data write failed', e) }
+    } else {
+      // Fallback: keep in memory; will flush to file on finalize
+      for (const p of parts) fallbackDataParts.push(p.data)
+    }
+  })()
+  await flushInFlight
+  flushInFlight = null
 }
 
 async function flushDataFallback() {
@@ -168,7 +190,10 @@ self.onmessage = async (e: MessageEvent<InitMessage | AppendMessage | FlushMessa
     if (msg.type === 'append') {
       if (!dataHandle) throw new Error('writer not initialized')
       const u8 = new Uint8Array(msg.buffer)
-      await appendData(u8)
+      const startOffset = dataOffset
+      dataOffset += u8.byteLength
+      pendingDataQueue.push({ offset: startOffset, data: u8 })
+      scheduleDataFlush()
 
       // ✅ 追踪时间戳
       const ts = msg.timestamp ?? 0
@@ -186,6 +211,10 @@ self.onmessage = async (e: MessageEvent<InitMessage | AppendMessage | FlushMessa
         isKeyframe: !!msg.isKeyframe
       }) + '\n')
       chunksWritten++
+      if (msg.chunkType === 'key' || msg.isKeyframe) {
+        // 🔑 关键帧立即刷写，避免长时间积累
+        await flushPendingData(true)
+      }
       if (chunksWritten % 100 === 0) {
         self.postMessage({ type: 'progress', bytesWrittenTotal: dataOffset, chunksWritten } as WriterProgressEvent)
         try { await flushIndexToFile() } catch {}
@@ -195,6 +224,7 @@ self.onmessage = async (e: MessageEvent<InitMessage | AppendMessage | FlushMessa
 
     if (msg.type === 'flush') {
       // flush() is synchronous
+      await flushPendingData(true)
       try { dataSyncHandle?.flush() } catch {}
       try { await flushIndexToFile() } catch {}
       self.postMessage({ type: 'progress', bytesWrittenTotal: dataOffset, chunksWritten } as WriterProgressEvent)
@@ -202,6 +232,7 @@ self.onmessage = async (e: MessageEvent<InitMessage | AppendMessage | FlushMessa
     }
 
     if (msg.type === 'finalize') {
+      await flushPendingData(true)
       await flushIndexToFile()
       await closeData()
 
@@ -239,4 +270,3 @@ self.addEventListener('error', (ev: any) => {
   const msg: WriterErrorEvent = { type: 'error', code: 'WORKER_ERROR', message: ev?.message || 'Unknown worker error' }
   try { self.postMessage(msg) } catch {}
 })
-
