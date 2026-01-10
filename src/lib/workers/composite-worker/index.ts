@@ -81,7 +81,7 @@ let displaySizeLocked = false;
 let windowStartFrameIndex: number = 0;  // 窗口起始帧索引（全局）
 let videoFrameRate: number = 30;  // 视频帧率（默认 30fps）
 
-// 🆕 单帧预览专用解码器（独立于主播放器解码器）
+// 🆕 Dedicated preview decoder (independent from main playback decoder)
 let previewDecoder: VideoDecoder | null = null;
 let previewDecoderCodec: string | null = null;
 let previewDecodedFrames: VideoFrame[] = [];
@@ -991,7 +991,7 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
   }
 }
 
-// 🆕 渲染并发送单帧预览
+// 🆕 Render and send single-frame preview
 function renderAndSendPreviewFrame() {
   if (previewDecodedFrames.length <= previewTargetIndex) {
     console.error('❌ [COMPOSITE-WORKER] Preview frame not available');
@@ -2003,8 +2003,8 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         }
         break;
 
-      // 🆕 单帧预览：解码最小 GOP 并返回目标帧的位图
-      // 使用独立的解码器，不干扰主播放器
+      // 🆕 Single-frame preview: decode minimal GOP and return target frame bitmap
+      // Uses independent decoder, does not interfere with main player
       case 'decodeSingleFrame':
         console.log('🔍 [COMPOSITE-WORKER] decodeSingleFrame request:', {
           chunksCount: data.chunks?.length,

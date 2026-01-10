@@ -51,7 +51,7 @@
     | null
     | ((res: { start: number; chunks: any[] }) => void) = null;
 
-  // 🆕 单帧 GOP 预览控制
+  // 🆕 Single-frame GOP preview control
   let isFetchingSingleFrameGOP = false;
   let singleFrameGOPResolver:
     | null
@@ -386,7 +386,7 @@
             return;
           }
 
-          // 🆕 拦截：单帧 GOP 预览响应
+          // 🆕 Intercept: Single-frame GOP preview response
           if (isFetchingSingleFrameGOP && type === "singleFrameGOP") {
             const { targetFrame, targetIndexInGOP, chunks: gopChunks } = ev.data;
             console.log("[preview] Reader returned singleFrameGOP:", {
@@ -613,8 +613,8 @@
     });
   }
 
-  // 🆕 供 VideoPreviewComposite 进行单帧预览的 GOP 数据拉取
-  // 只读取目标帧所需的最小 GOP（从最近关键帧到目标帧）
+  // 🆕 GOP data fetching for VideoPreviewComposite single-frame preview
+  // Only read minimal GOP required for target frame (from nearest keyframe to target frame)
   async function fetchSingleFrameGOP(
     targetFrame: number
   ): Promise<{ chunks: any[]; targetIndexInGOP: number } | null> {
@@ -656,7 +656,7 @@
         return;
       }
 
-      // 超时保护（较短，因为这是预览操作）
+      // Timeout protection (shorter since this is a preview operation)
       setTimeout(() => {
         if (!settled) {
           console.warn("[preview] Single frame GOP timeout, returning null");

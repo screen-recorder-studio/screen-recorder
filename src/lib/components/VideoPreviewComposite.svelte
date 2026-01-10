@@ -34,7 +34,7 @@
     onRequestWindow?: (args: { centerMs: number; beforeMs: number; afterMs: number }) => void
     // Optional: only fetch data, don't switch window, used for prefetch cache
     fetchWindowData?: (args: { centerMs: number; beforeMs: number; afterMs: number }) => Promise<{ chunks: any[]; windowStartIndex: number }>
-    // 🆕 单帧预览：获取目标帧的最小 GOP（用于快速预览）
+    // 🆕 Single-frame preview: fetch minimal GOP for target frame (for fast preview)
     fetchSingleFrameGOP?: (targetFrame: number) => Promise<{ chunks: any[]; targetIndexInGOP: number } | null>
     className?: string
   }
@@ -704,7 +704,7 @@
           isPlaying = false
           break
 
-        // 🆕 单帧预览响应处理
+        // 🆕 Single-frame preview response handling
         case 'singleFramePreview':
           console.log('🔍 [VideoPreview] Received single frame preview:', {
             success: data.success,
@@ -1744,8 +1744,8 @@
         })
       }
     } else {
-      // 🆕 优化：使用单帧预览（只加载最小 GOP）而非完整窗口切换
-      // 取消之前的挂起请求
+      // 🆕 Optimization: use single-frame preview (only load minimal GOP) instead of full window switching
+      // Cancel any previous pending request
       if (windowSwitchThrottleTimer) {
         clearTimeout(windowSwitchThrottleTimer)
       }
@@ -1753,7 +1753,7 @@
       windowSwitchThrottleTimer = window.setTimeout(async () => {
         windowSwitchThrottleTimer = null
 
-        // 再次检查是否仍需要预览（可能鼠标已移回窗口内或离开）
+        // Check again if preview is still needed (mouse may have moved back into window or left)
         if (!isPreviewMode) return
         const currentGlobalFrame = Math.floor((previewTimeMs / 1000) * frameRate)
         const currentWindowFrame = currentGlobalFrame - windowStartIndex
@@ -1768,7 +1768,7 @@
           return
         }
 
-        // 🆕 使用单帧 GOP 预览（如果可用）
+        // 🆕 Use single-frame GOP preview (if available)
         if (fetchSingleFrameGOP && compositeWorker) {
           console.log('🔍 [Preview] Using single-frame GOP preview for frame:', currentGlobalFrame)
 
@@ -1807,7 +1807,7 @@
             isLoadingPreview = false
           }
         } else {
-          // 🔧 回退：使用完整窗口切换（老方法）
+          // 🔧 Fallback: use full window switching (legacy method)
           const targetTimeMs = (currentGlobalFrame / frameRate) * 1000
 
           // 显示加载指示器

@@ -530,8 +530,8 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
       return
     }
 
-    // 🆕 单帧预览优化：只读取目标帧所需的最小 GOP（从最近关键帧到目标帧）
-    // 用于时间轴 hover 预览，避免加载整个窗口
+    // 🆕 Single-frame preview optimization: only read minimal GOP required for target frame
+    // (from nearest keyframe to target frame). Used for timeline hover preview, avoiding loading entire window.
     if (msg.type === 'getSingleFrameGOP') {
       if (!recDir || !dataFileHandle || indexEntries.length === 0) {
         throw new Error('NOT_OPEN')
