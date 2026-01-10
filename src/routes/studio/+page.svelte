@@ -10,7 +10,10 @@
   import PaddingControl from "$lib/components/PaddingControl.svelte";
   import AspectRatioControl from "$lib/components/AspectRatioControl.svelte";
   import ShadowControl from "$lib/components/ShadowControl.svelte";
-  import { _t as t } from "$lib/utils/i18n";
+  import { _t as t, initI18n, isI18nInitialized } from "$lib/utils/i18n";
+
+  // i18n state for web mode
+  let i18nReady = $state(isI18nInitialized());
 
   // Fullscreen control
   let isFullscreen = $state(false);
@@ -328,6 +331,11 @@
   onMount(() => {
     console.log("📱 Sidepanel mounted with Worker system");
 
+    // Initialize i18n for web mode
+    initI18n().then(() => {
+      i18nReady = true;
+    }).catch(e => console.error('[Studio] i18n init failed:', e));
+
     // 检查扩展环境
     // checkExtensionEnvironment()
 
@@ -337,7 +345,7 @@
       const dirId = params.get("id") || "";
       opfsDirId = dirId;
       if (dirId && workerEncodedChunks.length === 0) {
-        console.log("� [Studio] Opening OPFS recording by dirId:", dirId);
+        console.log("📂 [Studio] Opening OPFS recording by dirId:", dirId);
         const readerWorker = new Worker(
           new URL("$lib/workers/opfs-reader-worker.ts", import.meta.url),
           { type: "module" },

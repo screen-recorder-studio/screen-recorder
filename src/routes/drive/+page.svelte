@@ -3,7 +3,7 @@
   import { Folder } from '@lucide/svelte'
   import RecordingList from '$lib/components/drive/RecordingList.svelte'
   import { formatBytes, formatTime, formatDate } from '$lib/utils/format'
-  import { _t as t } from '$lib/utils/i18n'
+  import { _t as t, initI18n, isI18nInitialized } from '$lib/utils/i18n'
 
   // Recording summary type definition
   interface RecordingSummary {
@@ -24,6 +24,7 @@
   let recordings = $state<RecordingSummary[]>([])
   let isLoading = $state(true)
   let errorMessage = $state('')
+  let i18nReady = $state(isI18nInitialized())
 
   // Load all recordings
   async function loadRecordings() {
@@ -247,7 +248,10 @@
   }
 
   // Load data when component mounts
-  onMount(() => {
+  onMount(async () => {
+    // Ensure i18n is initialized before loading
+    await initI18n()
+    i18nReady = true
     loadRecordings()
   })
 </script>
