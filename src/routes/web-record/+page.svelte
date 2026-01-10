@@ -7,6 +7,38 @@
 
   type Status = 'idle' | 'preparing' | 'recording' | 'stopping' | 'error'
 
+  type ChunkPayload =
+    | ArrayBuffer
+    | Uint8Array
+    | ArrayBufferView
+    | Blob
+    | { copyTo: (dest: Uint8Array) => void; byteLength: number }
+
+  type ChunkMessage = {
+    data: ChunkPayload
+    timestamp?: number
+    type?: string
+    chunkType?: string
+    isKeyframe?: boolean
+    codedWidth?: number
+    codedHeight?: number
+    codec?: string
+  }
+
+  type WriterMeta = {
+    codec?: string
+    width?: number
+    height?: number
+    codedWidth?: number
+    codedHeight?: number
+    fps?: number
+    framerate?: number
+  }
+
+  const CONFIG_TIMEOUT_MS = 10_000
+  const DEFAULT_BITRATE = 8_000_000
+  const routePath = '/web-record'
+
   let status: Status = 'idle'
   let errorMessage = ''
   let infoMessage = ''
@@ -18,15 +50,7 @@
   let wcWorker: Worker | null = null
   let writer: Worker | null = null
   let writerReady = false
-  let pendingChunks: Array<{
-    data: any
-    timestamp?: number
-    type?: string
-    isKeyframe?: boolean
-    codedWidth?: number
-    codedHeight?: number
-    codec?: string
-  }> = []
+  let pendingChunks: ChunkMessage[] = []
   let finalizeRequested = false
   let frameLoopActive = false
   let recordingId = ''
@@ -57,7 +81,7 @@
     if (!browser) return
     const params = new URLSearchParams(window.location.search)
     const paramLang = sanitizeLang(params.get('l'))
-    const navigatorLang = sanitizeLang(navigator.language?.split('-')?.[0] || '')
+    const navigatorLang = sanitizeLang((navigator.language || '').split('-')[0] || '')
     const target = paramLang || navigatorLang || 'en'
     lang = target
     const loaded = await fetchLocale(target)
@@ -76,7 +100,7 @@
     return recordingId
   }
 
-  function normalizeMeta(meta?: any) {
+  function normalizeMeta(meta?: WriterMeta) {
     const m = meta || {}
     const width = typeof m.width === 'number' ? m.width : m.codedWidth
     const height = typeof m.height === 'number' ? m.height : m.codedHeight
@@ -85,7 +109,7 @@
     return { codec, width: width ?? 1920, height: height ?? 1080, fps }
   }
 
-  function initWriter(meta?: any) {
+  function initWriter(meta?: WriterMeta) {
     if (writer) return
     writerReady = false
     const id = ensureRecordingId()
@@ -123,7 +147,7 @@
   }
 
   function cleanupWriter() {
-    try { writer?.terminate() } catch {}
+    try { writer?.terminate() } catch (e) { console.warn('[web-record] writer terminate failed', e) }
     writer = null
     writerReady = false
     pendingChunks = []
@@ -131,17 +155,17 @@
     recordingId = ''
   }
 
-  function toUint8(raw: any): Uint8Array | null {
+  function toUint8(raw: ChunkPayload | null | undefined): Uint8Array | null {
     if (!raw) return null
     if (raw instanceof Uint8Array) return raw
     if (raw instanceof ArrayBuffer) return new Uint8Array(raw)
     if (ArrayBuffer.isView(raw) && typeof (raw as any).byteLength === 'number') {
-      const view = raw as ArrayBufferView & { byteOffset?: number }
-      return new Uint8Array(view.buffer, (view as any).byteOffset || 0, view.byteLength)
+      const view = raw as ArrayBufferView
+      return new Uint8Array(view.buffer, view.byteOffset, view.byteLength)
     }
     if (raw && typeof raw.copyTo === 'function' && typeof raw.byteLength === 'number') {
       const tmp = new Uint8Array(raw.byteLength)
-      try { raw.copyTo(tmp) } catch {}
+      try { raw.copyTo(tmp) } catch (e) { console.warn('[web-record] copyTo failed', e) }
       return tmp
     }
     if (raw instanceof Blob) {
@@ -151,15 +175,7 @@
     return null
   }
 
-  function appendChunk(chunk: {
-    data: any
-    timestamp?: number
-    type?: string
-    isKeyframe?: boolean
-    codedWidth?: number
-    codedHeight?: number
-    codec?: string
-  }) {
+  function appendChunk(chunk: ChunkMessage) {
     if (!writer || !writerReady) {
       pendingChunks.push(chunk)
       return
@@ -168,7 +184,9 @@
     const u8 = toUint8(data)
     if (!u8) {
       if (data instanceof Blob) {
-        data.arrayBuffer().then((ab) => appendChunk({ ...chunk, data: ab })).catch(() => {})
+        data.arrayBuffer().then((ab) => appendChunk({ ...chunk, data: ab })).catch((e) => {
+          console.warn('[web-record] blob to arrayBuffer failed', e)
+        })
       }
       return
     }
@@ -219,16 +237,18 @@
     if (stream) {
       try {
         stream.getTracks().forEach((t) => t.stop())
-      } catch {}
+      } catch (e) {
+        console.warn('[web-record] stop tracks failed', e)
+      }
     }
     stream = null
   }
 
   function cleanupWorkers() {
     frameLoopActive = false
-    try { reader?.cancel?.() } catch {}
+    try { reader?.cancel() } catch (e) { console.warn('[web-record] reader cancel failed', e) }
     reader = null
-    try { wcWorker?.terminate() } catch {}
+    try { wcWorker?.terminate() } catch (e) { console.warn('[web-record] worker terminate failed', e) }
     wcWorker = null
   }
 
@@ -248,7 +268,7 @@
       status = 'error'
       return
     }
-    if (typeof (navigator as any).storage?.getDirectory !== 'function') {
+    if (!navigator?.storage || typeof navigator.storage.getDirectory !== 'function') {
       errorMessage = _t('drive_errorSupport', undefined, messages)
       status = 'error'
       return
@@ -284,7 +304,10 @@
         fps: Math.round(settings.frameRate || currentMeta.fps)
       }
 
-      const ProcessorCtor: any = (window as any).MediaStreamTrackProcessor
+      type TrackProcessorCtor = new (opts: { track: MediaStreamTrack }) => {
+        readable: ReadableStream<VideoFrame>
+      }
+      const ProcessorCtor = (window as any).MediaStreamTrackProcessor as TrackProcessorCtor
       const processor = new ProcessorCtor({ track: videoTrack })
       reader = processor.readable.getReader()
 
@@ -292,14 +315,12 @@
         type: 'module'
       })
 
-      let configured = false
       const waitForConfigured = new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error('Encoder configure timeout')), 10000)
+        const timeout = setTimeout(() => reject(new Error('Encoder configure timeout')), CONFIG_TIMEOUT_MS)
         wcWorker!.onmessage = (event: MessageEvent) => {
           const { type, data, config } = event.data || {}
           if (type === 'initialized') return
           if (type === 'configured') {
-            configured = true
             clearTimeout(timeout)
             const meta = normalizeMeta({ ...config, framerate: config?.framerate })
             currentMeta = meta
@@ -332,7 +353,7 @@
       const encoderConfig = {
         width: currentMeta.width,
         height: currentMeta.height,
-        bitrate: 8_000_000,
+        bitrate: DEFAULT_BITRATE,
         framerate: currentMeta.fps
       }
       wcWorker.postMessage({ type: 'configure', config: encoderConfig })
@@ -361,11 +382,14 @@
           errorMessage = (err as Error)?.message || 'Frame read failed'
           status = 'error'
         } finally {
-          try { wcWorker?.postMessage({ type: 'stop' }) } catch {}
+          try { wcWorker?.postMessage({ type: 'stop' }) } catch (e) { console.warn('[web-record] stop post failed', e) }
           finalizeRequested = true
           attemptFinalize()
         }
-      })()
+      })().catch((err: any) => {
+        errorMessage = err?.message || 'Frame loop failed'
+        status = 'error'
+      })
     } catch (err: any) {
       errorMessage = err?.message || 'Failed to start recording'
       status = 'error'
@@ -382,8 +406,8 @@
     status = 'stopping'
     frameLoopActive = false
     finalizeRequested = true
-    try { wcWorker?.postMessage({ type: 'stop' }) } catch {}
-    try { reader?.cancel?.() } catch {}
+    try { wcWorker?.postMessage({ type: 'stop' }) } catch (e) { console.warn('[web-record] stop post failed', e) }
+    try { reader?.cancel() } catch (e) { console.warn('[web-record] reader cancel failed', e) }
     stopStream()
     attemptFinalize()
   }
@@ -402,7 +426,7 @@
   $: statusLabel = (() => {
     if (status === 'recording') return _t('control_statusRecording', undefined, messages)
     if (status === 'preparing') return _t('control_statusPreparing', undefined, messages)
-    if (status === 'stopping') return _t('control_btnPreparing', undefined, messages)
+    if (status === 'stopping') return `${_t('control_btnStop', undefined, messages)}...`
     if (status === 'error' && errorMessage) return errorMessage
     return _t('control_headerDesc', undefined, messages)
   })()
@@ -445,7 +469,7 @@
     <div class="hint">
       <p>{_t('control_tipsSelectMode', [_t('control_modeScreen', undefined, messages)], messages)}</p>
       <p>{_t('drive_headerTitle', undefined, messages)} / {_t('control_headerTitle', undefined, messages)} ➜ {_t('action_defaultTitle', undefined, messages)}</p>
-      <p>/{'web-record?l=en'} • {'web-record?l=zh'}</p>
+      <p>{`${routePath}?l=en`} • {`${routePath}?l=zh`}</p>
     </div>
   </section>
 </main>
