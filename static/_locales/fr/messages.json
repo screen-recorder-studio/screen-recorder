@@ -337,5 +337,18 @@
   "welcome_advancedDesc": { "message": "Cliquez sur l’icône de l’extension pour ouvrir le panneau complet" },
   "welcome_openControl": { "message": "Ouvrir le panneau complet" },
   "welcome_footerHelp": { "message": "Besoin d’aide ? Cliquez sur l’icône de l’extension pour ouvrir le panneau avec les fonctions avancées." },
-  "welcome_footerMeta": { "message": "Screen Recorder Studio • Conçu pour les professionnels" }
+  "welcome_footerMeta": { "message": "Screen Recorder Studio • Conçu pour les professionnels" },
+
+  "annotation_tool_cursor": { "message": "Curseur (Interagir)" },
+  "annotation_tool_effect": { "message": "Effet de curseur" },
+  "annotation_tool_arrow": { "message": "Flèche" },
+  "annotation_tool_rectangle": { "message": "Rectangle" },
+  "annotation_tool_circle": { "message": "Cercle" },
+  "annotation_tool_freehand": { "message": "Crayon" },
+  "annotation_tool_text": { "message": "Texte" },
+  "annotation_tool_highlight": { "message": "Surligner" },
+  "annotation_tool_blur": { "message": "Flouter" },
+  "annotation_tool_undo": { "message": "Annuler" },
+  "annotation_tool_clear": { "message": "Tout effacer" },
+  "annotation_tool_close": { "message": "Fermer" }
 }

@@ -337,5 +337,18 @@
   "welcome_advancedDesc": { "message": "Click the extension icon in your browser toolbar to access the full control panel" },
   "welcome_openControl": { "message": "Open Full Control Panel" },
   "welcome_footerHelp": { "message": "Need help? Click the extension icon for the control panel with advanced features." },
-  "welcome_footerMeta": { "message": "Screen Recorder Studio • Made for professionals" }
+  "welcome_footerMeta": { "message": "Screen Recorder Studio • Made for professionals" },
+
+  "annotation_tool_cursor": { "message": "Cursor (Interact)" },
+  "annotation_tool_effect": { "message": "Cursor Effect" },
+  "annotation_tool_arrow": { "message": "Arrow" },
+  "annotation_tool_rectangle": { "message": "Rectangle" },
+  "annotation_tool_circle": { "message": "Circle" },
+  "annotation_tool_freehand": { "message": "Pen" },
+  "annotation_tool_text": { "message": "Text" },
+  "annotation_tool_highlight": { "message": "Highlight" },
+  "annotation_tool_blur": { "message": "Blur" },
+  "annotation_tool_undo": { "message": "Undo" },
+  "annotation_tool_clear": { "message": "Clear All" },
+  "annotation_tool_close": { "message": "Close" }
 }

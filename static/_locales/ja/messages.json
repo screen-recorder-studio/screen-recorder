@@ -337,5 +337,18 @@
   "welcome_advancedDesc": { "message": "ツールバーの拡張機能アイコンをクリックしてフルコントロールパネルを開きます" },
   "welcome_openControl": { "message": "フルコントロールパネルを開く" },
   "welcome_footerHelp": { "message": "ヘルプが必要ですか？拡張機能アイコンをクリックして高度な機能付きのコントロールパネルを開いてください。" },
-  "welcome_footerMeta": { "message": "Screen Recorder Studio • プロ向けに作成" }
+  "welcome_footerMeta": { "message": "Screen Recorder Studio • プロフェッショナルのために作られました" },
+
+  "annotation_tool_cursor": { "message": "カーソル (操作)" },
+  "annotation_tool_effect": { "message": "カーソル効果" },
+  "annotation_tool_arrow": { "message": "矢印" },
+  "annotation_tool_rectangle": { "message": "長方形" },
+  "annotation_tool_circle": { "message": "円" },
+  "annotation_tool_freehand": { "message": "ペン" },
+  "annotation_tool_text": { "message": "テキスト" },
+  "annotation_tool_highlight": { "message": "ハイライト" },
+  "annotation_tool_blur": { "message": "ぼかし" },
+  "annotation_tool_undo": { "message": "元に戻す" },
+  "annotation_tool_clear": { "message": "すべて消去" },
+  "annotation_tool_close": { "message": "閉じる" }
 }

@@ -337,5 +337,18 @@
   "welcome_advancedDesc": { "message": "Clicca sull’icona dell’estensione nella barra del browser per aprire il pannello completo" },
   "welcome_openControl": { "message": "Apri il pannello completo" },
   "welcome_footerHelp": { "message": "Hai bisogno di aiuto? Clicca sull’icona dell’estensione per aprire il pannello con funzioni avanzate." },
-  "welcome_footerMeta": { "message": "Screen Recorder Studio • Creato per i professionisti" }
+  "welcome_footerMeta": { "message": "Screen Recorder Studio • Realizzato per i professionisti" },
+
+  "annotation_tool_cursor": { "message": "Cursore (Interagisci)" },
+  "annotation_tool_effect": { "message": "Effetto Cursore" },
+  "annotation_tool_arrow": { "message": "Freccia" },
+  "annotation_tool_rectangle": { "message": "Rettangolo" },
+  "annotation_tool_circle": { "message": "Cerchio" },
+  "annotation_tool_freehand": { "message": "Penna" },
+  "annotation_tool_text": { "message": "Testo" },
+  "annotation_tool_highlight": { "message": "Evidenzia" },
+  "annotation_tool_blur": { "message": "Sfoca" },
+  "annotation_tool_undo": { "message": "Annulla" },
+  "annotation_tool_clear": { "message": "Cancella tutto" },
+  "annotation_tool_close": { "message": "Chiudi" }
 }
