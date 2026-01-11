@@ -1,6 +1,7 @@
 <script lang="ts">
   import { RefreshCw, Trash2, AlertTriangle, Folder } from '@lucide/svelte'
   import RecordingCard from './RecordingCard.svelte'
+  import { _t as t } from '$lib/utils/i18n'
 
   // Recording summary type definition
   interface RecordingSummary {
@@ -101,6 +102,7 @@
       selectedRecordings = filteredSelection
     }
   })
+
 </script>
 
 <div class="max-w-6xl mx-auto px-6 py-6">
@@ -114,13 +116,13 @@
           class="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           <Trash2 class="w-4 h-4" />
-          Delete Selected ({selectedRecordings.size})
+          {t('drive_delete_selected_btn', String(selectedRecordings.size))}
         </button>
         <button
           onclick={clearSelection}
           class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
         >
-          Clear Selection
+          {t('drive_clear_selection')}
         </button>
       {/if}
     </div>
@@ -131,7 +133,7 @@
       class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
     >
       <RefreshCw class="w-4 h-4 {isLoading ? 'animate-spin' : ''}" />
-      Refresh
+      {t('drive_refresh')}
     </button>
   </div>
 
@@ -140,10 +142,10 @@
     <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
       <div class="flex items-center gap-2 text-red-800">
         <AlertTriangle class="w-5 h-5" />
-        <span class="font-medium">Error</span>
+        <span class="font-medium">{t('drive_error_title')}</span>
       </div>
       <p class="mt-1 text-red-700">{errorMessage}</p>
-      <button onclick={onClearError} class="mt-2 text-sm text-red-600 hover:text-red-800">Close</button>
+      <button onclick={onClearError} class="mt-2 text-sm text-red-600 hover:text-red-800">{t('drive_close_error')}</button>
     </div>
   {/if}
 
@@ -152,17 +154,17 @@
     <div class="flex items-center justify-center py-12">
       <div class="flex items-center gap-3 text-gray-600">
         <RefreshCw class="w-5 h-5 animate-spin" />
-        <span>Loading recordings...</span>
+        <span>{t('drive_loading')}</span>
       </div>
     </div>
   {:else if recordings.length === 0}
     <!-- Empty state -->
     <div class="text-center py-12">
       <Folder class="w-16 h-16 text-gray-300 mx-auto mb-4" />
-      <h3 class="text-lg font-medium text-gray-900 mb-2">No recordings yet</h3>
-      <p class="text-gray-500 mb-4">You don't have any screen recordings yet.</p>
-      <p class="text-gray-500 mb-6">Start recording your screen and your recordings will appear here.</p>
-      <a href="/sidepanel" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Start Recording</a>
+      <h3 class="text-lg font-medium text-gray-900 mb-2">{t('drive_empty_title')}</h3>
+      <p class="text-gray-500 mb-4">{t('drive_empty_desc1')}</p>
+      <p class="text-gray-500 mb-6">{t('drive_empty_desc2')}</p>
+      <a href="/sidepanel" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">{t('drive_start_recording_btn')}</a>
     </div>
   {:else}
     <!-- Recording list -->
@@ -176,11 +178,11 @@
             onchange={toggleSelectAll}
             class="w-4 h-4"
           />
-          <span class="text-gray-700">Select All ({recordings.length} recordings)</span>
+          <span class="text-gray-700">{t('drive_select_all', String(recordings.length))}</span>
         </label>
       </div>
       <div class="text-sm text-gray-500">
-        Sorted by time (newest first)
+        {t('drive_sort_hint')}
       </div>
     </div>
 
@@ -203,16 +205,16 @@
     <div class="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
       <div class="flex items-center gap-3 mb-4">
         <AlertTriangle class="w-6 h-6 text-red-500" />
-        <h3 class="text-lg font-semibold text-gray-900">Confirm Delete</h3>
+        <h3 class="text-lg font-semibold text-gray-900">{t('drive_confirm_delete_title')}</h3>
       </div>
       
       <p class="text-gray-700 mb-6">
         {#if deleteTarget === 'selected'}
-          Are you sure you want to delete the selected {selectedRecordings.size} recordings?
+          {t('drive_confirm_delete_selected', String(selectedRecordings.size))}
         {:else}
-          Are you sure you want to delete this recording?
+          {t('drive_confirm_delete_single')}
         {/if}
-        This action cannot be undone.
+        {t('drive_action_undone')}
       </p>
       
       <div class="flex justify-end gap-3">
@@ -220,13 +222,13 @@
           onclick={() => showDeleteConfirm = false}
           class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
         >
-          Cancel
+          {t('drive_cancel')}
         </button>
         <button
           onclick={executeDelete}
           class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
         >
-          Delete
+          {t('drive_delete')}
         </button>
       </div>
     </div>

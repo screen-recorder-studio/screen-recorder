@@ -13,6 +13,7 @@
     X
   } from '@lucide/svelte'
   import { onMount } from 'svelte'
+  import { _t as t } from '$lib/utils/i18n'
 
   // Recording state management
   let isRecording = $state(false)
@@ -288,6 +289,7 @@
     }
     return Play
   }
+
 </script>
 
 <svelte:head>
@@ -301,22 +303,22 @@
       <div>
         <h1 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
           <Monitor class="w-5 h-5 text-blue-600" />
-          Screen Recorder
+          {t('control_headerTitle')}
         </h1>
-        <p class="text-sm text-gray-600 mt-1">Select recording mode and start</p>
+        <p class="text-sm text-gray-600 mt-1">{t('control_headerDesc')}</p>
       </div>
       <div class="flex items-center gap-2">
         <button
           class="p-2 rounded-lg border border-gray-300 hover:border-blue-400 hover:bg-white/70 hover:shadow-sm transition-all duration-200 group"
           onclick={() => window.open('/drive.html', '_blank')}
-          title="Open recording file manager"
+          title={t('control_openDriveTooltip')}
         >
           <HardDrive class="w-5 h-5 text-gray-600 group-hover:text-blue-600 transition-colors duration-200" />
         </button>
         <button
           class="p-2 rounded-lg border border-gray-300 hover:border-red-400 hover:bg-red-50 transition-all duration-200 group"
           onclick={closeWindow}
-          title="Close control panel"
+          title={t('control_closePanelTooltip')}
         >
           <X class="w-5 h-5 text-gray-600 group-hover:text-red-600 transition-colors duration-200" />
         </button>
@@ -331,7 +333,7 @@
         <div class="text-[6rem] font-bold text-white tabular-nums animate-pulse">
           {countdownValue > 0 ? countdownValue : '0'}
         </div>
-        <p class="text-white/70 text-lg mt-2">Recording starts soon...</p>
+        <p class="text-white/70 text-lg mt-2">{t('control_overlayRecordingStarts')}</p>
       </div>
     </div>
   {/if}
@@ -340,7 +342,7 @@
   <div class="flex flex-col">
     <!-- Recording mode selection -->
     <div class="flex-shrink-0 p-4">
-      <h2 class="text-sm font-medium text-gray-700 mb-3">Recording Mode</h2>
+      <h2 class="text-sm font-medium text-gray-700 mb-3">{t('control_recordingMode')}</h2>
       <div class="grid grid-cols-3 gap-2">
         {#each recordingModes as mode}
           {@const IconComponent = mode.icon}
@@ -355,7 +357,11 @@
             class:cursor-not-allowed={isModeDisabledLocal(mode.id) || phase !== 'idle'}
             onclick={() => selectMode(mode.id)}
             disabled={isModeDisabledLocal(mode.id) || phase !== 'idle'}
-            title={mode.description}
+            title={t(
+              mode.id === 'tab' ? 'control_modeTabDesc' :
+              mode.id === 'window' ? 'control_modeWindowDesc' :
+              'control_modeScreenDesc'
+            )}
           >
             {#if selectedMode === mode.id}
               <div class="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white"></div>
@@ -368,7 +374,11 @@
               class:text-blue-700={selectedMode === mode.id}
               class:text-gray-700={selectedMode !== mode.id}
             >
-              {mode.name}
+              {t(
+                mode.id === 'tab' ? 'control_modeTab' :
+                mode.id === 'window' ? 'control_modeWindow' :
+                'control_modeScreen'
+              )}
             </span>
           </button>
         {/each}
@@ -382,11 +392,15 @@
         <div class="flex items-center gap-2">
           <div class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
           <span class="text-sm font-medium text-red-700">
-            {isPaused ? 'Recording Paused' : 'Recording'}
+            {isPaused ? t('control_statusPaused') : t('control_statusRecording')}
           </span>
         </div>
         <div class="text-xs text-red-600">
-          {recordingModes.find((m) => m.id === selectedMode)?.name}
+          {t(
+            selectedMode === 'tab' ? 'control_modeTab' :
+            selectedMode === 'window' ? 'control_modeWindow' :
+            'control_modeScreen'
+          )}
         </div>
       </div>
     </div>
@@ -397,7 +411,7 @@
     <div class="px-4 py-3 bg-orange-50 border-t border-orange-100">
       <div class="flex items-center gap-2">
         <LoaderCircle class="w-4 h-4 text-orange-600 animate-spin" />
-        <span class="text-sm font-medium text-orange-700">Preparing to record...</span>
+        <span class="text-sm font-medium text-orange-700">{t('control_statusPreparing')}</span>
       </div>
     </div>
   {/if}
@@ -433,7 +447,17 @@
             <ButtonIcon class="w-5 h-5" />
           {/if}
         </div>
-        <span class="font-semibold">{getButtonText()}</span>
+        <span class="font-semibold">
+          {#if phase === 'preparing'}
+            {t('control_btnPreparing')}
+          {:else if phase === 'countdown'}
+            {t('control_btnStarting', String(countdownValue))}
+          {:else if isRecording}
+            {isPaused ? t('control_btnResume') : t('control_btnPause')}
+          {:else}
+            {t('control_btnStart')}
+          {/if}
+        </span>
       </button>
 
       <!-- Stop recording button -->
@@ -443,7 +467,7 @@
           onclick={stopRecording}
         >
           <Square class="w-4 h-4" />
-          <span>Stop Recording</span>
+          <span>{t('control_btnStop')}</span>
         </button>
       {/if}
     </div>
@@ -452,7 +476,7 @@
     {#if phase === 'idle' && !isRecording}
       <div class="flex items-center gap-2 mt-3 p-2 bg-white border border-gray-200 rounded-lg">
         <label class="text-xs font-medium text-gray-600 flex items-center gap-1">
-          <Clock class="w-3 h-3 text-gray-500" /> Countdown
+          <Clock class="w-3 h-3 text-gray-500" /> {t('control_countdownLabel')}
         </label>
         <div class="flex items-center gap-1">
           {#each [1, 2, 3, 4, 5] as v}
@@ -478,19 +502,22 @@
         <CircleAlert class="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
         <div class="text-xs text-blue-700">
           {#if phase === 'idle' && !isRecording}
-            <p class="font-medium mb-1">Recording Tips:</p>
+            <p class="font-medium mb-1">{t('control_tipsTitle')}</p>
             <p>
-              Selected <strong>{recordingModes.find((m) => m.id === selectedMode)?.name}</strong> mode,
-              click Start Recording to begin.
+              {t('control_tipsSelectMode', 
+                selectedMode === 'tab' ? t('control_modeTab') : 
+                selectedMode === 'window' ? t('control_modeWindow') : 
+                t('control_modeScreen')
+              )}
             </p>
           {:else if phase === 'preparing'}
-            <p class="font-medium">Waiting for screen selection...</p>
+            <p class="font-medium">{t('control_tipsPreparing')}</p>
           {:else if phase === 'countdown'}
-            <p class="font-medium">Get ready! Recording will start in {countdownValue} seconds.</p>
+            <p class="font-medium">{t('control_tipsCountdown', String(countdownValue))}</p>
           {:else if isPaused}
-            <p class="font-medium">Recording is paused, click Resume Recording to continue.</p>
+            <p class="font-medium">{t('control_tipsPaused')}</p>
           {:else if isRecording}
-            <p class="font-medium">Recording in progress, click Pause to pause recording.</p>
+            <p class="font-medium">{t('control_tipsRecording')}</p>
           {/if}
         </div>
       </div>
@@ -498,4 +525,3 @@
   </div>
   </div><!-- End of main content area -->
 </div>
-

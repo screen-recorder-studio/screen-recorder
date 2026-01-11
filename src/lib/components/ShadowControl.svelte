@@ -3,6 +3,7 @@
   import { Zap, Palette, Move, Focus, Sun, Moon, Sparkles } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import type { BackgroundConfig } from '$lib/types/background'
+  import { _t as t } from '$lib/utils/i18n'
 
   // Current shadow configuration
   const currentShadow = $derived(backgroundConfigStore.config.shadow)
@@ -123,6 +124,7 @@
       }
     }
   })
+
 </script>
 
 <!-- Video shadow configuration control -->
@@ -130,7 +132,7 @@
   <div class="flex justify-between items-center mb-4">
     <div class="flex items-center gap-2">
       <Zap class="w-4 h-4 text-gray-600" />
-      <h3 class="text-sm font-semibold text-gray-700">Video Shadow</h3>
+      <h3 class="text-sm font-semibold text-gray-700">{t('shadow_title')}</h3>
     </div>
     <label class="relative inline-block w-11 h-6">
       <input
@@ -148,14 +150,20 @@
   {#if isEnabled}
     <!-- Preset shadow selection -->
     <div class="mb-4">
-      <h4 class="text-xs font-semibold text-gray-600 mb-3">Preset Effects</h4>
+      <h4 class="text-xs font-semibold text-gray-600 mb-3">{t('shadow_preset_title')}</h4>
       <div class="grid grid-cols-2 gap-2">
         {#each SHADOW_PRESETS as preset}
           {@const IconComponent = preset.icon}
+          {@const label = t(
+            preset.name === 'Light Shadow' ? 'shadow_light' :
+            preset.name === 'Standard Shadow' ? 'shadow_standard' :
+            preset.name === 'Deep Shadow' ? 'shadow_deep' :
+            'shadow_distant'
+          )}
           <button
             class="flex flex-col items-center gap-2 p-3 border border-gray-300 rounded-md bg-white cursor-pointer transition-all duration-200 hover:border-amber-400 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-opacity-50"
             onclick={() => applyPreset(preset)}
-            title={preset.name}
+            title={label}
           >
             <div class="w-10 h-6 bg-gray-100 rounded flex items-center justify-center">
               <div
@@ -167,7 +175,7 @@
             </div>
             <div class="flex items-center gap-1">
               <IconComponent class="w-3 h-3 text-gray-600" />
-              <span class="text-xs text-gray-700 font-medium">{preset.name}</span>
+              <span class="text-xs text-gray-700 font-medium">{label}</span>
             </div>
           </button>
         {/each}
@@ -176,13 +184,13 @@
 
     <!-- Custom parameters -->
     <div class="mb-4">
-      <h4 class="text-xs font-semibold text-gray-600 mb-3">Custom parameters</h4>
+      <h4 class="text-xs font-semibold text-gray-600 mb-3">{t('shadow_custom_title')}</h4>
 
       <!-- X offset -->
       <div class="mb-3">
         <div class="flex items-center gap-2 mb-1">
           <Move class="w-3 h-3 text-gray-600" />
-          <label class="text-xs text-gray-700 font-medium" for="shadow-offset-x">X offset: {offsetX}px</label>
+          <label class="text-xs text-gray-700 font-medium" for="shadow-offset-x">{t('shadow_offset_x')}: {offsetX}px</label>
         </div>
         <input
           id="shadow-offset-x"
@@ -200,7 +208,7 @@
       <div class="mb-3">
         <div class="flex items-center gap-2 mb-1">
           <Move class="w-3 h-3 text-gray-600 rotate-90" />
-          <label class="text-xs text-gray-700 font-medium" for="shadow-offset-y">Y offset: {offsetY}px</label>
+          <label class="text-xs text-gray-700 font-medium" for="shadow-offset-y">{t('shadow_offset_y')}: {offsetY}px</label>
         </div>
         <input
           id="shadow-offset-y"
@@ -218,7 +226,7 @@
       <div class="mb-3">
         <div class="flex items-center gap-2 mb-1">
           <Focus class="w-3 h-3 text-gray-600" />
-          <label class="text-xs text-gray-700 font-medium" for="shadow-blur">Blur: {blur}px</label>
+          <label class="text-xs text-gray-700 font-medium" for="shadow-blur">{t('shadow_blur')}: {blur}px</label>
         </div>
         <input
           id="shadow-blur"
@@ -237,7 +245,7 @@
         <div class="flex-1">
           <div class="flex items-center gap-2 mb-1">
             <Palette class="w-3 h-3 text-gray-600" />
-            <label class="text-xs text-gray-700 font-medium" for="shadow-color">Color</label>
+            <label class="text-xs text-gray-700 font-medium" for="shadow-color">{t('shadow_color')}</label>
           </div>
           <input
             id="shadow-color"
@@ -248,7 +256,7 @@
           />
         </div>
         <div class="flex-2">
-          <label class="text-xs text-gray-700 font-medium block mb-1" for="shadow-opacity">Opacity: {Math.round(opacity * 100)}%</label>
+          <label class="text-xs text-gray-700 font-medium block mb-1" for="shadow-opacity">{t('shadow_opacity')}: {Math.round(opacity * 100)}%</label>
           <input
             id="shadow-opacity"
             type="range"
@@ -264,7 +272,7 @@
     </div>
   {:else}
     <div class="text-center text-gray-600 text-xs p-6 bg-gray-50 rounded-md">
-      Turn on shadow switch to configure shadow effects
+      {t('shadow_empty_state')}
     </div>
   {/if}
 </div>

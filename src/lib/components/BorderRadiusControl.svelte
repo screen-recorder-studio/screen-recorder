@@ -3,6 +3,7 @@
 <script lang="ts">
   import { Square, Circle, SlidersHorizontal } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
+  import { _t as t } from '$lib/utils/i18n'
 
   // Current border radius value
   const currentRadius = $derived(backgroundConfigStore.config.borderRadius || 0)
@@ -33,13 +34,14 @@
   function isPresetSelected(value: number) {
     return currentRadius === value
   }
+
 </script>
 
 <!-- Video border radius configuration control -->
 <div class="p-4 border border-gray-200 rounded-lg bg-white">
   <div class="flex items-center gap-2 mb-4">
     <SlidersHorizontal class="w-4 h-4 text-gray-600" />
-    <h3 class="text-sm font-semibold text-gray-700">Video Border Radius</h3>
+    <h3 class="text-sm font-semibold text-gray-700">{t('radius_title')}</h3>
   </div>
 
   <!-- Slider control -->
@@ -62,6 +64,13 @@
   <div class="flex gap-2 mb-4 flex-wrap">
     {#each PRESET_RADIUS as preset}
       {@const IconComponent = preset.icon}
+      {@const label = t(
+        preset.name === 'No Radius' ? 'radius_none' :
+        preset.name === 'Small Radius' ? 'radius_small' :
+        preset.name === 'Medium Radius' ? 'radius_medium' :
+        preset.name === 'Large Radius' ? 'radius_large' :
+        'radius_xl'
+      )}
       <button
         class="flex items-center gap-1.5 px-3 py-2 text-xs border rounded-md cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
         class:border-blue-500={isPresetSelected(preset.value)}
@@ -73,10 +82,10 @@
         class:hover:border-blue-400={!isPresetSelected(preset.value)}
         class:hover:bg-blue-50={!isPresetSelected(preset.value)}
         onclick={() => handlePresetSelect(preset)}
-        title="{preset.name} ({preset.value}px)"
+        title="{label} ({preset.value}px)"
       >
         <IconComponent class="w-3 h-3" />
-        <span>{preset.name}</span>
+        <span>{label}</span>
       </button>
     {/each}
   </div>

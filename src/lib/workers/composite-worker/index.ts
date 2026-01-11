@@ -6,7 +6,7 @@
 import type { BackgroundConfig, GradientConfig, GradientStop, ImageBackgroundConfig } from '../../types/background'
 
 interface CompositeMessage {
-  type: 'init' | 'process' | 'play' | 'pause' | 'seek' | 'config' | 'appendWindow';
+  type: 'init' | 'process' | 'play' | 'pause' | 'seek' | 'config' | 'appendWindow' | 'decodeSingleFrame' | 'preview-frame' | 'getCurrentFrameBitmap' | 'getSourceFrameBitmap';
   data: {
     chunks?: any[];
     backgroundConfig?: BackgroundConfig;
@@ -14,6 +14,8 @@ interface CompositeMessage {
     frameIndex?: number;
     startGlobalFrame?: number; // 新增：窗口全局起点（用于C-2复用判断）
     frameRate?: number; // 🆕 视频帧率
+    targetIndexInGOP?: number; // 🆕 单帧预览：目标帧在 GOP 中的索引
+    globalFrameIndex?: number; // 🆕 单帧预览：全局帧索引
   };
 }
 
@@ -64,6 +66,8 @@ const FRAME_BUFFER_LIMITS = {
   maxNextDecoded: 120,        // 预取窗口最大帧数 (~4秒@30fps, ~1GB @ 1080p)
   warningThreshold: 0.9       // 90% 时警告
 };
+// Small tolerance to absorb codec rounding noise; 1px avoids churn without masking real resolution changes
+const DISPLAY_SIZE_TOLERANCE = 1;
 
 // 统计信息
 let droppedFramesCount = 0;
@@ -72,11 +76,19 @@ let lastBufferWarningTime = 0;
 // 固定的视频布局（避免每帧重新计算）
 let fixedVideoLayout: VideoLayout | null = null;
 let videoInfo: { width: number; height: number } | null = null;
-// 🔧 新增：存储修正后的视频尺寸信息
-let correctedVideoSize: { width: number; height: number } | null = null;
+let displaySizeLocked = false;
 // 🆕 窗口信息（用于计算时间）
 let windowStartFrameIndex: number = 0;  // 窗口起始帧索引（全局）
 let videoFrameRate: number = 30;  // 视频帧率（默认 30fps）
+
+// 🆕 Dedicated preview decoder (independent from main playback decoder)
+let previewDecoder: VideoDecoder | null = null;
+let previewDecoderCodec: string | null = null;
+let previewDecodedFrames: VideoFrame[] = [];
+let previewTargetIndex: number = 0;  // 目标帧在 previewDecodedFrames 中的索引
+let previewGlobalFrameIndex: number = 0;  // 目标帧的全局索引
+let previewDecodeComplete: boolean = false;
+let isPreviewDecoding: boolean = false;
 
 // 初始化 OffscreenCanvas
 function initializeCanvas(width: number, height: number) {
@@ -978,6 +990,76 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
     return null;
   }
 }
+
+// 🆕 Render and send single-frame preview
+function renderAndSendPreviewFrame() {
+  if (previewDecodedFrames.length <= previewTargetIndex) {
+    console.error('❌ [COMPOSITE-WORKER] Preview frame not available');
+    self.postMessage({
+      type: 'singleFramePreview',
+      data: { success: false, error: 'Frame not available' }
+    });
+    return;
+  }
+
+  const frame = previewDecodedFrames[previewTargetIndex];
+  
+  try {
+    // 使用当前配置和布局渲染预览帧
+    if (currentConfig && fixedVideoLayout) {
+      // 计算预览帧的时间相关参数（用于 Zoom 等效果）
+      const bitmap = renderCompositeFrame(frame, fixedVideoLayout, currentConfig, 0);
+      
+      if (bitmap) {
+        console.log('✅ [COMPOSITE-WORKER] Preview frame rendered for global index:', previewGlobalFrameIndex);
+        self.postMessage({
+          type: 'singleFramePreview',
+          data: {
+            success: true,
+            bitmap,
+            globalFrameIndex: previewGlobalFrameIndex
+          }
+        }, { transfer: [bitmap] });
+      } else {
+        self.postMessage({
+          type: 'singleFramePreview',
+          data: { success: false, error: 'Render returned null' }
+        });
+      }
+    } else {
+      // 没有配置/布局，返回源帧的简单位图
+      const w = (frame as any).codedWidth ?? (frame as any).displayWidth ?? 1;
+      const h = (frame as any).codedHeight ?? (frame as any).displayHeight ?? 1;
+      const temp = new OffscreenCanvas(w, h);
+      const tctx = temp.getContext('2d', { alpha: false })!;
+      tctx.drawImage(frame as any, 0, 0, w, h);
+      const bitmap = temp.transferToImageBitmap();
+      
+      console.log('✅ [COMPOSITE-WORKER] Preview frame (raw) rendered for global index:', previewGlobalFrameIndex);
+      self.postMessage({
+        type: 'singleFramePreview',
+        data: {
+          success: true,
+          bitmap,
+          globalFrameIndex: previewGlobalFrameIndex
+        }
+      }, { transfer: [bitmap] });
+    }
+  } catch (error) {
+    console.error('❌ [COMPOSITE-WORKER] Preview render error:', error);
+    self.postMessage({
+      type: 'singleFramePreview',
+      data: { success: false, error: (error as Error).message }
+    });
+  }
+
+  // 清理预览帧以释放内存
+  for (const f of previewDecodedFrames) {
+    try { f.close(); } catch {}
+  }
+  previewDecodedFrames = [];
+}
+
 // 基础流式解码：开始提交块并在后台flush，边解边播
 function startStreamingDecode(chunks: any[]) {
   if (!chunks || chunks.length === 0) {
@@ -1016,6 +1098,20 @@ function startStreamingDecode(chunks: any[]) {
       output: (frame: VideoFrame) => {
         const targetBuf = (outputTarget === 'next') ? nextDecoded : decodedFrames;
         const maxSize = (outputTarget === 'next') ? FRAME_BUFFER_LIMITS.maxNextDecoded : FRAME_BUFFER_LIMITS.maxDecodedFrames;
+
+        // 🔧 Use decoded frame display size to correct aspect ratio (avoids non-square pixel stretching)
+        const displayWidth = frame.displayWidth ?? frame.codedWidth ?? 0;
+        const displayHeight = frame.displayHeight ?? frame.codedHeight ?? 0;
+        if (!displaySizeLocked) {
+          const widthDiffers = !videoInfo || Math.abs(videoInfo.width - displayWidth) > DISPLAY_SIZE_TOLERANCE;
+          const heightDiffers = !videoInfo || Math.abs(videoInfo.height - displayHeight) > DISPLAY_SIZE_TOLERANCE;
+          if (widthDiffers || heightDiffers) {
+            videoInfo = { width: displayWidth, height: displayHeight };
+            // Recompute layout to keep the correct aspect ratio
+            calculateAndCacheLayout();
+            displaySizeLocked = true;
+          }
+        }
 
         // 🚀 P1 优化：帧缓冲限制
         if (targetBuf.length >= maxSize) {
@@ -1458,6 +1554,8 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         console.log('[progress] VideoComposite - resetting state for new window data')
         isPlaying = false;
         currentFrameIndex = 0;
+        displaySizeLocked = false;
+        videoInfo = null;
         if (animationId) {
           self.cancelAnimationFrame(animationId);
           animationId = null;
@@ -1533,7 +1631,6 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
           decodedFrames = nextDecoded
           nextDecoded = []
 
-          correctedVideoSize = { width: sourceWidth, height: sourceHeight };
           videoInfo = { width: sourceWidth, height: sourceHeight };
 
           nextMeta = null
@@ -1570,9 +1667,6 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         });
 
         // sourceWidth/sourceHeight 已在前方定义
-
-        // 🔧 保存修正后的视频尺寸，用于后续渲染
-        correctedVideoSize = { width: sourceWidth, height: sourceHeight };
 
         console.log('📐 [COMPOSITE-WORKER] Source dimensions determined:', {
           sourceWidth,
@@ -1906,6 +2000,148 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
           } else {
             console.warn('⚠️ [COMPOSITE-WORKER] Cannot render frame in config handler - conditions not met');
           }
+        }
+        break;
+
+      // 🆕 Single-frame preview: decode minimal GOP and return target frame bitmap
+      // Uses independent decoder, does not interfere with main player
+      case 'decodeSingleFrame':
+        console.log('🔍 [COMPOSITE-WORKER] decodeSingleFrame request:', {
+          chunksCount: data.chunks?.length,
+          targetIndexInGOP: data.targetIndexInGOP,
+          globalFrameIndex: data.globalFrameIndex
+        });
+
+        if (!data.chunks || data.chunks.length === 0) {
+          console.warn('⚠️ [COMPOSITE-WORKER] decodeSingleFrame: no chunks provided');
+          self.postMessage({
+            type: 'singleFramePreview',
+            data: { success: false, error: 'No chunks provided' }
+          });
+          break;
+        }
+
+        // 清理之前的预览解码帧
+        for (const frame of previewDecodedFrames) {
+          try { frame.close(); } catch {}
+        }
+        previewDecodedFrames = [];
+        previewDecodeComplete = false;
+
+        previewTargetIndex = data.targetIndexInGOP ?? 0;
+        previewGlobalFrameIndex = data.globalFrameIndex ?? 0;
+
+        const previewFirstChunk = data.chunks[0];
+        const previewCodec = previewFirstChunk.codec || 'vp8';
+        const previewSourceWidth = previewFirstChunk.codedWidth || 1920;
+        const previewSourceHeight = previewFirstChunk.codedHeight || 1080;
+
+        // 确保有配置和画布
+        if (!currentConfig) {
+          console.warn('⚠️ [COMPOSITE-WORKER] decodeSingleFrame: no config available, using defaults');
+        }
+
+        // 如果预览解码器不存在或 codec 不匹配，创建新的
+        const needNewPreviewDecoder = !previewDecoder || previewDecoderCodec !== previewCodec || previewDecoder.state === 'closed';
+        if (needNewPreviewDecoder) {
+          // 关闭旧解码器
+          if (previewDecoder && previewDecoder.state !== 'closed') {
+            try { previewDecoder.close(); } catch {}
+          }
+
+          console.log('🎬 [COMPOSITE-WORKER] Creating preview decoder for codec:', previewCodec);
+
+          previewDecoder = new VideoDecoder({
+            output: (frame: VideoFrame) => {
+              previewDecodedFrames.push(frame);
+              console.log(`📽️ [COMPOSITE-WORKER] Preview frame decoded: ${previewDecodedFrames.length}`);
+
+              // 检查是否达到目标帧
+              if (previewDecodeComplete && previewDecodedFrames.length > previewTargetIndex) {
+                renderAndSendPreviewFrame();
+              }
+            },
+            error: (error: Error) => {
+              console.error('❌ [COMPOSITE-WORKER] Preview decoder error:', error);
+              isPreviewDecoding = false;
+              self.postMessage({
+                type: 'singleFramePreview',
+                data: { success: false, error: error.message }
+              });
+            }
+          });
+
+          try {
+            previewDecoder.configure({ codec: previewCodec } as VideoDecoderConfig);
+            previewDecoderCodec = previewCodec;
+            console.log('✅ [COMPOSITE-WORKER] Preview decoder configured');
+          } catch (error) {
+            console.error('❌ [COMPOSITE-WORKER] Preview decoder configure failed:', error);
+            self.postMessage({
+              type: 'singleFramePreview',
+              data: { success: false, error: (error as Error).message }
+            });
+            break;
+          }
+        } else {
+          // 重置现有解码器
+          try {
+            previewDecoder!.reset();
+            previewDecoder!.configure({ codec: previewCodec } as VideoDecoderConfig);
+          } catch (error) {
+            console.error('❌ [COMPOSITE-WORKER] Preview decoder reset failed:', error);
+          }
+        }
+
+        isPreviewDecoding = true;
+
+        // 提交所有 GOP 帧进行解码
+        try {
+          for (let i = 0; i < data.chunks.length; i++) {
+            const chunk = data.chunks[i];
+            const chunkData = chunk.data instanceof ArrayBuffer ? new Uint8Array(chunk.data) : chunk.data;
+            const encodedChunk = new EncodedVideoChunk({
+              type: chunk.type === 'key' ? 'key' : 'delta',
+              timestamp: chunk.timestamp,
+              data: chunkData
+            });
+            previewDecoder!.decode(encodedChunk);
+          }
+
+          // Flush 并等待完成
+          previewDecoder!.flush().then(() => {
+            console.log('✅ [COMPOSITE-WORKER] Preview decode flush complete, frames:', previewDecodedFrames.length);
+            previewDecodeComplete = true;
+            isPreviewDecoding = false;
+
+            // 渲染并发送预览帧
+            if (previewDecodedFrames.length > previewTargetIndex) {
+              renderAndSendPreviewFrame();
+            } else {
+              console.error('❌ [COMPOSITE-WORKER] Preview target frame not available:', {
+                targetIndex: previewTargetIndex,
+                decodedCount: previewDecodedFrames.length
+              });
+              self.postMessage({
+                type: 'singleFramePreview',
+                data: { success: false, error: 'Target frame not decoded' }
+              });
+            }
+          }).catch((error) => {
+            console.error('❌ [COMPOSITE-WORKER] Preview decode flush error:', error);
+            isPreviewDecoding = false;
+            self.postMessage({
+              type: 'singleFramePreview',
+              data: { success: false, error: (error as Error).message }
+            });
+          });
+        } catch (error) {
+          console.error('❌ [COMPOSITE-WORKER] Preview decode submit error:', error);
+          isPreviewDecoding = false;
+          self.postMessage({
+            type: 'singleFramePreview',
+            data: { success: false, error: (error as Error).message }
+          });
         }
         break;
 

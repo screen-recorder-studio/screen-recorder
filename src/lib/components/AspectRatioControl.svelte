@@ -3,6 +3,7 @@
   import { Monitor, Square, Smartphone, BookOpen } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import type { BackgroundConfig } from '$lib/types/background'
+  import { _t as t } from '$lib/utils/i18n'
 
   import { onMount } from 'svelte'
 
@@ -74,6 +75,7 @@
   function isRatioSelected(ratio: BackgroundConfig['outputRatio']) {
     return currentRatio === ratio
   }
+
 </script>
 
 <!-- Video aspect ratio configuration control - Segmented Control Style -->
@@ -88,6 +90,18 @@
     {#each PLATFORM_RATIOS as platform, i}
       {@const IconComponent = platform.icon}
       {@const isSelected = isRatioSelected(platform.ratio)}
+      {@const name = t(
+        platform.ratio === '16:9' ? 'ratio_yt' :
+        platform.ratio === '1:1' ? 'ratio_sq' :
+        platform.ratio === '9:16' ? 'ratio_tiktok' :
+        'ratio_story'
+      )}
+      {@const desc = t(
+        platform.ratio === '16:9' ? 'ratio_yt_desc' :
+        platform.ratio === '1:1' ? 'ratio_sq_desc' :
+        platform.ratio === '9:16' ? 'ratio_tiktok_desc' :
+        'ratio_story_desc'
+      )}
       <button
         bind:this={buttonRefs[i]}
         class="
@@ -99,7 +113,7 @@
           }
         "
         onclick={() => handleRatioSelect(platform)}
-        title="{platform.name} - {platform.description}"
+        title="{name} - {desc}"
       >
         <IconComponent class="w-3.5 h-3.5 {isSelected ? 'text-purple-600' : 'opacity-70'}" />
         <span class="{isSelected ? 'font-semibold' : ''}">{platform.ratio}</span>
@@ -107,5 +121,4 @@
     {/each}
   </div>
 </div>
-
 

@@ -12,6 +12,7 @@
     Clock
   } from '@lucide/svelte'
   import { trimStore } from '$lib/stores/trim.svelte'
+  import { _t as t } from '$lib/utils/i18n'
 
   interface Props {
     open: boolean
@@ -105,7 +106,7 @@
 
   // Resolution options
   const resolutionOptions = $derived([
-    { value: 'source', label: `Match Source (${sourceInfo.width}×${sourceInfo.height})`, width: sourceInfo.width, height: sourceInfo.height },
+    { value: 'source', label: t('export_res_source', [String(sourceInfo.width), String(sourceInfo.height)]), width: sourceInfo.width, height: sourceInfo.height },
     { value: '2160p', label: '2160p (4K)', width: 3840, height: 2160 },
     { value: '1440p', label: '1440p (2K)', width: 2560, height: 1440 },
     { value: '1080p', label: '1080p (Full HD)', width: 1920, height: 1080 },
@@ -113,13 +114,13 @@
     { value: '480p', label: '480p (SD)', width: 854, height: 480 }
   ])
 
-  // Quality presets
-  const qualityPresets = [
-    { value: 'draft', label: 'Draft', description: 'Fastest export, lower quality' },
-    { value: 'balanced', label: 'Balanced', description: 'Good quality, reasonable speed' },
-    { value: 'high', label: 'High', description: 'High quality, slower' },
-    { value: 'best', label: 'Best', description: 'Maximum quality, slowest' }
-  ]
+  // Quality presets (using getters for reactive translations)
+  const qualityPresets = $derived([
+    { value: 'draft', label: t('export_quality_draft'), description: t('export_quality_draft_desc') },
+    { value: 'balanced', label: t('export_quality_balanced'), description: t('export_quality_balanced_desc') },
+    { value: 'high', label: t('export_quality_high'), description: t('export_quality_high_desc') },
+    { value: 'best', label: t('export_quality_best'), description: t('export_quality_best_desc') }
+  ])
 
   // Framerate options
   const framerateOptions = $derived.by<{ value: number; label: string }[]>(() => {
@@ -131,7 +132,7 @@
     if (sourceFps && sourceFps > 0) {
       const rounded = Math.round(sourceFps)
       const existingIndex = options.findIndex((opt) => opt.value === rounded)
-      const sourceLabel = `${rounded} fps (Source)`
+      const sourceLabel = t('export_fps_source', String(rounded))
       if (existingIndex >= 0) {
         options[existingIndex] = { value: rounded, label: sourceLabel }
       } else {
@@ -142,30 +143,30 @@
   })
 
   // Encoding speed options
-  const encodingSpeedOptions = [
-    { value: 'fastest', label: 'Fastest' },
-    { value: 'fast', label: 'Fast' },
-    { value: 'balanced', label: 'Balanced' },
-    { value: 'slow', label: 'Slow' },
-    { value: 'slowest', label: 'Slowest' }
-  ]
+  const encodingSpeedOptions = $derived([
+    { value: 'fastest', label: t('export_speed_fastest') },
+    { value: 'fast', label: t('export_speed_fast') },
+    { value: 'balanced', label: t('export_speed_balanced') },
+    { value: 'slow', label: t('export_speed_slow') },
+    { value: 'slowest', label: t('export_speed_slowest') }
+  ])
 
   // GIF quality options
-  const gifQualityOptions = [
-    { value: 1, label: 'Best (Slowest)' },
-    { value: 5, label: 'High' },
-    { value: 10, label: 'Good (Default)' },
-    { value: 15, label: 'Fast' },
-    { value: 20, label: 'Fastest' }
-  ]
+  const gifQualityOptions = $derived([
+    { value: 1, label: t('export_gif_best') },
+    { value: 5, label: t('export_gif_high') },
+    { value: 10, label: t('export_gif_good') },
+    { value: 15, label: t('export_gif_fast') },
+    { value: 20, label: t('export_gif_fastest') }
+  ])
 
   // GIF scale options
-  const gifScaleOptions = [
-    { value: 100, label: '100% (Original)' },
+  const gifScaleOptions = $derived([
+    { value: 100, label: t('export_scale_original') },
     { value: 75, label: '75%' },
     { value: 50, label: '50%' },
     { value: 25, label: '25%' }
-  ]
+  ])
 
   // Computed values
   const selectedResolution = $derived(
@@ -266,29 +267,29 @@
   }
 
   // Format tabs config
-  const formatTabs = [
-    { id: 'mp4' as ExportFormat, label: 'MP4', icon: Film },
-    { id: 'webm' as ExportFormat, label: 'WebM', icon: Video },
-    { id: 'gif' as ExportFormat, label: 'GIF', icon: Image }
-  ]
+  const formatTabs = $derived([
+    { id: 'mp4' as ExportFormat, label: t('export_format_mp4'), icon: Film },
+    { id: 'webm' as ExportFormat, label: t('export_format_webm'), icon: Video },
+    { id: 'gif' as ExportFormat, label: t('export_format_gif'), icon: Image }
+  ])
 
   // Export button label
   const exportButtonLabel = $derived.by(() => {
-    if (isExporting) return 'Exporting...'
+    if (isExporting) return t('export_panel_btn_exporting')
     switch (selectedFormat) {
-      case 'mp4': return 'Export MP4'
-      case 'webm': return 'Export WebM'
-      case 'gif': return 'Export GIF'
+      case 'mp4': return t('export_btn_export_mp4')
+      case 'webm': return t('export_btn_export_webm')
+      case 'gif': return t('export_btn_export_gif')
     }
   })
 
   // Progress stage labels
-  const stageLabels: Record<string, string> = {
-    preparing: 'Preparing...',
-    encoding: 'Encoding frames...',
-    muxing: 'Muxing...',
-    finalizing: 'Finalizing...'
-  }
+  const stageLabels = $derived<Record<string, string>>({
+    preparing: t('export_progress_preparing'),
+    encoding: t('export_progress_encoding'),
+    muxing: t('export_progress_muxing'),
+    finalizing: t('export_progress_finalizing')
+  })
 </script>
 
 {#if open}
@@ -338,11 +339,11 @@
             <!-- Frame Info -->
             {#if exportProgress.currentFrame > 0}
               <div class="flex items-center justify-between text-sm text-gray-500">
-                <span>Frame {exportProgress.currentFrame} / {exportProgress.totalFrames}</span>
+                <span>{t('export_progress_frame', [String(exportProgress.currentFrame), String(exportProgress.totalFrames)])}</span>
                 {#if exportProgress.estimatedTimeRemaining && exportProgress.estimatedTimeRemaining > 0}
                   <span class="flex items-center gap-1">
                     <Clock class="w-4 h-4" />
-                    ~{Math.ceil(exportProgress.estimatedTimeRemaining / 1000)}s remaining
+                    {t('export_progress_time', String(Math.ceil(exportProgress.estimatedTimeRemaining / 1000)))}
                   </span>
                 {/if}
               </div>
@@ -350,7 +351,7 @@
 
             <!-- Cancel hint -->
             <p class="text-center text-xs text-gray-400">
-              Please wait while your video is being exported...
+              {t('export_progress_hint')}
             </p>
           </div>
         </div>
@@ -359,7 +360,7 @@
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
         <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
           <FileDown class="w-5 h-5" />
-          Export Video
+          {t('export_dialog_title')}
         </h2>
         <button
           class="p-2 rounded-lg hover:bg-gray-100 transition-colors"
@@ -375,19 +376,19 @@
         <div class="flex items-start justify-between">
           <div class="grid grid-cols-4 gap-6 text-sm flex-1">
             <div>
-              <span class="text-gray-500 block text-xs">Resolution</span>
+              <span class="text-gray-500 block text-xs">{t('export_source_res')}</span>
               <span class="font-medium">{sourceInfo.width}×{sourceInfo.height}</span>
             </div>
             <div>
-              <span class="text-gray-500 block text-xs">Codec</span>
+              <span class="text-gray-500 block text-xs">{t('export_source_codec')}</span>
               <span class="font-medium">{sourceInfo.codec || 'VP9'}</span>
             </div>
             <div>
-              <span class="text-gray-500 block text-xs">Duration</span>
+              <span class="text-gray-500 block text-xs">{t('export_source_duration')}</span>
               <span class="font-medium">{formatDuration(displayDuration)}</span>
             </div>
             <div>
-              <span class="text-gray-500 block text-xs">Frames</span>
+              <span class="text-gray-500 block text-xs">{t('export_source_frames')}</span>
               <span class="font-medium">{displayFrameCount}</span>
             </div>
           </div>
@@ -397,12 +398,12 @@
               {#if hasBackground}
                 <span class="inline-flex items-center gap-1 px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-medium rounded">
                   <Palette class="w-3 h-3" />
-                  Background
+                  {t('export_badge_bg')}
                 </span>
               {/if}
               {#if trimStore.enabled}
                 <span class="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-700 text-xs font-medium rounded">
-                  ✂️ Trimmed
+                  ✂️ {t('export_badge_trim')}
                 </span>
               {/if}
             </div>
@@ -436,7 +437,7 @@
           <div>
             <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
               <Zap class="w-4 h-4" />
-              Quality Preset
+              {t('export_quality_title')}
             </h3>
             <div class="grid grid-cols-4 gap-2">
               {#each qualityPresets as preset}
@@ -457,7 +458,7 @@
           <!-- Resolution & Framerate -->
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label for="export-resolution" class="block text-sm font-medium text-gray-700 mb-2">Resolution</label>
+              <label for="export-resolution" class="block text-sm font-medium text-gray-700 mb-2">{t('export_label_resolution')}</label>
               <select
                 id="export-resolution"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -469,7 +470,7 @@
               </select>
             </div>
             <div>
-              <label for="export-framerate" class="block text-sm font-medium text-gray-700 mb-2">Frame Rate</label>
+              <label for="export-framerate" class="block text-sm font-medium text-gray-700 mb-2">{t('export_label_framerate')}</label>
               <select
                 id="export-framerate"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -485,18 +486,18 @@
           <!-- Bitrate -->
           <div>
             <div class="flex items-center justify-between mb-2">
-              <label for="export-bitrate" class="text-sm font-medium text-gray-700">Bitrate</label>
+              <label for="export-bitrate" class="text-sm font-medium text-gray-700">{t('export_label_bitrate')}</label>
               <div class="flex gap-2">
                 <button
                   class="px-3 py-1 text-xs rounded-md transition-colors
                     {bitrateMode === 'auto' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}"
                   onclick={() => bitrateMode = 'auto'}
-                >Auto</button>
+                >{t('export_bitrate_auto')}</button>
                 <button
                   class="px-3 py-1 text-xs rounded-md transition-colors
                     {bitrateMode === 'manual' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}"
                   onclick={() => bitrateMode = 'manual'}
-                >Manual</button>
+                >{t('export_bitrate_manual')}</button>
               </div>
             </div>
             {#if bitrateMode === 'manual'}
@@ -514,14 +515,14 @@
               </div>
             {:else}
               <div id="export-bitrate" class="px-3 py-2 bg-gray-50 rounded-lg text-sm text-gray-600">
-                Auto: {calculatedBitrate} Mbps (based on resolution and quality)
+                {t('export_bitrate_auto_hint', String(calculatedBitrate))}
               </div>
             {/if}
           </div>
 
           <!-- Encoding Speed -->
           <div>
-            <label for="export-encoding-speed" class="block text-sm font-medium text-gray-700 mb-2">Encoding Speed</label>
+            <label for="export-encoding-speed" class="block text-sm font-medium text-gray-700 mb-2">{t('export_label_speed')}</label>
             <select
               id="export-encoding-speed"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -537,19 +538,19 @@
           <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
             <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
               <Info class="w-4 h-4" />
-              Estimated Output
+              {t('export_est_output')}
             </h3>
             <div class="grid grid-cols-3 gap-4 text-sm">
               <div>
-                <span class="text-gray-500 block">Resolution</span>
+                <span class="text-gray-500 block">{t('export_label_resolution')}</span>
                 <span class="font-medium text-gray-900">{outputWidth}×{outputHeight}</span>
               </div>
               <div>
-                <span class="text-gray-500 block">Bitrate</span>
+                <span class="text-gray-500 block">{t('export_label_bitrate')}</span>
                 <span class="font-medium text-gray-900">{effectiveBitrate} Mbps</span>
               </div>
               <div>
-                <span class="text-gray-500 block">Est. Size</span>
+                <span class="text-gray-500 block">{t('export_est_size')}</span>
                 <span class="font-medium text-gray-900">~{formatFileSize(estimatedSize)}</span>
               </div>
             </div>
@@ -560,7 +561,7 @@
         {#if selectedFormat === 'gif'}
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label for="gif-fps" class="block text-sm font-medium text-gray-700 mb-2">Frame Rate</label>
+              <label for="gif-fps" class="block text-sm font-medium text-gray-700 mb-2">{t('export_label_framerate')}</label>
               <select
                 id="gif-fps"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
@@ -572,7 +573,7 @@
               </select>
             </div>
             <div>
-              <label for="gif-quality" class="block text-sm font-medium text-gray-700 mb-2">Quality</label>
+              <label for="gif-quality" class="block text-sm font-medium text-gray-700 mb-2">{t('export_label_gif_quality')}</label>
               <select
                 id="gif-quality"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
@@ -587,7 +588,7 @@
 
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label for="gif-scale" class="block text-sm font-medium text-gray-700 mb-2">Scale</label>
+              <label for="gif-scale" class="block text-sm font-medium text-gray-700 mb-2">{t('export_label_scale')}</label>
               <select
                 id="gif-scale"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
@@ -599,27 +600,27 @@
               </select>
             </div>
             <div>
-              <label for="gif-workers" class="block text-sm font-medium text-gray-700 mb-2">Workers</label>
+              <label for="gif-workers" class="block text-sm font-medium text-gray-700 mb-2">{t('export_label_workers')}</label>
               <select
                 id="gif-workers"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                 bind:value={gifWorkers}
               >
                 {#each [1, 2, 4, 8] as w}
-                  <option value={w}>{w} worker{w > 1 ? 's' : ''}</option>
+                  <option value={w}>{t(w === 1 ? 'export_worker_singular' : 'export_worker_plural', String(w))}</option>
                 {/each}
               </select>
             </div>
           </div>
 
           <div>
-            <label for="gif-dither" class="block text-sm font-medium text-gray-700 mb-2">Dithering</label>
+            <label for="gif-dither" class="block text-sm font-medium text-gray-700 mb-2">{t('export_label_dither')}</label>
             <select
               id="gif-dither"
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
               bind:value={gifDither}
             >
-              <option value="false">None</option>
+              <option value="false">{t('export_dither_none')}</option>
               <option value="FloydSteinberg">Floyd-Steinberg</option>
               <option value="FalseFloydSteinberg">False Floyd-Steinberg</option>
               <option value="Stucki">Stucki</option>
@@ -631,19 +632,19 @@
           <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
             <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
               <Info class="w-4 h-4" />
-              Estimated Output
+              {t('export_est_output')}
             </h3>
             <div class="grid grid-cols-3 gap-4 text-sm">
               <div>
-                <span class="text-gray-500 block">Resolution</span>
+                <span class="text-gray-500 block">{t('export_label_resolution')}</span>
                 <span class="font-medium text-gray-900">{gifOutputWidth}×{gifOutputHeight}</span>
               </div>
               <div>
-                <span class="text-gray-500 block">Frames</span>
+                <span class="text-gray-500 block">{t('export_source_frames')}</span>
                 <span class="font-medium text-gray-900">~{gifEstimatedFrames}</span>
               </div>
               <div>
-                <span class="text-gray-500 block">Est. Size</span>
+                <span class="text-gray-500 block">{t('export_est_size')}</span>
                 <span class="font-medium text-gray-900">~{formatFileSize(gifEstimatedSize)}</span>
               </div>
             </div>
@@ -659,7 +660,7 @@
           onclick={handleClose}
           disabled={isExporting}
         >
-          Cancel
+          {t('export_btn_cancel')}
         </button>
         <button
           class="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
@@ -677,4 +678,3 @@
     </div>
   </div>
 {/if}
-

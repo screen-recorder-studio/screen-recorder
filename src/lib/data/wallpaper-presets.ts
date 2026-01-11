@@ -5,8 +5,8 @@ import type { ImagePreset } from '$lib/types/background'
 export const WALLPAPER_PRESETS: ImagePreset[] = [
   {
     id: 'gradient-abstract-1',
-    name: 'Abstract Gradient',
-    description: 'Modern abstract gradient background, perfect for tech and creative content',
+    name: 'wallpaper_gradient_abstract_1_name',
+    description: 'wallpaper_gradient_abstract_1_desc',
     imageUrl: '/wallpapers/gradient-7206609_1920.webp',
     config: {
       fit: 'cover',
@@ -22,8 +22,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   },
   {
     id: 'geometric-pattern-1',
-    name: 'Geometric Pattern',
-    description: 'Clean geometric pattern background, ideal for business and professional content',
+    name: 'wallpaper_geometric_pattern_1_name',
+    description: 'wallpaper_geometric_pattern_1_desc',
     imageUrl: '/wallpapers/the-background-302467_1920.webp',
     config: {
       fit: 'cover',
@@ -40,8 +40,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   // Additional wallpapers (from static/wallpapers)
   {
     id: 'abstract-2425706',
-    name: 'Abstract Colors',
-    description: 'Vibrant abstract color texture with strong visual impact',
+    name: 'wallpaper_abstract_2425706_name',
+    description: 'wallpaper_abstract_2425706_desc',
     imageUrl: '/wallpapers/abstract-2425706.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'abstract',
@@ -49,8 +49,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   },
   {
     id: 'abstract-2512412',
-    name: 'Abstract Colors',
-    description: 'Flowing abstract color background, perfect for creative content',
+    name: 'wallpaper_abstract_2512412_name',
+    description: 'wallpaper_abstract_2512412_desc',
     imageUrl: '/wallpapers/abstract-2512412.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'abstract',
@@ -58,8 +58,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   },
   {
     id: 'abstract-6297317',
-    name: 'Abstract Forms',
-    description: 'Abstract geometric forms with color block composition',
+    name: 'wallpaper_abstract_6297317_name',
+    description: 'wallpaper_abstract_6297317_desc',
     imageUrl: '/wallpapers/abstract-6297317.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'abstract',
@@ -67,8 +67,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   },
   {
     id: 'ai-generated-9083808',
-    name: 'AI Generated Art',
-    description: 'AI-generated futuristic art background',
+    name: 'wallpaper_ai_generated_9083808_name',
+    description: 'wallpaper_ai_generated_9083808_desc',
     imageUrl: '/wallpapers/ai-generated-9083808.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'tech',
@@ -76,8 +76,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   },
   {
     id: 'beach-4938036',
-    name: 'Beach',
-    description: 'Natural beach scenery with sand and waves, fresh and comfortable',
+    name: 'wallpaper_beach_4938036_name',
+    description: 'wallpaper_beach_4938036_desc',
     imageUrl: '/wallpapers/beach-4938036.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'nature',
@@ -85,8 +85,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   },
   {
     id: 'bulb-5665770',
-    name: 'Creative Bulb',
-    description: 'Light bulb theme symbolizing creativity and inspiration',
+    name: 'wallpaper_bulb_5665770_name',
+    description: 'wallpaper_bulb_5665770_desc',
     imageUrl: '/wallpapers/bulb-5665770.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'business',
@@ -94,8 +94,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   },
   {
     id: 'cpu-8892400',
-    name: 'CPU Circuit',
-    description: 'CPU chip and circuit board with high-tech appeal',
+    name: 'wallpaper_cpu_8892400_name',
+    description: 'wallpaper_cpu_8892400_desc',
     imageUrl: '/wallpapers/cpu-8892400.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'tech',
@@ -103,8 +103,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   },
   {
     id: 'feather-5488401',
-    name: 'Feather Close-up',
-    description: 'Soft feather texture with rich detail',
+    name: 'wallpaper_feather_5488401_name',
+    description: 'wallpaper_feather_5488401_desc',
     imageUrl: '/wallpapers/feather-5488401.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'nature',
@@ -112,8 +112,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   },
   {
     id: 'fractal-8902060',
-    name: 'Fractal Art',
-    description: 'Brilliant fractal patterns in abstract art style',
+    name: 'wallpaper_fractal_8902060_name',
+    description: 'wallpaper_fractal_8902060_desc',
     imageUrl: '/wallpapers/fractal-8902060.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'abstract',
@@ -121,8 +121,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   },
   {
     id: 'orange-3036097',
-    name: 'Orange Slice',
-    description: 'Vibrant orange slices with bright colors',
+    name: 'wallpaper_orange_3036097_name',
+    description: 'wallpaper_orange_3036097_desc',
     imageUrl: '/wallpapers/orange-3036097.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'nature',
@@ -130,8 +130,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   },
   {
     id: 'orange-6508617',
-    name: 'Orange Background',
-    description: 'Bright orange themed background full of energy',
+    name: 'wallpaper_orange_6508617_name',
+    description: 'wallpaper_orange_6508617_desc',
     imageUrl: '/wallpapers/orange-6508617.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'nature',
@@ -139,8 +139,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   },
   {
     id: 'polar-lights-5858656',
-    name: 'Aurora',
-    description: 'Northern lights night sky, dreamy natural phenomenon',
+    name: 'wallpaper_polar_lights_5858656_name',
+    description: 'wallpaper_polar_lights_5858656_desc',
     imageUrl: '/wallpapers/polar-lights-5858656.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'nature',
@@ -148,8 +148,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   },
   {
     id: 'spiral-3112405',
-    name: 'Spiral Pattern',
-    description: 'Abstract spiral texture with dynamic layers',
+    name: 'wallpaper_spiral_3112405_name',
+    description: 'wallpaper_spiral_3112405_desc',
     imageUrl: '/wallpapers/spiral-3112405.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'abstract',
@@ -157,8 +157,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   },
   {
     id: 'steelwool-458842',
-    name: 'Steel Wool Light Painting',
-    description: 'Long exposure light painting effect, abstract and dynamic',
+    name: 'wallpaper_steelwool_458842_name',
+    description: 'wallpaper_steelwool_458842_desc',
     imageUrl: '/wallpapers/steelwool-458842.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'abstract',
@@ -166,8 +166,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   },
   {
     id: 'swimming-pool-8306716',
-    name: 'Pool Ripples',
-    description: 'Swimming pool water ripples with cool summer atmosphere',
+    name: 'wallpaper_swimming_pool_8306716_name',
+    description: 'wallpaper_swimming_pool_8306716_desc',
     imageUrl: '/wallpapers/swimming-pool-8306716.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'nature',
@@ -176,8 +176,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   // Presets: pre directory
   {
     id: 'abstract-2426502',
-    name: 'Abstract Colors',
-    description: 'Modern design with abstract colors and shapes',
+    name: 'wallpaper_abstract_2426502_name',
+    description: 'wallpaper_abstract_2426502_desc',
     imageUrl: '/wallpapers/abstract-2426502.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'abstract',
@@ -185,8 +185,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   },
   {
     id: 'camera-1248682',
-    name: 'Camera Close-up',
-    description: 'Camera and lens close-up with textured tech style',
+    name: 'wallpaper_camera_1248682_name',
+    description: 'wallpaper_camera_1248682_desc',
     imageUrl: '/wallpapers/camera-1248682.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'tech',
@@ -194,8 +194,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   },
   {
     id: 'circle-5090539',
-    name: 'Circular Geometry',
-    description: 'Clean circular geometric pattern, perfect for visually unified layouts',
+    name: 'wallpaper_circle_5090539_name',
+    description: 'wallpaper_circle_5090539_desc',
     imageUrl: '/wallpapers/circle-5090539.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'minimal',
@@ -203,8 +203,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   },
   {
     id: 'feather-7009025',
-    name: 'Feather Texture',
-    description: 'Soft feather texture with delicate natural patterns',
+    name: 'wallpaper_feather_7009025_name',
+    description: 'wallpaper_feather_7009025_desc',
     imageUrl: '/wallpapers/feather-7009025.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'nature',
@@ -212,8 +212,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   },
   {
     id: 'fiber-4814456',
-    name: 'Fiber Lines',
-    description: 'Abstract tech feel with fiber optics and lines',
+    name: 'wallpaper_fiber_4814456_name',
+    description: 'wallpaper_fiber_4814456_desc',
     imageUrl: '/wallpapers/fiber-4814456.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'tech',
@@ -221,8 +221,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   },
   {
     id: 'frost-6702335',
-    name: 'Frost Texture',
-    description: 'Cold textured frost pattern background',
+    name: 'wallpaper_frost_6702335_name',
+    description: 'wallpaper_frost_6702335_desc',
     imageUrl: '/wallpapers/frost-6702335.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'nature',
@@ -230,8 +230,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   },
   {
     id: 'leaves-4291098',
-    name: 'Green Leaves',
-    description: 'Natural texture of green leaves, fresh and healing',
+    name: 'wallpaper_leaves_4291098_name',
+    description: 'wallpaper_leaves_4291098_desc',
     imageUrl: '/wallpapers/leaves-4291098.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'nature',
@@ -239,8 +239,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   },
   {
     id: 'light-1834289',
-    name: 'Light Bokeh',
-    description: 'Light and shadow bokeh effect, atmospheric abstract background',
+    name: 'wallpaper_light_1834289_name',
+    description: 'wallpaper_light_1834289_desc',
     imageUrl: '/wallpapers/light-1834289.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'abstract',
@@ -248,8 +248,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   },
   {
     id: 'light-942231',
-    name: 'Light Streaks',
-    description: 'Flowing light streaks, dynamic abstract background',
+    name: 'wallpaper_light_942231_name',
+    description: 'wallpaper_light_942231_desc',
     imageUrl: '/wallpapers/light-942231.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'abstract',
@@ -257,8 +257,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   },
   {
     id: 'luck-4397584',
-    name: 'Four-leaf Clover',
-    description: 'Lucky four-leaf clover with fresh natural green tones',
+    name: 'wallpaper_luck_4397584_name',
+    description: 'wallpaper_luck_4397584_desc',
     imageUrl: '/wallpapers/luck-4397584.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'nature',
@@ -266,8 +266,8 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
   },
   {
     id: 'waterdrop-2256201',
-    name: 'Water Drop Close-up',
-    description: 'Water drop and surface tension macro texture',
+    name: 'wallpaper_waterdrop_2256201_name',
+    description: 'wallpaper_waterdrop_2256201_desc',
     imageUrl: '/wallpapers/waterdrop-2256201.webp',
     config: { fit: 'cover', position: 'center', opacity: 1, blur: 0, scale: 1, offsetX: 0, offsetY: 0 },
     category: 'nature',
@@ -278,33 +278,33 @@ export const WALLPAPER_PRESETS: ImagePreset[] = [
 // Wallpapers organized by category
 export const WALLPAPER_CATEGORIES = {
   abstract: {
-    name: 'Abstract Art',
+    name: 'wallpaper_cat_abstract_name',
     icon: '🎨',
-    description: 'Abstract patterns, artistic creations and modern designs',
+    description: 'wallpaper_cat_abstract_desc',
     wallpapers: WALLPAPER_PRESETS.filter(w => w.category === 'abstract')
   },
   minimal: {
-    name: 'Minimal Style',
+    name: 'wallpaper_cat_minimal_name',
     icon: '⚪',
-    description: 'Clean geometry, minimalist design and pure aesthetics',
+    description: 'wallpaper_cat_minimal_desc',
     wallpapers: WALLPAPER_PRESETS.filter(w => w.category === 'minimal')
   },
   nature: {
-    name: 'Nature Scenery',
+    name: 'wallpaper_cat_nature_name',
     icon: '🌿',
-    description: 'Natural landscapes, plant textures and organic forms',
+    description: 'wallpaper_cat_nature_desc',
     wallpapers: WALLPAPER_PRESETS.filter(w => w.category === 'nature')
   },
   business: {
-    name: 'Business Professional',
+    name: 'wallpaper_cat_business_name',
     icon: '💼',
-    description: 'Business scenes, professional atmosphere and corporate style',
+    description: 'wallpaper_cat_business_desc',
     wallpapers: WALLPAPER_PRESETS.filter(w => w.category === 'business')
   },
   tech: {
-    name: 'Tech Future',
+    name: 'wallpaper_cat_tech_name',
     icon: '🔬',
-    description: 'Technology elements, futuristic feel and digital art',
+    description: 'wallpaper_cat_tech_desc',
     wallpapers: WALLPAPER_PRESETS.filter(w => w.category === 'tech')
   }
 }

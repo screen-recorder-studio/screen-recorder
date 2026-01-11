@@ -2,6 +2,7 @@
   import { onMount } from 'svelte'
   import { Edit, Trash2, Info } from '@lucide/svelte'
   import VideoPreview from '$lib/components/VideoPreview.svelte'
+  import { _t as t } from '$lib/utils/i18n'
 
   // New status: control metadata display (no longer needed, changed to hover display)
   // let showMetadata = $state(false)
@@ -65,17 +66,17 @@
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
     if (diffDays === 0) {
-      return 'Today ' + date.toLocaleTimeString('en-US', { 
+      return t('card_date_today', date.toLocaleTimeString('en-US', { 
         hour: '2-digit', 
         minute: '2-digit' 
-      })
+      }))
     } else if (diffDays === 1) {
-      return 'Yesterday ' + date.toLocaleTimeString('en-US', { 
+      return t('card_date_yesterday', date.toLocaleTimeString('en-US', { 
         hour: '2-digit', 
         minute: '2-digit' 
-      })
+      }))
     } else if (diffDays < 7) {
-      return `${diffDays} days ago`
+      return t('card_date_days_ago', String(diffDays))
     } else {
       return date.toLocaleDateString('en-US', {
         year: 'numeric',
@@ -512,35 +513,35 @@
             <span class="value">{recording.id}</span>
           </div>
           <div class="meta-row">
-            <span class="label">Created:</span>
+            <span class="label">{t('card_label_created')}</span>
             <span class="value">{formatDate(recording.createdAt)}</span>
           </div>
           <div class="meta-row">
-            <span class="label">Status:</span>
-            <span class="value">{recording.meta?.completed ? 'Completed' : 'Incomplete'}</span>
+            <span class="label">{t('card_label_status')}</span>
+            <span class="value">{recording.meta?.completed ? t('card_status_completed') : t('card_status_incomplete')}</span>
           </div>
           {#if recording.codec || recording.meta?.codec}
             <div class="meta-row">
-              <span class="label">Codec:</span>
+              <span class="label">{t('card_label_codec')}</span>
               <span class="value">{(recording.codec || recording.meta?.codec)?.toUpperCase()}</span>
             </div>
           {/if}
           <div class="meta-row">
-            <span class="label">Resolution:</span>
+            <span class="label">{t('card_label_resolution')}</span>
             <span class="value">{recording.meta?.width || 0} × {recording.meta?.height || 0}</span>
           </div>
           {#if recording.fps || recording.meta?.fps}
             <div class="meta-row">
-              <span class="label">FPS:</span>
+              <span class="label">{t('card_label_fps')}</span>
               <span class="value">{recording.fps || recording.meta?.fps} FPS</span>
             </div>
           {/if}
           <div class="meta-row">
-            <span class="label">File Size:</span>
+            <span class="label">{t('card_label_size')}</span>
             <span class="value">{formatBytes(recording.meta?.totalBytes || recording.size)}</span>
           </div>
           <div class="meta-row">
-            <span class="label">Total Frames:</span>
+            <span class="label">{t('card_label_frames')}</span>
             <span class="value">{(recording.meta?.totalChunks || recording.totalChunks).toLocaleString()}</span>
           </div>
         </div>
@@ -571,18 +572,18 @@
     {:else if isIncomplete}
       <div class="thumbnail-placeholder incomplete">
         <span class="icon">⚠️</span>
-        <span class="text">Incomplete Recording</span>
-        <span class="subtext">Missing video data</span>
+        <span class="text">{t('card_incomplete_title')}</span>
+        <span class="subtext">{t('card_incomplete_desc')}</span>
       </div>
     {:else if thumbnailError}
       <div class="thumbnail-placeholder error">
         <span class="icon">📹</span>
-        <span class="text">Cannot load preview</span>
+        <span class="text">{t('card_preview_error')}</span>
       </div>
     {:else}
       <div class="thumbnail-placeholder loading">
         <div class="spinner"></div>
-        <span class="text">Generating preview...</span>
+        <span class="text">{t('card_preview_loading')}</span>
       </div>
     {/if}
     
@@ -606,14 +607,14 @@
       class="btn btn-primary"
       onclick={editRecording}
       disabled={isIncomplete}
-      title={isIncomplete ? 'Cannot edit incomplete recording' : 'Edit recording'}
+      title={isIncomplete ? t('card_edit_disabled_tooltip') : t('card_edit_tooltip')}
     >
       <Edit class="w-4 h-4" />
-      Edit
+      {t('card_btn_edit')}
     </button>
     <button class="btn btn-danger" onclick={onDelete}>
       <Trash2 class="w-4 h-4" />
-      Delete
+      {t('card_btn_delete')}
     </button>
   </div>
 </div>
@@ -646,7 +647,7 @@
       </div>
       <div class="preview-content">
         {#if loadError}
-          <div class="error-banner">Failed to load preview data: {loadError}</div>
+          <div class="error-banner">{t('card_preview_load_error', loadError)}</div>
         {/if}
         <VideoPreview 
           bind:this={previewComponent}

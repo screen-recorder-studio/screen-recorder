@@ -7,9 +7,10 @@
 
 interface OpenMsg { type: 'open'; dirId: string }
 interface GetRangeMsg { type: 'getRange'; start: number; count: number }
+interface GetSingleFrameGOPMsg { type: 'getSingleFrameGOP'; targetFrame: number }
 interface CloseMsg { type: 'close' }
 
-type InMsg = OpenMsg | GetRangeMsg | CloseMsg
+type InMsg = OpenMsg | GetRangeMsg | GetSingleFrameGOPMsg | CloseMsg
 
 interface ChunkIndex {
   offset: number
@@ -526,6 +527,78 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
       })
 
       ;(self as any).postMessage({ type: 'range', start, count: end - start, chunks }, transfer)
+      return
+    }
+
+    // 🆕 Single-frame preview optimization: only read minimal GOP required for target frame
+    // (from nearest keyframe to target frame). Used for timeline hover preview, avoiding loading entire window.
+    if (msg.type === 'getSingleFrameGOP') {
+      if (!recDir || !dataFileHandle || indexEntries.length === 0) {
+        throw new Error('NOT_OPEN')
+      }
+
+      const targetFrame = Math.max(0, Math.min(indexEntries.length - 1, Math.floor(msg.targetFrame)))
+      const prevKey = keyframeBefore(targetFrame)
+      
+      // 只读取从关键帧到目标帧的 GOP（包含目标帧）
+      const start = prevKey
+      const end = targetFrame + 1  // 包含目标帧
+      const gopSize = end - start
+
+      console.log('[progress] OPFS Reader - getSingleFrameGOP:', {
+        targetFrame,
+        prevKeyframe: prevKey,
+        gopSize,
+        start,
+        end
+      })
+
+      const file = await getDataFile()
+      const chunks: ChunkWire[] = []
+      const transfer: ArrayBuffer[] = []
+
+      // 批量读取 GOP 数据
+      const startOffset = indexEntries[start].offset
+      const endEntry = indexEntries[end - 1]
+      const endOffset = endEntry.offset + endEntry.size
+
+      const batchReadStart = performance.now()
+      const totalSlice = file.slice(startOffset, endOffset)
+      const totalBuf = await totalSlice.arrayBuffer()
+      const batchReadTime = performance.now() - batchReadStart
+
+      console.log(`✅ [OPFS-READER] SingleFrameGOP batch read completed in ${batchReadTime.toFixed(1)}ms, ${gopSize} frames, ${(endOffset - startOffset)} bytes`)
+
+      // 切分为单个 chunks
+      for (let i = start; i < end; i++) {
+        const ent = indexEntries[i]
+        const relativeOffset = ent.offset - startOffset
+        const buf = totalBuf.slice(relativeOffset, relativeOffset + ent.size)
+
+        const wire: ChunkWire = {
+          data: buf,
+          timestamp: Number(ent.timestamp) || 0,
+          type: (ent.type === 'key' ? 'key' : 'delta'),
+          size: Number(ent.size) || buf.byteLength,
+          codedWidth: ent.codedWidth,
+          codedHeight: ent.codedHeight,
+          codec: ent.codec
+        }
+        chunks.push(wire)
+        transfer.push(buf)
+      }
+
+      // 返回时标记目标帧在 chunks 中的索引
+      const targetIndexInGOP = targetFrame - start
+
+      ;(self as any).postMessage({
+        type: 'singleFrameGOP',
+        targetFrame,
+        targetIndexInGOP,
+        start,
+        count: gopSize,
+        chunks
+      }, transfer)
       return
     }
 

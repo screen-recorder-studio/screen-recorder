@@ -3,6 +3,7 @@
   import { ArrowRight, Target, RefreshCw, Rainbow } from '@lucide/svelte'
   import { backgroundConfigStore, PRESET_GRADIENTS } from '$lib/stores/background-config.svelte'
   import type { GradientPreset } from '$lib/types/background'
+  import { _t as t } from '$lib/utils/i18n'
 
   // Current config from store
   const currentConfig = $derived(backgroundConfigStore.config)
@@ -48,6 +49,7 @@
     }
     return 'linear-gradient(45deg, #f3f4f6, #e5e7eb)'
   }
+
 </script>
 
 <div class="space-y-3">
@@ -63,7 +65,12 @@
         type="button"
       >
         <cat.icon class="w-3 h-3" />
-        <span>{cat.name}</span>
+        <span>{t(
+          cat.key === 'linear' ? 'gradient_tab_linear' :
+          cat.key === 'radial' ? 'gradient_tab_radial' :
+          cat.key === 'conic' ? 'gradient_tab_conic' :
+          'gradient_tab_multi'
+        )}</span>
       </button>
     {/each}
   </div>
@@ -90,18 +97,17 @@
 
   <!-- Current gradient preview -->
   <div class="flex items-center gap-2 pt-2 border-t border-gray-200">
-    <span class="text-xs text-gray-600">Current:</span>
+    <span class="text-xs text-gray-600">{t('gradient_current')}</span>
     <div
       class="flex-1 h-7 rounded border border-gray-300"
       style="background: {getCurrentGradientCSS()}"
     ></div>
     {#if currentType === 'gradient' && currentConfig.gradient}
       <span class="text-xs text-gray-500">
-        {currentConfig.gradient.type} · {currentConfig.gradient.stops.length} colors
+        {currentConfig.gradient.type} · {currentConfig.gradient.stops.length} {t('gradient_colors_suffix')}
       </span>
     {:else}
-      <span class="text-xs text-gray-400">Select a gradient</span>
+      <span class="text-xs text-gray-400">{t('gradient_select_hint')}</span>
     {/if}
   </div>
 </div>
-

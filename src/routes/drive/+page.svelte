@@ -3,6 +3,7 @@
   import { Folder } from '@lucide/svelte'
   import RecordingList from '$lib/components/drive/RecordingList.svelte'
   import { formatBytes, formatTime, formatDate } from '$lib/utils/format'
+  import { _t as t, initI18n, isI18nInitialized } from '$lib/utils/i18n'
 
   // Recording summary type definition
   interface RecordingSummary {
@@ -23,6 +24,7 @@
   let recordings = $state<RecordingSummary[]>([])
   let isLoading = $state(true)
   let errorMessage = $state('')
+  let i18nReady = $state(isI18nInitialized())
 
   // Load all recordings
   async function loadRecordings() {
@@ -32,7 +34,7 @@
       
       // Check OPFS support
       if (!navigator.storage?.getDirectory) {
-        throw new Error('Your browser does not support OPFS storage')
+        throw new Error(t('drive_errorSupport'))
       }
 
       const root = await navigator.storage.getDirectory()
@@ -57,7 +59,7 @@
       
     } catch (error: any) {
       console.error('Failed to load recordings:', error)
-      errorMessage = error.message || 'An error occurred while loading recordings'
+      errorMessage = error.message || t('drive_errorLoad')
     } finally {
       isLoading = false
     }
@@ -72,7 +74,7 @@
       return JSON.parse(text)
     } catch (error) {
       // Only rely on meta.json, skip directory if missing
-      throw new Error('meta.json not found')
+      throw new Error(t('drive_errorMetaNotFound'))
     }
   }
 
@@ -83,7 +85,7 @@
       const file = await indexHandle.getFile()
       const text = await file.text()
       const lines = text.split('\n').filter(Boolean)
-      if (lines.length === 0) throw new Error('Empty recording file')
+      if (lines.length === 0) throw new Error(t('drive_errorEmpty'))
       const firstEntry = JSON.parse(lines[0])
       const lastEntry = JSON.parse(lines[lines.length - 1])
       return {
@@ -98,7 +100,7 @@
         fps: inferFPS(lines.slice(0, Math.min(60, lines.length)))
       }
     } catch (error) {
-      throw new Error('Unable to read recording metadata')
+      throw new Error(t('drive_errorMetadata'))
     }
   }
 
@@ -116,7 +118,7 @@
         const dataFile = await dataHandle.getFile()
         totalSize = dataFile.size
       } catch (error) {
-        console.warn('Unable to get data file size:', error)
+        console.warn(t('drive_errorDataSize'), error)
       }
     }
 
@@ -198,7 +200,7 @@
     const minute = String(date.getMinutes()).padStart(2, '0')
     const second = String(date.getSeconds()).padStart(2, '0')
     
-    return `Screen Recording ${year}-${month}-${day} ${hour}:${minute}:${second}`
+    return `${t('drive_recordingNamePrefix')} ${year}-${month}-${day} ${hour}:${minute}:${second}`
   }
 
   // Delete recording
@@ -210,10 +212,10 @@
       // Remove from list
       recordings = recordings.filter(r => r.id !== recordingId)
       
-      console.log(`Recording ${recordingId} deleted`)
+      console.log(t('drive_logDeleted', recordingId))
     } catch (error: any) {
       console.error('Failed to delete recording:', error)
-      errorMessage = `Delete failed: ${error.message}`
+      errorMessage = t('drive_errorDelete', error.message)
     }
   }
 
@@ -231,7 +233,7 @@
     }
     
     if (successCount > 0) {
-      console.log(`Successfully deleted ${successCount} recordings`)
+      console.log(t('drive_logBatchDelete', String(successCount)))
     }
   }
 
@@ -246,13 +248,16 @@
   }
 
   // Load data when component mounts
-  onMount(() => {
+  onMount(async () => {
+    // Ensure i18n is initialized before loading
+    await initI18n()
+    i18nReady = true
     loadRecordings()
   })
 </script>
 
 <svelte:head>
-  <title>Recordings - Screen Recorder Extension</title>
+  <title>{t('drive_pageTitle')}</title>
 </svelte:head>
 
 <div class="min-h-screen bg-gray-50">
@@ -261,7 +266,7 @@
     <div class="max-w-6xl mx-auto flex items-center justify-between">
       <div class="flex items-center gap-3">
         <Folder class="w-6 h-6 text-gray-700" />
-        <h1 class="text-2xl font-bold text-gray-900">Recording Manager</h1>
+        <h1 class="text-2xl font-bold text-gray-900">{t('drive_headerTitle')}</h1>
       </div>
     </div>
   </div>
