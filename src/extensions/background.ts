@@ -955,7 +955,7 @@ async function handleStartRecording(message, sendResponse) {
       isPaused: false,
       streamId: message.streamId,
       startTime: Date.now(),
-      tabId: tabId ?? null,
+      tabId: message.tabId ?? null,
       mode: null
     }
 
