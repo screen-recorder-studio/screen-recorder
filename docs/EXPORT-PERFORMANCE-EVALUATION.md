@@ -41,7 +41,7 @@
 **函数**：`renderFramesForExportWebm()`
 
 ```typescript
-// 第 2182 行
+// 已修复：原代码中存在硬编码延迟
 await new Promise(resolve => setTimeout(resolve, 16))
 ```
 
@@ -59,7 +59,7 @@ await new Promise(resolve => setTimeout(resolve, 16))
 **函数**：`renderFramesForExport()`
 
 ```typescript
-// 第 1418 行
+// 已修复：原代码中每帧执行 getImageData 验证
 const imageData = canvasCtx.getImageData(0, 0, Math.min(10, offscreenCanvas.width), Math.min(10, offscreenCanvas.height))
 const hasContent = imageData.data.some(value => value > 0)
 ```
@@ -96,7 +96,7 @@ console.log(`✅ [MP4-Export-Worker] Frame ${frameIndex} added successfully`)
 **文件**：`src/lib/workers/composite-worker/index.ts`
 
 ```typescript
-// 第 1759 行 - 每次 seek 都输出
+// 已修复：原代码中每次 seek 都输出多条日志
 console.log('⏭️ [COMPOSITE-WORKER] Seeking to frame:', data.frameIndex, {...})
 console.log('🔍 [COMPOSITE-WORKER] Seek target in range, checking conditions:', {...})
 console.log('✅ [COMPOSITE-WORKER] Rendering frame', currentFrameIndex)
@@ -111,7 +111,7 @@ console.log('📤 [COMPOSITE-WORKER] Frame bitmap sent to main thread')
 ### 🟡 问题 5：模块加载时执行测试代码
 
 **文件**：`src/lib/workers/export-worker/index.ts`  
-**位置**：第 1761-1774 行
+**位置**：模块顶层（已修复删除）
 
 ```typescript
 // 模块顶层代码（非函数内）
