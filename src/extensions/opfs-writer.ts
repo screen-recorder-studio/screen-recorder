@@ -101,7 +101,9 @@ function appendToOpfsChunk(d: { data: any; timestamp?: number; type?: string; co
     } else if (raw && typeof raw.copyTo === 'function' && typeof raw.byteLength === 'number') {
       // EncodedVideoChunk (WebCodecs)
       const tmp = new Uint8Array(raw.byteLength);
-      try { raw.copyTo(tmp); } catch {}
+      try { raw.copyTo(tmp); } catch (e) {
+        console.warn('[Offscreen] copyTo failed for EncodedVideoChunk', e);
+      }
       u8 = tmp;
     } else if (raw instanceof Blob) {
       // Blob -> async convert to ArrayBuffer then retry
@@ -137,11 +139,6 @@ function appendToOpfsChunk(d: { data: any; timestamp?: number; type?: string; co
       ? u8.buffer
       : u8.slice().buffer;
 
-    // Light logging for early chunks
-    if ((window as any).__opfs_log_count == null) (window as any).__opfs_log_count = 0;
-    if ((window as any).__opfs_log_count < 5) {
-      (window as any).__opfs_log_count++;
-    }
 
     writer.postMessage({
       type: 'append',

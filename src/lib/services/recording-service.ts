@@ -129,9 +129,6 @@ export class RecordingService {
       // 停止性能监控
       const finalMetrics = this.performanceMonitor.stop()
 
-      // 停止更新循环
-      this.stopUpdateLoop()
-
       // 更新状态
       recordingStore.setVideoBlob(videoBlob)
       recordingStore.updateStatus('completed')
@@ -142,6 +139,9 @@ export class RecordingService {
       console.error('❌ Failed to stop recording:', error)
       recordingStore.updateStatus('error', (error as Error).message)
       throw error
+    } finally {
+      // 确保更新循环始终被停止，避免定时器泄漏
+      this.stopUpdateLoop()
     }
   }
 

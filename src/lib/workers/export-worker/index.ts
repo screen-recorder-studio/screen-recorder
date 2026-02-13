@@ -37,14 +37,24 @@ let currentBackgroundConfig: BackgroundConfig | null = null
 let currentExportFormat: string = ''
 
 // ---- OPFS data processing utilities ----
-function onceFromWorker<T = any>(worker: Worker, type: string): Promise<T> {
-  return new Promise(resolve => {
+function onceFromWorker<T = any>(worker: Worker, type: string, timeoutMs = 30000): Promise<T> {
+  return new Promise((resolve, reject) => {
+    let settled = false
     const handler = (e: MessageEvent) => {
       if (e.data?.type === type) {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
         worker.removeEventListener('message', handler as any)
         resolve(e.data as T)
       }
     }
+    const timer = setTimeout(() => {
+      if (settled) return
+      settled = true
+      worker.removeEventListener('message', handler as any)
+      reject(new Error(`Timeout waiting for worker message type '${type}' after ${timeoutMs}ms`))
+    }, timeoutMs)
     worker.addEventListener('message', handler as any)
   })
 }
@@ -1452,7 +1462,9 @@ function cleanup() {
     compositeWorker = null
   }
 
-  try { cleanupOpfsReader() } catch {}
+  try { cleanupOpfsReader() } catch (e) {
+    console.warn('⚠️ [Export-Worker] Error cleaning up OPFS reader during cleanup:', e)
+  }
 
   offscreenCanvas = null
   canvasCtx = null

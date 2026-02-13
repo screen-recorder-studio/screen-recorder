@@ -464,7 +464,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'REQUEST_OFFSCREEN_PING': {
         (async () => {
           await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
-          sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_PING', when: Date.now() })
+          await sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_PING', when: Date.now() })
           try { sendResponse({ ok: true }) } catch (e) {}
         })()
         return true;
@@ -937,7 +937,7 @@ async function startRecordingViaOffscreen(options) {
 async function stopRecordingViaOffscreen() {
   try {
     await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
-    sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_STOP_RECORDING' })
+    await sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_STOP_RECORDING' })
   } finally {
     disableTabAnnotation()
     currentRecording = { isRecording: false, isPaused: false, streamId: null, startTime: null, tabId: null, mode: null }
@@ -963,7 +963,7 @@ async function handleStartRecording(message, sendResponse) {
     // 确保 Offscreen 存在并通知开始录制（骨架版）
     try {
       await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
-      sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_START_RECORDING', payload: { streamId: message.streamId } })
+      await sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_START_RECORDING', payload: { streamId: message.streamId } })
     } catch (e) {
       console.warn('Failed to ensure offscreen or send START to offscreen', e)
     }
@@ -1002,7 +1002,7 @@ async function handleStopRecording(message, sendResponse) {
     // 通知 Offscreen 停止录制（骨架版）
     try {
       await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
-      sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_STOP_RECORDING' })
+      await sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_STOP_RECORDING' })
     } catch (e) {
       console.warn('Failed to ensure offscreen or send STOP to offscreen', e)
     }
