@@ -1756,24 +1756,12 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         break;
 
       case 'seek':
-        console.log('⏭️ [COMPOSITE-WORKER] Seeking to frame:', data.frameIndex, {
-          decodedFramesLength: decodedFrames.length,
-          hasConfig: !!currentConfig,
-          hasLayout: !!fixedVideoLayout,
-          isDecoding
-        });
         if (data.frameIndex !== undefined) {
           const target = Math.max(0, data.frameIndex);
           if (target < decodedFrames.length) {
             currentFrameIndex = target;
-            console.log('🔍 [COMPOSITE-WORKER] Seek target in range, checking conditions:', {
-              hasConfig: !!currentConfig,
-              hasFrame: !!decodedFrames[currentFrameIndex],
-              hasLayout: !!fixedVideoLayout
-            });
             if (currentConfig && decodedFrames[currentFrameIndex] && fixedVideoLayout) {
               const frame = decodedFrames[currentFrameIndex];
-              console.log('✅ [COMPOSITE-WORKER] Rendering frame', currentFrameIndex);
               // 🔧 修复：传递 currentFrameIndex 以支持 Zoom 时间计算
               const bitmap = renderCompositeFrame(frame, fixedVideoLayout, currentConfig, currentFrameIndex);
               if (bitmap) {
@@ -1781,7 +1769,6 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
                   type: 'frame',
                   data: { bitmap, frameIndex: currentFrameIndex, timestamp: frame.timestamp }
                 }, { transfer: [bitmap] });
-                console.log('📤 [COMPOSITE-WORKER] Frame bitmap sent to main thread');
               } else {
                 console.error('❌ [COMPOSITE-WORKER] renderCompositeFrame returned null');
               }
@@ -1795,7 +1782,6 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
           } else if (isDecoding) {
             // 目标帧尚未解码，挂起本次seek，待足够帧可用时立即渲染
             pendingSeekIndex = target;
-            console.log('[progress] VideoComposite - pending seek set to', target);
           } else {
             // 不在解码且目标越界，回退到最后一帧
             const last = Math.max(0, decodedFrames.length - 1);
