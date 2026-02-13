@@ -290,21 +290,6 @@ if (__isIframeSink) {
 } else {
   // Probe mode: accept direct messages from content via window.postMessage, log only
   try {
-    let __probe_log_count = 0;
-    function __headHex(u8: Uint8Array, n = 16) {
-      const len = Math.min(n, u8.length); const out = new Array(len);
-      for (let i = 0; i < len; i++) out[i] = u8[i].toString(16).padStart(2, '0');
-      return out.join(' ');
-    }
-    function __tailHex(u8: Uint8Array, n = 8) {
-      const len = Math.min(n, u8.length); const out = new Array(len);
-      for (let i = 0; i < len; i++) { const idx = u8.length - len + i; out[i] = u8[idx].toString(16).padStart(2, '0'); }
-      return out.join(' ');
-    }
-    function __sum32(u8: Uint8Array) {
-      let s = 0 >>> 0; for (let i = 0; i < u8.length; i++) { s = (s + u8[i]) >>> 0; } return s >>> 0;
-    }
-
     window.addEventListener('message', (ev) => {
       const d: any = ev.data || {};
       if (d.type === 'ping') {
@@ -312,24 +297,9 @@ if (__isIframeSink) {
         return;
       }
       if (d.type === 'start' || d.type === 'meta' || d.type === 'end') {
-        if (__probe_log_count < 10) { __probe_log_count++; }
         return;
       }
       if (d.type === 'chunk') {
-        if (__probe_log_count < 10) {
-          const raw = d.data;
-          const size = (raw && ((raw as any).byteLength ?? (raw as any).length)) || 0;
-          let u8: Uint8Array | null = null;
-          if (raw instanceof ArrayBuffer) u8 = new Uint8Array(raw);
-          else if (raw && ArrayBuffer.isView(raw) && typeof raw.byteLength === 'number') {
-            const view = raw as ArrayBufferView & { byteOffset?: number };
-            u8 = new Uint8Array(view.buffer, (view as any).byteOffset || 0, view.byteLength);
-          } else if (Array.isArray(raw)) u8 = new Uint8Array(raw as number[]);
-          const head16 = u8 ? __headHex(u8, 16) : undefined;
-          const tail8 = u8 ? __tailHex(u8, 8) : undefined;
-          const sum32 = u8 ? ('0x' + __sum32(u8).toString(16).padStart(8, '0')) : undefined;
-          __probe_log_count++;
-        }
         return;
       }
     });

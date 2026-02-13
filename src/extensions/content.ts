@@ -1602,7 +1602,6 @@
       await new Promise((r) => setTimeout(r, 140));
 
       state.track = state.stream.getVideoTracks()[0];
-      try { } catch {}
 
       // Try Element Capture first if element mode (使用原始元素)
       if (state.mode === 'element' && state.selectedElement && typeof window.RestrictionTarget !== 'undefined') {
