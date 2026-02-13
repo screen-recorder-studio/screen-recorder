@@ -998,11 +998,10 @@ function handleCompositeFrame(bitmap: ImageBitmap, frameIndex: number) {
         const offsetX = (canvasWidth - scaledWidth) / 2
         const offsetY = (canvasHeight - scaledHeight) / 2
 
-        console.log(`🔧 [MP4-Export-Worker] Scaling frame ${frameIndex}:`)
-        console.log(`  Bitmap: ${bitmapWidth}×${bitmapHeight}`)
-        console.log(`  Canvas: ${canvasWidth}×${canvasHeight}`)
-        console.log(`  Scaled: ${scaledWidth.toFixed(0)}×${scaledHeight.toFixed(0)} at (${offsetX.toFixed(0)}, ${offsetY.toFixed(0)})`)
-
+        if (!warnedCanvasSizeMismatch) {
+          console.log(`🔧 [MP4-Export-Worker] Scaling frames: Bitmap ${bitmapWidth}×${bitmapHeight} → Canvas ${canvasWidth}×${canvasHeight}, scale=${scale.toFixed(3)}`)
+          warnedCanvasSizeMismatch = true
+        }
         // 绘制缩放后的图像
         canvasCtx.drawImage(bitmap, offsetX, offsetY, scaledWidth, scaledHeight)
       }
@@ -1404,52 +1403,25 @@ async function renderFramesForExport(videoSource: any, frameDuration: number): P
 
     try {
       // 请求 composite worker 渲染指定帧
-      console.log(`🎬 [MP4-Export-Worker] Requesting frame ${frameIndex}...`)
       await requestCompositeFrame(frameIndex)
-      console.log(`✅ [MP4-Export-Worker] Frame ${frameIndex} rendered successfully`)
 
       // 验证 Canvas 状态
       if (!offscreenCanvas || !canvasCtx) {
-        console.error(`❌ [MP4-Export-Worker] Canvas not available for frame ${frameIndex}`)
         throw new Error(`Canvas not available for frame ${frameIndex}`)
-      }
-
-      // 验证 Canvas 内容
-      const imageData = canvasCtx.getImageData(0, 0, Math.min(10, offscreenCanvas.width), Math.min(10, offscreenCanvas.height))
-      const hasContent = imageData.data.some(value => value > 0)
-
-      if (!hasContent) {
-        console.warn(`⚠️ [MP4-Export-Worker] Canvas appears empty for frame ${frameIndex}`)
       }
 
       // 添加当前 Canvas 状态到 CanvasSource
       try {
-        console.log(`📦 [MP4-Export-Worker] Adding frame ${frameIndex} to CanvasSource...`)
-        console.log(`📊 [MP4-Export-Worker] Canvas state: ${offscreenCanvas.width}×${offscreenCanvas.height}, hasContent: ${hasContent}`)
-
         await videoSource.add(timestamp, frameDuration)
         addedCount++
-        console.log(`✅ [MP4-Export-Worker] Frame ${frameIndex} added successfully (total: ${addedCount})`)
 
-        // 每10帧输出一次详细日志
-        if (frameIndex % 10 === 0) {
+        // 每50帧输出一次详细日志
+        if (frameIndex % 50 === 0) {
           console.log(`📊 [MP4-Export-Worker] Progress: ${frameIndex + 1}/${totalFrames} frames, timestamp: ${timestamp.toFixed(3)}s, success rate: ${((addedCount/(frameIndex+1))*100).toFixed(1)}%`)
         }
       } catch (addError) {
         addErrors++
         console.error(`❌ [MP4-Export-Worker] Failed to add frame ${frameIndex} to CanvasSource:`, addError)
-        console.error(`❌ [MP4-Export-Worker] Add error details:`, {
-          frameIndex,
-          timestamp,
-          frameDuration,
-          canvasSize: { width: offscreenCanvas?.width, height: offscreenCanvas?.height },
-          hasContent,
-          addErrors,
-          addedCount,
-          videoSourceType: typeof videoSource,
-          errorMessage: (addError as Error).message || String(addError),
-          errorStack: (addError as Error).stack
-        })
       }
 
       // 更新进度
@@ -1501,12 +1473,9 @@ async function renderFramesForExport(videoSource: any, frameDuration: number): P
 async function requestCompositeFrame(frameIndex: number): Promise<void> {
   return new Promise((resolve, reject) => {
     if (!compositeWorker) {
-      console.error(`❌ [MP4-Export-Worker] Composite worker not available for frame ${frameIndex}`)
       reject(new Error('Composite worker not available'))
       return
     }
-
-    console.log(`🔄 [MP4-Export-Worker] Requesting composite frame ${frameIndex}...`)
 
     // 设置临时消息处理器等待帧渲染完成
     const originalOnMessage = compositeWorker.onmessage
@@ -1520,8 +1489,6 @@ async function requestCompositeFrame(frameIndex: number): Promise<void> {
       const { type, data } = event.data
 
       if (type === 'frame' && data.frameIndex === frameIndex) {
-        console.log(`✅ [MP4-Export-Worker] Received composite frame ${frameIndex}`)
-
         // 恢复原始消息处理器
         compositeWorker!.onmessage = originalOnMessage
         clearTimeout(timeout)
@@ -1529,7 +1496,6 @@ async function requestCompositeFrame(frameIndex: number): Promise<void> {
         // 处理接收到的帧
         try {
           handleCompositeFrame(data.bitmap, data.frameIndex)
-          console.log(`✅ [MP4-Export-Worker] Frame ${frameIndex} handled successfully`)
           resolve()
         } catch (handleError) {
           console.error(`❌ [MP4-Export-Worker] Failed to handle frame ${frameIndex}:`, handleError)
@@ -1549,9 +1515,6 @@ async function requestCompositeFrame(frameIndex: number): Promise<void> {
     }
 
     // 请求渲染指定帧
-    console.log(`📤 [MP4-Export-Worker] Sending seek request for frame ${frameIndex}`)
-
-
     compositeWorker.postMessage({
       type: 'seek',
       data: { frameIndex }
@@ -1742,7 +1705,7 @@ async function renderFramesForExportOpfs(videoSource: any, frameDuration: number
           totalFrames: totalOpfsFrames
         })
 
-        if (globalIndex % 10 === 0) {
+        if (globalIndex % 50 === 0) {
           console.log(`📊 [MP4-Export-Worker] [OPFS] Progress: ${globalIndex + 1}/${totalOpfsFrames}`)
         }
       } catch (err) {
@@ -2178,15 +2141,13 @@ async function renderFramesForExportWebm(videoSource: any, frameDuration: number
 
     try {
       await requestCompositeFrame(frameIndex)
-      // 等待一帧时间确保渲染完成（与原实现保持一致）
-      await new Promise(resolve => setTimeout(resolve, 16))
 
       await videoSource.add(timestamp, frameDuration)
 
       const progress = 80 + (frameIndex / totalFrames) * 15 // 80%-95%
       updateProgress({ stage: 'muxing', progress, currentFrame: frameIndex + 1, totalFrames })
 
-      if (frameIndex % 10 === 0) {
+      if (frameIndex % 50 === 0) {
         console.log(`📊 [WebM-Export-Worker] Added frame ${frameIndex + 1}/${totalFrames}, ts: ${timestamp.toFixed(3)}s`)
       }
     } catch (error) {
