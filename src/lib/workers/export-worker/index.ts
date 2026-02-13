@@ -1457,9 +1457,13 @@ function handleCancel() {
  * 清理资源
  */
 function cleanup() {
-  if (compositeWorker) {
-    compositeWorker.terminate()
-    compositeWorker = null
+  try {
+    if (compositeWorker) {
+      compositeWorker.terminate()
+      compositeWorker = null
+    }
+  } catch (e) {
+    console.warn('⚠️ [Export-Worker] Error terminating composite worker:', e)
   }
 
   try { cleanupOpfsReader() } catch (e) {

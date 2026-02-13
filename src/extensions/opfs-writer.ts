@@ -102,7 +102,7 @@ function appendToOpfsChunk(d: { data: any; timestamp?: number; type?: string; co
       // EncodedVideoChunk (WebCodecs)
       const tmp = new Uint8Array(raw.byteLength);
       try { raw.copyTo(tmp); } catch (e) {
-        console.warn('[Offscreen] copyTo failed for EncodedVideoChunk', e);
+        console.warn('[Offscreen] copyTo failed for EncodedVideoChunk, size:', raw.byteLength, 'ts:', d.timestamp, e);
       }
       u8 = tmp;
     } else if (raw instanceof Blob) {
