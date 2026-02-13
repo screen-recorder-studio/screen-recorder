@@ -69,7 +69,6 @@ let isTrimEnabled = false
 
 async function initializeOpfsReader(dirId: string, windowSize?: number, trimOptions?: { startFrame: number, endFrame: number }): Promise<void> {
   try {
-    console.log('🗂️ [MP4-Export-Worker] Initializing OPFS reader for dirId:', dirId)
 
     opfsReader = new Worker(new URL('../opfs-reader-worker.ts', import.meta.url), { type: 'module' })
     opfsWindowSize = Math.max(30, Math.min(windowSize ?? 90, 150)) // 限制窗口大小
@@ -87,26 +86,12 @@ async function initializeOpfsReader(dirId: string, windowSize?: number, trimOpti
       trimStartFrame = Math.max(0, trimOptions.startFrame)
       trimEndFrame = Math.min(totalOpfsFrames - 1, trimOptions.endFrame)
       totalOpfsFrames = Math.max(0, trimEndFrame - trimStartFrame + 1)
-      console.log('✂️ [MP4-Export-Worker] Trim applied:', {
-        originalTotalFrames: opfsSummary.totalChunks,
-        trimStartFrame,
-        trimEndFrame,
-        trimmedTotalFrames: totalOpfsFrames
-      })
     }
 
     consumedGlobalFrames = 0
     lastEmittedGlobalEnd = 0
     isOpfsMode = true
 
-    console.log('✅ [MP4-Export-Worker] OPFS reader initialized:', {
-      totalFrames: totalOpfsFrames,
-      windowSize: opfsWindowSize,
-      durationMs: opfsSummary.durationMs,
-      fps: ready?.meta?.fps || 30,
-      keyframes: opfsSummary.keyframeCount,
-      trimEnabled: isTrimEnabled
-    })
 
   } catch (error) {
     console.error('❌ [MP4-Export-Worker] Failed to initialize OPFS reader:', error)
@@ -129,17 +114,8 @@ async function loadOpfsWindow(start: number, count: number): Promise<{ chunks: a
     const maxCount = Math.max(0, trimEndFrame - physicalStart + 1)
     physicalCount = Math.min(count, maxCount)
 
-    console.log(`✂️ [MP4-Export-Worker] Applying trim offset:`, {
-      logicalStart: start,
-      logicalCount: count,
-      physicalStart,
-      physicalCount,
-      trimStartFrame,
-      trimEndFrame
-    })
   }
 
-  console.log(`📦 [MP4-Export-Worker] Loading OPFS window: request start=${physicalStart}, count=${physicalCount}`)
 
   opfsReader.postMessage({ type: 'getRange', start: physicalStart, count: physicalCount })
   const range: any = await onceFromWorker(opfsReader, 'range')
@@ -149,17 +125,6 @@ async function loadOpfsWindow(start: number, count: number): Promise<{ chunks: a
   const actualStart = isTrimEnabled ? Number(range?.start ?? physicalStart) - trimStartFrame : Number(range?.start ?? start)
   const actualCount = Number(range?.count ?? chunks.length ?? 0)
 
-  console.log(`✅ [MP4-Export-Worker] OPFS window loaded:`, {
-    requestedLogicalStart: start,
-    requestedLogicalCount: count,
-    physicalStart,
-    physicalCount,
-    actualStart,
-    actualCount,
-    chunksReceived: chunks.length,
-    firstChunkType: chunks[0]?.type,
-    hasKeyframe: chunks.some((c: any) => c.type === 'key')
-  })
 
   return { chunks, actualStart, actualCount }
 }
@@ -488,9 +453,6 @@ async function handleExport(exportData: ExportData) {
 
   try {
     const { chunks, options } = exportData
-    console.log('🎬 [Export-Worker] Starting export', { format: options?.format })
-    console.log('📊 [Export-Worker] Input chunks:', chunks.length)
-    console.log('⚙️ [Export-Worker] Export options:', options)
 
     // 记录当前导出格式
     currentExportFormat = options?.format || ''
@@ -508,12 +470,10 @@ async function handleExport(exportData: ExportData) {
       if (shouldCancel) return
 
       // 1) 创建并初始化 composite worker
-      console.log('🔄 [WebM-Export-Worker] Creating composite worker')
       await createCompositeWorker()
       if (shouldCancel) return
 
       // 2) 处理视频合成（OPFS/内存）
-      console.log('🎨 [WebM-Export-Worker] Starting video composition')
       if ((options as any)?.source === 'opfs' && (options as any)?.opfsDirId) {
         // ✂️ 准备裁剪参数
         const trimOptions = options.trim?.enabled ? {
@@ -529,11 +489,9 @@ async function handleExport(exportData: ExportData) {
       if (shouldCancel) return
 
       // 3) 导出 WebM（支持 OPFS 流式写入）
-      console.log('📦 [WebM-Export-Worker] Starting WebM export')
       const webmResult: any = await exportToWEBMCompat(options)
       if (shouldCancel) return
 
-      console.log('✅ [WebM-Export-Worker] WebM export completed')
       if (webmResult && (webmResult as any).savedToOpfs) {
         self.postMessage({ type: 'complete', data: { savedToOpfs: (webmResult as any).savedToOpfs } })
       } else {
@@ -544,19 +502,16 @@ async function handleExport(exportData: ExportData) {
 
     // 分支：GIF 导出路径
     if (options?.format === 'gif') {
-      console.log('🎨 [GIF-Export-Worker] Starting GIF export')
 
       // 更新进度：准备阶段
       updateProgress({ stage: 'preparing', progress: 5, currentFrame: 0, totalFrames: chunks.length })
       if (shouldCancel) return
 
       // 1) 创建并初始化 composite worker
-      console.log('🔄 [GIF-Export-Worker] Creating composite worker')
       await createCompositeWorker()
       if (shouldCancel) return
 
       // 2) 处理视频合成
-      console.log('🎨 [GIF-Export-Worker] Starting video composition')
       if ((options as any)?.source === 'opfs' && (options as any)?.opfsDirId) {
         const trimOptions = options.trim?.enabled ? {
           startFrame: options.trim.startFrame,
@@ -571,19 +526,14 @@ async function handleExport(exportData: ExportData) {
       if (shouldCancel) return
 
       // 3) 导出 GIF
-      console.log('📦 [GIF-Export-Worker] Starting GIF export')
       const gifResult = await exportToGIF(options)
       if (shouldCancel) return
 
-      console.log('✅ [GIF-Export-Worker] GIF export completed')
       self.postMessage({ type: 'complete', data: { blob: gifResult as Blob } })
       return
     }
 
     // 默认：MP4 路径（保留现有 MP4 行为）
-    console.log('🎬 [MP4-Export-Worker] Starting MP4 export')
-    console.log('📊 [MP4-Export-Worker] Input chunks:', chunks.length)
-    console.log('⚙️ [MP4-Export-Worker] Export options:', options)
 
     // 当来源为 OPFS 时，初始化 OPFS 读取器（用于实际导出）
     if ((options as any)?.source === 'opfs' && (options as any)?.opfsDirId) {
@@ -606,13 +556,11 @@ async function handleExport(exportData: ExportData) {
     if (shouldCancel) return
 
     // 1. 创建并初始化 video-composite-worker
-    console.log('🔄 [MP4-Export-Worker] Creating composite worker')
     await createCompositeWorker()
 
     if (shouldCancel) return
 
     // 2. 处理视频合成
-    console.log('🎨 [MP4-Export-Worker] Starting video composition')
     if (((options as any)?.source === 'opfs') && totalOpfsFrames > 0) {
       // OPFS 模式：先处理首窗口，触发 composite ready（创建 OffscreenCanvas/设置 videoInfo）
       const { chunks: firstChunks, actualStart } = await loadOpfsWindow(0, opfsWindowSize)
@@ -627,13 +575,11 @@ async function handleExport(exportData: ExportData) {
     if (shouldCancel) return
 
     // 3. 导出 MP4（支持内存或 OPFS 流式写入）
-    console.log('📦 [MP4-Export-Worker] Starting MP4 export')
     const result: any = await exportToMP4(options)
 
     if (shouldCancel) return
 
     // 完成导出
-    console.log('✅ [MP4-Export-Worker] MP4 export completed')
     if (result && (result as any).savedToOpfs) {
       self.postMessage({ type: 'complete', data: { savedToOpfs: (result as any).savedToOpfs } })
     } else {
@@ -670,12 +616,10 @@ async function createCompositeWorker(): Promise<void> {
 
         switch (type) {
           case 'initialized':
-            console.log('✅ [MP4-Export-Worker] Composite worker initialized')
             resolve()
             break
 
           case 'ready':
-            console.log('✅ [MP4-Export-Worker] Video composition ready:', data)
             totalFrames = data.totalFrames
             if (!videoInfo) {
               videoInfo = {
@@ -708,7 +652,6 @@ async function createCompositeWorker(): Promise<void> {
             break
 
           case 'complete':
-            console.log('🎉 [MP4-Export-Worker] Video composition completed')
             break
 
           case 'error':
@@ -740,9 +683,6 @@ function createOffscreenCanvas(width: number, height: number) {
   const { width: h264Width, height: h264Height, modified } = validateAndFixH264Dimensions(width, height)
 
   if (modified) {
-    console.log(`🔧 [MP4-Export-Worker] Canvas size adjusted for H.264 compatibility:`)
-    console.log(`  Requested: ${width}×${height}`)
-    console.log(`  Actual: ${h264Width}×${h264Height}`)
   }
 
   offscreenCanvas = new OffscreenCanvas(h264Width, h264Height)
@@ -754,17 +694,10 @@ function createOffscreenCanvas(width: number, height: number) {
 
   // 如果尺寸被调整，需要更新 videoInfo
   if (modified && videoInfo) {
-    console.log(`📐 [MP4-Export-Worker] Updating videoInfo dimensions for H.264 compatibility`)
     videoInfo.width = h264Width
     videoInfo.height = h264Height
   }
 
-  console.log('🎨 [MP4-Export-Worker] OffscreenCanvas created:', {
-    width: h264Width,
-    height: h264Height,
-    h264Compatible: true,
-    modified
-  })
 }
 
 /**
@@ -896,7 +829,6 @@ async function processVideoCompositionOpfs(wireChunks: any[], options: ExportOpt
         // 记录当前窗口帧数（由 composite worker 基于 chunks.length 返回）
         try {
           currentWindowFrames = Number(data?.totalFrames) || transferable.length
-          console.log('🪟 [MP4-Export-Worker] Current window frames set to', currentWindowFrames)
         } catch {}
         compositeWorker!.onmessage = originalOnMessage
         if (originalOnMessage && compositeWorker) {
@@ -998,10 +930,6 @@ function handleCompositeFrame(bitmap: ImageBitmap, frameIndex: number) {
         const offsetX = (canvasWidth - scaledWidth) / 2
         const offsetY = (canvasHeight - scaledHeight) / 2
 
-        console.log(`🔧 [MP4-Export-Worker] Scaling frame ${frameIndex}:`)
-        console.log(`  Bitmap: ${bitmapWidth}×${bitmapHeight}`)
-        console.log(`  Canvas: ${canvasWidth}×${canvasHeight}`)
-        console.log(`  Scaled: ${scaledWidth.toFixed(0)}×${scaledHeight.toFixed(0)} at (${offsetX.toFixed(0)}, ${offsetY.toFixed(0)})`)
 
         // 绘制缩放后的图像
         canvasCtx.drawImage(bitmap, offsetX, offsetY, scaledWidth, scaledHeight)
@@ -1026,7 +954,6 @@ function handleCompositeFrame(bitmap: ImageBitmap, frameIndex: number) {
     }
 
     const totalForLog = isOpfsMode ? totalOpfsFrames : totalFrames
-    console.log(`🎨 [MP4-Export-Worker] Frame ${frameIndex} composited (${processedFrames}/${totalForLog})`)
 
   } catch (error) {
     console.error('❌ [MP4-Export-Worker] Error handling composite frame:', error)
@@ -1096,7 +1023,6 @@ function checkMediabunnyStatus(): { available: boolean; reason: string } {
       return { available: false, reason: 'CanvasSource 类不可用' }
     }
 
-    console.log('✅ [MP4-Export-Worker] All Mediabunny classes available')
     return { available: true, reason: '所有 Mediabunny 类都可用' }
   } catch (error) {
     return { available: false, reason: `Mediabunny 检查失败: ${(error as Error).message}` }
@@ -1125,15 +1051,6 @@ function validateAndFixH264Dimensions(width: number, height: number): { width: n
   const modified = (alignedWidth !== originalWidth) || (alignedHeight !== originalHeight)
 
   if (modified) {
-    console.log(`🔧 [MP4-Export-Worker] H.264 dimension adjustment:`)
-    console.log(`  Original: ${originalWidth}×${originalHeight}`)
-    console.log(`  Fixed: ${alignedWidth}×${alignedHeight}`)
-    console.log(`  Reasons:`)
-    if (originalWidth % 2 !== 0) console.log(`    - Width must be even (was ${originalWidth})`)
-    if (originalHeight % 2 !== 0) console.log(`    - Height must be even (was ${originalHeight})`)
-    if (originalWidth < 16) console.log(`    - Width below minimum (was ${originalWidth})`)
-    if (originalHeight < 16) console.log(`    - Height below minimum (was ${originalHeight})`)
-    console.log(`    - Aligned to 16-pixel boundaries for optimal performance`)
   }
 
   return {
@@ -1159,7 +1076,6 @@ async function checkH264Support(): Promise<{ supported: boolean; reason: string 
     const { width, height, modified } = validateAndFixH264Dimensions(originalWidth, originalHeight)
 
     if (modified) {
-      console.log(`⚠️ [MP4-Export-Worker] Video dimensions need adjustment for H.264 compatibility`)
     }
 
     // 测试 H.264 编码器配置
@@ -1180,16 +1096,12 @@ async function checkH264Support(): Promise<{ supported: boolean; reason: string 
           framerate: 30
         }
 
-        console.log(`🔍 [MP4-Export-Worker] Testing H.264 config:`, config)
         const support = await VideoEncoder.isConfigSupported(config)
         if (support.supported) {
-          console.log(`✅ [MP4-Export-Worker] H.264 codec supported: ${codec}`)
           return { supported: true, reason: `支持 ${codec} (${width}×${height})` }
         } else {
-          console.log(`❌ [MP4-Export-Worker] H.264 codec not supported: ${codec}`)
         }
       } catch (error) {
-        console.log(`❌ [MP4-Export-Worker] H.264 codec test failed: ${codec}`, error)
       }
     }
 
@@ -1210,22 +1122,17 @@ async function exportToMP4(options: ExportOptions): Promise<any> {
     throw new Error('Canvas or video info not available')
   }
 
-  console.log('🎬 [MP4-Export-Worker] Starting Mediabunny export')
 
   try {
     // 🔧 首先检查 Mediabunny 库状态
-    console.log('🔍 [MP4-Export-Worker] Checking Mediabunny library status...')
     const mediabunnyStatus = checkMediabunnyStatus()
-    console.log('🔍 [MP4-Export-Worker] Mediabunny status check result:', mediabunnyStatus)
 
     if (!mediabunnyStatus.available) {
       throw new Error(`Mediabunny 库不可用: ${mediabunnyStatus.reason}`)
     }
 
     // 🔧 然后检查 H.264 编码器支持
-    console.log('🔍 [MP4-Export-Worker] Checking H.264 encoder support...')
     const h264Support = await checkH264Support()
-    console.log('🔍 [MP4-Export-Worker] H.264 support check result:', h264Support)
 
     if (!h264Support.supported) {
       throw new Error(`H.264 编码器不支持: ${h264Support.reason}。请尝试导出为 WebM 格式。`)
@@ -1242,25 +1149,16 @@ async function exportToMP4(options: ExportOptions): Promise<any> {
     })
 
     // 创建 Mediabunny 输出（使用策略，支持 OPFS 流式写入）
-    console.log('🏗️ [MP4-Export-Worker] Creating Mediabunny Output...')
 
     const useOpfsStream = Boolean((options as any)?.saveToOpfs && (options as any)?.opfsDirId)
     const { output } = await strategy.createOutput(useOpfsStream, options)
 
     // 创建 CanvasSource（通过策略）
-    console.log('🎨 [MP4-Export-Worker] CanvasSource config:', {
-      canvasSize: { width: offscreenCanvas.width, height: offscreenCanvas.height },
-      videoInfo,
-      codec: 'avc',
-      bitrate: options.bitrate || 8000000
-    })
 
     const videoSource = strategy.createVideoSource(offscreenCanvas, { bitrate: options.bitrate || 8000000 })
 
-    console.log('✅ [MP4-Export-Worker] CanvasSource created successfully')
 
     // 添加视频轨道
-    console.log('🎬 [MP4-Export-Worker] Adding video track to output...')
     output.addVideoTrack(videoSource)
 
     // 启动输出（交由策略处理）
@@ -1280,14 +1178,11 @@ async function exportToMP4(options: ExportOptions): Promise<any> {
     const duration = totalTargetFrames / frameRate
     const frameDuration = 1 / frameRate
 
-    console.log(`📊 [MP4-Export-Worker] Export parameters: duration=${duration}s, totalFrames=${totalTargetFrames}, frameRate=${frameRate}`)
 
     // 请求 composite worker 逐帧渲染并添加到 CanvasSource
-    console.log(`🎬 [MP4-Export-Worker] Starting frame rendering for ${totalTargetFrames} frames`)
     const addedFrames = isOpfsMode
       ? await renderFramesForExportOpfs(videoSource, frameDuration, options)
       : await renderFramesForExport(videoSource, frameDuration)
-    console.log(`📊 [MP4-Export-Worker] Successfully added ${addedFrames} frames to H.264 encoder`)
 
     // 🔧 修复：更宽松的错误检查，与 WebM Worker 保持一致
     if (addedFrames === 0) {
@@ -1296,7 +1191,6 @@ async function exportToMP4(options: ExportOptions): Promise<any> {
     } else if (addedFrames < totalFrames * 0.8) {
       console.warn(`⚠️ [MP4-Export-Worker] 只成功添加了 ${addedFrames}/${totalFrames} 帧 (${((addedFrames/totalFrames)*100).toFixed(1)}%)，但继续导出`)
     } else {
-      console.log(`✅ [MP4-Export-Worker] 成功添加了 ${addedFrames}/${totalFrames} 帧 (${((addedFrames/totalFrames)*100).toFixed(1)}%)`)
     }
 
     // 完成输出
@@ -1315,9 +1209,6 @@ async function exportToMP4(options: ExportOptions): Promise<any> {
     if (useOpfsStream) {
       const info = (await (strategy.getOpfsResultInfo?.(options as any) || Promise.resolve({ bytes: 0, fileName: (options as any).opfsFileName || 'export.mp4' }))) as { bytes: number; fileName: string }
 
-      console.log('✅ [MP4-Export-Worker] MP4 export streamed to OPFS', { bytes: info.bytes })
-      console.log(`📊 [MP4-Export-Worker] Added frames: ${addedFrames}/${totalFrames} (${((addedFrames / totalFrames) * 100).toFixed(1)}%)`)
-      console.log(`📊 [MP4-Export-Worker] Estimated duration: ${(totalFrames / videoInfo.frameRate).toFixed(2)}s`)
 
       // 最终进度
       updateProgress({
@@ -1344,20 +1235,13 @@ async function exportToMP4(options: ExportOptions): Promise<any> {
       // 🔧 验证生成的 MP4 文件
 
 
-      console.log('🔍 [MP4-Export-Worker] Validating generated MP4...')
       const validation = validateMP4Blob(mp4Blob, addedFrames, totalFrames)
-      console.log('🔍 [MP4-Export-Worker] MP4 validation result:', validation)
 
       if (!validation.isValid) {
         console.warn('⚠️ [MP4-Export-Worker] MP4 validation failed, but continuing with export')
         console.warn('⚠️ [MP4-Export-Worker] Validation issues:', validation.issues)
       }
 
-      console.log('✅ [MP4-Export-Worker] MP4 export completed successfully')
-      console.log(`📊 [MP4-Export-Worker] Final MP4 size: ${buffer.byteLength} bytes (${(buffer.byteLength / 1024 / 1024).toFixed(2)} MB)`)
-      console.log(`📊 [MP4-Export-Worker] Added frames: ${addedFrames}/${totalFrames} (${((addedFrames / totalFrames) * 100).toFixed(1)}%)`)
-      console.log(`📊 [MP4-Export-Worker] Estimated duration: ${(totalFrames / videoInfo.frameRate).toFixed(2)}s`)
-      console.log(`📊 [MP4-Export-Worker] Average bitrate: ${((buffer.byteLength * 8) / (totalFrames / videoInfo.frameRate) / 1000).toFixed(0)} kbps`)
 
       // 最终进度
       updateProgress({
@@ -1385,8 +1269,6 @@ async function renderFramesForExport(videoSource: any, frameDuration: number): P
     throw new Error('Composite worker or frame count not available')
   }
 
-  console.log(`🎬 [MP4-Export-Worker] Starting frame rendering for ${totalFrames} frames`)
-  console.log(`📊 [MP4-Export-Worker] Frame duration: ${frameDuration}s, Total duration: ${(totalFrames * frameDuration).toFixed(2)}s`)
 
   let addedCount = 0
   let requestErrors = 0
@@ -1395,7 +1277,6 @@ async function renderFramesForExport(videoSource: any, frameDuration: number): P
   // 逐帧请求合成并添加到 CanvasSource
   for (let frameIndex = 0; frameIndex < totalFrames; frameIndex++) {
     if (shouldCancel) {
-      console.log(`🛑 [MP4-Export-Worker] Export cancelled at frame ${frameIndex}`)
       break
     }
 
@@ -1404,9 +1285,7 @@ async function renderFramesForExport(videoSource: any, frameDuration: number): P
 
     try {
       // 请求 composite worker 渲染指定帧
-      console.log(`🎬 [MP4-Export-Worker] Requesting frame ${frameIndex}...`)
       await requestCompositeFrame(frameIndex)
-      console.log(`✅ [MP4-Export-Worker] Frame ${frameIndex} rendered successfully`)
 
       // 验证 Canvas 状态
       if (!offscreenCanvas || !canvasCtx) {
@@ -1424,16 +1303,12 @@ async function renderFramesForExport(videoSource: any, frameDuration: number): P
 
       // 添加当前 Canvas 状态到 CanvasSource
       try {
-        console.log(`📦 [MP4-Export-Worker] Adding frame ${frameIndex} to CanvasSource...`)
-        console.log(`📊 [MP4-Export-Worker] Canvas state: ${offscreenCanvas.width}×${offscreenCanvas.height}, hasContent: ${hasContent}`)
 
         await videoSource.add(timestamp, frameDuration)
         addedCount++
-        console.log(`✅ [MP4-Export-Worker] Frame ${frameIndex} added successfully (total: ${addedCount})`)
 
         // 每10帧输出一次详细日志
         if (frameIndex % 10 === 0) {
-          console.log(`📊 [MP4-Export-Worker] Progress: ${frameIndex + 1}/${totalFrames} frames, timestamp: ${timestamp.toFixed(3)}s, success rate: ${((addedCount/(frameIndex+1))*100).toFixed(1)}%`)
         }
       } catch (addError) {
         addErrors++
@@ -1478,11 +1353,6 @@ async function renderFramesForExport(videoSource: any, frameDuration: number): P
   }
 
   // 输出最终统计信息
-  console.log('📊 [MP4-Export-Worker] Frame rendering completed:')
-  console.log(`  ✅ Successfully added: ${addedCount}/${totalFrames} frames (${((addedCount/totalFrames)*100).toFixed(1)}%)`)
-  console.log(`  ❌ Request errors: ${requestErrors}`)
-  console.log(`  ❌ Add errors: ${addErrors}`)
-  console.log(`  📈 Success rate: ${((addedCount/totalFrames)*100).toFixed(1)}%`)
 
   if (addedCount === 0) {
     console.error('❌ [MP4-Export-Worker] CRITICAL: No frames were successfully added!')
@@ -1506,7 +1376,6 @@ async function requestCompositeFrame(frameIndex: number): Promise<void> {
       return
     }
 
-    console.log(`🔄 [MP4-Export-Worker] Requesting composite frame ${frameIndex}...`)
 
     // 设置临时消息处理器等待帧渲染完成
     const originalOnMessage = compositeWorker.onmessage
@@ -1520,7 +1389,6 @@ async function requestCompositeFrame(frameIndex: number): Promise<void> {
       const { type, data } = event.data
 
       if (type === 'frame' && data.frameIndex === frameIndex) {
-        console.log(`✅ [MP4-Export-Worker] Received composite frame ${frameIndex}`)
 
         // 恢复原始消息处理器
         compositeWorker!.onmessage = originalOnMessage
@@ -1529,7 +1397,6 @@ async function requestCompositeFrame(frameIndex: number): Promise<void> {
         // 处理接收到的帧
         try {
           handleCompositeFrame(data.bitmap, data.frameIndex)
-          console.log(`✅ [MP4-Export-Worker] Frame ${frameIndex} handled successfully`)
           resolve()
         } catch (handleError) {
           console.error(`❌ [MP4-Export-Worker] Failed to handle frame ${frameIndex}:`, handleError)
@@ -1549,7 +1416,6 @@ async function requestCompositeFrame(frameIndex: number): Promise<void> {
     }
 
     // 请求渲染指定帧
-    console.log(`📤 [MP4-Export-Worker] Sending seek request for frame ${frameIndex}`)
 
 
     compositeWorker.postMessage({
@@ -1573,7 +1439,6 @@ function updateProgress(progress: ProgressData) {
  * 处理取消请求
  */
 function handleCancel() {
-  console.log('🛑 [MP4-Export-Worker] Export cancelled')
   shouldCancel = true
   cleanup()
 }
@@ -1599,20 +1464,15 @@ function cleanup() {
 }
 
 // Worker 初始化检查
-console.log('🎥 [MP4-Export-Worker] MP4 Export Worker loaded')
-console.log('🔍 [MP4-Export-Worker] Performing initialization checks...')
 
 // 检查 Mediabunny 库
 const mediabunnyStatus = checkMediabunnyStatus()
-console.log('📦 [MP4-Export-Worker] Mediabunny status:', mediabunnyStatus)
 
 // 检查 OffscreenCanvas 支持
 const hasOffscreenCanvas = typeof OffscreenCanvas !== 'undefined'
-console.log('🎨 [MP4-Export-Worker] OffscreenCanvas support:', hasOffscreenCanvas)
 
 // 检查 WebCodecs 支持
 const hasWebCodecs = typeof VideoEncoder !== 'undefined'
-console.log('🎬 [MP4-Export-Worker] WebCodecs support:', hasWebCodecs)
 
 // 测试 H.264 尺寸验证
 
@@ -1655,7 +1515,6 @@ async function renderFramesForExportOpfs(videoSource: any, frameDuration: number
         const increased = Math.max(adaptiveBacktrack + 10, gap + 15)
         const newBacktrack = Math.min(maxBacktrack, increased)
         if (newBacktrack !== adaptiveBacktrack) {
-          console.log(`📈 [MP4-Export-Worker] Increasing backtrack margin: ${adaptiveBacktrack} → ${newBacktrack}`)
           adaptiveBacktrack = newBacktrack
         }
         backtrackMargin = adaptiveBacktrack
@@ -1701,7 +1560,6 @@ async function renderFramesForExportOpfs(videoSource: any, frameDuration: number
     // 当前窗口内逐帧渲染（跳过与上一窗重叠的起始部分）
     const localStartIndex = Math.max(0, lastEmittedGlobalEnd - actualStart)
     if (localStartIndex > 0) {
-      console.log(`↩️ [MP4-Export-Worker] Skipping overlapped ${localStartIndex} frame(s) at window start (actualStart=${actualStart}, lastEnd=${lastEmittedGlobalEnd})`)
       // 发生重叠，适度减小回看，避免过度回看导致的冗余
       adaptiveBacktrack = Math.max(10, adaptiveBacktrack - Math.min(10, localStartIndex))
     }
@@ -1712,7 +1570,6 @@ async function renderFramesForExportOpfs(videoSource: any, frameDuration: number
       const increased = Math.max(adaptiveBacktrack + 10, gap + 15)
       const newBacktrack = Math.min(maxBacktrack, increased)
       if (newBacktrack !== adaptiveBacktrack) {
-        console.log(`📈 [MP4-Export-Worker] Increasing backtrack margin: ${adaptiveBacktrack} → ${newBacktrack}`)
         adaptiveBacktrack = newBacktrack
       }
     } else if (localStartIndex === 0 && adaptiveBacktrack > 10) {
@@ -1721,7 +1578,6 @@ async function renderFramesForExportOpfs(videoSource: any, frameDuration: number
     }
     for (let localIndex = localStartIndex; localIndex < actualCount; localIndex++) {
       if (shouldCancel) {
-        console.log(`🛑 [MP4-Export-Worker] Export cancelled at global frame ${actualStart + localIndex}`)
         return addedCount
       }
 
@@ -1743,7 +1599,6 @@ async function renderFramesForExportOpfs(videoSource: any, frameDuration: number
         })
 
         if (globalIndex % 10 === 0) {
-          console.log(`📊 [MP4-Export-Worker] [OPFS] Progress: ${globalIndex + 1}/${totalOpfsFrames}`)
         }
       } catch (err) {
         console.error(`❌ [MP4-Export-Worker] [OPFS] Failed to process global frame ${globalIndex}:`, err)
@@ -1758,7 +1613,6 @@ async function renderFramesForExportOpfs(videoSource: any, frameDuration: number
   return addedCount
 }
 
-console.log('🔧 [MP4-Export-Worker] Testing H.264 dimension validation...')
 const testCases = [
   { width: 719, height: 996, name: '奇数尺寸' },
   { width: 720, height: 996, name: '部分偶数' },
@@ -1768,10 +1622,8 @@ const testCases = [
 
 testCases.forEach(testCase => {
   const result = validateAndFixH264Dimensions(testCase.width, testCase.height)
-  console.log(`  ${testCase.name} (${testCase.width}×${testCase.height}) → ${result.width}×${result.height} ${result.modified ? '(修正)' : '(无需修正)'}`)
 })
 
-console.log('✅ [MP4-Export-Worker] Initialization checks completed')
 
 
 /**
@@ -1795,7 +1647,6 @@ async function exportToWEBMCompat(options: ExportOptions): Promise<any> {
   output.addVideoTrack(videoSource)
 
   await strategy.start(output)
-  console.log('✅ [WebM-Export-Worker] Mediabunny output started')
 
   // 封装阶段进度
   updateProgress({ stage: 'muxing', progress: 80, currentFrame: 0, totalFrames })
@@ -1803,19 +1654,16 @@ async function exportToWEBMCompat(options: ExportOptions): Promise<any> {
   const frameRate = (options as any)?.framerate || videoInfo.frameRate
   const frameDuration = 1 / frameRate
 
-  console.log(`📊 [WebM-Export-Worker] Export parameters: totalFrames=${totalFrames}, frameRate=${frameRate}`)
 
   // 逐帧渲染并添加（OPFS 模式走窗口化渲染）
   const addedFrames = isOpfsMode
     ? await renderFramesForExportOpfs(videoSource, frameDuration, options)
     : await renderFramesForExportWebm(videoSource, frameDuration)
-  console.log(`📊 [WebM-Export-Worker] Successfully added ${addedFrames} frames to VP9 encoder`)
 
   // 完成输出
   updateProgress({ stage: 'finalizing', progress: 95, currentFrame: totalFrames, totalFrames })
 
   await strategy.finalize(output)
-  console.log('✅ [WebM-Export-Worker] Mediabunny output finalized')
 
   if (useOpfsStream) {
     const info = (await (strategy.getOpfsResultInfo?.(options as any) || Promise.resolve({ bytes: 0, fileName: (options as any).opfsFileName || 'export.webm' }))) as { bytes: number; fileName: string }
@@ -1848,7 +1696,6 @@ async function exportToGIF(options: ExportOptions): Promise<Blob> {
     throw new Error('Canvas or video info not available')
   }
 
-  console.log('🎨 [GIF-Export-Worker] Starting GIF export')
 
   // 获取 GIF 配置
   const gifOptions = (options as any).gifOptions || {}
@@ -1864,13 +1711,6 @@ async function exportToGIF(options: ExportOptions): Promise<Blob> {
   const outputWidth = Math.floor(offscreenCanvas.width * scale)
   const outputHeight = Math.floor(offscreenCanvas.height * scale)
 
-  console.log('📊 [GIF-Export-Worker] GIF settings:', {
-    fps,
-    quality,
-    scale,
-    outputSize: `${outputWidth}x${outputHeight}`,
-    totalFrames: isOpfsMode ? totalOpfsFrames : totalFrames
-  })
 
   // 创建 GIF 策略
   const gifStrategy = new GifStrategy({
@@ -1892,7 +1732,6 @@ async function exportToGIF(options: ExportOptions): Promise<Blob> {
   const frameDelay = 1000 / fps // 毫秒
   const targetFrameCount = isOpfsMode ? totalOpfsFrames : totalFrames
 
-  console.log(`🎬 [GIF-Export-Worker] Extracting ${targetFrameCount} frames for GIF`)
 
   // 收集帧数据
   const frames: GifFrameData[] = []
@@ -1905,24 +1744,19 @@ async function exportToGIF(options: ExportOptions): Promise<Blob> {
     frames.push(...await collectFrames(gifStrategy, frameDelay, scale, stride, expectedFrames))
   }
 
-  console.log(`✅ [GIF-Export-Worker] Collected ${frames.length} frames`)
 
   // 不在这里更新进度，由主线程的 ExportManager 统一管理
   // 避免 Worker 和主线程同时更新导致进度跳变
-  console.log(`📦 [GIF-Export-Worker] Frames collected, ready to encode in main thread`)
 
   // 发送帧数据到主线程进行 GIF 编码
   // 由于 gif.js 需要在主线程运行，我们通过消息传递帧数据
-  console.log('📦 [GIF-Export-Worker] Starting GIF encoding in main thread...')
   const gifBlob = await encodeGifInMainThread(frames, gifStrategy.getOptions())
 
   // 清理
   gifStrategy.cleanup()
 
-  console.log('✅ [GIF-Export-Worker] GIF export completed, size:', gifBlob.size)
 
   // 不在这里更新进度，由主线程完成后自然达到100%
-  console.log(`✅ [GIF-Export-Worker] GIF export finished, blob size: ${gifBlob.size}`)
 
   return gifBlob
 }
@@ -2088,7 +1922,6 @@ async function encodeGifInMainThread(
 
       if (type === 'gif-encoder-ready') {
         // 编码器已准备好，开始发送帧
-        console.log('✅ [GIF-Export-Worker] Encoder initialized, sending frames...')
         sendNextFrame()
 
       } else if (type === 'gif-frame-added') {
@@ -2100,7 +1933,6 @@ async function encodeGifInMainThread(
       } else if (type === 'gif-encode-complete') {
         // 编码完成
         self.removeEventListener('message', handler)
-        console.log('✅ [GIF-Export-Worker] Encoding complete')
         resolve(data.blob)
 
       } else if (type === 'gif-encode-error') {
@@ -2110,7 +1942,6 @@ async function encodeGifInMainThread(
 
       } else if (type === 'gif-encode-progress') {
         // 进度更新已经在主线程处理，这里只记录日志
-        console.log(`🎨 [GIF-Export-Worker] Received render progress: ${(data.progress * 100).toFixed(1)}%`)
       }
     }
 
@@ -2131,7 +1962,6 @@ async function encodeGifInMainThread(
         })
       } else {
         // 所有帧已发送，请求渲染
-        console.log('📦 [GIF-Export-Worker] All frames sent, requesting render...')
         self.postMessage({
           type: 'gif-render',
           data: {
@@ -2144,7 +1974,6 @@ async function encodeGifInMainThread(
     self.addEventListener('message', handler)
 
     // 初始化编码器
-    console.log('🎨 [GIF-Export-Worker] Initializing GIF encoder...')
     self.postMessage({
       type: 'gif-init',
       data: {
@@ -2169,7 +1998,6 @@ async function renderFramesForExportWebm(videoSource: any, frameDuration: number
     throw new Error('Composite worker or frame count not available')
   }
 
-  console.log(`🎬 [WebM-Export-Worker] Starting frame rendering for ${totalFrames} frames`)
 
   for (let frameIndex = 0; frameIndex < totalFrames; frameIndex++) {
     if (shouldCancel) break
@@ -2187,7 +2015,6 @@ async function renderFramesForExportWebm(videoSource: any, frameDuration: number
       updateProgress({ stage: 'muxing', progress, currentFrame: frameIndex + 1, totalFrames })
 
       if (frameIndex % 10 === 0) {
-        console.log(`📊 [WebM-Export-Worker] Added frame ${frameIndex + 1}/${totalFrames}, ts: ${timestamp.toFixed(3)}s`)
       }
     } catch (error) {
       console.error(`❌ [WebM-Export-Worker] Failed to add frame ${frameIndex}:`, error)
@@ -2195,5 +2022,4 @@ async function renderFramesForExportWebm(videoSource: any, frameDuration: number
     }
   }
 
-  console.log('✅ [WebM-Export-Worker] All frames added to CanvasSource')
 }

@@ -34,10 +34,6 @@ class VideoCropStore {
     this.originalWidth = width
     this.originalHeight = height
     
-    console.log('📐 [VideoCropStore] Original size set:', {
-      width,
-      height
-    })
   }
   
   /**
@@ -50,7 +46,6 @@ class VideoCropStore {
     this.widthPercent = 1
     this.heightPercent = 1
     
-    console.log('🔄 [VideoCropStore] Reset to full size')
   }
   
   /**
@@ -58,7 +53,6 @@ class VideoCropStore {
    */
   enable() {
     this.enabled = true
-    console.log('✅ [VideoCropStore] Crop enabled')
   }
   
   /**
@@ -66,7 +60,6 @@ class VideoCropStore {
    */
   disable() {
     this.enabled = false
-    console.log('❌ [VideoCropStore] Crop disabled')
   }
   
   /**
@@ -124,12 +117,6 @@ class VideoCropStore {
     // 同步更新像素坐标
     this.updatePixelsFromPercent()
     
-    console.log('✂️ [VideoCropStore] Crop set (percent):', {
-      x: this.xPercent,
-      y: this.yPercent,
-      width: this.widthPercent,
-      height: this.heightPercent
-    })
   }
   
   /**
@@ -145,12 +132,6 @@ class VideoCropStore {
     // 同步更新百分比
     this.updatePercentFromPixels()
     
-    console.log('✂️ [VideoCropStore] Crop set (pixels):', {
-      x: this.x,
-      y: this.y,
-      width: this.width,
-      height: this.height
-    })
   }
 }
 

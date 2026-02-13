@@ -22,9 +22,6 @@ export class ExportManager {
     this.progressCallback = progressCallback || null
 
     try {
-      console.log(`🎬 [ExportManager] Starting ${options.format.toUpperCase()} export`)
-      console.log('📊 [ExportManager] Export options:', options)
-      console.log('📦 [ExportManager] Input chunks:', encodedChunks.length)
 
 
       // 验证输入数据（保持现状：仅当使用内存块导出时必须提供）
@@ -72,11 +69,6 @@ export class ExportManager {
 
     // 🔧 裁剪处理：根据时间戳过滤帧
     if (options.trim && options.trim.enabled) {
-      console.log('✂️ [ExportManager] Applying trim filter:', {
-        startMs: options.trim.startMs,
-        endMs: options.trim.endMs,
-        originalChunks: standardChunks.length
-      })
 
       const firstTimestamp = standardChunks[0]?.timestamp || 0
       const trimStartTimestamp = firstTimestamp + (options.trim.startMs * 1000) // 转换为微秒
@@ -93,11 +85,6 @@ export class ExportManager {
           timestamp: chunk.timestamp - trimStartTimestamp
         }))
 
-      console.log('✂️ [ExportManager] Trim applied:', {
-        trimmedChunks: standardChunks.length,
-        firstTimestamp: standardChunks[0]?.timestamp,
-        lastTimestamp: standardChunks[standardChunks.length - 1]?.timestamp
-      })
     }
 
     // 默认导出参数
@@ -121,7 +108,6 @@ export class ExportManager {
     options: ExportOptions
   ): Promise<any> {
 
-    console.log('🎬 [ExportManager] Starting WebM export process')
 
     return new Promise((resolve, reject) => {
       // 创建 WebM 导出 Worker（统一入口）
@@ -148,7 +134,6 @@ export class ExportManager {
             break
 
           case 'complete':
-            console.log('✅ [ExportManager] WebM export completed')
             if (data && data.savedToOpfs) {
               resolve({ savedToOpfs: data.savedToOpfs })
             } else {
@@ -187,7 +172,6 @@ export class ExportManager {
     options: ExportOptions
   ): Promise<Blob> {
 
-    console.log('🎬 [ExportManager] Starting MP4 export process with Mediabunny')
 
     return new Promise((resolve, reject) => {
       // 创建 MP4 导出 Worker
@@ -214,7 +198,6 @@ export class ExportManager {
             break
 
           case 'complete':
-            console.log('✅ [ExportManager] MP4 export completed')
             resolve(data.blob)
             break
 
@@ -245,7 +228,6 @@ export class ExportManager {
    * 更新进度
    */
   private updateProgress(progress: ExportProgress) {
-    console.log(`📤 [ExportManager] Updating progress: type=${progress.type}, stage=${progress.stage}, progress=${progress.progress}%`)
     if (this.progressCallback) {
       this.progressCallback(progress)
     } else {
@@ -301,7 +283,6 @@ export class ExportManager {
         try {
           if (type === 'gif-init') {
             // 初始化 GIF 编码器
-            console.log('🎨 [ExportManager] Initializing GIF encoder...')
 
             const { GifEncoder } = await import('./gif-encoder')
             gifEncoder = new GifEncoder(data.options)
@@ -348,13 +329,11 @@ export class ExportManager {
             }
 
             const totalFrames = data.totalFrames || 0
-            console.log(`🎬 [ExportManager] Starting GIF render for ${totalFrames} frames...`)
             
             const blob = await gifEncoder.render((progress: number) => {
               // 直接更新进度，不通过 worker（因为这已经在主线程）
               // 计算实际的总进度：GIF渲染阶段占60%-100%
               const totalProgress = 60 + progress * 40
-              console.log(`📊 [ExportManager] GIF render progress: ${(progress * 100).toFixed(1)}% -> Total: ${totalProgress.toFixed(1)}%`)
               
               this.updateProgress({
                 type: 'gif',
@@ -404,7 +383,6 @@ export class ExportManager {
             break
 
           case 'complete':
-            console.log('✅ [ExportManager] GIF export completed')
             resolve(data.blob)
             break
 

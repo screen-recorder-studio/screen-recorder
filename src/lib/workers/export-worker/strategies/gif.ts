@@ -46,7 +46,6 @@ export class GifStrategy {
       ...options
     }
     
-    console.log('🎨 [GifStrategy] Initialized with options:', this.options)
   }
   
   /**
@@ -102,7 +101,6 @@ export class GifStrategy {
    */
   cleanup() {
     this.frames = []
-    console.log('🧹 [GifStrategy] Cleanup completed')
   }
   
   /**

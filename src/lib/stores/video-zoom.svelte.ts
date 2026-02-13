@@ -99,11 +99,6 @@ class VideoZoomStore {
       const hasOverlap = newEffectiveStart < existingEffectiveEnd && newEffectiveEnd > existingEffectiveStart
 
       if (hasOverlap) {
-        console.log('🔍 [VideoZoomStore] Overlap detected (with transition buffer):', {
-          new: { startMs, endMs, effectiveStart: newEffectiveStart, effectiveEnd: newEffectiveEnd },
-          existing: { startMs: interval.startMs, endMs: interval.endMs, effectiveStart: existingEffectiveStart, effectiveEnd: existingEffectiveEnd },
-          transitionMs
-        })
       }
 
       return hasOverlap
@@ -132,12 +127,6 @@ class VideoZoomStore {
 
     this.enabled = true
 
-    console.log('✅ [VideoZoomStore] Interval added:', {
-      startMs,
-      endMs,
-      totalIntervals: this.intervals.length,
-      allIntervals: this.intervals
-    })
 
     return true
   }
@@ -153,11 +142,6 @@ class VideoZoomStore {
         this.enabled = false
       }
 
-      console.log('🗑️ [VideoZoomStore] Interval removed:', {
-        index,
-        removed,
-        remaining: this.intervals.length
-      })
     }
   }
 
@@ -187,11 +171,6 @@ class VideoZoomStore {
     // Re-sort
     this.intervals.sort((a, b) => a.startMs - b.startMs)
 
-    console.log('✅ [VideoZoomStore] Interval moved:', {
-      index,
-      newPosition: { startMs: newStartMs, endMs: newEndMs },
-      allIntervals: this.intervals
-    })
     return true
   }
 
@@ -245,7 +224,6 @@ class VideoZoomStore {
   setIntervalMode(index: number, mode: ZoomMode): boolean {
     if (index < 0 || index >= this.intervals.length) return false
     this.intervals[index] = { ...this.intervals[index], mode }
-    console.log('🎬 [VideoZoomStore] Interval mode updated:', { index, mode })
     return true
   }
 
@@ -263,7 +241,6 @@ class VideoZoomStore {
   setIntervalEasing(index: number, easing: ZoomEasing): boolean {
     if (index < 0 || index >= this.intervals.length) return false
     this.intervals[index] = { ...this.intervals[index], easing }
-    console.log('🎢 [VideoZoomStore] Interval easing updated:', { index, easing })
     return true
   }
 
@@ -282,7 +259,6 @@ class VideoZoomStore {
     if (index < 0 || index >= this.intervals.length) return false
     const clampedDuration = Math.max(0, Math.min(1000, durationMs))
     this.intervals[index] = { ...this.intervals[index], transitionDurationMs: clampedDuration }
-    console.log('⏱️ [VideoZoomStore] Interval transition duration updated:', { index, durationMs: clampedDuration })
     return true
   }
 
@@ -301,7 +277,6 @@ class VideoZoomStore {
   setIntervalSyncBackground(index: number, syncBackground: boolean): boolean {
     if (index < 0 || index >= this.intervals.length) return false
     this.intervals[index] = { ...this.intervals[index], syncBackground }
-    console.log('🖼️ [VideoZoomStore] Interval syncBackground updated:', { index, syncBackground })
     return true
   }
 
@@ -319,7 +294,6 @@ class VideoZoomStore {
   clearAll() {
     this.intervals = []
     this.enabled = false
-    console.log('🗑️ [VideoZoomStore] All intervals cleared')
   }
 
   /**

@@ -49,13 +49,6 @@ class TrimStore {
     this.trimEndMs = durationMs
     this.enabled = false
     
-    console.log('🎬 [TrimStore] Initialized:', {
-      durationMs,
-      frameRate,
-      totalFrames,
-      trimStartMs: this.trimStartMs,
-      trimEndMs: this.trimEndMs
-    })
   }
 
   /**
@@ -81,14 +74,6 @@ class TrimStore {
       this.trimEndMs = durationMs
     }
     
-    console.log('🔧 [TrimStore] Parameters updated:', {
-      durationMs,
-      frameRate,
-      totalFrames,
-      enabled: wasEnabled,
-      trimStartMs: this.trimStartMs,
-      trimEndMs: this.trimEndMs
-    })
   }
 
   /**
@@ -99,10 +84,6 @@ class TrimStore {
     const clampedMs = Math.max(0, Math.min(ms, this.trimEndMs - 100)) // 最少保留100ms
     this.trimStartMs = clampedMs
     
-    console.log('✂️ [TrimStore] Trim start updated:', {
-      trimStartMs: this.trimStartMs,
-      trimStartFrame: this.trimStartFrame
-    })
   }
 
   /**
@@ -113,10 +94,6 @@ class TrimStore {
     const clampedMs = Math.min(this.durationMs, Math.max(ms, this.trimStartMs + 100))
     this.trimEndMs = clampedMs
     
-    console.log('✂️ [TrimStore] Trim end updated:', {
-      trimEndMs: this.trimEndMs,
-      trimEndFrame: this.trimEndFrame
-    })
   }
 
   /**
@@ -124,7 +101,6 @@ class TrimStore {
    */
   enable() {
     this.enabled = true
-    console.log('✅ [TrimStore] Trim enabled')
   }
 
   /**
@@ -134,7 +110,6 @@ class TrimStore {
     this.enabled = false
     this.trimStartMs = 0
     this.trimEndMs = this.durationMs
-    console.log('❌ [TrimStore] Trim disabled, reset to full range')
   }
 
   /**
@@ -154,7 +129,6 @@ class TrimStore {
   reset() {
     this.trimStartMs = 0
     this.trimEndMs = this.durationMs
-    console.log('🔄 [TrimStore] Trim range reset to full video')
   }
 
   /**
@@ -201,12 +175,6 @@ class TrimStore {
     this.trimStartMs = Math.floor((alignedStartFrame / this.frameRate) * 1000)
     this.trimEndMs = Math.floor((alignedEndFrame / this.frameRate) * 1000)
 
-    console.log('🎯 [TrimStore] Aligned to keyframes:', {
-      originalStart: this.trimStartFrame,
-      alignedStartFrame,
-      originalEnd: this.trimEndFrame,
-      alignedEndFrame
-    })
   }
 
   /**

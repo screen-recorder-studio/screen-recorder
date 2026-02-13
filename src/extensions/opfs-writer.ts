@@ -50,13 +50,10 @@ function initOpfsWriter(meta?: any) {
       if (d.type === 'ready') {
         // Writer initialized
         writerReady = true;
-        console.log('[Offscreen][OPFS] writer ready for', id);
         flushPendingIfReady();
       } else if (d.type === 'progress') {
         const { bytesWrittenTotal, chunksWritten } = d;
-        if (chunksWritten % 200 === 0) console.log('[Offscreen][OPFS] progress', { bytesWrittenTotal, chunksWritten });
       } else if (d.type === 'finalized') {
-        console.log('[Offscreen][OPFS] writer finalized for', id);
         try {
           const recId = (d && d.id != null) ? `rec_${d.id}` : `rec_${ensureSessionId()}`
           chrome.runtime?.sendMessage({ type: 'OPFS_RECORDING_READY', id: recId, meta: lastMeta })
@@ -144,7 +141,6 @@ function appendToOpfsChunk(d: { data: any; timestamp?: number; type?: string; co
     if ((window as any).__opfs_log_count == null) (window as any).__opfs_log_count = 0;
     if ((window as any).__opfs_log_count < 5) {
       (window as any).__opfs_log_count++;
-      console.log('[Offscreen] append size', u8.byteLength, 'ts', d.timestamp, 'type', d.type);
     }
 
     writer.postMessage({
@@ -201,7 +197,6 @@ if (__isIframeSink) {
             lastMeta = normalizeMeta({ codec: d.codec, width: d.width, height: d.height, framerate: d.framerate });
             initOpfsWriter(lastMeta);
             started = true;
-            console.log('[IframeSink] start', lastMeta);
             break;
           case 'meta':
             lastMeta = normalizeMeta(d.metadata);
@@ -221,22 +216,18 @@ if (__isIframeSink) {
           }
           case 'end':
           case 'end-request':
-            console.log(`[IframeSink] end received, pending: ${pendingChunks.length}`);
 
             // ✅ 延迟200ms确保所有chunks到达
             setTimeout(() => {
               if (!writerReady || pendingChunks.length > 0) {
-                console.log(`[IframeSink] Deferring finalize (ready: ${writerReady}, pending: ${pendingChunks.length})`);
                 endPending = true;
               } else {
-                console.log('[IframeSink] Finalizing OPFS writer');
                 void finalizeOpfsWriter();
               }
             }, 200);
             break;
         }
       });
-      console.log('[Offscreen] iframe sink mode active');
     } catch (e) {
       console.warn('[Offscreen] iframe sink error', e);
     }
@@ -247,7 +238,6 @@ if (__isIframeSink) {
   (function connectToBackground() {
     try {
       const port = chrome.runtime.connect({ name: 'opfs-writer-sink' });
-      console.log('[Offscreen] connected to background as opfs-writer-sink');
 
       port.onMessage.addListener(async (msg: any) => {
         try {
@@ -274,7 +264,6 @@ if (__isIframeSink) {
             }
             case 'end':
             case 'end-request':
-              console.log('[Offscreen] end received; finalizing OPFS writer');
               if (!writerReady || pendingChunks.length > 0) {
                 endPending = true;
               } else {
@@ -323,7 +312,7 @@ if (__isIframeSink) {
         return;
       }
       if (d.type === 'start' || d.type === 'meta' || d.type === 'end') {
-        if (__probe_log_count < 10) { console.log('[Probe]', d.type, d); __probe_log_count++; }
+        if (__probe_log_count < 10) { __probe_log_count++; }
         return;
       }
       if (d.type === 'chunk') {
@@ -339,13 +328,11 @@ if (__isIframeSink) {
           const head16 = u8 ? __headHex(u8, 16) : undefined;
           const tail8 = u8 ? __tailHex(u8, 8) : undefined;
           const sum32 = u8 ? ('0x' + __sum32(u8).toString(16).padStart(8, '0')) : undefined;
-          console.log('[Probe] chunk', { ts: d.ts, kind: d.kind, size, head16, tail8, sum32 });
           __probe_log_count++;
         }
         return;
       }
     });
-    console.log('[Offscreen] probe mode active');
   } catch (e) {
     console.warn('[Offscreen] probe mode error', e);
   }

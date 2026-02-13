@@ -725,25 +725,21 @@ function createBackgroundConfigStore() {
 
     // 更新背景颜色
     updateColor(color: string) {
-      console.log('🎨 [BackgroundConfigStore] Updating color from', config.color, 'to', color)
       config = { ...config, color }
     },
 
     // 更新圆角半径
     updateBorderRadius(borderRadius: number) {
-      console.log('🎨 [BackgroundConfigStore] Updating border radius from', config.borderRadius, 'to', borderRadius)
       config = { ...config, borderRadius }
     },
 
     // 更新边距
     updatePadding(padding: number) {
-      console.log('🎨 [BackgroundConfigStore] Updating padding from', config.padding, 'to', padding)
       config = { ...config, padding }
     },
 
     // 更新输出比例
     updateOutputRatio(outputRatio: BackgroundConfig['outputRatio'], customWidth?: number, customHeight?: number) {
-      console.log('🎨 [BackgroundConfigStore] Updating output ratio from', config.outputRatio, 'to', outputRatio)
       const newConfig: Partial<BackgroundConfig> = { outputRatio }
       if (outputRatio === 'custom' && customWidth && customHeight) {
         newConfig.customWidth = customWidth
@@ -754,20 +750,17 @@ function createBackgroundConfigStore() {
 
     // 更新阴影配置
     updateShadow(shadow?: BackgroundConfig['shadow']) {
-      console.log('🎨 [BackgroundConfigStore] Updating shadow from', config.shadow, 'to', shadow)
       config = { ...config, shadow }
     },
 
     // 更新背景类型
     updateBackgroundType(type: BackgroundConfig['type']) {
-      console.log('🎨 [BackgroundConfigStore] Updating background type from', config.type, 'to', type)
       config = { ...config, type }
     },
 
     // 恢复之前保存的图片配置
     restoreImageBackground() {
       if (lastImageConfig) {
-        console.log('🎨 [BackgroundConfigStore] Restoring last image background:', lastImageConfig.imageId)
         config = { ...config, type: 'image', image: lastImageConfig, wallpaper: undefined, gradient: undefined }
         return true
       }
@@ -777,7 +770,6 @@ function createBackgroundConfigStore() {
     // 恢复之前保存的壁纸配置
     restoreWallpaperBackground() {
       if (lastWallpaperConfig) {
-        console.log('🎨 [BackgroundConfigStore] Restoring last wallpaper background:', lastWallpaperConfig.imageId)
         config = { ...config, type: 'wallpaper', wallpaper: lastWallpaperConfig, image: undefined, gradient: undefined }
         return true
       }
@@ -787,7 +779,6 @@ function createBackgroundConfigStore() {
     // 恢复之前保存的渐变配置
     restoreGradientBackground() {
       if (lastGradientConfig) {
-        console.log('🎨 [BackgroundConfigStore] Restoring last gradient background')
         config = { ...config, type: 'gradient', gradient: lastGradientConfig }
         return true
       }
@@ -796,48 +787,41 @@ function createBackgroundConfigStore() {
 
     // 更新渐变配置
     updateGradient(gradient: GradientConfig) {
-      console.log('🎨 [BackgroundConfigStore] Updating gradient:', gradient)
       lastGradientConfig = gradient  // 保存最后的渐变配置
       config = { ...config, type: 'gradient', gradient }
     },
 
     // 应用预设颜色
     applyPresetColor(presetColor: typeof PRESET_COLORS[number]) {
-      console.log('🎨 [BackgroundConfigStore] Applying preset:', presetColor.name, presetColor.color)
       // 确保背景类型为纯色
       config = { ...config, type: 'solid-color', color: presetColor.color, gradient: undefined }
     },
 
     // 应用预设纯色
     applyPresetSolidColor(preset: SolidColorPreset) {
-      console.log('🎨 [BackgroundConfigStore] Applying solid color preset:', preset.name, preset.color)
       config = { ...config, type: 'solid-color', color: preset.color, gradient: undefined }
     },
 
     // 应用预设渐变
     applyPresetGradient(preset: GradientPreset) {
-      console.log('🎨 [BackgroundConfigStore] Applying gradient preset:', preset.name)
       lastGradientConfig = preset.config  // 保存最后的渐变配置
       config = { ...config, type: 'gradient', gradient: preset.config }
     },
 
     // 应用用户上传的图片背景
     applyImageBackground(imageConfig: ImageBackgroundConfig) {
-      console.log('🎨 [BackgroundConfigStore] Applying user uploaded image background:', imageConfig.imageId)
       lastImageConfig = imageConfig  // 保存最后的图片配置
       config = { ...config, type: 'image', image: imageConfig, wallpaper: undefined, gradient: undefined }
     },
 
     // 应用壁纸背景
     applyWallpaperBackground(imageConfig: ImageBackgroundConfig) {
-      console.log('🎨 [BackgroundConfigStore] Applying wallpaper background:', imageConfig.imageId)
       lastWallpaperConfig = imageConfig  // 保存最后的壁纸配置
       config = { ...config, type: 'wallpaper', wallpaper: imageConfig, image: undefined, gradient: undefined }
     },
 
     // 应用预设图片
     async applyPresetImage(preset: ImagePreset) {
-      console.log('🎨 [BackgroundConfigStore] Applying image preset:', preset.name)
       try {
         const result = await imageBackgroundManager.processPresetImage(preset)
         this.applyImageBackground(result.config)
@@ -850,7 +834,6 @@ function createBackgroundConfigStore() {
 
     // 处理壁纸选择
     async handleWallpaperSelection(preset: ImagePreset) {
-      console.log('🎨 [BackgroundConfigStore] Processing wallpaper selection:', preset.name)
       try {
         const result = await imageBackgroundManager.processPresetImage(preset)
         this.applyWallpaperBackground(result.config)
@@ -863,7 +846,6 @@ function createBackgroundConfigStore() {
 
     // 处理用户上传的图片
     async handleImageUpload(file: File) {
-      console.log('🎨 [BackgroundConfigStore] Processing uploaded image:', file.name)
       try {
         const result = await imageBackgroundManager.processImage(file)
         this.applyImageBackground(result.config)
@@ -877,13 +859,11 @@ function createBackgroundConfigStore() {
     // 更新图片配置
     updateImageConfig(updates: Partial<Omit<ImageBackgroundConfig, 'type' | 'imageId'>>) {
       if (config.type === 'image' && config.image) {
-        console.log('🎨 [BackgroundConfigStore] Updating user image config:', updates)
         config = {
           ...config,
           image: { ...config.image, ...updates }
         }
       } else if (config.type === 'wallpaper' && config.wallpaper) {
-        console.log('🎨 [BackgroundConfigStore] Updating wallpaper config:', updates)
         config = {
           ...config,
           wallpaper: { ...config.wallpaper, ...updates }
@@ -937,4 +917,3 @@ function createBackgroundConfigStore() {
 // 创建全局背景配置状态实例
 export const backgroundConfigStore = createBackgroundConfigStore()
 
-console.log('🎨 [BackgroundConfigStore] Simple background config store initialized')

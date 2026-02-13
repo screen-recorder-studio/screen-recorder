@@ -10,11 +10,9 @@ const BACKPRESSURE_MAX = 8  // 背压控制：最大队列长度
 // 处理主线程消息
 self.onmessage = async (event) => {
   const { type, config, frame, keyFrame } = event.data
-  console.log(`📨 [WORKER] Received message from main thread:`, { type, hasConfig: !!config, hasFrame: !!frame, keyFrame: keyFrame === true })
 
   switch (type) {
     case 'configure':
-      console.log('⚙️ [WORKER] Configuring encoder...')
       await configureEncoder(config)
       break
 
@@ -27,7 +25,6 @@ self.onmessage = async (event) => {
       break
 
     case 'stop':
-      console.log('🛑 [WORKER] Stopping encoding...')
       await stopEncoding()
       break
 
@@ -39,34 +36,24 @@ self.onmessage = async (event) => {
 // 配置编码器
 async function configureEncoder(config: any) {
   try {
-    console.log('🔧 [WORKER] Starting encoder configuration...')
-    console.log('🔧 [WORKER] Received config:', config)
 
     // 检查 WebCodecs 支持
-    console.log('🔍 [WORKER] Checking WebCodecs APIs availability...')
     const hasVideoEncoder = typeof VideoEncoder !== 'undefined'
     const hasEncodedVideoChunk = typeof EncodedVideoChunk !== 'undefined'
     const hasVideoFrame = typeof VideoFrame !== 'undefined'
 
-    console.log('🔍 [WORKER] VideoEncoder available:', hasVideoEncoder)
-    console.log('🔍 [WORKER] EncodedVideoChunk available:', hasEncodedVideoChunk)
-    console.log('🔍 [WORKER] VideoFrame available:', hasVideoFrame)
 
     if (!hasVideoEncoder || !hasEncodedVideoChunk || !hasVideoFrame) {
       throw new Error('WebCodecs APIs not fully supported in this worker')
     }
-    console.log('✅ [WORKER] All WebCodecs APIs are available')
 
     // 创建编码器
-    console.log('🏗️ [WORKER] Creating VideoEncoder instance...')
     encoder = new VideoEncoder({
       output: handleEncodedChunk,
       error: handleEncodingError
     })
-    console.log('✅ [WORKER] VideoEncoder instance created')
 
     // 使用共享工具进行统一的编解码器选择与探测
-    console.log('🔍 [WORKER] Selecting best codec via shared utils...')
     const { applied, selectedCodec } = await tryConfigureBestEncoder(encoder, {
       codec: config?.codec ?? 'auto',
       width: config?.width ?? 1920,
@@ -81,7 +68,6 @@ async function configureEncoder(config: any) {
     // 保存最终配置（注意：tryConfigureBestEncoder 内部已完成 encoder.configure）
     currentEncoderConfig = applied
 
-    console.log('🎉 [WORKER] ✅ WebCodecs encoder configured via shared utils!', { codec: selectedCodec, config: applied })
 
     // 通知主线程配置成功（统一包含最终 codec 字段）
     self.postMessage({
@@ -155,7 +141,6 @@ function handleEncodedChunk(chunk: EncodedVideoChunk, metadata?: any) {
 
     // 🔧 诊断日志：每个关键帧都记录
     if (isKeyframe) {
-      console.log(`🔑 [WORKER] Keyframe encoded: ts=${chunk.timestamp}, size=${chunk.byteLength}`)
     }
 
     // ✅ 流式输出，不在 Worker 内累积
@@ -176,7 +161,6 @@ function handleEncodedChunk(chunk: EncodedVideoChunk, metadata?: any) {
       }
     })
 
-    console.log(`📦 Encoded chunk: ${chunk.byteLength} bytes, type: ${chunkType}, resolution: ${currentEncoderConfig?.width || 1920}x${currentEncoderConfig?.height || 1080}`)
 
   } catch (error) {
     console.error('❌ [WORKER] Chunk handling failed:', error)
@@ -201,13 +185,11 @@ async function stopEncoding() {
   try {
     if (encoder) {
       const queueBefore = encoder.encodeQueueSize
-      console.log(`🛑 [WORKER] Flushing encoder (queue: ${queueBefore})...`)
 
       // 刷新编码器，等待所有pending帧编码完成
       await encoder.flush()
 
       const queueAfter = encoder.encodeQueueSize
-      console.log(`✅ [WORKER] Encoder flushed (queue: ${queueAfter})`)
 
       if (queueAfter > 0) {
         console.warn(`⚠️ [WORKER] Queue not empty after flush: ${queueAfter}`)
@@ -225,7 +207,6 @@ async function stopEncoding() {
       type: 'complete'
     })
 
-    console.log('✅ [WORKER] WebCodecs encoding completed')
 
   } catch (error) {
     console.error('❌ [WORKER] Stop encoding failed:', error)
@@ -245,7 +226,6 @@ self.onerror = (error) => {
   })
 }
 
-console.log('🔧 [WORKER] WebCodecs Worker initialized')
 
 // 立即发送初始化消息
 self.postMessage({

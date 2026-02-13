@@ -1584,11 +1584,7 @@
       state.byteCount = 0;
       state.sinkStarted = false;
       const displayMediaOptions = { video: { displaySurface: 'window' }, audio: false, preferCurrentTab: true };
-      console.log('[Stream][Content] getDisplayMedia request', displayMediaOptions);
       state.stream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions);
-      console.log('[Stream][Content] getDisplayMedia success', {
-        tracks: state.stream ? state.stream.getTracks().map(t => ({ kind: t.kind, label: t.label, readyState: t.readyState })) : null
-      });
 
       // After user grants capture (stream available), open centralized countdown via background
       const requestedCountdown = (window as any).__mcpRequestedCountdown;
@@ -1606,7 +1602,7 @@
       await new Promise((r) => setTimeout(r, 140));
 
       state.track = state.stream.getVideoTracks()[0];
-      try { console.log('[Stream][Content] video track settings', state.track?.getSettings?.()); } catch {}
+      try { } catch {}
 
       // Try Element Capture first if element mode (使用原始元素)
       if (state.mode === 'element' && state.selectedElement && typeof window.RestrictionTarget !== 'undefined') {
@@ -1680,20 +1676,12 @@
           framerate
         };
 
-        console.log('[Stream][Content] recordingMetadata prepared', {
-          startTime: state.recordingMetadata.startTime,
-          width: state.recordingMetadata.width,
-          height: state.recordingMetadata.height,
-          framerate: state.recordingMetadata.framerate,
-          selection: state.recordingMetadata.selection
-        });
 
         // 使用一次性消息向 background 报告会话开始
         safePortPost({ type: 'STREAM_START', codec: 'auto', width, height, framerate, startTime: state.recordingMetadata?.startTime || Date.now() });
 
         // 初始化 Dedicated Worker 承担编码职责
         // 通过 fetch -> Blob URL 创建 Worker，避免跨源构造限制
-        console.log('[Stream][Content] port connected; sending start', { width, height, framerate });
 
         const workerUrl = chrome.runtime.getURL('encoder-worker.js');
 
@@ -1708,11 +1696,9 @@
               state.sinkWin.postMessage({ type: 'start', codec: 'auto', width, height, framerate }, '*');
               state.sinkWin.postMessage({ type: 'meta', metadata: state.recordingMetadata }, '*');
               state.sinkStarted = true;
-              console.log('[Stream][Content] sink pre-started with meta');
             } catch (e) { console.warn('[Stream][Content] sink pre-start failed', e); }
           }
         } catch (e) { console.warn('[Stream][Content] ensureSinkIframe failed (pre-start)', e); }
-        console.log('[Stream][Content] meta posted to background', { startTime: state.recordingMetadata?.startTime });
 
 
         let workerText = '';
@@ -1767,7 +1753,6 @@
                   if (typeof cfg.codec === 'string') state.recordingMetadata.codec = cfg.codec;
                 }
               } catch {}
-              console.log('[encoder-worker] configured', { codec: state.recordingMetadata?.codec, width: state.recordingMetadata?.width, height: state.recordingMetadata?.height, framerate: state.recordingMetadata?.framerate });
               // Ensure sink has been started once; if not, start now with current metadata
               try { ensureSinkIframe().then(() => {
                 try {
@@ -1805,7 +1790,6 @@
               safeSinkPost({ type: 'end', chunks: state.chunkCount, bytes: state.byteCount });
               // Then notify background (non-fatal)
               safePortPost({ type: 'STREAM_END', chunks: state.chunkCount, bytes: state.byteCount });
-              console.log(`🎬 [Element Recording] Collected ${state.encodedChunks.length} encoded chunks for editing`);
               // worker 已完成，执行清理
               finalizeStop();
               break;
@@ -1866,7 +1850,7 @@
       }
 
       showPreview();
-      state.track.onended = () => { console.log('[Stream][Content] track.onended fired'); try { stopCapture(); } catch (err) { console.warn('[Stream][Content] stopCapture error from onended', err); } };
+      state.track.onended = () => { try { stopCapture(); } catch (err) { console.warn('[Stream][Content] stopCapture error from onended', err); } };
       report({ recording: true });
       // Ensure control bar reflects recording state
       try { showControlBar(true); updateControlBar(); } catch {}
@@ -1918,7 +1902,6 @@
   }
 
   function stopCapture() {
-    console.log('[Stream][Content] stopCapture called', { usingWebCodecs: state.usingWebCodecs, recording: state.recording, chunkCount: state.chunkCount, byteCount: state.byteCount });
     stopBadgeTimerContent();
     try {
       if (state.usingWebCodecs) {
@@ -1933,12 +1916,9 @@
         safePortPost({ type: 'STREAM_END_REQUEST' });
 
         // 传递编码数据给主系统进行编辑（仅在未建立流式通道时兜底一次性传递）
-        console.log('[Stream][Content] end-request posted', { streamingReady, encodedChunks: state.encodedChunks.length });
-        console.log('[Stream][Content] awaiting worker "end" to finalize...');
 
     // If user stops during countdown/pre-start (no worker/mediaRecorder yet)
     if (!state.worker && !state.mediaRecorder) {
-      console.log('[Stream][Content] stopCapture during countdown/pre-start');
       // legacy inline countdown cancel hook removed (no-op now)
       try { state.stream && state.stream.getTracks().forEach(t => t.stop()); } catch {}
       state.stream = null; state.track = null; state.usingWebCodecs = false;
@@ -2077,10 +2057,6 @@
   // 传递录制数据给主系统进行编辑
   function transferToMainSystem() {
     try {
-      console.log('🔄 [Element Recording] Transferring data to main system...', {
-        chunks: state.encodedChunks.length,
-        metadata: state.recordingMetadata
-      });
 
       // 准备传递给主系统的数据（数据已经是数组格式，可以直接传递）
       const transferData = {
@@ -2092,7 +2068,6 @@
         }
       };
 
-      console.log('📤 [Element Recording] Transferring', state.encodedChunks.length, 'chunks');
 
       // 通过 background script 传递给主系统
       chrome.runtime.sendMessage(transferData, (response) => {
@@ -2102,7 +2077,6 @@
         }
 
         if (response?.success) {
-          console.log('✅ [Element Recording] Data transferred successfully');
           // 清理本地数据
           state.encodedChunks = [];
           state.recordingMetadata = null;
@@ -2267,7 +2241,6 @@
         break;
       case 'STREAMING_READY':
         streamingReady = true;
-        console.log('[Stream][Content] STREAMING_READY received', { startTime: state.recordingMetadata?.startTime });
         break;
       default:
         break;
