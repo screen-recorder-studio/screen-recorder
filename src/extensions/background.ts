@@ -130,7 +130,9 @@ chrome.action.onClicked.addListener(async () => {
         return;
       }
     }
-  } catch {}
+  } catch (e) {
+    // Window recovery failed, will create new window
+  }
 
   // Open new control window
   const controlWidth = 360;
