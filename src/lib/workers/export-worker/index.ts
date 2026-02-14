@@ -1714,6 +1714,10 @@ async function exportToGIF(options: ExportOptions): Promise<Blob> {
  * 流式 GIF 编码：边解码边发送到主线程编码，避免将所有帧存入内存
  * 内存使用从 O(N×帧大小) 降至 O(帧大小)
  */
+// GIF 操作超时常量
+const GIF_OPERATION_TIMEOUT = 30000   // 单帧操作超时（30秒）
+const GIF_RENDER_TIMEOUT = 300000     // GIF 渲染超时（5分钟，大 GIF 较慢）
+
 async function streamGifEncode(
   gifStrategy: GifStrategy,
   options: ExportOptions,
@@ -1761,7 +1765,7 @@ function initGifEncoderOnMainThread(gifOptions: any, totalFrames: number): Promi
     setTimeout(() => {
       self.removeEventListener('message', handler)
       reject(new Error('GIF encoder initialization timeout'))
-    }, 30000)
+    }, GIF_OPERATION_TIMEOUT)
   })
 }
 
@@ -1788,7 +1792,7 @@ function sendFrameToMainThread(imageData: ImageData, delay: number, dispose: num
     setTimeout(() => {
       self.removeEventListener('message', handler)
       reject(new Error(`GIF frame ${frameIndex} add timeout`))
-    }, 30000)
+    }, GIF_OPERATION_TIMEOUT)
   })
 }
 
@@ -1811,11 +1815,11 @@ function requestGifRender(totalFrames: number): Promise<Blob> {
       data: { totalFrames }
     })
 
-    // 渲染超时（5分钟，大 GIF 可能较慢）
+    // 渲染超时
     setTimeout(() => {
       self.removeEventListener('message', handler)
       reject(new Error('GIF encoding timeout'))
-    }, 300000)
+    }, GIF_RENDER_TIMEOUT)
   })
 }
 

@@ -69,6 +69,10 @@ const FRAME_BUFFER_DEFAULTS = {
   // 动态调整参数
   memoryUsageTarget: 0.5,     // 目标使用可用内存的 50%
   minFrames: 30,              // 最少保留 30 帧（~1秒@30fps）
+  mainBudgetRatio: 0.6,       // 主窗口占内存预算的 60%
+  nextBudgetRatio: 0.4,       // 预取窗口占内存预算的 40%
+  defaultWidth: 1920,         // 分辨率未知时的默认宽度
+  defaultHeight: 1080,        // 分辨率未知时的默认高度
 };
 
 /**
@@ -80,7 +84,7 @@ function computeDynamicBufferLimits(frameWidth: number, frameHeight: number): {
   maxNextDecoded: number;
   warningThreshold: number;
 } {
-  const bytesPerFrame = (frameWidth || 1920) * (frameHeight || 1080) * 4; // RGBA
+  const bytesPerFrame = (frameWidth || FRAME_BUFFER_DEFAULTS.defaultWidth) * (frameHeight || FRAME_BUFFER_DEFAULTS.defaultHeight) * 4; // RGBA
 
   try {
     const mem = (performance as any).memory;
@@ -91,9 +95,8 @@ function computeDynamicBufferLimits(frameWidth: number, frameHeight: number): {
 
       // 使用可用内存的目标比例来分配帧缓冲
       const budgetBytes = available * FRAME_BUFFER_DEFAULTS.memoryUsageTarget;
-      // 主窗口占 60%，预取窗口占 40%
-      const mainBudget = budgetBytes * 0.6;
-      const nextBudget = budgetBytes * 0.4;
+      const mainBudget = budgetBytes * FRAME_BUFFER_DEFAULTS.mainBudgetRatio;
+      const nextBudget = budgetBytes * FRAME_BUFFER_DEFAULTS.nextBudgetRatio;
 
       const maxDecoded = Math.max(
         FRAME_BUFFER_DEFAULTS.minFrames,
