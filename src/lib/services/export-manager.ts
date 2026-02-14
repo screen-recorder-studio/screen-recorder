@@ -8,21 +8,6 @@ export class ExportManager {
   private gifEncodeHandler: ((event: MessageEvent) => void) | null = null
 
   /**
-   * 收集 chunks 中的 ArrayBuffer 用于 transferable postMessage（零拷贝）
-   */
-  private collectTransferList(chunks: EncodedChunk[]): ArrayBuffer[] {
-    const buffers: ArrayBuffer[] = []
-    for (const chunk of chunks) {
-      if (chunk.data instanceof ArrayBuffer) {
-        buffers.push(chunk.data)
-      } else if (chunk.data && (chunk.data as any).buffer instanceof ArrayBuffer) {
-        buffers.push((chunk.data as any).buffer)
-      }
-    }
-    return buffers
-  }
-
-  /**
    * 导出编辑后的视频
    * @param encodedChunks 原始编码块
    * @param options 导出选项
@@ -179,12 +164,11 @@ export class ExportManager {
         reject(new Error('WebM export worker failed'))
       }
 
-      // 开始导出（使用 transfer 零拷贝传输 ArrayBuffer）
-      const transferList = this.collectTransferList(exportData.chunks)
+      // 开始导出
       this.currentExportWorker.postMessage({
         type: 'export',
         data: exportData
-      }, transferList)
+      })
     })
   }
 
@@ -240,12 +224,11 @@ export class ExportManager {
         reject(new Error('MP4 export worker failed'))
       }
 
-      // 开始导出（使用 transfer 零拷贝传输 ArrayBuffer）
-      const transferList = this.collectTransferList(exportData.chunks)
+      // 开始导出
       this.currentExportWorker.postMessage({
         type: 'export',
         data: exportData
-      }, transferList)
+      })
     })
   }
 
@@ -433,12 +416,11 @@ export class ExportManager {
         reject(error)
       })
 
-      // 发送导出请求到 Worker（使用 transfer 零拷贝传输 ArrayBuffer）
-      const transferList = this.collectTransferList(exportData.chunks)
+      // 发送导出请求到 Worker
       this.currentExportWorker.postMessage({
         type: 'export',
         data: exportData
-      }, transferList)
+      })
     })
   }
 }

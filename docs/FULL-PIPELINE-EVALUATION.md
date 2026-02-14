@@ -73,11 +73,11 @@
 
 #### H3. ArrayBuffer 数据复制导致双倍内存
 
-- **位置**: `src/lib/workers/export-worker/index.ts` `processVideoComposition()` 中的 `.slice()` 调用；`src/lib/services/export-manager.ts` `postMessage` 缺 transfer list
+- **位置**: `src/lib/workers/export-worker/index.ts` `processVideoComposition()` 中的 `.slice()` 调用
 - **影响**: 对每个视频块创建副本用于 transferable，但原数据未释放
 - **后果**: 导出时内存使用量翻倍
-- **修复状态**: ✅ 已修复 — 零拷贝优化：当 TypedArray 完全覆盖 ArrayBuffer 时直接转移所有权；ExportManager→Worker 通信增加 transfer list
-- **优化难度**: 🟢 低 — 使用 `transfer` 列表而非 `.slice()`
+- **修复状态**: ✅ 已修复 — Worker 内部的零拷贝优化保留（`processVideoComposition` 中当 TypedArray 完全覆盖 ArrayBuffer 时直接转移所有权）；ExportManager→Worker 通信移除了 transfer list（避免 detach 原始 ArrayBuffer 导致二次导出崩溃）
+- **优化难度**: 🟢 低
 
 #### H4. 大量空 catch 块吞没关键错误
 
