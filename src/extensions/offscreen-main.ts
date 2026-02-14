@@ -774,18 +774,9 @@
 
   // Listen for unload to clean up resources
   window.addEventListener('beforeunload', () => {
-    log('🧹 Offscreen document unloading, cleaning up...')
     if (isRecording) {
       stopRecordingInternal()
     }
   })
-
-  // Periodic status reporting (optional)
-  setInterval(() => {
-    if (isRecording && recordingStartTime) {
-      const duration = Date.now() - recordingStartTime
-      log(`⏱️ Recording status: ${(duration / 1000).toFixed(1)}s, ${recordedChunks.length} chunks`)
-    }
-  }, 10000) // Every 10 seconds
 })()
 
