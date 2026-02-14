@@ -61,11 +61,69 @@ let criticalWatermarkNotified = false;
 
 // 🚀 P1 优化：帧缓冲限制，防止内存无限增长
 // 注意：窗口大小需要平衡性能和内存占用，4K 视频每帧约 32MB
-const FRAME_BUFFER_LIMITS = {
-  maxDecodedFrames: 150,      // 当前窗口最大帧数 (~5秒@30fps, ~1.2GB @ 1080p, ~4.8GB @ 4K)
-  maxNextDecoded: 120,        // 预取窗口最大帧数 (~4秒@30fps, ~1GB @ 1080p)
-  warningThreshold: 0.9       // 90% 时警告
+// 通过 performance.memory 动态调整上限，避免高分辨率场景 OOM
+const FRAME_BUFFER_DEFAULTS = {
+  maxDecodedFrames: 150,      // 默认上限（无 memory API 时使用）
+  maxNextDecoded: 120,        // 默认预取上限
+  warningThreshold: 0.9,      // 90% 时警告
+  // 动态调整参数
+  memoryUsageTarget: 0.5,     // 目标使用可用内存的 50%
+  minFrames: 30,              // 最少保留 30 帧（~1秒@30fps）
 };
+
+/**
+ * 根据 performance.memory 动态计算帧缓冲上限
+ * 若 API 不可用则使用默认值
+ */
+function computeDynamicBufferLimits(frameWidth: number, frameHeight: number): {
+  maxDecodedFrames: number;
+  maxNextDecoded: number;
+  warningThreshold: number;
+} {
+  const bytesPerFrame = (frameWidth || 1920) * (frameHeight || 1080) * 4; // RGBA
+
+  try {
+    const mem = (performance as any).memory;
+    if (mem && typeof mem.jsHeapSizeLimit === 'number' && mem.jsHeapSizeLimit > 0) {
+      const heapLimit = mem.jsHeapSizeLimit;
+      const heapUsed = mem.usedJSHeapSize || 0;
+      const available = Math.max(0, heapLimit - heapUsed);
+
+      // 使用可用内存的目标比例来分配帧缓冲
+      const budgetBytes = available * FRAME_BUFFER_DEFAULTS.memoryUsageTarget;
+      // 主窗口占 60%，预取窗口占 40%
+      const mainBudget = budgetBytes * 0.6;
+      const nextBudget = budgetBytes * 0.4;
+
+      const maxDecoded = Math.max(
+        FRAME_BUFFER_DEFAULTS.minFrames,
+        Math.min(FRAME_BUFFER_DEFAULTS.maxDecodedFrames, Math.floor(mainBudget / bytesPerFrame))
+      );
+      const maxNext = Math.max(
+        FRAME_BUFFER_DEFAULTS.minFrames,
+        Math.min(FRAME_BUFFER_DEFAULTS.maxNextDecoded, Math.floor(nextBudget / bytesPerFrame))
+      );
+
+      return {
+        maxDecodedFrames: maxDecoded,
+        maxNextDecoded: maxNext,
+        warningThreshold: FRAME_BUFFER_DEFAULTS.warningThreshold
+      };
+    }
+  } catch {
+    // performance.memory not available (non-Chrome or worker context)
+  }
+
+  // 回退：使用默认值
+  return {
+    maxDecodedFrames: FRAME_BUFFER_DEFAULTS.maxDecodedFrames,
+    maxNextDecoded: FRAME_BUFFER_DEFAULTS.maxNextDecoded,
+    warningThreshold: FRAME_BUFFER_DEFAULTS.warningThreshold
+  };
+}
+
+// 初始化时使用默认值，待视频分辨率确定后重新计算
+let FRAME_BUFFER_LIMITS = computeDynamicBufferLimits(0, 0);
 // Small tolerance to absorb codec rounding noise; 1px avoids churn without masking real resolution changes
 const DISPLAY_SIZE_TOLERANCE = 1;
 
@@ -993,6 +1051,8 @@ function startStreamingDecode(chunks: any[]) {
             // Recompute layout to keep the correct aspect ratio
             calculateAndCacheLayout();
             displaySizeLocked = true;
+            // 根据实际分辨率重新计算帧缓冲上限
+            FRAME_BUFFER_LIMITS = computeDynamicBufferLimits(displayWidth, displayHeight);
           }
         }
 

@@ -738,11 +738,24 @@ async function processVideoComposition(chunks: EncodedChunk[], options: ExportOp
     }
 
     // 准备可传输的数据块（兼容 Uint8Array / ArrayBuffer）
+    // 零拷贝优化：当 TypedArray 完全覆盖其 ArrayBuffer 时直接转移所有权，
+    // 仅当 TypedArray 是较大 ArrayBuffer 的子视图时才需要 slice
     const transferableChunks = chunks.map((chunk: any) => {
       let buf: ArrayBuffer
-      if (chunk.data instanceof ArrayBuffer) buf = chunk.data
-      else if (chunk.data?.buffer) buf = chunk.data.buffer.slice(chunk.data.byteOffset, chunk.data.byteOffset + chunk.data.byteLength)
-      else buf = chunk.data
+      if (chunk.data instanceof ArrayBuffer) {
+        buf = chunk.data
+      } else if (chunk.data?.buffer) {
+        const view = chunk.data as Uint8Array
+        if (view.byteOffset === 0 && view.byteLength === view.buffer.byteLength) {
+          // 视图覆盖整个 buffer，直接转移（零拷贝）
+          buf = view.buffer as ArrayBuffer
+        } else {
+          // 视图是较大 buffer 的子范围，必须拷贝
+          buf = (view.buffer as ArrayBuffer).slice(view.byteOffset, view.byteOffset + view.byteLength)
+        }
+      } else {
+        buf = chunk.data
+      }
       return {
         data: buf,
         timestamp: chunk.timestamp,
@@ -1667,7 +1680,6 @@ async function exportToGIF(options: ExportOptions): Promise<Blob> {
     throw new Error('Canvas or video info not available')
   }
 
-
   // 获取 GIF 配置
   const gifOptions = (options as any).gifOptions || {}
   const fps = gifOptions.fps || 10
@@ -1682,8 +1694,7 @@ async function exportToGIF(options: ExportOptions): Promise<Blob> {
   const outputWidth = Math.floor(offscreenCanvas.width * scale)
   const outputHeight = Math.floor(offscreenCanvas.height * scale)
 
-
-  // 创建 GIF 策略
+  // 创建 GIF 策略（仅用于 extractImageData，不再收集帧）
   const gifStrategy = new GifStrategy({
     width: outputWidth,
     height: outputHeight,
@@ -1697,118 +1708,204 @@ async function exportToGIF(options: ExportOptions): Promise<Blob> {
     debug: gifOptions.debug || false
   })
 
-  // 不在这里更新进度，因为在 handleExport 中已经更新过了
-  // 避免进度倒退
-
   const frameDelay = 1000 / fps // 毫秒
-  const targetFrameCount = isOpfsMode ? totalOpfsFrames : totalFrames
 
-
-  // 收集帧数据
-  const frames: GifFrameData[] = []
-
-  if (isOpfsMode) {
-    // OPFS 模式：窗口化处理
-    frames.push(...await collectFramesOpfs(gifStrategy, frameDelay, scale, stride, expectedFrames))
-  } else {
-    // 内存模式：逐帧请求
-    frames.push(...await collectFrames(gifStrategy, frameDelay, scale, stride, expectedFrames))
-  }
-
-
-  // 不在这里更新进度，由主线程的 ExportManager 统一管理
-  // 避免 Worker 和主线程同时更新导致进度跳变
-
-  // 发送帧数据到主线程进行 GIF 编码
-  // 由于 gif.js 需要在主线程运行，我们通过消息传递帧数据
-  const gifBlob = await encodeGifInMainThread(frames, gifStrategy.getOptions())
+  // 流式 GIF 编码：边解码边编码，避免将所有帧存入内存
+  const gifBlob = await streamGifEncode(gifStrategy, options, frameDelay, scale, stride, expectedFrames)
 
   // 清理
   gifStrategy.cleanup()
-
-
-  // 不在这里更新进度，由主线程完成后自然达到100%
 
   return gifBlob
 }
 
 /**
- * 收集帧数据（内存模式）
+ * 流式 GIF 编码：边解码边发送到主线程编码，避免将所有帧存入内存
+ * 内存使用从 O(N×帧大小) 降至 O(帧大小)
  */
-async function collectFrames(
+async function streamGifEncode(
+  gifStrategy: GifStrategy,
+  options: ExportOptions,
+  frameDelay: number,
+  scale: number,
+  stride: number,
+  expectedFrames: number
+): Promise<Blob> {
+  // 1) 初始化主线程 GIF 编码器并等待 ready
+  await initGifEncoderOnMainThread(gifStrategy.getOptions(), expectedFrames)
+
+  // 2) 边解码边发送帧（流式）
+  let sentFrames = 0
+  if (isOpfsMode) {
+    sentFrames = await streamFramesOpfs(gifStrategy, frameDelay, scale, stride, expectedFrames)
+  } else {
+    sentFrames = await streamFramesMemory(gifStrategy, frameDelay, scale, stride, expectedFrames)
+  }
+
+  // 3) 所有帧已发送，请求主线程渲染 GIF 并等待结果
+  const gifBlob = await requestGifRender(sentFrames)
+  return gifBlob
+}
+
+/** 通知主线程初始化 GIF 编码器，等待 ready */
+function initGifEncoderOnMainThread(gifOptions: any, totalFrames: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === 'gif-encoder-ready') {
+        self.removeEventListener('message', handler)
+        resolve()
+      } else if (event.data?.type === 'gif-encode-error') {
+        self.removeEventListener('message', handler)
+        reject(new Error(event.data.data?.error || 'GIF encoder init failed'))
+      }
+    }
+    self.addEventListener('message', handler)
+
+    self.postMessage({
+      type: 'gif-init',
+      data: { options: gifOptions, totalFrames }
+    })
+
+    // 初始化超时
+    setTimeout(() => {
+      self.removeEventListener('message', handler)
+      reject(new Error('GIF encoder initialization timeout'))
+    }, 30000)
+  })
+}
+
+/** 发送单帧到主线程 GIF 编码器并等待确认（背压控制） */
+function sendFrameToMainThread(imageData: ImageData, delay: number, dispose: number, frameIndex: number, totalFrames: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === 'gif-frame-added' && event.data.data?.frameIndex === frameIndex) {
+        self.removeEventListener('message', handler)
+        resolve()
+      } else if (event.data?.type === 'gif-encode-error') {
+        self.removeEventListener('message', handler)
+        reject(new Error(event.data.data?.error || 'GIF frame add failed'))
+      }
+    }
+    self.addEventListener('message', handler)
+
+    self.postMessage({
+      type: 'gif-add-frame',
+      data: { imageData, delay, dispose, frameIndex, totalFrames }
+    })
+
+    // 单帧超时
+    setTimeout(() => {
+      self.removeEventListener('message', handler)
+      reject(new Error(`GIF frame ${frameIndex} add timeout`))
+    }, 30000)
+  })
+}
+
+/** 请求主线程渲染 GIF 并等待 blob 结果 */
+function requestGifRender(totalFrames: number): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === 'gif-encode-complete') {
+        self.removeEventListener('message', handler)
+        resolve(event.data.data.blob)
+      } else if (event.data?.type === 'gif-encode-error') {
+        self.removeEventListener('message', handler)
+        reject(new Error(event.data.data?.error || 'GIF rendering failed'))
+      }
+    }
+    self.addEventListener('message', handler)
+
+    self.postMessage({
+      type: 'gif-render',
+      data: { totalFrames }
+    })
+
+    // 渲染超时（5分钟，大 GIF 可能较慢）
+    setTimeout(() => {
+      self.removeEventListener('message', handler)
+      reject(new Error('GIF encoding timeout'))
+    }, 300000)
+  })
+}
+
+/** 提取当前画布帧的 ImageData（含缩放） */
+function extractCurrentFrameImageData(gifStrategy: GifStrategy, scale: number): ImageData | null {
+  if (!offscreenCanvas) return null
+
+  let sourceCanvas: OffscreenCanvas = offscreenCanvas
+  if (scale !== 1.0) {
+    const scaledCanvas = new OffscreenCanvas(
+      Math.floor(offscreenCanvas.width * scale),
+      Math.floor(offscreenCanvas.height * scale)
+    )
+    const scaledCtx = scaledCanvas.getContext('2d')
+    if (scaledCtx) {
+      scaledCtx.drawImage(offscreenCanvas, 0, 0, scaledCanvas.width, scaledCanvas.height)
+      sourceCanvas = scaledCanvas
+    }
+  }
+
+  return gifStrategy.extractImageData(sourceCanvas)
+}
+
+/**
+ * 流式发送帧到主线程（内存模式）：逐帧解码 → 立即发送 → 等待确认 → 下一帧
+ */
+async function streamFramesMemory(
   gifStrategy: GifStrategy,
   frameDelay: number,
   scale: number,
   stride: number,
   expectedFrames: number
-): Promise<GifFrameData[]> {
-  const frames: GifFrameData[] = []
+): Promise<number> {
+  let sentFrames = 0
 
   for (let frameIndex = 0; frameIndex < totalFrames; frameIndex += stride) {
     if (shouldCancel) break
 
     try {
-      // 请求 composite worker 渲染指定帧
       await requestCompositeFrame(frameIndex)
 
-      // 提取帧数据
-      if (offscreenCanvas) {
-        // 如果需要缩放，创建缩放后的 canvas
-        let sourceCanvas = offscreenCanvas
-        if (scale !== 1.0) {
-          const scaledCanvas = new OffscreenCanvas(
-            Math.floor(offscreenCanvas.width * scale),
-            Math.floor(offscreenCanvas.height * scale)
-          )
-          const scaledCtx = scaledCanvas.getContext('2d')
-          if (scaledCtx) {
-            scaledCtx.drawImage(offscreenCanvas, 0, 0, scaledCanvas.width, scaledCanvas.height)
-            sourceCanvas = scaledCanvas
-          }
-        }
-
-        const imageData = gifStrategy.extractImageData(sourceCanvas)
-        frames.push({
-          imageData,
-          delay: frameDelay,
-          dispose: 2
-        })
+      const imageData = extractCurrentFrameImageData(gifStrategy, scale)
+      if (imageData) {
+        // 立即发送到主线程编码，等待确认后才处理下一帧（背压控制）
+        await sendFrameToMainThread(imageData, frameDelay, 2, sentFrames, expectedFrames)
+        sentFrames++
       }
 
-      // 更新进度：帧收集阶段占总进度的5%-40%
-      const progress = 5 + (Math.min(frames.length, expectedFrames) / expectedFrames) * 35
+      // 更新进度：帧处理阶段占总进度的5%-40%
+      const progress = 5 + (Math.min(sentFrames, expectedFrames) / expectedFrames) * 35
       updateProgress({
         stage: 'encoding',
         progress,
-        currentFrame: frames.length,
+        currentFrame: sentFrames,
         totalFrames: expectedFrames
       })
 
     } catch (error) {
-      console.error(`❌ [GIF-Export-Worker] Failed to collect frame ${frameIndex}:`, error)
+      console.error(`❌ [GIF-Export-Worker] Failed to stream frame ${frameIndex}:`, error)
     }
   }
 
-  return frames
+  return sentFrames
 }
 
 /**
- * 收集帧数据（OPFS 模式）
+ * 流式发送帧到主线程（OPFS 模式）：窗口化读取 → 逐帧解码 → 立即发送
  */
-async function collectFramesOpfs(
+async function streamFramesOpfs(
   gifStrategy: GifStrategy,
   frameDelay: number,
   scale: number,
   stride: number,
   expectedFrames: number
-): Promise<GifFrameData[]> {
-  const frames: GifFrameData[] = []
+): Promise<number> {
+  let sentFrames = 0
   let nextRequestStart = 0
 
   while (nextRequestStart < totalOpfsFrames) {
     if (shouldCancel) break
 
-    // 加载窗口
     const { chunks, actualStart, actualCount } = await loadOpfsWindow(nextRequestStart, opfsWindowSize)
 
     if (actualCount <= 0 || chunks.length === 0) {
@@ -1816,10 +1913,8 @@ async function collectFramesOpfs(
       break
     }
 
-    // 处理窗口
     await processVideoCompositionOpfs(chunks, { backgroundConfig: currentBackgroundConfig } as any, actualStart)
 
-    // 提取窗口中的帧
     for (let i = 0; i < actualCount; i++) {
       const globalFrameIndex = actualStart + i
 
@@ -1827,138 +1922,37 @@ async function collectFramesOpfs(
       if (shouldCancel) break
 
       try {
-        // 按步长抽帧：仅在满足全局索引对齐时采样
+        // 按步长抽帧
         if (stride > 1 && (globalFrameIndex % stride) !== 0) {
           continue
         }
-        // 请求渲染帧
+
         await requestCompositeFrame(i)
 
-        // 提取帧数据
-        if (offscreenCanvas) {
-          let sourceCanvas = offscreenCanvas
-          if (scale !== 1.0) {
-            const scaledCanvas = new OffscreenCanvas(
-              Math.floor(offscreenCanvas.width * scale),
-              Math.floor(offscreenCanvas.height * scale)
-            )
-            const scaledCtx = scaledCanvas.getContext('2d')
-            if (scaledCtx) {
-              scaledCtx.drawImage(offscreenCanvas, 0, 0, scaledCanvas.width, scaledCanvas.height)
-              sourceCanvas = scaledCanvas
-            }
-          }
-
-          const imageData = gifStrategy.extractImageData(sourceCanvas)
-          frames.push({
-            imageData,
-            delay: frameDelay,
-            dispose: 2
-          })
+        const imageData = extractCurrentFrameImageData(gifStrategy, scale)
+        if (imageData) {
+          await sendFrameToMainThread(imageData, frameDelay, 2, sentFrames, expectedFrames)
+          sentFrames++
         }
 
-        // 更新进度：帧收集阶段占总进度的5%-40%
-        const progress = 5 + (Math.min(frames.length, expectedFrames) / expectedFrames) * 35
+        // 更新进度：帧处理阶段占总进度的5%-40%
+        const progress = 5 + (Math.min(sentFrames, expectedFrames) / expectedFrames) * 35
         updateProgress({
           stage: 'encoding',
           progress,
-          currentFrame: frames.length,
+          currentFrame: sentFrames,
           totalFrames: expectedFrames
         })
 
       } catch (error) {
-        console.error(`❌ [GIF-Export-Worker] Failed to collect OPFS frame ${globalFrameIndex}:`, error)
+        console.error(`❌ [GIF-Export-Worker] Failed to stream OPFS frame ${globalFrameIndex}:`, error)
       }
     }
 
     nextRequestStart += actualCount
   }
 
-  return frames
-}
-
-/**
- * 在主线程中编码 GIF（流式处理）
- * 逐帧发送数据以避免内存溢出
- */
-async function encodeGifInMainThread(
-  frames: GifFrameData[],
-  options: any
-): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    let currentFrameIndex = 0
-
-    const handler = (event: MessageEvent) => {
-      const { type, data } = event.data
-
-      if (type === 'gif-encoder-ready') {
-        // 编码器已准备好，开始发送帧
-        sendNextFrame()
-
-      } else if (type === 'gif-frame-added') {
-        // 帧已添加，发送下一帧
-        currentFrameIndex++
-        // 进度已经在主线程的 ExportManager 中更新，这里不重复更新
-        sendNextFrame()
-
-      } else if (type === 'gif-encode-complete') {
-        // 编码完成
-        self.removeEventListener('message', handler)
-        resolve(data.blob)
-
-      } else if (type === 'gif-encode-error') {
-        // 编码失败
-        self.removeEventListener('message', handler)
-        reject(new Error(data.error || 'GIF encoding failed'))
-
-      } else if (type === 'gif-encode-progress') {
-        // 进度更新已经在主线程处理，这里只记录日志
-      }
-    }
-
-    function sendNextFrame() {
-      if (currentFrameIndex < frames.length) {
-        const frame = frames[currentFrameIndex]
-
-        // 发送单帧数据
-        self.postMessage({
-          type: 'gif-add-frame',
-          data: {
-            imageData: frame.imageData,
-            delay: frame.delay,
-            dispose: frame.dispose,
-            frameIndex: currentFrameIndex,
-            totalFrames: frames.length
-          }
-        })
-      } else {
-        // 所有帧已发送，请求渲染
-        self.postMessage({
-          type: 'gif-render',
-          data: {
-            totalFrames: frames.length  // 添加总帧数信息
-          }
-        })
-      }
-    }
-
-    self.addEventListener('message', handler)
-
-    // 初始化编码器
-    self.postMessage({
-      type: 'gif-init',
-      data: {
-        options,
-        totalFrames: frames.length
-      }
-    })
-
-    // 设置超时
-    setTimeout(() => {
-      self.removeEventListener('message', handler)
-      reject(new Error('GIF encoding timeout'))
-    }, 300000) // 5分钟超时
-  })
+  return sentFrames
 }
 
 /**
