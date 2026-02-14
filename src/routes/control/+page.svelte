@@ -15,6 +15,9 @@
   import { onMount } from 'svelte'
   import { _t as t } from '$lib/utils/i18n'
 
+  // Extension version
+  let extensionVersion = $state('')
+
   // Recording state management
   let isRecording = $state(false)
   let isPaused = $state(false)
@@ -56,6 +59,8 @@
   // Initialize: sync background state
   onMount(async () => {
     try {
+      // Load extension version
+      try { extensionVersion = chrome.runtime.getManifest().version } catch {}
       // Load settings to restore countdownSeconds
       try {
         const stored = await new Promise<any>((res) =>
@@ -87,7 +92,6 @@
         // This ensures control page shows correct state when opened during recording
         if (msg?.type === 'BADGE_TICK') {
           if (!stopRequested && !isRecording) {
-            console.log('[control] BADGE_TICK → syncing isRecording = true')
             isRecording = true
             phase = 'recording'
           }
@@ -304,6 +308,7 @@
         <h1 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
           <Monitor class="w-5 h-5 text-blue-600" />
           {t('control_headerTitle')}
+          {#if extensionVersion}<span class="text-xs font-normal text-gray-400 ml-1">v{extensionVersion}</span>{/if}
         </h1>
         <p class="text-sm text-gray-600 mt-1">{t('control_headerDesc')}</p>
       </div>

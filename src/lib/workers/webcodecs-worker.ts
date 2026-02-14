@@ -21,6 +21,8 @@ self.onmessage = async (event) => {
         await encodeFrame(frame, keyFrame === true)
       } else {
         console.warn('⚠️ [WORKER] Cannot encode: encoder or frame missing')
+        // Close the frame to prevent resource leaks (e.g., during encoder reconfiguration)
+        if (frame) try { frame.close() } catch {}
       }
       break
 
@@ -47,14 +49,21 @@ async function configureEncoder(config: any) {
       throw new Error('WebCodecs APIs not fully supported in this worker')
     }
 
-    // 创建编码器
-    encoder = new VideoEncoder({
+    // Close any existing encoder before creating a new one (safe for reconfiguration)
+    if (encoder) {
+      try { encoder.close() } catch {}
+      encoder = null
+      currentEncoderConfig = null
+    }
+
+    // 创建编码器 (keep local until configured to prevent race conditions)
+    const newEncoder = new VideoEncoder({
       output: handleEncodedChunk,
       error: handleEncodingError
     })
 
     // 使用共享工具进行统一的编解码器选择与探测
-    const { applied, selectedCodec } = await tryConfigureBestEncoder(encoder, {
+    const { applied, selectedCodec } = await tryConfigureBestEncoder(newEncoder, {
       codec: config?.codec ?? 'auto',
       width: config?.width ?? 1920,
       height: config?.height ?? 1080,
@@ -66,6 +75,8 @@ async function configureEncoder(config: any) {
     })
 
     // 保存最终配置（注意：tryConfigureBestEncoder 内部已完成 encoder.configure）
+    // Assign to global only after successful configuration
+    encoder = newEncoder
     currentEncoderConfig = applied
 
 

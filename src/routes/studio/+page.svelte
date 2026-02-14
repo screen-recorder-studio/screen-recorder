@@ -15,6 +15,9 @@
   // i18n state for web mode
   let i18nReady = $state(isI18nInitialized());
 
+  // Extension version
+  let extensionVersion = $state('')
+
   // 当前会话的 OPFS 目录 id（用于导出时触发只读日志）
   let opfsDirId = $state("");
 
@@ -141,10 +144,8 @@
       const isForwardPlayback = mode === "play" && clampedBeforeMs === 0;
 
       if (isForwardPlayback) {
-        // 🔧 连续播放：直接从目标帧开始，OPFS Reader 会自动对齐到关键帧
         startFrame = Math.max(0, targetFrameIndex);
 
-        // 结合关键帧间隔调整窗口大小
         const avgInterval = keyframeInfo.avgInterval || effectiveFps;
         const keyframeSuggested = avgInterval * 2;
         desiredWindowFrames = Math.min(
@@ -158,12 +159,6 @@
           desiredWindowFrames,
           Math.max(1, totalFrames - startFrame),
         );
-
-        console.log("[progress] computeFrameWindow: forward playback mode, no keyframe rollback:", {
-          targetFrameIndex,
-          startFrame,
-          frameCount
-        });
       } else {
         // 🔧 Seek 模式：需要回退到关键帧以确保正确解码
         let prevKeyframeIndex = keyframeInfo.indices[0];
@@ -174,7 +169,6 @@
 
         startFrame = Math.max(0, prevKeyframeIndex);
 
-        // 结合关键帧间隔调整窗口大小（典型为 2 * avgInterval，再结合时间范围做 clamp）
         const avgInterval = keyframeInfo.avgInterval || effectiveFps;
         const keyframeSuggested = avgInterval * 2;
         desiredWindowFrames = Math.min(
@@ -188,13 +182,6 @@
           desiredWindowFrames,
           Math.max(1, totalFrames - startFrame),
         );
-
-        console.log("[progress] computeFrameWindow: seek mode, aligned to keyframe:", {
-          targetFrameIndex,
-          prevKeyframeIndex,
-          startFrame,
-          frameCount
-        });
       }
     } else {
       // 无关键帧信息时，退回纯时间推导：让窗口尽量覆盖 [target - before, target + after]
@@ -234,11 +221,6 @@
     afterMs: number;
   }) {
     const { centerMs, beforeMs, afterMs } = args;
-    console.log("[progress] Parent component - window request:", {
-      centerMs,
-      beforeMs,
-      afterMs,
-    });
 
     if (!workerCurrentWorker) {
       console.warn("[progress] No worker available for window request");
@@ -258,41 +240,16 @@
     });
 
     if (skip) {
-      console.log(
-        "[progress] Ignoring non-forward window request (skip=true):",
-        {
-          startFrame,
-          windowStartIndex,
-          beforeMs,
-          mode,
-        },
-      );
       return;
     }
 
     if (frameCount > 0 && startFrame < globalTotalFrames) {
-      console.log(
-        "[progress] Using optimized frame range request from handleWindowRequest",
-        {
-          startFrame,
-          frameCount,
-          totalFrames: globalTotalFrames,
-        },
-      );
       workerCurrentWorker?.postMessage({
         type: "getRange",
         start: startFrame,
         count: frameCount,
       });
     } else {
-      console.log(
-        "[progress] Falling back to time range request from handleWindowRequest",
-        {
-          centerMs,
-          beforeMs,
-          afterMs,
-        },
-      );
       workerCurrentWorker?.postMessage({
         type: "getWindowByTime",
         centerMs,
@@ -312,7 +269,8 @@
 
   // 组件挂载时的初始化
   onMount(() => {
-    console.log("📱 Sidepanel mounted with Worker system");
+    // Load extension version
+    try { extensionVersion = chrome.runtime.getManifest().version } catch {}
 
     // Initialize i18n for web mode
     initI18n().then(() => {
@@ -328,7 +286,6 @@
       const dirId = params.get("id") || "";
       opfsDirId = dirId;
       if (dirId && workerEncodedChunks.length === 0) {
-        console.log("📂 [Studio] Opening OPFS recording by dirId:", dirId);
         const readerWorker = new Worker(
           new URL("$lib/workers/opfs-reader-worker.ts", import.meta.url),
           { type: "module" },
@@ -352,25 +309,15 @@
 
           // 拦截：如果是预取模式下收到的 range，则只交给预取 resolver，不更新UI状态
           if (isPrefetchingRange && type === "range") {
-            console.log("[prefetch] Reader returned range (prefetch):", {
-              start,
-              count,
-              chunks: chunks?.length,
-            });
             isPrefetchingRange = false;
             prefetchRangeResolver?.({ start, chunks });
             prefetchRangeResolver = null;
             return;
           }
 
-          // 🆕 Intercept: Single-frame GOP preview response
+          // Intercept: Single-frame GOP preview response
           if (isFetchingSingleFrameGOP && type === "singleFrameGOP") {
             const { targetFrame, targetIndexInGOP, chunks: gopChunks } = ev.data;
-            console.log("[preview] Reader returned singleFrameGOP:", {
-              targetFrame,
-              targetIndexInGOP,
-              chunks: gopChunks?.length,
-            });
             isFetchingSingleFrameGOP = false;
             singleFrameGOPResolver?.({
               chunks: gopChunks || [],
@@ -381,45 +328,21 @@
           }
 
           if (type === "ready") {
-            console.log("✅ [OPFSReader] Ready:", {
-              summary,
-              meta,
-              keyframeInfo: receivedKeyframeInfo,
-            });
             if (summary?.durationMs) durationMs = summary.durationMs;
             if (summary?.totalChunks) globalTotalFrames = summary.totalChunks;
             if (receivedKeyframeInfo) keyframeInfo = receivedKeyframeInfo;
 
-            console.log("[progress] Parent component - OPFS data loaded:", {
-              durationMs,
-              globalTotalFrames,
-              summary,
-              meta,
-              keyframeInfo,
-            });
-
-            // 🔧 修复：使用帧范围而不是时间范围进行初始加载
-            const initialFrameCount = Math.min(90, globalTotalFrames); // 前90帧（约3秒@30fps）
-            console.log(
-              "[progress] Parent component - requesting initial frames:",
-              {
-                start: 0,
-                count: initialFrameCount,
-                totalFrames: globalTotalFrames,
-              },
-            );
+            const initialFrameCount = Math.min(90, globalTotalFrames);
             readerWorker.postMessage({
               type: "getRange",
               start: 0,
               count: initialFrameCount,
             });
           } else if (type === "range") {
-            console.log("📦 [OPFSReader] Received range:", { start, count });
             if (Array.isArray(chunks) && chunks.length > 0) {
               workerEncodedChunks = chunks;
               windowStartIndex = typeof start === "number" ? start : 0;
 
-              // 🔧 修复：计算相对时间戳
               const firstGlobalTimestamp =
                 summary?.firstTimestamp || chunks[0]?.timestamp || 0;
               const windowStartTimestamp = chunks[0]?.timestamp || 0;
@@ -433,27 +356,8 @@
                 (windowEndTimestamp - firstGlobalTimestamp) / 1000,
               );
 
-              console.log(
-                "[progress] Parent component - window data updated:",
-                {
-                  chunksLength: chunks.length,
-                  windowStartIndex,
-                  windowStartMs,
-                  windowEndMs,
-                  firstGlobalTimestamp,
-                  windowStartTimestamp,
-                  windowEndTimestamp,
-                  relativeStartMs: windowStartMs,
-                  relativeEndMs: windowEndMs,
-                },
-              );
               recordingStore.updateStatus("completed");
               recordingStore.setEngine("webcodecs");
-              console.log(
-                "🎬 [Studio] Prepared",
-                chunks.length,
-                "chunks from OPFS for preview",
-              );
             } else {
               console.warn("⚠️ [OPFSReader] Empty range received");
             }
@@ -648,8 +552,7 @@
 
   // 组件销毁时清理
   onDestroy(() => {
-    console.log("📱 Sidepanel unmounted, cleaning up...");
-    // cleanup()
+    // cleanup
   });
 
 </script>
@@ -669,6 +572,7 @@
           <Video class="w-6 h-6 text-blue-600" />
           <h1 class="text-xl font-bold text-gray-800">
             {t('studio_headerTitle')}
+            {#if extensionVersion}<span class="text-xs font-normal text-gray-400 ml-1">v{extensionVersion}</span>{/if}
           </h1>
         </div>
 

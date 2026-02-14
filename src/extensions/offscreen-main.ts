@@ -339,8 +339,8 @@
 
       // 3) Derive encoding parameters from track settings
       const settings = (videoTrack as any)?.getSettings?.() || {}
-      const width = settings.width || 1920
-      const height = settings.height || 1080
+      let width = settings.width || 1920
+      let height = settings.height || 1080
       const framerate = Math.round(settings.frameRate || 30)
       const bitrate = options?.bitrate || 8_000_000 // 8 Mbps default
 
@@ -508,6 +508,25 @@
             if (done || !frame) break
             if (isPaused) { try { frame.close() } catch {}
               continue }
+
+            // On first frame, check actual dimensions and reconfigure encoder if needed
+            // This fixes aspect ratio distortion when track.getSettings() dimensions
+            // don't match actual VideoFrame dimensions (common in tab capture)
+            if (frameIndex === 0) {
+              const fw = (frame as any).displayWidth || (frame as any).codedWidth
+              const fh = (frame as any).displayHeight || (frame as any).codedHeight
+              if (fw && fh && (fw !== width || fh !== height)) {
+                log(`🔧 Frame dimensions (${fw}x${fh}) differ from track settings (${width}x${height}), reconfiguring encoder`)
+                width = fw
+                height = fh
+                wcWorker?.postMessage({ type: 'configure', config: { width: fw, height: fh, bitrate, framerate } })
+                // Drop this frame to allow reconfiguration to complete before encoding
+                // Don't increment frameIndex so the next frame is still treated as first (keyframe)
+                try { (frame as any).close() } catch {}
+                continue
+              }
+            }
+
             const keyFrame = frameIndex === 0 || (frameIndex % keyEvery === 0)
             wcWorker?.postMessage({ type: 'encode', frame, keyFrame }, [frame])
             frameIndex++
@@ -774,18 +793,9 @@
 
   // Listen for unload to clean up resources
   window.addEventListener('beforeunload', () => {
-    log('🧹 Offscreen document unloading, cleaning up...')
     if (isRecording) {
       stopRecordingInternal()
     }
   })
-
-  // Periodic status reporting (optional)
-  setInterval(() => {
-    if (isRecording && recordingStartTime) {
-      const duration = Date.now() - recordingStartTime
-      log(`⏱️ Recording status: ${(duration / 1000).toFixed(1)}s, ${recordedChunks.length} chunks`)
-    }
-  }, 10000) // Every 10 seconds
 })()
 

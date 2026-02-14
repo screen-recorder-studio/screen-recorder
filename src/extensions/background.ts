@@ -119,6 +119,21 @@ chrome.action.onClicked.addListener(async () => {
     }
   }
 
+  // Recover from service worker restart: find any existing control.html popup windows
+  try {
+    const controlUrl = chrome.runtime.getURL('control.html');
+    const allWindows = await chrome.windows.getAll({ populate: true });
+    for (const win of allWindows) {
+      if (win.type === 'popup' && win.tabs?.some(tab => tab.url?.startsWith(controlUrl))) {
+        controlWinId = win.id!;
+        await chrome.windows.update(controlWinId, { focused: true });
+        return;
+      }
+    }
+  } catch (e) {
+    // Window recovery failed, will create new window
+  }
+
   // Open new control window
   const controlWidth = 360;
   const controlHeight = 470;
@@ -309,6 +324,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               const p = chrome.runtime.sendMessage({ type: 'STATE_UPDATE', state: { recording: false } })
               if (p && typeof p.catch === 'function') p.catch(() => {})
             } catch {}
+            // Close control window when recording completes to avoid stale windows
+            if (controlWinId !== null) {
+              try { chrome.windows.remove(controlWinId) } catch {}
+              controlWinId = null;
+            }
             const targetUrl = chrome.runtime.getURL(`studio.html?id=${encodeURIComponent(id)}`)
             chrome.tabs.create({ url: targetUrl }, () => {
               const err = chrome.runtime.lastError
