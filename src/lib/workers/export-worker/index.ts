@@ -954,7 +954,6 @@ function handleCompositeFrame(bitmap: ImageBitmap, frameIndex: number) {
         const offsetY = (canvasHeight - scaledHeight) / 2
 
         if (!warnedCanvasSizeMismatch) {
-          console.log(`🔧 [MP4-Export-Worker] Scaling frames: Bitmap ${bitmapWidth}×${bitmapHeight} → Canvas ${canvasWidth}×${canvasHeight}, scale=${scale.toFixed(3)}`)
           warnedCanvasSizeMismatch = true
         }
         // 绘制缩放后的图像
@@ -1321,10 +1320,6 @@ async function renderFramesForExport(videoSource: any, frameDuration: number): P
       try {
         await videoSource.add(timestamp, frameDuration)
         addedCount++
-
-        if (frameIndex % 100 === 0) {
-          console.log(`📊 [MP4-Export-Worker] Progress: ${frameIndex + 1}/${totalFrames} frames, timestamp: ${timestamp.toFixed(3)}s, success rate: ${((addedCount/(frameIndex+1))*100).toFixed(1)}%`)
-        }
       } catch (addError) {
         addErrors++
         console.error(`❌ [MP4-Export-Worker] Failed to add frame ${frameIndex} to CanvasSource:`, addError)
@@ -1592,10 +1587,6 @@ async function renderFramesForExportOpfs(videoSource: any, frameDuration: number
           currentFrame: globalIndex + 1,
           totalFrames: totalOpfsFrames
         })
-
-        if (globalIndex % 100 === 0) {
-          console.log(`📊 [MP4-Export-Worker] [OPFS] Progress: ${globalIndex + 1}/${totalOpfsFrames}`)
-        }
       } catch (err) {
         console.error(`❌ [MP4-Export-Worker] [OPFS] Failed to process global frame ${globalIndex}:`, err)
       }
@@ -1976,10 +1967,6 @@ async function renderFramesForExportWebm(videoSource: any, frameDuration: number
 
       const progress = 80 + (frameIndex / totalFrames) * 15 // 80%-95%
       updateProgress({ stage: 'muxing', progress, currentFrame: frameIndex + 1, totalFrames })
-
-      if (frameIndex % 100 === 0) {
-        console.log(`📊 [WebM-Export-Worker] Added frame ${frameIndex + 1}/${totalFrames}, ts: ${timestamp.toFixed(3)}s`)
-      }
     } catch (error) {
       console.error(`❌ [WebM-Export-Worker] Failed to add frame ${frameIndex}:`, error)
       // 不中断整个过程

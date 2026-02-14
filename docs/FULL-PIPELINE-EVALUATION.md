@@ -44,16 +44,16 @@
 - **位置**: `src/lib/workers/export-worker/index.ts` `collectFrames()` 函数
 - **影响**: 所有 GIF 帧的 `ImageData` 先收集到内存数组再编码
 - **后果**: 1920×1080 分辨率、500 帧的 GIF = **约 4.1 GB 内存**，几乎必定导致浏览器崩溃
-- **修复状态**: ⚠️ 未修复（需要架构级改造，改为流式编码）
-- **优化难度**: 🔴 高 — 需要重写 GIF 编码管线
+- **修复状态**: ✅ 已修复 — 改为流式编码：边解码边发送到主线程 GIF 编码器，内存使用从 O(N×帧大小) 降至 O(帧大小)
+- **优化难度**: 🔴 高 — 重写了 GIF 编码管线
 
 #### C4. 合成 Worker 内存缓冲无上限
 
 - **位置**: `src/lib/workers/composite-worker/index.ts`
 - **影响**: `decodedFrames[]` 和 `nextDecoded[]` 数组配置上限达 150+120 帧，在 4K 分辨率下可达 **8.4 GB**
 - **后果**: 长视频或高分辨率场景下极易 OOM
-- **修复状态**: ⚠️ 未修复（需要根据可用内存动态调整缓冲大小）
-- **优化难度**: 🟡 中 — 可通过 `performance.memory` 动态限制
+- **修复状态**: ✅ 已修复 — 通过 `performance.memory` 动态计算帧缓冲上限，根据可用内存和视频分辨率自适应
+- **优化难度**: 🟡 中 — 通过 `performance.memory` 动态限制
 
 ### 2.2 高级别（High）
 
@@ -73,10 +73,10 @@
 
 #### H3. ArrayBuffer 数据复制导致双倍内存
 
-- **位置**: `src/lib/workers/export-worker/index.ts` `processVideoComposition()` 中的 `.slice()` 调用
+- **位置**: `src/lib/workers/export-worker/index.ts` `processVideoComposition()` 中的 `.slice()` 调用；`src/lib/services/export-manager.ts` `postMessage` 缺 transfer list
 - **影响**: 对每个视频块创建副本用于 transferable，但原数据未释放
 - **后果**: 导出时内存使用量翻倍
-- **修复状态**: ⚠️ 未修复
+- **修复状态**: ✅ 已修复 — 零拷贝优化：当 TypedArray 完全覆盖 ArrayBuffer 时直接转移所有权；ExportManager→Worker 通信增加 transfer list
 - **优化难度**: 🟢 低 — 使用 `transfer` 列表而非 `.slice()`
 
 #### H4. 大量空 catch 块吞没关键错误
@@ -133,7 +133,7 @@
 - **位置**: `src/lib/services/export-manager.ts`、`strategies/mp4.ts`、`strategies/webm.ts`
 - **影响**: 默认使用 8 Mbps 硬编码比特率，不尊重用户选择
 - **后果**: 用户设置的"中等质量"实际可能使用最高比特率，导致文件过大且编码变慢
-- **修复状态**: ⚠️ 未修复
+- **修复状态**: ✅ 已修复 — 增加质量到比特率映射：high=8Mbps, medium=5Mbps, low=2.5Mbps
 - **优化难度**: 🟢 低
 
 #### M6. 全局 `window.__opfs_log_count` 污染
@@ -191,7 +191,7 @@ Drive 页面 → Studio 页面 → OPFS Reader → Composite Worker → Canvas �
 | 环节 | 评估 | 风险等级 |
 |-----|------|---------|
 | OPFS 索引读取 | 全量加载，大文件可能 OOM | 🟡 中 |
-| 帧缓冲管理 | 双窗口缓冲上限较高 | 🔴 高 |
+| 帧缓冲管理 | 动态内存限制 ✅已修复 | 🟢 低 |
 | 视频预览 | 基本功能正常 | 🟢 低 |
 | 裁剪/缩放 | 功能完整 | 🟢 低 |
 
@@ -203,9 +203,9 @@ ExportManager → Export Worker → [Composite Worker + OPFS Reader] → Mediabu
 
 | 环节 | 评估 | 风险等级 |
 |-----|------|---------|
-| MP4 导出 | Mediabunny 集成正常，但比特率硬编码 | 🟡 中 |
+| MP4 导出 | Mediabunny 集成正常，比特率映射已修复 ✅ | 🟢 低 |
 | WebM 导出 | 基本正常 | 🟢 低 |
-| GIF 导出 | 全帧收集在内存中，大 GIF 必崩 | 🔴 高 |
+| GIF 导出 | 流式编码 ✅已修复 | 🟢 低 |
 | 进度更新 | 修复了无超时卡死 ✅ | 🟡 低 |
 | 资源清理 | cleanup() 已完善 ✅ | 🟡 低 |
 | 性能日志 | 已清理 ✅ | 🟢 无风险 |
@@ -226,12 +226,17 @@ ExportManager → Export Worker → [Composite Worker + OPFS Reader] → Mediabu
 | F6 | copyTo silent catch 补警告 | `opfs-writer.ts` | 便于调试数据问题 |
 | F7 | 移除全局计数器污染 | `opfs-writer.ts` | 代码规范 |
 | F8 | OPFS Reader 清理增加日志 | `export-worker/index.ts` | 便于调试 |
+| F9 | GIF 流式编码 | `export-worker/index.ts` | 内存使用从 O(N×帧) 降至 O(帧) |
+| F10 | 合成 Worker 动态内存限制 | `composite-worker/index.ts` | 根据实际可用内存自适应缓冲大小 |
+| F11 | ArrayBuffer 零拷贝传输 | `export-worker/index.ts`, `export-manager.ts` | 导出时内存减半 |
+| F12 | 比特率质量映射 | `export-manager.ts` | 尊重用户质量选择 |
 
 ### 性能影响预估
 
 - **导出速度提升**：删除逐帧日志后，预估 60 分钟视频导出可从数天降至数十分钟（取决于硬件和分辨率）
-- **内存使用**：减少日志字符串分配带来的 GC 压力
+- **内存使用**：GIF 导出内存从 O(N×帧大小) 降至 O(帧大小)；ArrayBuffer 零拷贝消除双倍内存；动态缓冲限制避免 4K 场景 OOM
 - **可靠性**：消除了无超时等待导致的卡死场景
+- **用户体验**：比特率映射使"中等质量"导出更快、文件更小
 
 ---
 
@@ -241,9 +246,9 @@ ExportManager → Export Worker → [Composite Worker + OPFS Reader] → Mediabu
 
 | 项目 | 描述 | 难度 | 预估工时 |
 |-----|------|------|---------|
-| GIF 流式编码 | 将 `collectFrames` 改为边解码边编码 | 🔴 高 | 2-3 天 |
-| 内存缓冲动态限制 | 根据 `performance.memory` 调整帧缓冲上限 | 🟡 中 | 1 天 |
-| 比特率尊重用户设置 | 从 options 传递到 strategy，去掉硬编码 | 🟢 低 | 2 小时 |
+| ~~GIF 流式编码~~ | ~~将 `collectFrames` 改为边解码边编码~~ | ✅ 已修复 | - |
+| ~~内存缓冲动态限制~~ | ~~根据 `performance.memory` 调整帧缓冲上限~~ | ✅ 已修复 | - |
+| ~~比特率尊重用户设置~~ | ~~从 options 传递到 strategy，去掉硬编码~~ | ✅ 已修复 | - |
 
 ### 优先级 P1（建议 0.8.x 版本修复）
 
@@ -251,7 +256,7 @@ ExportManager → Export Worker → [Composite Worker + OPFS Reader] → Mediabu
 |-----|------|------|---------|
 | 导出后引导下载 | 导出完成后提供明确的"另存为"对话框 | 🟢 低 | 4 小时 |
 | OPFS 索引流式解析 | 改为逐行流式解析 `index.jsonl` | 🟡 中 | 1 天 |
-| ArrayBuffer 零拷贝传输 | 使用 Transferable 而非 `.slice()` | 🟢 低 | 2 小时 |
+| ~~ArrayBuffer 零拷贝传输~~ | ~~使用 Transferable 而非 `.slice()`~~ | ✅ 已修复 | - |
 | 导出进度准确性 | 改善阶段划分和 ETA 计算 | 🟡 中 | 1 天 |
 | 导出取消可靠性 | 在关键异步点检查 cancel 标志 | 🟡 中 | 4 小时 |
 
@@ -312,6 +317,12 @@ function debug(...args: any[]) {
 
 ## 七、结论
 
-本次评估发现了 **8 类严重到中等的 Bug**，已修复其中 **8 项**。核心问题——导致用户遭遇"60分钟视频编码4天"的根因（大量逐帧日志和无超时等待）已被修复。
+本次评估发现了 **8 类严重到中等的 Bug**，已修复其中 **12 项**（含 4 项架构级优化）。核心问题——导致用户遭遇"60分钟视频编码4天"的根因（大量逐帧日志和无超时等待）已被修复。
 
-剩余的 GIF 内存问题和架构优化需要在后续版本中逐步解决。建议在 0.7.x 补丁版本中先发布当前修复，同时规划 0.8.x 版本的架构改进。
+关键的架构级修复包括：
+- **GIF 流式编码**：彻底重写了 GIF 导出管线，从"收集所有帧→编码"改为"边解码边编码"，消除了内存爆炸问题
+- **动态内存管理**：通过 `performance.memory` 自适应调整帧缓冲上限，避免 4K 场景下 OOM
+- **零拷贝传输**：消除了 ArrayBuffer 双倍内存问题
+- **比特率映射**：用户的质量选择现在会正确影响导出比特率
+
+剩余待优化项目（导出引导下载、OPFS 索引流式解析、进度准确性等）可在后续版本中逐步解决。
