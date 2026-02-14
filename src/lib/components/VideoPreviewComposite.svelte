@@ -108,7 +108,6 @@
     if (totalFramesAll > 0 && durationMs > 0) {
       const fps = Math.max(1, Math.round(totalFramesAll / (durationMs / 1000)))
       if (fps !== frameRate) {
-        console.log('[VideoPreview] Adjusting frameRate from', frameRate, 'to', fps, { totalFramesAll, durationMs })
         frameRate = fps
       }
     }
@@ -173,47 +172,23 @@
       // 使用总时长，不是最后一帧的时间戳
       // 这样时间轴会显示完整的视频时长
       result = Math.max(1, Math.floor((totalFramesAll / frameRate) * 1000))
-      console.log('[progress] timelineMaxMs: using global frames:', {
-        totalFramesAll,
-        frameRate,
-        result
-      })
     }
     // Priority 2: Use passed real duration
     else if (durationMs > 0) {
       result = Math.max(1, Math.floor(durationMs))
-      console.log('[progress] timelineMaxMs: using durationMs:', { durationMs, result })
     }
     // Priority 3: Use current window frame count calculation
     else if (totalFrames > 0 && frameRate > 0) {
       result = Math.max(1, Math.floor((totalFrames / frameRate) * 1000))
-      console.log('[progress] timelineMaxMs: using window frames:', {
-        totalFrames,
-        frameRate,
-        result
-      })
     }
     // Priority 4: Use window duration
     else if (windowEndMs > windowStartMs) {
       result = Math.max(1, windowEndMs - windowStartMs)
-      console.log('[progress] timelineMaxMs: using window duration:', { windowStartMs, windowEndMs, result })
     }
     // Fallback value
     else {
       result = 1000
-      console.log('[progress] timelineMaxMs: using fallback:', { result })
     }
-
-    console.log('[progress] timelineMaxMs calculated:', {
-      result,
-      totalFramesAll,
-      durationMs,
-      totalFrames,
-      frameRate,
-      windowStartMs,
-      windowEndMs,
-      showTimeline
-    })
 
     return result
   })
@@ -276,14 +251,6 @@
     // Ensure not exceeding container limits
     previewWidth = Math.min(previewWidth, availableWidth)
     previewHeight = Math.min(previewHeight, availableHeight)
-
-    console.log('📐 [VideoPreview] Preview size updated:', {
-      outputSize: { width: outputWidth, height: outputHeight },
-      previewSize: { width: previewWidth, height: previewHeight },
-      availableSpace: { width: availableWidth, height: availableHeight },
-      uiElements: { headerHeight, controlsHeight, timelineHeight, padding },
-      aspectRatio: aspectRatio.toFixed(3)
-    })
   }
 
   // Initialize Canvas (only used for display)
@@ -298,15 +265,7 @@
       return
     }
 
-    // Don't set fixed size, let CSS control display size
-    // Canvas will automatically adjust to container size
-    console.log('🎨 [VideoPreview] Canvas container size:', {
-      containerWidth: canvas.parentElement?.clientWidth,
-      containerHeight: canvas.parentElement?.clientHeight
-    })
-
     isInitialized = true
-    console.log('🎨 [VideoPreview] Canvas initialized for bitmap rendering')
   }
 
   // 🔧 消息计数器（诊断用）
@@ -323,8 +282,6 @@
   function initializeWorker() {
     if (compositeWorker) return
 
-    console.log('👷 [VideoPreview] Creating VideoComposite Worker...')
-
     compositeWorker = new Worker(
       new URL('../workers/composite-worker/index.ts', import.meta.url),
       { type: 'module' }
@@ -332,36 +289,20 @@
 
     // Worker message handling
     compositeWorker.onmessage = (event) => {
-      // 🔧 优化：防止计数器溢出
       workerMessageCount = (workerMessageCount + 1) % MAX_MESSAGE_COUNT
-      console.log(`📨 [VideoPreview] Worker message #${workerMessageCount} received:`, event.data.type, {
-        type: event.data.type,
-        hasData: !!event.data.data,
-        hasBitmap: !!event.data.data?.bitmap
-      })
       const { type, data } = event.data
 
       switch (type) {
         case 'initialized':
-          console.log('✅ [VideoPreview] Worker initialized')
           break
 
         case 'ready':
-          console.log('✅ [VideoPreview] Video processing ready:', data)
           hasEverProcessed = true
           totalFrames = data.totalFrames
           duration = totalFrames / frameRate
           outputWidth = data.outputSize.width
           outputHeight = data.outputSize.height
           
-          console.log('[progress] Worker ready - internal state updated:', {
-            totalFrames,
-            duration,
-            outputSize: { width: outputWidth, height: outputHeight },
-            shouldContinuePlayback,
-            windowStartIndex
-          })
-
           // Update Canvas internal resolution
           canvas.width = outputWidth
           canvas.height = outputHeight
@@ -380,18 +321,10 @@
             const windowFrameIndex = globalFrameIndex - windowStartIndex
 
             if (windowFrameIndex >= 0 && windowFrameIndex < totalFrames) {
-              console.log('🔍 [Preview] Window switched, requesting preview frame:', {
-                previewTimeMs,
-                globalFrameIndex,
-                windowFrameIndex
-              })
-
               compositeWorker?.postMessage({
                 type: 'preview-frame',
                 data: { frameIndex: windowFrameIndex }
               })
-            } else {
-              console.warn('⚠️ [Preview] Preview frame still outside new window')
             }
           } else if (!shouldContinuePlayback && !isPreviewMode && !pendingPreviewWindowSwitch) {
             // 默认：就绪后跳到第 0 帧（仅在没有任何 pending 操作时）
@@ -405,8 +338,6 @@
               compositeWorker?.postMessage({ type: 'seek', data: { frameIndex: targetWindowFrame } })
               pendingRestoreGlobalFrameIndex = null
               pendingPreviewWindowSwitch = false
-            } else {
-              console.warn('⚠️ [Preview] Pending restore target still outside new window')
             }
           }
 
@@ -429,41 +360,22 @@
                   console.error('❌ [VideoPreview] Failed to get focus frame after window ready:', e)
                 }
               })()
-            } else {
-              console.warn('⚠️ [VideoPreview] Pending focus target still outside new window')
             }
           }
 
           // 🔧 Check if new window is prepared to continue playback
           if (shouldContinuePlayback) {
-            // Calculate in new window which frame should be played
             const targetWindowFrame = continueFromGlobalFrame - windowStartIndex
             const startFrame = Math.max(0, Math.min(targetWindowFrame, data.totalFrames - 1))
 
-            console.log('[progress] Worker ready, continuing playback in new window:', {
-              shouldContinuePlayback,
-              continueFromGlobalFrame,
-              windowStartIndex,
-              targetWindowFrame,
-              startFrame,
-              totalFrames: data.totalFrames
-            })
-
-            // 🔧 Immediately reset flag, avoid repeat trigger
             shouldContinuePlayback = false
 
-            // 🔧 修复时间线跳动：在继续播放前同步 lastFrameWindowStartIndex
-            // 这确保时间线立即反映新窗口的位置
             lastFrameWindowStartIndex = windowStartIndex
             currentFrameIndex = startFrame
 
-            // 🔧 Use more reliable async scheduling
             requestAnimationFrame(() => {
-              console.log('[progress] Starting playback in new window from frame', startFrame)
               seekToFrame(startFrame)
-              // Ensure seek complete before start playback
               requestAnimationFrame(() => {
-                console.log('[progress] Resuming playback after seek')
                 play()
               })
             })
@@ -471,17 +383,9 @@
           break
 
         case 'preview-frame':
-          // 🆕 处理预览帧（不更新播放位置）
-          console.log('🔍 [VideoPreview] Received preview frame:', {
-            frameIndex: data.frameIndex,
-            hasBitmap: !!data.bitmap
-          })
-
           if (data.bitmap) {
-            // 🔧 #9 优化：收到预览帧，清除加载状态
             isLoadingPreview = false
             
-            // 直接显示预览帧，不更新 currentFrameIndex
             displayFrame(data.bitmap)
             previewFrameIndex = data.frameIndex
             pendingPreviewWindowSwitch = false
@@ -490,22 +394,11 @@
 
         case 'frame':
           // Display composite after frame
-          console.log('📺 [VideoPreview] Received frame from worker:', {
-            frameIndex: data.frameIndex,
-            timestamp: data.timestamp,
-            hasBitmap: !!data.bitmap,
-            isCropMode
-          })
 
           // 如果存在挂起的恢复目标，则优先跳到目标帧，避免短暂显示错误帧（如 0 帧）
           if (pendingRestoreGlobalFrameIndex != null) {
             const desired = pendingRestoreGlobalFrameIndex - windowStartIndex
             if (desired >= 0 && desired < totalFrames && data.frameIndex !== desired) {
-              console.log('[progress] Skipping displayed frame and seeking to desired pending restore frame', {
-                received: data.frameIndex,
-                desired,
-                windowStartIndex
-              })
               compositeWorker?.postMessage({ type: 'seek', data: { frameIndex: desired } })
               break
             }
@@ -514,11 +407,8 @@
           // 🔧 关键修复：只在非裁剪模式下显示帧
           if (!isCropMode) {
             displayFrame(data.bitmap, data.frameIndex, data.timestamp)
-            // any normal frame displayed means cutover/restoration completed
             pendingPreviewWindowSwitch = false
           } else {
-            console.log('⚠️ [VideoPreview] Skipping displayFrame - in crop mode')
-            // 裁剪模式下不显示，直接释放 bitmap
             try {
               data.bitmap.close()
             } catch (e) {
@@ -529,17 +419,7 @@
 
         case 'frameBitmap':
         case 'frameBitmapRaw':
-          // Worker 返回的帧位图（frameBitmap: 合成后；frameBitmapRaw: 源帧）
-          console.log('🖼️ [VideoPreview] Received frame bitmap', {
-            type,
-            waitingForFrameBitmap,
-            hasResolver: !!frameBitmapResolver,
-            hasBitmap: !!data.bitmap
-          })
-
-          // 统一解析等待中的 Promise
           if (waitingForFrameBitmap && frameBitmapResolver) {
-            console.log('✅ [VideoPreview] Resolving frameBitmap promise')
             frameBitmapResolver(data.bitmap)
             waitingForFrameBitmap = false
             frameBitmapResolver = null

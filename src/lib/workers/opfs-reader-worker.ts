@@ -165,12 +165,6 @@ function summarize() {
   }
 
   // 🔧 诊断日志：检查数据完整性
-  console.log('[progress] OPFS Reader - enhanced summary:', {
-    ...summary,
-    durationSeconds: durationMs / 1000,
-    keyframeRatio: (keyframeIndices.length / totalChunks * 100).toFixed(1) + '%',
-    avgKeyframeInterval: totalChunks / keyframeIndices.length
-  })
 
   // 🔴 关键诊断：检查关键帧标记是否正确
   if (keyframeIndices.length === 0) {
@@ -186,7 +180,6 @@ function summarize() {
       firstErrors: timestampErrors.slice(0, 5)
     })
   } else {
-    console.log('✅ [DIAGNOSTIC] Timestamps are monotonically increasing')
   }
 
   // 🔴 关键诊断：检查关键帧间隔是否合理
@@ -194,12 +187,6 @@ function summarize() {
     const intervals = keyframeIndices.slice(1).map((k, i) => k - keyframeIndices[i])
     const maxInterval = Math.max(...intervals)
     const minInterval = Math.min(...intervals)
-    console.log('[DIAGNOSTIC] Keyframe intervals:', {
-      min: minInterval,
-      max: maxInterval,
-      avg: (keyframeIndices[keyframeIndices.length - 1] / (keyframeIndices.length - 1)).toFixed(1),
-      firstFew: keyframeIndices.slice(0, 10)
-    })
   }
 
   return summary
@@ -296,11 +283,6 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
           (summaryData.keyframeIndices[summaryData.keyframeIndices.length - 1] - summaryData.keyframeIndices[0]) / (summaryData.keyframeIndices.length - 1) : 30
       }
 
-      console.log('[progress] OPFS Reader - sending enhanced ready message:', {
-        meta,
-        summary: summaryData,
-        keyframeInfo
-      })
 
       self.postMessage({
         type: 'ready',
@@ -334,11 +316,6 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
       const desiredStartMs = Math.max(0, centerMs - beforeMs)
       const desiredEndMs = centerMs + afterMs
 
-      console.log('[progress] OPFS Reader - window request:', {
-        centerMs, beforeMs, afterMs,
-        desiredStartMs, desiredEndMs,
-        totalEntries: indexEntries.length
-      })
 
       let startIdx = keyframeBefore(idxByRelativeTimeMs(desiredStartMs))
 
@@ -372,16 +349,6 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
       const endEntry = indexEntries[endIdx - 1]
       const endOffset = endEntry.offset + endEntry.size
 
-      console.log('[OPFS-READER] Batch read optimization:', {
-        startIdx,
-        endIdx,
-        count: endIdx - startIdx,
-        startOffset,
-        endOffset,
-        totalBytes: endOffset - startOffset,
-        oldMethod: `${endIdx - startIdx} I/O operations`,
-        newMethod: '1 I/O operation'
-      })
 
       // 一次性读取整个窗口的数据
       const batchReadStart = performance.now()
@@ -389,7 +356,6 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
       const totalBuf = await totalSlice.arrayBuffer()
       const batchReadTime = performance.now() - batchReadStart
 
-      console.log(`✅ [OPFS-READER] Batch read completed in ${batchReadTime.toFixed(1)}ms`)
 
       // 切分为单个 chunks
       for (let i = startIdx; i < endIdx; i++) {
@@ -414,11 +380,6 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
       const startMs = ((indexEntries[startIdx]?.timestamp || 0) - baseTimestamp) / 1000
       const endMs = ((indexEntries[Math.max(startIdx, endIdx - 1)]?.timestamp || 0) - baseTimestamp) / 1000
 
-      console.log('[progress] OPFS Reader - returning window:', {
-        startIdx, endIdx, count: endIdx - startIdx,
-        startMs, endMs,
-        chunksReturned: chunks.length
-      })
 
       ;(self as any).postMessage({
         type: 'range',
@@ -454,24 +415,7 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
         end = start + maxFramesPerWindow
       }
 
-      console.log('[progress] OPFS Reader - aligned to previous keyframe for seek:', {
-        requestedStart,
-        prevKey,
-        distance,
-        finalStart: start,
-        finalEnd: end,
-        finalCount: end - start
-      })
 
-      console.log('[progress] OPFS Reader - getRange request (prev-keyframe alignment):', {
-        requestedStart: msg.start,
-        requestedCount: msg.count,
-        finalStart: start,
-        finalEnd: end,
-        finalCount: end - start,
-        keyframeAdjustment: requestedStart - start,
-        totalEntries: indexEntries.length
-      })
 
       const file = await getDataFile()
       const chunks: ChunkWire[] = []
@@ -482,16 +426,6 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
       const endEntry = indexEntries[end - 1]
       const endOffset = endEntry.offset + endEntry.size
 
-      console.log('[OPFS-READER] Batch read optimization (getRange):', {
-        start,
-        end,
-        count: end - start,
-        startOffset,
-        endOffset,
-        totalBytes: endOffset - startOffset,
-        oldMethod: `${end - start} I/O operations`,
-        newMethod: '1 I/O operation'
-      })
 
       // 一次性读取整个窗口的数据
       const batchReadStart = performance.now()
@@ -499,7 +433,6 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
       const totalBuf = await totalSlice.arrayBuffer()
       const batchReadTime = performance.now() - batchReadStart
 
-      console.log(`✅ [OPFS-READER] Batch read completed in ${batchReadTime.toFixed(1)}ms`)
 
       // 切分为单个 chunks
       for (let i = start; i < end; i++) {
@@ -520,11 +453,6 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
         transfer.push(buf)
       }
 
-      console.log('[progress] OPFS Reader - getRange returning:', {
-        start,
-        count: end - start,
-        chunksReturned: chunks.length
-      })
 
       ;(self as any).postMessage({ type: 'range', start, count: end - start, chunks }, transfer)
       return
@@ -545,13 +473,6 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
       const end = targetFrame + 1  // 包含目标帧
       const gopSize = end - start
 
-      console.log('[progress] OPFS Reader - getSingleFrameGOP:', {
-        targetFrame,
-        prevKeyframe: prevKey,
-        gopSize,
-        start,
-        end
-      })
 
       const file = await getDataFile()
       const chunks: ChunkWire[] = []
@@ -567,7 +488,6 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
       const totalBuf = await totalSlice.arrayBuffer()
       const batchReadTime = performance.now() - batchReadStart
 
-      console.log(`✅ [OPFS-READER] SingleFrameGOP batch read completed in ${batchReadTime.toFixed(1)}ms, ${gopSize} frames, ${(endOffset - startOffset)} bytes`)
 
       // 切分为单个 chunks
       for (let i = start; i < end; i++) {

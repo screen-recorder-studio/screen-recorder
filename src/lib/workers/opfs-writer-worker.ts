@@ -208,13 +208,6 @@ self.onmessage = async (e: MessageEvent<InitMessage | AppendMessage | FlushMessa
       // ✅ 使用实际时长（最后chunk的timestamp）
       const actualDuration = lastTimestamp >= 0 ? lastTimestamp : 0
 
-      console.log(`[OPFS] Finalize:`, {
-        chunks: chunksWritten,
-        bytes: dataOffset,
-        firstTs: firstTimestamp,
-        lastTs: lastTimestamp,
-        duration: actualDuration
-      })
 
       await writeMeta({
         ...initialMeta,

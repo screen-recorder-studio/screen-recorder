@@ -105,7 +105,6 @@ export class RecordingService {
       // 启动状态更新循环
       this.startUpdateLoop()
 
-      console.log('🎬 Recording started successfully')
 
     } catch (error) {
       console.error('❌ Failed to start recording:', error)
@@ -129,22 +128,20 @@ export class RecordingService {
 
       // 停止性能监控
       const finalMetrics = this.performanceMonitor.stop()
-      console.log('📊 Final performance metrics:', finalMetrics)
-
-      // 停止更新循环
-      this.stopUpdateLoop()
 
       // 更新状态
       recordingStore.setVideoBlob(videoBlob)
       recordingStore.updateStatus('completed')
 
-      console.log('✅ Recording completed successfully')
       return videoBlob
 
     } catch (error) {
       console.error('❌ Failed to stop recording:', error)
       recordingStore.updateStatus('error', (error as Error).message)
       throw error
+    } finally {
+      // 确保更新循环始终被停止，避免定时器泄漏
+      this.stopUpdateLoop()
     }
   }
 
@@ -162,7 +159,6 @@ export class RecordingService {
       // 保存文件
       await ChromeAPIWrapper.saveVideoSmart(videoBlob, finalFilename)
 
-      console.log('💾 Video saved successfully:', finalFilename)
 
     } catch (error) {
       console.error('❌ Failed to save recording:', error)
@@ -241,7 +237,6 @@ export class RecordingService {
     // 清理录制器
     this.recorder = null
 
-    console.log('🔄 Recording service reset')
   }
 
   // 销毁服务
@@ -251,7 +246,6 @@ export class RecordingService {
     // 清理性能监控器
     this.performanceMonitor.reset()
 
-    console.log('🗑️ Recording service destroyed')
   }
 
   // 导出录制数据

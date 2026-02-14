@@ -18,7 +18,6 @@ export class WebmStrategy implements EncoderStrategy {
       }
       const dirId = (options as any).opfsDirId as string
       const fileName = (options as any).opfsFileName || `export-${Date.now()}.webm`
-      console.log('📁 [WebM-Export-Worker] OPFS stream target:', { dirId, fileName })
       const root = await (self as any).navigator.storage.getDirectory()
       const dir = await (root as any).getDirectoryHandle(dirId, { create: false })
       this.opfsFileHandle = await (dir as any).getFileHandle(fileName, { create: true })

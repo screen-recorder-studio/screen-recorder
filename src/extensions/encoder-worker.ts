@@ -50,10 +50,8 @@ async function flushAndClose() {
   try {
     if (encoder) {
       const queueBefore = encoder.encodeQueueSize;
-      console.log(`[Encoder] Flushing (queue: ${queueBefore})...`);
       await encoder.flush();
       const queueAfter = encoder.encodeQueueSize;
-      console.log(`[Encoder] Flushed (queue: ${queueAfter})`);
 
       if (queueAfter > 0) {
         console.warn(`⚠️ [Encoder] Queue not empty after flush: ${queueAfter}`);
