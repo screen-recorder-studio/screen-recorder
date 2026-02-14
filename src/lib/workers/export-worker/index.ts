@@ -940,7 +940,10 @@ function handleCompositeFrame(bitmap: ImageBitmap, frameIndex: number) {
         const offsetX = (canvasWidth - scaledWidth) / 2
         const offsetY = (canvasHeight - scaledHeight) / 2
 
-
+        if (!warnedCanvasSizeMismatch) {
+          console.log(`🔧 [MP4-Export-Worker] Scaling frames: Bitmap ${bitmapWidth}×${bitmapHeight} → Canvas ${canvasWidth}×${canvasHeight}, scale=${scale.toFixed(3)}`)
+          warnedCanvasSizeMismatch = true
+        }
         // 绘制缩放后的图像
         canvasCtx.drawImage(bitmap, offsetX, offsetY, scaledWidth, scaledHeight)
       }
@@ -1290,7 +1293,6 @@ async function renderFramesForExport(videoSource: any, frameDuration: number): P
       break
     }
 
-
     const timestamp = frameIndex * frameDuration
 
     try {
@@ -1299,42 +1301,20 @@ async function renderFramesForExport(videoSource: any, frameDuration: number): P
 
       // 验证 Canvas 状态
       if (!offscreenCanvas || !canvasCtx) {
-        console.error(`❌ [MP4-Export-Worker] Canvas not available for frame ${frameIndex}`)
         throw new Error(`Canvas not available for frame ${frameIndex}`)
-      }
-
-      // 验证 Canvas 内容
-      const imageData = canvasCtx.getImageData(0, 0, Math.min(10, offscreenCanvas.width), Math.min(10, offscreenCanvas.height))
-      const hasContent = imageData.data.some(value => value > 0)
-
-      if (!hasContent) {
-        console.warn(`⚠️ [MP4-Export-Worker] Canvas appears empty for frame ${frameIndex}`)
       }
 
       // 添加当前 Canvas 状态到 CanvasSource
       try {
-
         await videoSource.add(timestamp, frameDuration)
         addedCount++
 
-        // 每10帧输出一次详细日志
-        if (frameIndex % 10 === 0) {
+        if (frameIndex % 100 === 0) {
+          console.log(`📊 [MP4-Export-Worker] Progress: ${frameIndex + 1}/${totalFrames} frames, timestamp: ${timestamp.toFixed(3)}s, success rate: ${((addedCount/(frameIndex+1))*100).toFixed(1)}%`)
         }
       } catch (addError) {
         addErrors++
         console.error(`❌ [MP4-Export-Worker] Failed to add frame ${frameIndex} to CanvasSource:`, addError)
-        console.error(`❌ [MP4-Export-Worker] Add error details:`, {
-          frameIndex,
-          timestamp,
-          frameDuration,
-          canvasSize: { width: offscreenCanvas?.width, height: offscreenCanvas?.height },
-          hasContent,
-          addErrors,
-          addedCount,
-          videoSourceType: typeof videoSource,
-          errorMessage: (addError as Error).message || String(addError),
-          errorStack: (addError as Error).stack
-        })
       }
 
       // 更新进度
@@ -1349,15 +1329,6 @@ async function renderFramesForExport(videoSource: any, frameDuration: number): P
     } catch (error) {
       requestErrors++
       console.error(`❌ [MP4-Export-Worker] Failed to process frame ${frameIndex}:`, error)
-      console.error(`❌ [MP4-Export-Worker] Request error details:`, {
-        frameIndex,
-
-
-        timestamp,
-        requestErrors,
-        addedCount,
-        totalFrames
-      })
       // 继续处理下一帧，不中断整个过程
     }
   }
@@ -1381,11 +1352,9 @@ async function renderFramesForExport(videoSource: any, frameDuration: number): P
 async function requestCompositeFrame(frameIndex: number): Promise<void> {
   return new Promise((resolve, reject) => {
     if (!compositeWorker) {
-      console.error(`❌ [MP4-Export-Worker] Composite worker not available for frame ${frameIndex}`)
       reject(new Error('Composite worker not available'))
       return
     }
-
 
     // 设置临时消息处理器等待帧渲染完成
     const originalOnMessage = compositeWorker.onmessage
@@ -1399,7 +1368,6 @@ async function requestCompositeFrame(frameIndex: number): Promise<void> {
       const { type, data } = event.data
 
       if (type === 'frame' && data.frameIndex === frameIndex) {
-
         // 恢复原始消息处理器
         compositeWorker!.onmessage = originalOnMessage
         clearTimeout(timeout)
@@ -1426,8 +1394,6 @@ async function requestCompositeFrame(frameIndex: number): Promise<void> {
     }
 
     // 请求渲染指定帧
-
-
     compositeWorker.postMessage({
       type: 'seek',
       data: { frameIndex }
@@ -1614,7 +1580,8 @@ async function renderFramesForExportOpfs(videoSource: any, frameDuration: number
           totalFrames: totalOpfsFrames
         })
 
-        if (globalIndex % 10 === 0) {
+        if (globalIndex % 100 === 0) {
+          console.log(`📊 [MP4-Export-Worker] [OPFS] Progress: ${globalIndex + 1}/${totalOpfsFrames}`)
         }
       } catch (err) {
         console.error(`❌ [MP4-Export-Worker] [OPFS] Failed to process global frame ${globalIndex}:`, err)
@@ -1628,18 +1595,6 @@ async function renderFramesForExportOpfs(videoSource: any, frameDuration: number
 
   return addedCount
 }
-
-const testCases = [
-  { width: 719, height: 996, name: '奇数尺寸' },
-  { width: 720, height: 996, name: '部分偶数' },
-  { width: 720, height: 1000, name: '偶数但非16倍数' },
-  { width: 8, height: 8, name: '过小尺寸' }
-]
-
-testCases.forEach(testCase => {
-  const result = validateAndFixH264Dimensions(testCase.width, testCase.height)
-})
-
 
 
 /**
@@ -2007,7 +1962,7 @@ async function encodeGifInMainThread(
 }
 
 /**
- * WebM 逐帧渲染：包含 16ms 等待，保持与原 webm-export-worker 一致
+ * WebM 逐帧渲染
  */
 async function renderFramesForExportWebm(videoSource: any, frameDuration: number): Promise<void> {
   if (!compositeWorker || !totalFrames) {
@@ -2022,15 +1977,14 @@ async function renderFramesForExportWebm(videoSource: any, frameDuration: number
 
     try {
       await requestCompositeFrame(frameIndex)
-      // 等待一帧时间确保渲染完成（与原实现保持一致）
-      await new Promise(resolve => setTimeout(resolve, 16))
 
       await videoSource.add(timestamp, frameDuration)
 
       const progress = 80 + (frameIndex / totalFrames) * 15 // 80%-95%
       updateProgress({ stage: 'muxing', progress, currentFrame: frameIndex + 1, totalFrames })
 
-      if (frameIndex % 10 === 0) {
+      if (frameIndex % 100 === 0) {
+        console.log(`📊 [WebM-Export-Worker] Added frame ${frameIndex + 1}/${totalFrames}, ts: ${timestamp.toFixed(3)}s`)
       }
     } catch (error) {
       console.error(`❌ [WebM-Export-Worker] Failed to add frame ${frameIndex}:`, error)

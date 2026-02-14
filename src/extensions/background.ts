@@ -698,7 +698,7 @@ function handleSaveRecording(message, sendResponse) {
     chrome.downloads.download({
       url: url,
       filename: filename,
-      saveAs: false
+      saveAs: true
     }, (downloadId) => {
       if (chrome.runtime.lastError) {
         console.error('Download failed:', chrome.runtime.lastError)
