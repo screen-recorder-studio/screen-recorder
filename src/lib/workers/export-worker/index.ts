@@ -1398,7 +1398,6 @@ async function renderFramesForExport(videoSource: any, frameDuration: number): P
       break
     }
 
-
     const timestamp = frameIndex * frameDuration
 
     try {
@@ -1415,8 +1414,7 @@ async function renderFramesForExport(videoSource: any, frameDuration: number): P
         await videoSource.add(timestamp, frameDuration)
         addedCount++
 
-        // 每50帧输出一次详细日志
-        if (frameIndex % 50 === 0) {
+        if (frameIndex % 100 === 0) {
           console.log(`📊 [MP4-Export-Worker] Progress: ${frameIndex + 1}/${totalFrames} frames, timestamp: ${timestamp.toFixed(3)}s, success rate: ${((addedCount/(frameIndex+1))*100).toFixed(1)}%`)
         }
       } catch (addError) {
@@ -1436,15 +1434,6 @@ async function renderFramesForExport(videoSource: any, frameDuration: number): P
     } catch (error) {
       requestErrors++
       console.error(`❌ [MP4-Export-Worker] Failed to process frame ${frameIndex}:`, error)
-      console.error(`❌ [MP4-Export-Worker] Request error details:`, {
-        frameIndex,
-
-
-        timestamp,
-        requestErrors,
-        addedCount,
-        totalFrames
-      })
       // 继续处理下一帧，不中断整个过程
     }
   }
@@ -1705,7 +1694,7 @@ async function renderFramesForExportOpfs(videoSource: any, frameDuration: number
           totalFrames: totalOpfsFrames
         })
 
-        if (globalIndex % 50 === 0) {
+        if (globalIndex % 100 === 0) {
           console.log(`📊 [MP4-Export-Worker] [OPFS] Progress: ${globalIndex + 1}/${totalOpfsFrames}`)
         }
       } catch (err) {
@@ -1720,21 +1709,6 @@ async function renderFramesForExportOpfs(videoSource: any, frameDuration: number
 
   return addedCount
 }
-
-console.log('🔧 [MP4-Export-Worker] Testing H.264 dimension validation...')
-const testCases = [
-  { width: 719, height: 996, name: '奇数尺寸' },
-  { width: 720, height: 996, name: '部分偶数' },
-  { width: 720, height: 1000, name: '偶数但非16倍数' },
-  { width: 8, height: 8, name: '过小尺寸' }
-]
-
-testCases.forEach(testCase => {
-  const result = validateAndFixH264Dimensions(testCase.width, testCase.height)
-  console.log(`  ${testCase.name} (${testCase.width}×${testCase.height}) → ${result.width}×${result.height} ${result.modified ? '(修正)' : '(无需修正)'}`)
-})
-
-console.log('✅ [MP4-Export-Worker] Initialization checks completed')
 
 
 /**
@@ -2125,7 +2099,7 @@ async function encodeGifInMainThread(
 }
 
 /**
- * WebM 逐帧渲染：包含 16ms 等待，保持与原 webm-export-worker 一致
+ * WebM 逐帧渲染
  */
 async function renderFramesForExportWebm(videoSource: any, frameDuration: number): Promise<void> {
   if (!compositeWorker || !totalFrames) {
@@ -2147,7 +2121,7 @@ async function renderFramesForExportWebm(videoSource: any, frameDuration: number
       const progress = 80 + (frameIndex / totalFrames) * 15 // 80%-95%
       updateProgress({ stage: 'muxing', progress, currentFrame: frameIndex + 1, totalFrames })
 
-      if (frameIndex % 50 === 0) {
+      if (frameIndex % 100 === 0) {
         console.log(`📊 [WebM-Export-Worker] Added frame ${frameIndex + 1}/${totalFrames}, ts: ${timestamp.toFixed(3)}s`)
       }
     } catch (error) {
