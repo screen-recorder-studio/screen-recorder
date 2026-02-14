@@ -70,10 +70,6 @@ export class GifEncoder {
       debug: this.options.debug
     })
 
-    console.log('✅ [GifEncoder] Initialized with gif.js', {
-      workerScript,
-      options: this.options
-    })
   }
 
   /**
@@ -120,7 +116,6 @@ export class GifEncoder {
       copy: true
     })
 
-    console.log(`🖼️ [GifEncoder] Frame added, delay: ${delay}ms`)
   }
 
   /**
@@ -135,14 +130,12 @@ export class GifEncoder {
       // 监听进度
       if (onProgress) {
         this.gif.on('progress', (p: number) => {
-          console.log(`🎨 [GifEncoder] Rendering progress: ${(p * 100).toFixed(1)}%`)
           onProgress(p)
         })
       }
 
       // 监听完成
       this.gif.on('finished', (blob: Blob) => {
-        console.log('✅ [GifEncoder] Rendering completed, size:', blob.size, 'bytes')
         resolve(blob)
       })
 
@@ -153,7 +146,6 @@ export class GifEncoder {
       })
 
       // 开始渲染
-      console.log('🎬 [GifEncoder] Starting render...')
       this.gif.render()
     })
   }
@@ -164,7 +156,6 @@ export class GifEncoder {
   abort(): void {
     if (this.gif) {
       this.gif.abort()
-      console.log('🛑 [GifEncoder] Rendering aborted')
     }
   }
 
@@ -191,10 +182,6 @@ export async function handleGifEncodeRequest(
   options: GifEncodeOptions,
   onProgress?: (progress: number) => void
 ): Promise<Blob> {
-  console.log('🎨 [GifEncoder] Handling encode request:', {
-    frameCount: frames.length,
-    options
-  })
 
   // 创建编码器
   const encoder = new GifEncoder(options)

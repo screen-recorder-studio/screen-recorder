@@ -50,13 +50,10 @@ function initOpfsWriter(meta?: any) {
       if (d.type === 'ready') {
         // Writer initialized
         writerReady = true;
-        console.log('[Offscreen][OPFS] writer ready for', id);
         flushPendingIfReady();
       } else if (d.type === 'progress') {
         const { bytesWrittenTotal, chunksWritten } = d;
-        if (chunksWritten % 200 === 0) console.log('[Offscreen][OPFS] progress', { bytesWrittenTotal, chunksWritten });
       } else if (d.type === 'finalized') {
-        console.log('[Offscreen][OPFS] writer finalized for', id);
         try {
           const recId = (d && d.id != null) ? `rec_${d.id}` : `rec_${ensureSessionId()}`
           chrome.runtime?.sendMessage({ type: 'OPFS_RECORDING_READY', id: recId, meta: lastMeta })
@@ -104,7 +101,9 @@ function appendToOpfsChunk(d: { data: any; timestamp?: number; type?: string; co
     } else if (raw && typeof raw.copyTo === 'function' && typeof raw.byteLength === 'number') {
       // EncodedVideoChunk (WebCodecs)
       const tmp = new Uint8Array(raw.byteLength);
-      try { raw.copyTo(tmp); } catch {}
+      try { raw.copyTo(tmp); } catch (e) {
+        console.warn('[Offscreen] copyTo failed for EncodedVideoChunk, size:', raw.byteLength, 'ts:', d.timestamp, e);
+      }
       u8 = tmp;
     } else if (raw instanceof Blob) {
       // Blob -> async convert to ArrayBuffer then retry
@@ -140,12 +139,6 @@ function appendToOpfsChunk(d: { data: any; timestamp?: number; type?: string; co
       ? u8.buffer
       : u8.slice().buffer;
 
-    // Light logging for early chunks
-    if ((window as any).__opfs_log_count == null) (window as any).__opfs_log_count = 0;
-    if ((window as any).__opfs_log_count < 5) {
-      (window as any).__opfs_log_count++;
-      console.log('[Offscreen] append size', u8.byteLength, 'ts', d.timestamp, 'type', d.type);
-    }
 
     writer.postMessage({
       type: 'append',
@@ -201,7 +194,6 @@ if (__isIframeSink) {
             lastMeta = normalizeMeta({ codec: d.codec, width: d.width, height: d.height, framerate: d.framerate });
             initOpfsWriter(lastMeta);
             started = true;
-            console.log('[IframeSink] start', lastMeta);
             break;
           case 'meta':
             lastMeta = normalizeMeta(d.metadata);
@@ -221,22 +213,18 @@ if (__isIframeSink) {
           }
           case 'end':
           case 'end-request':
-            console.log(`[IframeSink] end received, pending: ${pendingChunks.length}`);
 
             // ✅ 延迟200ms确保所有chunks到达
             setTimeout(() => {
               if (!writerReady || pendingChunks.length > 0) {
-                console.log(`[IframeSink] Deferring finalize (ready: ${writerReady}, pending: ${pendingChunks.length})`);
                 endPending = true;
               } else {
-                console.log('[IframeSink] Finalizing OPFS writer');
                 void finalizeOpfsWriter();
               }
             }, 200);
             break;
         }
       });
-      console.log('[Offscreen] iframe sink mode active');
     } catch (e) {
       console.warn('[Offscreen] iframe sink error', e);
     }
@@ -247,7 +235,6 @@ if (__isIframeSink) {
   (function connectToBackground() {
     try {
       const port = chrome.runtime.connect({ name: 'opfs-writer-sink' });
-      console.log('[Offscreen] connected to background as opfs-writer-sink');
 
       port.onMessage.addListener(async (msg: any) => {
         try {
@@ -274,7 +261,6 @@ if (__isIframeSink) {
             }
             case 'end':
             case 'end-request':
-              console.log('[Offscreen] end received; finalizing OPFS writer');
               if (!writerReady || pendingChunks.length > 0) {
                 endPending = true;
               } else {
@@ -301,21 +287,6 @@ if (__isIframeSink) {
 } else {
   // Probe mode: accept direct messages from content via window.postMessage, log only
   try {
-    let __probe_log_count = 0;
-    function __headHex(u8: Uint8Array, n = 16) {
-      const len = Math.min(n, u8.length); const out = new Array(len);
-      for (let i = 0; i < len; i++) out[i] = u8[i].toString(16).padStart(2, '0');
-      return out.join(' ');
-    }
-    function __tailHex(u8: Uint8Array, n = 8) {
-      const len = Math.min(n, u8.length); const out = new Array(len);
-      for (let i = 0; i < len; i++) { const idx = u8.length - len + i; out[i] = u8[idx].toString(16).padStart(2, '0'); }
-      return out.join(' ');
-    }
-    function __sum32(u8: Uint8Array) {
-      let s = 0 >>> 0; for (let i = 0; i < u8.length; i++) { s = (s + u8[i]) >>> 0; } return s >>> 0;
-    }
-
     window.addEventListener('message', (ev) => {
       const d: any = ev.data || {};
       if (d.type === 'ping') {
@@ -323,29 +294,12 @@ if (__isIframeSink) {
         return;
       }
       if (d.type === 'start' || d.type === 'meta' || d.type === 'end') {
-        if (__probe_log_count < 10) { console.log('[Probe]', d.type, d); __probe_log_count++; }
         return;
       }
       if (d.type === 'chunk') {
-        if (__probe_log_count < 10) {
-          const raw = d.data;
-          const size = (raw && ((raw as any).byteLength ?? (raw as any).length)) || 0;
-          let u8: Uint8Array | null = null;
-          if (raw instanceof ArrayBuffer) u8 = new Uint8Array(raw);
-          else if (raw && ArrayBuffer.isView(raw) && typeof raw.byteLength === 'number') {
-            const view = raw as ArrayBufferView & { byteOffset?: number };
-            u8 = new Uint8Array(view.buffer, (view as any).byteOffset || 0, view.byteLength);
-          } else if (Array.isArray(raw)) u8 = new Uint8Array(raw as number[]);
-          const head16 = u8 ? __headHex(u8, 16) : undefined;
-          const tail8 = u8 ? __tailHex(u8, 8) : undefined;
-          const sum32 = u8 ? ('0x' + __sum32(u8).toString(16).padStart(8, '0')) : undefined;
-          console.log('[Probe] chunk', { ts: d.ts, kind: d.kind, size, head16, tail8, sum32 });
-          __probe_log_count++;
-        }
         return;
       }
     });
-    console.log('[Offscreen] probe mode active');
   } catch (e) {
     console.warn('[Offscreen] probe mode error', e);
   }

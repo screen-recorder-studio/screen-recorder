@@ -1,7 +1,6 @@
 // @ts-nocheck
 
 // Chrome 扩展 Service Worker
-console.log('Screen Recorder Extension Service Worker loaded')
 
 // 引入 offscreen 管理工具
 import { ensureOffscreenDocument, sendToOffscreen } from '../lib/utils/offscreen-manager'
@@ -80,7 +79,6 @@ async function broadcastStateWithCapabilities(tabId) {
 
 // 扩展安装时的初始化
 chrome.runtime.onInstalled.addListener((details) => {
-  console.log('Extension installed:', details.reason)
   if (details.reason === 'install') {
     chrome.tabs.create({ url: '/welcome.html' });
   }
@@ -162,7 +160,6 @@ chrome.windows.onRemoved.addListener((windowId) => {
 
 // 处理来自 sidepanel 的消息
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('Received message:', message.action || message.type, message)
   // Ignore messages explicitly targeted to the offscreen document to avoid echo/loops
   if (message?.target === 'offscreen-doc') {
     return false;
@@ -290,7 +287,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       case 'RECORDING_COMPLETE': {
         // Treat as a stop event when it originates from offscreen
-        console.log('[stop-share] background: RECORDING_COMPLETE → mark stopped')
         try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
         try { void stopBadgeTimer() } catch {}
         try {
@@ -307,7 +303,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         try {
           const id = message?.id
           const doOpen = () => {
-            console.log('[stop-share] background: OPFS_RECORDING_READY → mark stopped')
             try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
             try { void stopBadgeTimer() } catch {}
             try {
@@ -325,7 +320,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             setTimeout(() => {
               try {
                 if (currentRecording && currentRecording.isRecording) {
-                  console.log('[Background] OPFS_RECORDING_READY delayed but recording still active; skipping Studio open', { id })
                   try { sendResponse({ ok: true, skipped: true, reason: 'active_recording' }) } catch {}
                 } else {
                   doOpen();
@@ -350,7 +344,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       // Stream signaling from content via sendMessage (no Port)
       case 'STREAM_START': {
         // Dual-path handling: tab-scoped (content pipeline) vs global (offscreen pipeline)
-        console.log('[stop-share] background: STREAM_START', { tabId, from: tabId ? 'tab' : 'offscreen' })
         try { currentRecording.isRecording = true; currentRecording.isPaused = false } catch {}
         try { void updateBadgeFromElapsed(0) } catch {}
         if (tabId) {
@@ -407,7 +400,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
       }
       case 'STREAM_END': {
-        console.log('[stop-share] background: STREAM_END', { tabId, from: tabId ? 'tab' : 'offscreen' })
         try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
         disableTabAnnotation()
         currentRecording.tabId = null
@@ -424,7 +416,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
       }
       case 'STREAM_ERROR': {
-        console.log('[stop-share] background: STREAM_ERROR', { tabId, from: tabId ? 'tab' : 'offscreen' })
         try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
         disableTabAnnotation()
         currentRecording.tabId = null
@@ -454,7 +445,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             } catch { c = 3 }
           }
           raw.countdown = c;
-          console.log('OFFSCREEN_START_RECORDING received with countdown:', c)
           // Countdown should open only after user grants capture permission (stream ready)
           // Offscreen will trigger via STREAM_META once stream is available
           await startRecordingViaOffscreen(raw)
@@ -466,7 +456,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Only handle stop requests from popup, not OFFSCREEN_STOP_RECORDING
         // OFFSCREEN_STOP_RECORDING is sent TO offscreen, not FROM it
         (async () => {
-          console.log('[stop-share] background: REQUEST_STOP_RECORDING received')
           await stopRecordingViaOffscreen()
           try { sendResponse({ ok: true }) } catch (e) {}
         })()
@@ -475,7 +464,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'REQUEST_OFFSCREEN_PING': {
         (async () => {
           await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
-          sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_PING', when: Date.now() })
+          await sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_PING', when: Date.now() })
           try { sendResponse({ ok: true }) } catch (e) {}
         })()
         return true;
@@ -540,7 +529,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     // 来自offscreen document的消息
     case 'recordingComplete':
-      console.log('Recording completed with', message.chunksCount, 'chunks')
       break
 
     case 'recordingError':
@@ -568,10 +556,6 @@ function broadcastToTab(tabId, payload) {
 // 处理元素录制完成，传递数据给主系统
 function handleElementRecordingComplete(message, sendResponse) {
   try {
-    console.log('🎬 [Background] Element recording completed, transferring to main system...', {
-      chunks: message.data?.encodedChunks?.length || 0,
-      metadata: message.data?.metadata
-    });
 
     // 验证数据完整性
     if (!message.data?.encodedChunks || message.data.encodedChunks.length === 0) {
@@ -607,7 +591,6 @@ function handleElementRecordingComplete(message, sendResponse) {
       }
     });
 
-    console.log('✅ [Background] Element recording data transferred successfully');
     sendResponse({ success: true, message: 'Data transferred to main system' });
 
   } catch (error) {
@@ -650,7 +633,6 @@ async function ensureContentInjected(tabId) {
 async function handleScreenCaptureRequest(message, sendResponse) {
   try {
     const sources = message.sources || ['screen', 'window', 'tab']
-    console.log('Requesting desktop capture with sources:', sources)
 
     // 获取当前活动标签页
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
@@ -665,25 +647,20 @@ async function handleScreenCaptureRequest(message, sendResponse) {
       return
     }
 
-    console.log('Current tab:', currentTab.id, currentTab.url)
 
-    console.log('Calling chrome.desktopCapture.chooseDesktopMedia...')
 
     const requestId = chrome.desktopCapture.chooseDesktopMedia(
       sources,
       currentTab, // 添加目标标签页参数
       (streamId, options) => {
-        console.log('Desktop capture callback called:', { streamId, options })
 
         if (streamId) {
-          console.log('Desktop capture granted:', streamId)
           sendResponse({
             success: true,
             streamId,
             canRequestAudioTrack: options?.canRequestAudioTrack || false
           })
         } else {
-          console.log('Desktop capture cancelled by user')
           sendResponse({
             success: false,
             error: 'DESKTOP_CAPTURE_CANCELLED'
@@ -692,7 +669,6 @@ async function handleScreenCaptureRequest(message, sendResponse) {
       }
     )
 
-    console.log('chooseDesktopMedia returned requestId:', requestId)
 
     // 处理请求失败情况
     if (!requestId) {
@@ -732,7 +708,6 @@ function handleSaveRecording(message, sendResponse) {
           details: chrome.runtime.lastError.message
         })
       } else {
-        console.log('Download started:', downloadId)
         sendResponse({
           success: true,
           downloadId
@@ -780,7 +755,6 @@ function handleUpdateSettings(message, sendResponse) {
         error: 'STORAGE_ERROR'
       })
     } else {
-      console.log('Settings updated:', settings)
       sendResponse({
         success: true
       })
@@ -815,7 +789,6 @@ function handleOpenSidePanel(message, sendResponse) {
 // 监听下载完成事件
 chrome.downloads.onChanged.addListener((downloadDelta) => {
   if (downloadDelta.state && downloadDelta.state.current === 'complete') {
-    console.log('Download completed:', downloadDelta.id)
 
     // 可以在这里通知 sidepanel 下载完成
     chrome.runtime.sendMessage({
@@ -831,7 +804,6 @@ chrome.downloads.onChanged.addListener((downloadDelta) => {
 
 // 处理扩展启动
 chrome.runtime.onStartup.addListener(async () => {
-  console.log('Extension startup')
   try {
     if (chrome.sidePanel?.setPanelBehavior) {
       chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
@@ -898,7 +870,6 @@ function disableTabAnnotation() {
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.type === 'COUNTDOWN_DONE') {
     // Inline countdown in control page - just broadcast to offscreen
-    console.log('[Countdown] COUNTDOWN_DONE received from control page');
     try {
       chrome.runtime.sendMessage({
         type: 'COUNTDOWN_DONE_BROADCAST',
@@ -946,7 +917,6 @@ async function startRecordingViaOffscreen(options) {
     let targetTabId: number | null = null
     if (mode === 'tab') {
       targetTabId = await resolveTargetTabId();
-      console.log('[Background] Resolved annotation target tab:', targetTabId);
     }
 
     await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
@@ -966,9 +936,8 @@ async function startRecordingViaOffscreen(options) {
 
 async function stopRecordingViaOffscreen() {
   try {
-    console.log('[stop-share] background: forwarding OFFSCREEN_STOP_RECORDING to offscreen')
     await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
-    sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_STOP_RECORDING' })
+    await sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_STOP_RECORDING' })
   } finally {
     disableTabAnnotation()
     currentRecording = { isRecording: false, isPaused: false, streamId: null, startTime: null, tabId: null, mode: null }
@@ -979,7 +948,6 @@ async function stopRecordingViaOffscreen() {
 // 处理录制开始 - 简化版本，直接返回streamId
 async function handleStartRecording(message, sendResponse) {
   try {
-    console.log('Starting recording with streamId:', message.streamId)
 
     // 保存录制状态
     currentRecording = {
@@ -987,16 +955,15 @@ async function handleStartRecording(message, sendResponse) {
       isPaused: false,
       streamId: message.streamId,
       startTime: Date.now(),
-      tabId: tabId ?? null,
+      tabId: message.tabId ?? null,
       mode: null
     }
 
-    console.log('Recording state saved:', currentRecording)
 
     // 确保 Offscreen 存在并通知开始录制（骨架版）
     try {
       await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
-      sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_START_RECORDING', payload: { streamId: message.streamId } })
+      await sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_START_RECORDING', payload: { streamId: message.streamId } })
     } catch (e) {
       console.warn('Failed to ensure offscreen or send START to offscreen', e)
     }
@@ -1020,7 +987,6 @@ async function handleStartRecording(message, sendResponse) {
 // 处理录制停止
 async function handleStopRecording(message, sendResponse) {
   try {
-    console.log('Stopping recording')
 
     // 重置录制状态
     currentRecording = {
@@ -1032,12 +998,11 @@ async function handleStopRecording(message, sendResponse) {
       mode: null
     }
 
-    console.log('Recording state reset')
 
     // 通知 Offscreen 停止录制（骨架版）
     try {
       await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
-      sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_STOP_RECORDING' })
+      await sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_STOP_RECORDING' })
     } catch (e) {
       console.warn('Failed to ensure offscreen or send STOP to offscreen', e)
     }

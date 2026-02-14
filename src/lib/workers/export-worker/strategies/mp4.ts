@@ -34,7 +34,6 @@ function validateAndFixH264Dimensions(width: number, height: number): { width: n
   if (W16 !== width) { width = W16; modified = true }
   if (H16 !== height) { height = H16; modified = true }
   if (modified) {
-    console.log(`ℹ️ [MP4-Export-Worker] H.264 编码尺寸修正: ${originalWidth}×${originalHeight} -> ${width}×${height}`)
   }
   return { width, height, modified }
 }
@@ -74,18 +73,14 @@ export class Mp4Strategy implements EncoderStrategy {
   private opfsWritable: any | null = null
 
   async preflight(videoInfo?: { width: number; height: number; frameRate: number }) {
-    console.log('🔍 [MP4-Export-Worker] Checking Mediabunny library status...')
     const mediabunnyStatus = checkMediabunnyStatus()
-    console.log('🔍 [MP4-Export-Worker] Mediabunny status check result:', mediabunnyStatus)
     if (!mediabunnyStatus.available) {
       throw new Error(`Mediabunny 库不可用: ${mediabunnyStatus.reason}`)
     }
 
-    console.log('🔍 [MP4-Export-Worker] Checking H.264 encoder support...')
     const w = videoInfo?.width || 1280
     const h = videoInfo?.height || 720
     const h264Support = await checkH264SupportWithDims(w, h)
-    console.log('🔍 [MP4-Export-Worker] H.264 support check result:', h264Support)
     if (!h264Support.supported) {
       throw new Error(`H.264 编码器不支持: ${h264Support.reason}。请尝试导出为 WebM 格式。`)
     }
@@ -98,7 +93,6 @@ export class Mp4Strategy implements EncoderStrategy {
       }
       const dirId = (options as any).opfsDirId as string
       const fileName = (options as any).opfsFileName || `export-${Date.now()}.mp4`
-      console.log('📁 [MP4-Export-Worker] OPFS stream target:', { dirId, fileName })
       const root = await (self as any).navigator.storage.getDirectory()
       const dir = await (root as any).getDirectoryHandle(dirId, { create: false })
       this.opfsFileHandle = await (dir as any).getFileHandle(fileName, { create: true })
@@ -119,7 +113,6 @@ export class Mp4Strategy implements EncoderStrategy {
   }
 
   createVideoSource(canvas: OffscreenCanvas, opts: { bitrate?: number }) {
-    console.log('🎨 [MP4-Export-Worker] Creating CanvasSource with H.264 codec...')
     return new CanvasSource(canvas, {
       codec: 'avc',
       bitrate: opts?.bitrate || 8_000_000
@@ -127,10 +120,8 @@ export class Mp4Strategy implements EncoderStrategy {
   }
 
   async start(output: any) {
-    console.log('🚀 [MP4-Export-Worker] Starting Mediabunny output...')
     try {
       await output.start()
-      console.log('✅ [MP4-Export-Worker] Mediabunny output started successfully')
     } catch (startError: any) {
       console.error('❌ [MP4-Export-Worker] Failed to start Mediabunny output:', startError)
       throw new Error(`Mediabunny 输出启动失败: ${startError?.message || startError}`)
@@ -138,10 +129,8 @@ export class Mp4Strategy implements EncoderStrategy {
   }
 
   async finalize(output: any) {
-    console.log('🔚 [MP4-Export-Worker] Finalizing Mediabunny output...')
     try {
       await output.finalize()
-      console.log('✅ [MP4-Export-Worker] Mediabunny output finalized successfully')
     } catch (finalizeError: any) {
       console.error('❌ [MP4-Export-Worker] Failed to finalize Mediabunny output:', finalizeError)
       throw new Error(`Mediabunny 输出完成失败: ${finalizeError?.message || finalizeError}`)
