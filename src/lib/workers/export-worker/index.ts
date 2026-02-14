@@ -998,11 +998,10 @@ function handleCompositeFrame(bitmap: ImageBitmap, frameIndex: number) {
         const offsetX = (canvasWidth - scaledWidth) / 2
         const offsetY = (canvasHeight - scaledHeight) / 2
 
-        console.log(`🔧 [MP4-Export-Worker] Scaling frame ${frameIndex}:`)
-        console.log(`  Bitmap: ${bitmapWidth}×${bitmapHeight}`)
-        console.log(`  Canvas: ${canvasWidth}×${canvasHeight}`)
-        console.log(`  Scaled: ${scaledWidth.toFixed(0)}×${scaledHeight.toFixed(0)} at (${offsetX.toFixed(0)}, ${offsetY.toFixed(0)})`)
-
+        if (!warnedCanvasSizeMismatch) {
+          console.log(`🔧 [MP4-Export-Worker] Scaling frames: Bitmap ${bitmapWidth}×${bitmapHeight} → Canvas ${canvasWidth}×${canvasHeight}, scale=${scale.toFixed(3)}`)
+          warnedCanvasSizeMismatch = true
+        }
         // 绘制缩放后的图像
         canvasCtx.drawImage(bitmap, offsetX, offsetY, scaledWidth, scaledHeight)
       }
@@ -1407,7 +1406,6 @@ async function renderFramesForExport(videoSource: any, frameDuration: number): P
 
       // 验证 Canvas 状态
       if (!offscreenCanvas || !canvasCtx) {
-        console.error(`❌ [MP4-Export-Worker] Canvas not available for frame ${frameIndex}`)
         throw new Error(`Canvas not available for frame ${frameIndex}`)
       }
 
@@ -1464,7 +1462,6 @@ async function renderFramesForExport(videoSource: any, frameDuration: number): P
 async function requestCompositeFrame(frameIndex: number): Promise<void> {
   return new Promise((resolve, reject) => {
     if (!compositeWorker) {
-      console.error(`❌ [MP4-Export-Worker] Composite worker not available for frame ${frameIndex}`)
       reject(new Error('Composite worker not available'))
       return
     }
