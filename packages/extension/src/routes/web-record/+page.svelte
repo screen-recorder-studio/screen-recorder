@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { Play, Square, LoaderCircle, CircleAlert, HardDrive, Video, AlertTriangle } from '@lucide/svelte'
+  import { Play, Square, LoaderCircle, CircleAlert, HardDrive, Video, TriangleAlert, Clock } from '@lucide/svelte'
   import { _t } from '$lib/utils/i18n'
+  import { formatRecordingDuration } from '$lib/utils/recording-duration'
 
   // Recording state machine: 'idle' | 'preparing' | 'recording' | 'stopping' | 'error'
   let phase = $state<'idle' | 'preparing' | 'recording' | 'stopping' | 'error'>('idle')
@@ -21,12 +22,13 @@
   // Recording metadata
   let recordingId = ''
   let recordingStartTime = 0
+  let elapsedMs = $state(0)
   let frameIndex = 0
-  let encoderConfigured = false
   let opfsReady = false
   let videoWidth = 1920
   let videoHeight = 1080
   let videoFramerate = 30
+  let elapsedTimer: ReturnType<typeof setInterval> | null = null
 
   // Helper function: translate with fallback
   function t(key: string, subs?: string | string[]): string {
@@ -113,6 +115,37 @@
     return `${Date.now()}`
   }
 
+  function clearElapsedTimer() {
+    if (elapsedTimer) {
+      clearInterval(elapsedTimer)
+      elapsedTimer = null
+    }
+  }
+
+  function syncElapsedDisplay() {
+    if (recordingStartTime > 0 && (phase === 'recording' || phase === 'stopping')) {
+      elapsedMs = Math.max(0, Date.now() - recordingStartTime)
+    }
+  }
+
+  function startElapsedTimer() {
+    clearElapsedTimer()
+    if (recordingStartTime <= 0) return
+    syncElapsedDisplay()
+    elapsedTimer = setInterval(syncElapsedDisplay, 250)
+  }
+
+  function freezeElapsedDisplay() {
+    syncElapsedDisplay()
+    clearElapsedTimer()
+  }
+
+  function resetElapsedDisplay() {
+    recordingStartTime = 0
+    elapsedMs = 0
+    clearElapsedTimer()
+  }
+
   // Start recording
   async function startRecording() {
     if (phase !== 'idle') return
@@ -127,10 +160,9 @@
 
     phase = 'preparing'
     errorMessage = ''
+    resetElapsedDisplay()
     recordingId = generateRecordingId()
-    recordingStartTime = Date.now()
     frameIndex = 0
-    encoderConfigured = false
     opfsReady = false
 
     try {
@@ -201,7 +233,6 @@
 
         if (type === 'configured') {
           console.log('[WebRecord] Encoder configured:', config)
-          encoderConfigured = true
         } else if (type === 'chunk') {
           // Forward encoded chunk to OPFS writer
           if (data && opfsWriterWorker && opfsReady) {
@@ -274,6 +305,9 @@
       // 5. Start frame loop
       frameLoopActive = true
       phase = 'recording'
+      recordingStartTime = Date.now()
+      elapsedMs = 0
+      startElapsedTimer()
 
       const keyEvery = Math.max(1, videoFramerate * 2) // Keyframe every 2 seconds
       ;(async () => {
@@ -303,6 +337,7 @@
 
     } catch (err: any) {
       console.error('[WebRecord] Failed to start recording:', err)
+      resetElapsedDisplay()
       cleanup()
       
       // Handle specific errors
@@ -322,6 +357,7 @@
 
     phase = 'stopping'
     frameLoopActive = false
+    freezeElapsedDisplay()
 
     try {
       // Stop frame processing
@@ -376,6 +412,7 @@
     } finally {
       cleanup()
       phase = 'idle'
+      resetElapsedDisplay()
       console.log('[WebRecord] Recording finalized:', recordingId)
     }
   }
@@ -383,6 +420,7 @@
   // Handle errors during recording
   function handleError(message: string) {
     console.error('[WebRecord] Error:', message)
+    resetElapsedDisplay()
     cleanup()
     phase = 'error'
     errorMessage = message
@@ -391,6 +429,7 @@
   // Cleanup resources
   function cleanup() {
     frameLoopActive = false
+    clearElapsedTimer()
 
     try { frameReader?.cancel() } catch {}
     frameReader = null
@@ -433,6 +472,7 @@
 
     return () => {
       cleanup()
+      resetElapsedDisplay()
     }
   })
 </script>
@@ -466,7 +506,7 @@
     {#if phase === 'error'}
       <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
         <div class="flex items-start gap-3">
-          <AlertTriangle class="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+          <TriangleAlert class="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
           <div>
             <h3 class="font-medium text-red-800">{t('webRecord_errorTitle')}</h3>
             <p class="text-sm text-red-700 mt-1">{errorMessage}</p>
@@ -498,6 +538,22 @@
           </div>
         {/if}
       </div>
+
+      {#if elapsedMs > 0 && (phase === 'recording' || phase === 'stopping')}
+        <div class="flex items-center justify-center mb-6">
+          <div class="inline-flex items-center gap-2 rounded-full border px-4 py-2 shadow-sm"
+            class:border-red-200={phase === 'recording'}
+            class:bg-red-50={phase === 'recording'}
+            class:text-red-700={phase === 'recording'}
+            class:border-orange-200={phase === 'stopping'}
+            class:bg-orange-50={phase === 'stopping'}
+            class:text-orange-700={phase === 'stopping'}
+          >
+            <Clock class="w-4 h-4" />
+            <span class="text-base font-semibold tabular-nums">{formatRecordingDuration(elapsedMs)}</span>
+          </div>
+        </div>
+      {/if}
 
       <!-- Control buttons -->
       <div class="space-y-3">

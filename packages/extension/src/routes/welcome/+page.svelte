@@ -6,28 +6,95 @@
     Play,
     Pause,
     Square,
-    Loader2,
+    LoaderCircle,
+    Clock,
+    CircleAlert,
+    HardDrive,
     Zap,
     ArrowRight,
-    CheckCircle2
+    CircleCheck,
+    X
   } from '@lucide/svelte'
   import { onDestroy, onMount } from 'svelte'
   import { _t } from '$lib/utils/i18n'
+  import { formatRecordingDuration, normalizeElapsedMs } from '$lib/utils/recording-duration'
 
   // Recording state management
   let isRecording = $state(false)
   let isPaused = $state(false)
   let selectedMode = $state<'tab' | 'window' | 'screen'>('tab')
   let isLoading = $state(false)
+  let errorMessage = $state('')
+  let warningMessage = $state('')
+  let elapsedBaseMs = $state(0)
+  let elapsedAnchorAt = $state<number | null>(null)
+  let displayElapsedMs = $state(0)
   let countdownActive = $state(false)
   let countdownValue = $state(0)
   let countdownTimer: ReturnType<typeof setTimeout> | null = null
+  let elapsedTimer: ReturnType<typeof setInterval> | null = null
   const DEFAULT_COUNTDOWN_SECONDS = 3
   const MAX_COUNTDOWN_SECONDS = 10
   let countdownSeconds = $state(DEFAULT_COUNTDOWN_SECONDS)
 
   function sanitizeCountdown(seconds: number) {
     return Number.isFinite(seconds) ? Math.max(0, Math.min(MAX_COUNTDOWN_SECONDS, seconds)) : DEFAULT_COUNTDOWN_SECONDS
+  }
+
+  function clearError() {
+    errorMessage = ''
+  }
+
+  function clearWarning() {
+    warningMessage = ''
+  }
+
+  function clearElapsedTimer() {
+    if (elapsedTimer) {
+      clearInterval(elapsedTimer)
+      elapsedTimer = null
+    }
+  }
+
+  function syncElapsedDisplay() {
+    if (isRecording && !isPaused && typeof elapsedAnchorAt === 'number') {
+      displayElapsedMs = elapsedBaseMs + Math.max(0, Date.now() - elapsedAnchorAt)
+      return
+    }
+    displayElapsedMs = elapsedBaseMs
+  }
+
+  function startElapsedTimer() {
+    clearElapsedTimer()
+    if (!isRecording || isPaused) return
+    elapsedAnchorAt = typeof elapsedAnchorAt === 'number' ? elapsedAnchorAt : Date.now()
+    syncElapsedDisplay()
+    elapsedTimer = setInterval(syncElapsedDisplay, 250)
+  }
+
+  function setElapsedSnapshot(rawElapsedMs: unknown, options: { running?: boolean; fallbackStartTime?: unknown } = {}) {
+    const running = options.running ?? (isRecording && !isPaused)
+    const safeElapsedMs = normalizeElapsedMs(rawElapsedMs)
+    const fallbackStartTime = typeof options.fallbackStartTime === 'number' && Number.isFinite(options.fallbackStartTime) && options.fallbackStartTime > 0
+      ? options.fallbackStartTime
+      : null
+
+    elapsedBaseMs = safeElapsedMs > 0 || fallbackStartTime === null
+      ? safeElapsedMs
+      : Math.max(0, Date.now() - fallbackStartTime)
+
+    elapsedAnchorAt = running ? Date.now() : null
+    syncElapsedDisplay()
+
+    if (running) startElapsedTimer()
+    else clearElapsedTimer()
+  }
+
+  function resetElapsedDisplay() {
+    elapsedBaseMs = 0
+    elapsedAnchorAt = null
+    displayElapsedMs = 0
+    clearElapsedTimer()
   }
 
   const FALLBACK_MESSAGES: Record<string, string> = {
@@ -111,6 +178,11 @@
       const resp = await chrome.runtime.sendMessage({ type: 'REQUEST_RECORDING_STATE' })
       isRecording = !!resp?.state?.isRecording
       isPaused = !!resp?.state?.isPaused
+      if (isRecording) {
+        setElapsedSnapshot(resp?.state?.elapsedMs, { running: !isPaused, fallbackStartTime: resp?.state?.startTime })
+      } else {
+        resetElapsedDisplay()
+      }
     } catch (e) {
       console.warn('Failed to initialize recording state', e)
     }
@@ -133,11 +205,28 @@
         if (msg?.type === 'STREAM_META') {
           const meta = msg?.meta
           if (meta && typeof meta.paused === 'boolean') {
-            isPaused = !!meta.paused
+            const nextPaused = !!meta.paused
+            if (nextPaused) {
+              syncElapsedDisplay()
+              isPaused = true
+              setElapsedSnapshot(displayElapsedMs, { running: false })
+            } else {
+              isPaused = false
+              setElapsedSnapshot(displayElapsedMs, { running: true })
+            }
           }
           // Background signals countdown when preparing is true and countdown provides remaining seconds
           if (meta?.preparing && typeof meta.countdown === 'number') {
             startCountdown(meta.countdown)
+          }
+        }
+        if (msg?.type === 'BADGE_TICK') {
+          const badgeElapsedMs = typeof msg?.elapsedMs === 'number' || typeof msg?.elapsed === 'number'
+            ? (msg?.elapsedMs ?? msg?.elapsed)
+            : null
+          if (badgeElapsedMs !== null) {
+            isRecording = true
+            setElapsedSnapshot(badgeElapsedMs, { running: !isPaused })
           }
         }
         if (msg?.type === 'STREAM_START') {
@@ -145,12 +234,28 @@
           isPaused = false
           isLoading = false
           resetCountdown()
+          clearError()
+          setElapsedSnapshot(0, { running: true })
         }
-        if (msg?.type === 'STREAM_END' || msg?.type === 'STREAM_ERROR' || msg?.type === 'RECORDING_COMPLETE' || msg?.type === 'OPFS_RECORDING_READY') {
+        if (msg?.type === 'STREAM_WARNING') {
+          warningMessage = (typeof msg?.warning === 'string' && msg.warning.trim()) ? msg.warning : t('control_errorStorageLow')
+        }
+        if (msg?.type === 'STREAM_END' || msg?.type === 'RECORDING_COMPLETE' || msg?.type === 'OPFS_RECORDING_READY') {
           isRecording = false
           isPaused = false
           isLoading = false
           resetCountdown()
+          clearWarning()
+          resetElapsedDisplay()
+        }
+        if (msg?.type === 'STREAM_ERROR') {
+          isRecording = false
+          isPaused = false
+          isLoading = false
+          resetCountdown()
+          clearWarning()
+          resetElapsedDisplay()
+          errorMessage = (typeof msg?.error === 'string' && msg.error.trim()) ? msg.error : t('control_errorRecordingFailed')
         }
       } catch (e) {
         // ignore handler errors
@@ -170,14 +275,21 @@
   // Start recording
   async function startRecording() {
     if (isLoading) return
+    clearError()
+    clearWarning()
     isLoading = true
     try {
-      await chrome.runtime.sendMessage({
+      const resp = await chrome.runtime.sendMessage({
         type: 'REQUEST_START_RECORDING',
         payload: { options: { mode: selectedMode, video: true, audio: false, countdown: countdownSeconds } }
       })
+      if (resp?.ok !== true) {
+        errorMessage = (typeof resp?.error === 'string' && resp.error.trim()) ? resp.error : t('control_errorStartFailed')
+        isLoading = false
+      }
     } catch (error) {
       console.error('Failed to start recording:', error)
+      errorMessage = t('control_errorStartFailed')
       isLoading = false
     }
   }
@@ -207,6 +319,7 @@
       // Only reset state on message failure since we won't receive STREAM_END
       isRecording = false
       isPaused = false
+      resetElapsedDisplay()
     }
   }
 
@@ -233,7 +346,7 @@
 
   // Get button icon
   function getButtonIcon() {
-    if (isLoading) return Loader2
+    if (isLoading) return LoaderCircle
     if (isRecording) {
       return isPaused ? Play : Pause
     }
@@ -292,6 +405,7 @@
 
   onDestroy(() => {
     resetCountdown()
+    clearElapsedTimer()
   })
 
 </script>
@@ -347,7 +461,7 @@
       <!-- Welcome Banner -->
       <section class="text-center space-y-6 max-w-3xl mx-auto">
         <div class="inline-flex items-center gap-2 px-4 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-full text-xs font-semibold shadow-sm animate-fade-in-down">
-          <CheckCircle2 class="w-3.5 h-3.5" />
+          <CircleCheck class="w-3.5 h-3.5" />
           {t('welcome_installSuccess')}
         </div>
         
@@ -373,6 +487,38 @@
               {t('welcome_tryFeatures', String(countdownSeconds))}
             </p>
           </div>
+
+          {#if warningMessage}
+            <div class="mb-6 max-w-3xl mx-auto rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+              <div class="flex items-start gap-3">
+                <HardDrive class="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
+                <p class="flex-1 text-sm text-amber-800">{warningMessage}</p>
+                <button
+                  class="rounded p-1 text-amber-600 transition-colors hover:bg-amber-100"
+                  type="button"
+                  onclick={clearWarning}
+                >
+                  <X class="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          {/if}
+
+          {#if errorMessage}
+            <div class="mb-6 max-w-3xl mx-auto rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
+              <div class="flex items-start gap-3">
+                <CircleAlert class="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600" />
+                <p class="flex-1 text-sm text-red-700">{errorMessage}</p>
+                <button
+                  class="rounded p-1 text-red-500 transition-colors hover:bg-red-100"
+                  type="button"
+                  onclick={clearError}
+                >
+                  <X class="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          {/if}
         
           <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
             {#each recordingModes as mode}
@@ -396,7 +542,7 @@
                 <!-- Selection indicator -->
                 {#if selectedMode === mode.id}
                   <div class="absolute -top-3 -right-3 bg-blue-500 text-white p-1 rounded-full shadow-md ring-4 ring-white">
-                    <CheckCircle2 class="w-4 h-4" />
+                    <CircleCheck class="w-4 h-4" />
                   </div>
                 {/if}
 
@@ -441,7 +587,7 @@
             >
               <div class="relative flex items-center justify-center">
                 {#if isLoading}
-                  <Loader2 class="w-6 h-6 animate-spin" />
+                  <LoaderCircle class="w-6 h-6 animate-spin" />
                 {:else if isRecording}
                    <Square class="w-6 h-6 fill-current" />
                 {:else}
@@ -484,19 +630,49 @@
 
           <!-- Recording status display -->
           {#if isRecording}
-            <div class="mt-8 p-4 bg-orange-50/50 border border-orange-100 rounded-xl max-w-md mx-auto">
+            <div class={isPaused
+              ? 'mt-8 max-w-md mx-auto rounded-xl border p-4 bg-amber-50/70 border-amber-200'
+              : 'mt-8 max-w-md mx-auto rounded-xl border p-4 bg-red-50/70 border-red-100'}>
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
                   <span class="relative flex h-3 w-3">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                    {#if !isPaused}
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    {/if}
+                    <span
+                      class="relative inline-flex h-3 w-3 rounded-full"
+                      class:bg-amber-500={isPaused}
+                      class:bg-red-500={!isPaused}
+                    ></span>
                   </span>
-                  <span class="text-sm font-semibold text-orange-900">
+                  <span
+                    class="text-sm font-semibold"
+                    class:text-amber-900={isPaused}
+                    class:text-red-800={!isPaused}
+                  >
                     {isPaused ? t('control_statusPaused') : t('welcome_statusRecording')}
                   </span>
                 </div>
-                <div class="px-3 py-1 bg-white border border-orange-200/60 rounded-full text-xs font-medium text-orange-800 shadow-sm">
-                  {getModeName(selectedMode)} {t('welcome_modeLabel')}
+                <div class="flex items-center gap-2">
+                  <div
+                    class="inline-flex items-center gap-1.5 rounded-full border bg-white px-3 py-1 text-xs font-semibold shadow-sm"
+                    class:border-amber-200={isPaused}
+                    class:text-amber-800={isPaused}
+                    class:border-red-200={!isPaused}
+                    class:text-red-700={!isPaused}
+                  >
+                    <Clock class="h-3.5 w-3.5" />
+                    <span class="tabular-nums">{formatRecordingDuration(displayElapsedMs)}</span>
+                  </div>
+                  <div
+                    class="rounded-full border bg-white px-3 py-1 text-xs font-medium shadow-sm"
+                    class:border-amber-200={isPaused}
+                    class:text-amber-800={isPaused}
+                    class:border-red-200={!isPaused}
+                    class:text-red-700={!isPaused}
+                  >
+                    {getModeName(selectedMode)} {t('welcome_modeLabel')}
+                  </div>
                 </div>
               </div>
             </div>
@@ -512,7 +688,7 @@
                     {t('welcome_readyDesc', getModeName(selectedMode))}
                   </p>
                   <div class="flex items-center gap-2 text-xs text-blue-600 font-medium">
-                    <CheckCircle2 class="w-3.5 h-3.5" />
+                    <CircleCheck class="w-3.5 h-3.5" />
                     <span>{t('welcome_readyTip', String(countdownSeconds))}</span>
                   </div>
                 </div>

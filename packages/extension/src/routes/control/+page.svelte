@@ -12,8 +12,9 @@
     Clock,
     X
   } from '@lucide/svelte'
-  import { onMount } from 'svelte'
+  import { onDestroy, onMount } from 'svelte'
   import { _t as t } from '$lib/utils/i18n'
+  import { formatRecordingDuration, normalizeElapsedMs } from '$lib/utils/recording-duration'
 
   // Extension version
   let extensionVersion = $state('')
@@ -32,8 +33,13 @@
   let phase = $state<'idle' | 'preparing' | 'countdown' | 'recording'>('idle')
   // Error feedback for user
   let errorMessage = $state('')
+  let warningMessage = $state('')
+  let elapsedBaseMs = $state(0)
+  let elapsedAnchorAt = $state<number | null>(null)
+  let displayElapsedMs = $state(0)
   // Preparing phase timeout (30 seconds)
   let preparingTimer: ReturnType<typeof setTimeout> | null = null
+  let elapsedTimer: ReturnType<typeof setInterval> | null = null
   const PREPARING_TIMEOUT_MS = 30_000
 
   function clampCountdown(v: number) {
@@ -58,6 +64,58 @@
 
   function clearError() {
     errorMessage = ''
+  }
+
+  function clearWarning() {
+    warningMessage = ''
+  }
+
+  function clearElapsedTimer() {
+    if (elapsedTimer) {
+      clearInterval(elapsedTimer)
+      elapsedTimer = null
+    }
+  }
+
+  function syncElapsedDisplay() {
+    if (isRecording && !isPaused && typeof elapsedAnchorAt === 'number') {
+      displayElapsedMs = elapsedBaseMs + Math.max(0, Date.now() - elapsedAnchorAt)
+      return
+    }
+    displayElapsedMs = elapsedBaseMs
+  }
+
+  function startElapsedTimer() {
+    clearElapsedTimer()
+    if (!isRecording || isPaused) return
+    elapsedAnchorAt = typeof elapsedAnchorAt === 'number' ? elapsedAnchorAt : Date.now()
+    syncElapsedDisplay()
+    elapsedTimer = setInterval(syncElapsedDisplay, 250)
+  }
+
+  function setElapsedSnapshot(rawElapsedMs: unknown, options: { running?: boolean; fallbackStartTime?: unknown } = {}) {
+    const running = options.running ?? (isRecording && !isPaused)
+    const safeElapsedMs = normalizeElapsedMs(rawElapsedMs)
+    const fallbackStartTime = typeof options.fallbackStartTime === 'number' && Number.isFinite(options.fallbackStartTime) && options.fallbackStartTime > 0
+      ? options.fallbackStartTime
+      : null
+
+    elapsedBaseMs = safeElapsedMs > 0 || fallbackStartTime === null
+      ? safeElapsedMs
+      : Math.max(0, Date.now() - fallbackStartTime)
+
+    elapsedAnchorAt = running ? Date.now() : null
+    syncElapsedDisplay()
+
+    if (running) startElapsedTimer()
+    else clearElapsedTimer()
+  }
+
+  function resetElapsedDisplay() {
+    elapsedBaseMs = 0
+    elapsedAnchorAt = null
+    displayElapsedMs = 0
+    clearElapsedTimer()
   }
 
   function startPreparingTimeout() {
@@ -102,6 +160,9 @@
       isPaused = !!resp?.state?.isPaused
       if (isRecording) {
         phase = 'recording'
+        setElapsedSnapshot(resp?.state?.elapsedMs, { running: !isPaused, fallbackStartTime: resp?.state?.startTime })
+      } else {
+        resetElapsedDisplay()
       }
     } catch (e) {
       console.warn('Failed to initialize recording state', e)
@@ -123,6 +184,12 @@
             phase = 'recording'
             clearPreparingTimeout()
           }
+          const badgeElapsedMs = typeof msg?.elapsedMs === 'number' || typeof msg?.elapsed === 'number'
+            ? (msg?.elapsedMs ?? msg?.elapsed)
+            : null
+          if (!stopRequested && badgeElapsedMs !== null) {
+            setElapsedSnapshot(badgeElapsedMs, { running: !isPaused })
+          }
         }
         if (msg?.type === 'STREAM_META' && msg?.meta) {
           if (msg.meta.preparing && typeof msg.meta.countdown === 'number') {
@@ -134,7 +201,15 @@
             startCountdown(msg.meta.countdown)
           }
           if (typeof msg.meta.paused === 'boolean') {
-            isPaused = !!msg.meta.paused
+            const nextPaused = !!msg.meta.paused
+            if (nextPaused) {
+              syncElapsedDisplay()
+              isPaused = true
+              setElapsedSnapshot(displayElapsedMs, { running: false })
+            } else {
+              isPaused = false
+              setElapsedSnapshot(displayElapsedMs, { running: true })
+            }
           }
         }
         if (msg?.type === 'STREAM_START') {
@@ -146,6 +221,10 @@
           phase = 'recording'
           clearPreparingTimeout()
           clearError()
+          setElapsedSnapshot(0, { running: true })
+        }
+        if (msg?.type === 'STREAM_WARNING') {
+          warningMessage = (typeof msg?.warning === 'string' && msg.warning.trim()) ? msg.warning : t('control_errorStorageLow')
         }
         if (msg?.type === 'STREAM_END' || msg?.type === 'RECORDING_COMPLETE' || msg?.type === 'OPFS_RECORDING_READY') {
           isRecording = false
@@ -155,6 +234,8 @@
           countdownActive = false
           phase = 'idle'
           clearPreparingTimeout()
+          clearWarning()
+          resetElapsedDisplay()
         }
         if (msg?.type === 'STREAM_ERROR') {
           isRecording = false
@@ -164,6 +245,8 @@
           countdownActive = false
           phase = 'idle'
           clearPreparingTimeout()
+          clearWarning()
+          resetElapsedDisplay()
           errorMessage = (typeof msg?.error === 'string' && msg.error.trim()) ? msg.error : t('control_errorRecordingFailed')
         }
         if (msg?.type === 'STATE_UPDATE' && msg?.state) {
@@ -175,6 +258,7 @@
               isPaused = false
               stopRequested = false
               phase = 'idle'
+              resetElapsedDisplay()
             }
           }
           const uiMode = msg.state.uiSelectedMode
@@ -188,6 +272,10 @@
     }
     chrome.runtime.onMessage.addListener(handler)
     return () => chrome.runtime.onMessage.removeListener(handler)
+  })
+
+  onDestroy(() => {
+    clearElapsedTimer()
   })
 
   // Countdown timer logic
@@ -266,14 +354,20 @@
   async function startRecording() {
     if (isLoading || phase !== 'idle') return
     clearError()
+    clearWarning()
     isLoading = true
     phase = 'preparing'
     startPreparingTimeout()
     try {
-      await chrome.runtime.sendMessage({
+      const resp = await chrome.runtime.sendMessage({
         type: 'REQUEST_START_RECORDING',
         payload: { options: { mode: selectedMode, video: true, audio: false, countdown: countdownSeconds } }
       })
+      if (resp?.ok !== true) {
+        phase = 'idle'
+        clearPreparingTimeout()
+        errorMessage = (typeof resp?.error === 'string' && resp.error.trim()) ? resp.error : t('control_errorStartFailed')
+      }
     } catch (error) {
       console.error('Failed to start recording:', error)
       phase = 'idle'
@@ -316,22 +410,9 @@
     window.close()
   }
 
-  // Get button text
-  function getButtonText() {
-    if (phase === 'preparing') return 'Preparing...'
-    if (phase === 'countdown') return `Starting in ${countdownValue}...`
-    if (isRecording) {
-      return isPaused ? 'Resume Recording' : 'Pause Recording'
-    }
-    return 'Start Recording'
-  }
-
   // Get button icon
   function getButtonIcon() {
     if (phase === 'preparing' || phase === 'countdown') return LoaderCircle
-    if (isRecording) {
-      return isPaused ? Play : Pause
-    }
     return Play
   }
 
@@ -433,20 +514,53 @@
 
   <!-- Recording status display -->
   {#if isRecording}
-    <div class="px-4 py-3 bg-red-50 border-t border-red-100">
+    <div
+      class="px-4 py-3 border-t"
+      class:bg-amber-50={isPaused}
+      class:border-amber-200={isPaused}
+      class:bg-red-50={!isPaused}
+      class:border-red-100={!isPaused}
+    >
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
-          <div class="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-          <span class="text-sm font-medium text-red-700">
+          <div
+            class="w-3 h-3 rounded-full"
+            class:bg-amber-500={isPaused}
+            class:bg-red-500={!isPaused}
+            class:animate-pulse={!isPaused}
+          ></div>
+          <span
+            class="text-sm font-medium"
+            class:text-amber-800={isPaused}
+            class:text-red-700={!isPaused}
+          >
             {isPaused ? t('control_statusPaused') : t('control_statusRecording')}
           </span>
         </div>
-        <div class="text-xs text-red-600">
-          {t(
-            selectedMode === 'tab' ? 'control_modeTab' :
-            selectedMode === 'window' ? 'control_modeWindow' :
-            'control_modeScreen'
-          )}
+        <div class="flex items-center gap-2">
+          <div
+            class="inline-flex items-center gap-1.5 rounded-full border bg-white/80 px-2.5 py-1 text-xs font-semibold shadow-sm"
+            class:border-amber-200={isPaused}
+            class:text-amber-800={isPaused}
+            class:border-red-200={!isPaused}
+            class:text-red-700={!isPaused}
+          >
+            <Clock class="w-3.5 h-3.5" />
+            <span class="tabular-nums">{formatRecordingDuration(displayElapsedMs)}</span>
+          </div>
+          <div
+            class="rounded-full border bg-white/60 px-2.5 py-1 text-xs font-medium"
+            class:border-amber-200={isPaused}
+            class:text-amber-700={isPaused}
+            class:border-red-100={!isPaused}
+            class:text-red-600={!isPaused}
+          >
+            {t(
+              selectedMode === 'tab' ? 'control_modeTab' :
+              selectedMode === 'window' ? 'control_modeWindow' :
+              'control_modeScreen'
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -463,6 +577,24 @@
   {/if}
 
   <!-- Error feedback -->
+  {#if warningMessage}
+    <div class="px-4 py-3 bg-amber-50 border-t border-amber-200">
+      <div class="flex items-start gap-2">
+        <HardDrive class="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+        <div class="flex-1 min-w-0">
+          <p class="text-sm text-amber-800">{warningMessage}</p>
+        </div>
+        <button
+          class="p-0.5 rounded hover:bg-amber-100 transition-colors flex-shrink-0"
+          onclick={clearWarning}
+          title="Dismiss"
+        >
+          <X class="w-3.5 h-3.5 text-amber-600" />
+        </button>
+      </div>
+    </div>
+  {/if}
+
   {#if errorMessage}
     <div class="px-4 py-3 bg-red-50 border-t border-red-200">
       <div class="flex items-start gap-2">
@@ -483,56 +615,74 @@
 
   <!-- Control buttons - fixed at bottom -->
   <div class="flex-shrink-0 p-4 border-t border-gray-200 bg-gray-50">
-    <div class="space-y-2">
-      <!-- Main control button -->
-      <button
-        class="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        class:bg-gradient-to-r={phase === 'idle'}
-        class:from-blue-500={phase === 'idle'}
-        class:to-blue-600={phase === 'idle'}
-        class:text-white={phase === 'idle' || isRecording}
-        class:hover:from-blue-600={phase === 'idle'}
-        class:hover:to-blue-700={phase === 'idle'}
-        class:focus:ring-blue-500={phase === 'idle'}
-        class:bg-orange-500={isRecording && !isPaused}
-        class:hover:bg-orange-600={isRecording && !isPaused}
-        class:focus:ring-orange-500={isRecording && !isPaused}
-        class:bg-green-500={isRecording && isPaused}
-        class:hover:bg-green-600={isRecording && isPaused}
-        class:focus:ring-green-500={isRecording && isPaused}
-        class:bg-gray-400={phase === 'preparing' || phase === 'countdown'}
-        onclick={isRecording ? togglePause : startRecording}
-        disabled={phase === 'preparing' || phase === 'countdown'}
-      >
-        <div class="flex items-center justify-center w-5 h-5">
-          {#if phase === 'preparing' || phase === 'countdown'}
-            <LoaderCircle class="w-5 h-5 animate-spin" />
-          {:else}
-            {@const ButtonIcon = getButtonIcon()}
-            <ButtonIcon class="w-5 h-5" />
-          {/if}
-        </div>
-        <span class="font-semibold">
-          {#if phase === 'preparing'}
-            {t('control_btnPreparing')}
-          {:else if phase === 'countdown'}
-            {t('control_btnStarting', String(countdownValue))}
-          {:else if isRecording}
-            {isPaused ? t('control_btnResume') : t('control_btnPause')}
-          {:else}
-            {t('control_btnStart')}
-          {/if}
-        </span>
-      </button>
-
-      <!-- Stop recording button -->
+    <div class="space-y-3">
       {#if isRecording}
+        <!-- Primary action during recording: Stop -->
         <button
-          class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+          class="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-xl font-semibold text-white bg-gradient-to-r from-rose-600 to-red-600 shadow-sm transition-all duration-200 hover:from-rose-700 hover:to-red-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2"
           onclick={stopRecording}
         >
-          <Square class="w-4 h-4" />
+          <Square class="w-5 h-5" />
           <span>{t('control_btnStop')}</span>
+        </button>
+
+        <!-- Secondary action during recording: Pause / Resume -->
+        <button
+          class="w-full flex items-center justify-center gap-3 px-4 py-2.5 rounded-xl border font-medium shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          class:border-amber-300={!isPaused}
+          class:bg-amber-50={!isPaused}
+          class:text-amber-800={!isPaused}
+          class:hover:bg-amber-100={!isPaused}
+          class:hover:border-amber-400={!isPaused}
+          class:focus:ring-amber-500={!isPaused}
+          class:border-emerald-300={isPaused}
+          class:bg-emerald-50={isPaused}
+          class:text-emerald-800={isPaused}
+          class:hover:bg-emerald-100={isPaused}
+          class:hover:border-emerald-400={isPaused}
+          class:focus:ring-emerald-500={isPaused}
+          onclick={togglePause}
+          disabled={isLoading}
+        >
+          {#if isPaused}
+            <Play class="w-4 h-4" />
+          {:else}
+            <Pause class="w-4 h-4" />
+          {/if}
+          <span>{isPaused ? t('control_btnResume') : t('control_btnPause')}</span>
+        </button>
+      {:else}
+        <!-- Main control button -->
+        <button
+          class="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          class:bg-gradient-to-r={phase === 'idle'}
+          class:from-blue-500={phase === 'idle'}
+          class:to-blue-600={phase === 'idle'}
+          class:text-white={phase === 'idle' || phase === 'preparing' || phase === 'countdown'}
+          class:hover:from-blue-600={phase === 'idle'}
+          class:hover:to-blue-700={phase === 'idle'}
+          class:focus:ring-blue-500={phase === 'idle'}
+          class:bg-slate-400={phase === 'preparing' || phase === 'countdown'}
+          onclick={startRecording}
+          disabled={phase === 'preparing' || phase === 'countdown'}
+        >
+          <div class="flex items-center justify-center w-5 h-5">
+            {#if phase === 'preparing' || phase === 'countdown'}
+              <LoaderCircle class="w-5 h-5 animate-spin" />
+            {:else}
+              {@const ButtonIcon = getButtonIcon()}
+              <ButtonIcon class="w-5 h-5" />
+            {/if}
+          </div>
+          <span class="font-semibold">
+            {#if phase === 'preparing'}
+              {t('control_btnPreparing')}
+            {:else if phase === 'countdown'}
+              {t('control_btnStarting', String(countdownValue))}
+            {:else}
+              {t('control_btnStart')}
+            {/if}
+          </span>
         </button>
       {/if}
     </div>
