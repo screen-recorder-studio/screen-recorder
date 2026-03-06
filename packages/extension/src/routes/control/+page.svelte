@@ -164,7 +164,7 @@
           countdownActive = false
           phase = 'idle'
           clearPreparingTimeout()
-          errorMessage = msg?.error || t('control_errorRecordingFailed')
+          errorMessage = (typeof msg?.error === 'string' && msg.error.trim()) ? msg.error : t('control_errorRecordingFailed')
         }
         if (msg?.type === 'STATE_UPDATE' && msg?.state) {
           if (typeof msg.state.recording === 'boolean') {

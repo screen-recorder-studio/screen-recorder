@@ -173,6 +173,8 @@ self.onmessage = async (e: MessageEvent<InitMessage | AppendMessage | FlushMessa
           const MIN_SPACE_ERROR = 50 * 1024 * 1024   // 50MB
           const MIN_SPACE_WARNING = 100 * 1024 * 1024 // 100MB
           if (available < MIN_SPACE_ERROR) {
+            // Clean up resources before returning error
+            await closeData()
             self.postMessage({ type: 'error', code: 'STORAGE_LOW', message: `Storage critically low: ${Math.round(available / 1024 / 1024)}MB remaining` } as WriterErrorEvent)
             return
           }
