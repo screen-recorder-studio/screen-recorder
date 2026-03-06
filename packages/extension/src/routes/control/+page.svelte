@@ -30,6 +30,11 @@
   let countdownValue = $state(0)
   // Phase: 'idle' | 'preparing' | 'countdown' | 'recording'
   let phase = $state<'idle' | 'preparing' | 'countdown' | 'recording'>('idle')
+  // Error feedback for user
+  let errorMessage = $state('')
+  // Preparing phase timeout (30 seconds)
+  let preparingTimer: ReturnType<typeof setTimeout> | null = null
+  const PREPARING_TIMEOUT_MS = 30_000
 
   function clampCountdown(v: number) {
     if (isNaN(v)) return 3
@@ -48,6 +53,28 @@
       await new Promise((r) => chrome.storage.local.set({ settings }, () => r(null)))
     } catch (e) {
       console.warn('Failed to persist countdownSeconds', e)
+    }
+  }
+
+  function clearError() {
+    errorMessage = ''
+  }
+
+  function startPreparingTimeout() {
+    clearPreparingTimeout()
+    preparingTimer = setTimeout(() => {
+      if (phase === 'preparing') {
+        phase = 'idle'
+        isLoading = false
+        errorMessage = t('control_errorTimeout')
+      }
+    }, PREPARING_TIMEOUT_MS)
+  }
+
+  function clearPreparingTimeout() {
+    if (preparingTimer) {
+      clearTimeout(preparingTimer)
+      preparingTimer = null
     }
   }
 
@@ -94,11 +121,13 @@
           if (!stopRequested && !isRecording) {
             isRecording = true
             phase = 'recording'
+            clearPreparingTimeout()
           }
         }
         if (msg?.type === 'STREAM_META' && msg?.meta) {
           if (msg.meta.preparing && typeof msg.meta.countdown === 'number') {
             // Start countdown in control page
+            clearPreparingTimeout()
             phase = 'countdown'
             countdownValue = msg.meta.countdown
             countdownActive = true
@@ -115,19 +144,27 @@
           stopRequested = false
           countdownActive = false
           phase = 'recording'
+          clearPreparingTimeout()
+          clearError()
         }
-        if (
-          msg?.type === 'STREAM_END' ||
-          msg?.type === 'STREAM_ERROR' ||
-          msg?.type === 'RECORDING_COMPLETE' ||
-          msg?.type === 'OPFS_RECORDING_READY'
-        ) {
+        if (msg?.type === 'STREAM_END' || msg?.type === 'RECORDING_COMPLETE' || msg?.type === 'OPFS_RECORDING_READY') {
           isRecording = false
           isPaused = false
           isLoading = false
           stopRequested = false
           countdownActive = false
           phase = 'idle'
+          clearPreparingTimeout()
+        }
+        if (msg?.type === 'STREAM_ERROR') {
+          isRecording = false
+          isPaused = false
+          isLoading = false
+          stopRequested = false
+          countdownActive = false
+          phase = 'idle'
+          clearPreparingTimeout()
+          errorMessage = msg?.error || t('control_errorRecordingFailed')
         }
         if (msg?.type === 'STATE_UPDATE' && msg?.state) {
           if (typeof msg.state.recording === 'boolean') {
@@ -228,8 +265,10 @@
   // Start recording
   async function startRecording() {
     if (isLoading || phase !== 'idle') return
+    clearError()
     isLoading = true
     phase = 'preparing'
+    startPreparingTimeout()
     try {
       await chrome.runtime.sendMessage({
         type: 'REQUEST_START_RECORDING',
@@ -238,6 +277,8 @@
     } catch (error) {
       console.error('Failed to start recording:', error)
       phase = 'idle'
+      clearPreparingTimeout()
+      errorMessage = t('control_errorStartFailed')
     } finally {
       isLoading = false
     }
@@ -417,6 +458,25 @@
       <div class="flex items-center gap-2">
         <LoaderCircle class="w-4 h-4 text-orange-600 animate-spin" />
         <span class="text-sm font-medium text-orange-700">{t('control_statusPreparing')}</span>
+      </div>
+    </div>
+  {/if}
+
+  <!-- Error feedback -->
+  {#if errorMessage}
+    <div class="px-4 py-3 bg-red-50 border-t border-red-200">
+      <div class="flex items-start gap-2">
+        <CircleAlert class="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+        <div class="flex-1 min-w-0">
+          <p class="text-sm text-red-700">{errorMessage}</p>
+        </div>
+        <button
+          class="p-0.5 rounded hover:bg-red-100 transition-colors flex-shrink-0"
+          onclick={clearError}
+          title="Dismiss"
+        >
+          <X class="w-3.5 h-3.5 text-red-500" />
+        </button>
       </div>
     </div>
   {/if}

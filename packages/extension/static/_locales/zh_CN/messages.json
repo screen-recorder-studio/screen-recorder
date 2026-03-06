@@ -31,6 +31,10 @@
   "control_tipsPaused": { "message": "录制已暂停，点击恢复录制继续。" },
   "control_tipsRecording": { "message": "录制进行中，点击暂停可暂停录制。" },
   "control_overlayRecordingStarts": { "message": "录制即将开始..." },
+  "control_errorTimeout": { "message": "录制准备超时，请重试。" },
+  "control_errorStartFailed": { "message": "启动录制失败，请重试。" },
+  "control_errorRecordingFailed": { "message": "录制遇到错误已停止。" },
+  "control_errorStorageLow": { "message": "存储空间不足，录制可能失败。" },
 
   "drive_pageTitle": { "message": "录制列表 - Screen Recorder" },
   "drive_headerTitle": { "message": "录制管理" },

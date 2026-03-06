@@ -31,6 +31,10 @@
   "control_tipsPaused": { "message": "Recording is paused, click Resume Recording to continue." },
   "control_tipsRecording": { "message": "Recording in progress, click Pause to pause recording." },
   "control_overlayRecordingStarts": { "message": "Recording starts soon..." },
+  "control_errorTimeout": { "message": "Recording preparation timed out. Please try again." },
+  "control_errorStartFailed": { "message": "Failed to start recording. Please try again." },
+  "control_errorRecordingFailed": { "message": "Recording encountered an error and was stopped." },
+  "control_errorStorageLow": { "message": "Storage space is running low. Recording may fail." },
 
   "drive_pageTitle": { "message": "Recordings - Screen Recorder Extension" },
   "drive_headerTitle": { "message": "Recording Manager" },

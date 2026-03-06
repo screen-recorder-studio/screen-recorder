@@ -161,6 +161,27 @@ self.onmessage = async (e: MessageEvent<InitMessage | AppendMessage | FlushMessa
       await ensureRecDir(msg.id)
       await openDataFile()
       await writeMeta(initialMeta)
+
+      // Check storage quota and warn if low
+      try {
+        const nav: any = self.navigator
+        if (nav?.storage?.estimate) {
+          const estimate = await nav.storage.estimate()
+          const usage = estimate.usage || 0
+          const quota = estimate.quota || 0
+          const available = quota - usage
+          const MIN_SPACE_ERROR = 50 * 1024 * 1024   // 50MB
+          const MIN_SPACE_WARNING = 100 * 1024 * 1024 // 100MB
+          if (available < MIN_SPACE_ERROR) {
+            self.postMessage({ type: 'error', code: 'STORAGE_LOW', message: `Storage critically low: ${Math.round(available / 1024 / 1024)}MB remaining` } as WriterErrorEvent)
+            return
+          }
+          if (available < MIN_SPACE_WARNING) {
+            self.postMessage({ type: 'warning', availableSpace: available, message: `Storage space low: ${Math.round(available / 1024 / 1024)}MB remaining` })
+          }
+        }
+      } catch {}
+
       self.postMessage({ type: 'ready', id: msg.id } as ReadyEvent)
       return
     }

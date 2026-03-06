@@ -22,11 +22,12 @@
   let countdownActive = $state(false)
   let countdownValue = $state(0)
   let countdownTimer: ReturnType<typeof setTimeout> | null = null
-  const COUNTDOWN_SECONDS = 3
+  const DEFAULT_COUNTDOWN_SECONDS = 3
   const MAX_COUNTDOWN_SECONDS = 10
+  let countdownSeconds = $state(DEFAULT_COUNTDOWN_SECONDS)
 
   function sanitizeCountdown(seconds: number) {
-    return Number.isFinite(seconds) ? Math.max(0, Math.min(MAX_COUNTDOWN_SECONDS, seconds)) : COUNTDOWN_SECONDS
+    return Number.isFinite(seconds) ? Math.max(0, Math.min(MAX_COUNTDOWN_SECONDS, seconds)) : DEFAULT_COUNTDOWN_SECONDS
   }
 
   const FALLBACK_MESSAGES: Record<string, string> = {
@@ -104,7 +105,7 @@
     }
   ]
 
-  // Initialize: sync background state
+  // Initialize: sync background state and load settings
   onMount(async () => {
     try {
       const resp = await chrome.runtime.sendMessage({ type: 'REQUEST_RECORDING_STATE' })
@@ -113,6 +114,16 @@
     } catch (e) {
       console.warn('Failed to initialize recording state', e)
     }
+    // Load user's countdown setting from storage
+    try {
+      const stored = await new Promise<any>((res) =>
+        chrome.storage.local.get(['settings'], (r) => res(r))
+      )
+      const v = stored?.settings?.countdownSeconds
+      if (typeof v === 'number' && v >= 1 && v <= 5) {
+        countdownSeconds = v
+      }
+    } catch {}
   })
 
   // Listen for recording status updates
@@ -163,7 +174,7 @@
     try {
       await chrome.runtime.sendMessage({
         type: 'REQUEST_START_RECORDING',
-        payload: { options: { mode: selectedMode, video: true, audio: false, countdown: COUNTDOWN_SECONDS } }
+        payload: { options: { mode: selectedMode, video: true, audio: false, countdown: countdownSeconds } }
       })
     } catch (error) {
       console.error('Failed to start recording:', error)
@@ -187,15 +198,16 @@
     }
   }
 
-  // Stop recording
+  // Stop recording - state reset handled by STREAM_END/STREAM_ERROR message handlers
   async function stopRecording() {
     try {
       await chrome.runtime.sendMessage({ type: 'REQUEST_STOP_RECORDING' })
     } catch (e) {
       console.warn('Failed to send stop recording message', e)
+      // Only reset state on message failure since we won't receive STREAM_END
+      isRecording = false
+      isPaused = false
     }
-    isRecording = false
-    isPaused = false
   }
 
   // Open control panel (popup)
@@ -358,7 +370,7 @@
               {t('welcome_trySubtitle')}
             </p>
             <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">
-              {t('welcome_tryFeatures', String(COUNTDOWN_SECONDS))}
+              {t('welcome_tryFeatures', String(countdownSeconds))}
             </p>
           </div>
         
@@ -501,7 +513,7 @@
                   </p>
                   <div class="flex items-center gap-2 text-xs text-blue-600 font-medium">
                     <CheckCircle2 class="w-3.5 h-3.5" />
-                    <span>{t('welcome_readyTip', String(COUNTDOWN_SECONDS))}</span>
+                    <span>{t('welcome_readyTip', String(countdownSeconds))}</span>
                   </div>
                 </div>
               </div>
@@ -549,7 +561,7 @@
               <div class="w-14 h-14 bg-slate-100 text-slate-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-xl font-bold shadow-inner">3</div>
               <h4 class="text-lg font-bold text-slate-900 mb-2">{t('welcome_step3Title')}</h4>
               <p class="text-sm text-slate-500 leading-relaxed">
-                {t('welcome_step3Desc', [t('control_btnStart'), String(COUNTDOWN_SECONDS)])}
+                {t('welcome_step3Desc', [t('control_btnStart'), String(countdownSeconds)])}
               </p>
             </div>
           </div>

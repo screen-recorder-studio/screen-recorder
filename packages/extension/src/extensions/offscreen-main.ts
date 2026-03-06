@@ -62,6 +62,7 @@
   let wcReader: ReadableStreamDefaultReader<VideoFrame> | null = null
   let wcFrameLoopActive = false
   let wcWorkerPreloaded = false  // ✅ Track if worker was preloaded
+  let isStarting = false  // Guard against concurrent start requests
 
   // OPFS writer (side-write) state
   const OPFS_WRITER_ENABLED = true
@@ -294,6 +295,13 @@
   async function startRecording(options?: any): Promise<void> {
     const timestamp = new Date().toISOString()
     log(`🎯 [${timestamp}] Starting recording directly in offscreen document...`, { options })
+
+    // Guard against concurrent start requests
+    if (isStarting) {
+      log('⚠️ Recording start already in progress, ignoring duplicate request')
+      return
+    }
+    isStarting = true
 
     try {
       // Stop any existing recording
@@ -551,6 +559,8 @@
         })
       } catch {}
       throw e
+    } finally {
+      isStarting = false
     }
   }
 
