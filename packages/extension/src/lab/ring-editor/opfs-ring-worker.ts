@@ -237,7 +237,7 @@ async function readMeta() {
 async function readIndexAll() {
   const ih = await (recDir as any).getFileHandle('index.jsonl')
   const f = await ih.getFile(); const text = await f.text()
-  indexEntries = text.split(/\r?\n/).filter(Boolean).map((line, i) => {
+  indexEntries = text.split(/\r?\n/).filter(Boolean).map((line: string, i: number) => {
     try { return JSON.parse(line) as ChunkIndex } catch { throw new Error(`INDEX_PARSE_ERROR at line ${i}`) }
   })
   keyframeIndices = []

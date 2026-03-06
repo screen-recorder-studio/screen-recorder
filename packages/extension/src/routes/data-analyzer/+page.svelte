@@ -12,6 +12,8 @@
     codec?: string
   }
 
+  type ChunkIndexField = keyof ChunkIndex
+
   type MetaData = {
     id: string
     codec: string
@@ -510,7 +512,8 @@
           <h4>Field Usage Analysis</h4>
           <div class="field-analysis">
             {#each Object.keys(analysis.indexEntries[0] || {}) as field}
-              {@const hasField = analysis.indexEntries.filter(e => e[field] !== undefined).length}
+              {@const typedField = field as ChunkIndexField}
+              {@const hasField = analysis.indexEntries.filter(e => e[typedField] !== undefined).length}
               {@const coverage = (hasField / analysis.indexEntries.length) * 100}
               <div class="field-row">
                 <span class="field-name">{field}:</span>

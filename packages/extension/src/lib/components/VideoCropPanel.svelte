@@ -67,10 +67,12 @@
   // 辅助状态
   let isAspectRatioLocked = $state(false)
   let isShiftPressed = $state(false)
+
+  type DragMode = 'move' | 'resize-nw' | 'resize-ne' | 'resize-sw' | 'resize-se' | 'resize-n' | 'resize-s' | 'resize-w' | 'resize-e' | null
   
   // 拖拽状态
   let isDragging = $state(false)
-  let dragMode = $state<'move' | 'resize-nw' | 'resize-ne' | 'resize-sw' | 'resize-se' | 'resize-n' | 'resize-s' | 'resize-w' | 'resize-e' | null>(null)
+  let dragMode = $state<DragMode>(null)
   let dragStartX = $state(0)
   let dragStartY = $state(0)
   let dragStartBox = $state({ x: 0, y: 0, width: 0, height: 0 })
@@ -287,7 +289,7 @@
   }
   
   // 拖拽处理
-  function handleMouseDown(e: MouseEvent, mode: typeof dragMode) {
+  function handleMouseDown(e: MouseEvent, mode: DragMode) {
     e.preventDefault()
     e.stopPropagation()
     
@@ -643,8 +645,8 @@
             top: {screenPos.y - 6}px;
             cursor: {handle.cursor};
           "
-          onmousedown={(e) => handleMouseDown(e, `resize-${handle.pos}`)}
-          onkeydown={(e) => e.key === 'Enter' && handleMouseDown(e as any, `resize-${handle.pos}`)}
+          onmousedown={(e) => handleMouseDown(e, `resize-${handle.pos}` as DragMode)}
+          onkeydown={(e) => e.key === 'Enter' && handleMouseDown(e as any, `resize-${handle.pos}` as DragMode)}
         ></div>
       {/each}
     </div>
