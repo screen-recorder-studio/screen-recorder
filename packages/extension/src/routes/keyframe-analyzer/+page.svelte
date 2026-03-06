@@ -170,15 +170,17 @@
         return []
       }
 
-      const intervals = analysis.keyframeDistribution.map(k => k.interval).filter(i => i > 0)
+      const currentAnalysis = analysis
+
+      const intervals = currentAnalysis.keyframeDistribution.map(k => k.interval).filter(i => i > 0)
       if (intervals.length === 0) return []
 
       const maxInterval = Math.max(...intervals)
-      const result = analysis.keyframeDistribution.map(keyframe => ({
+      const result = currentAnalysis.keyframeDistribution.map(keyframe => ({
         ...keyframe,
         normalizedInterval: maxInterval > 0 ? keyframe.interval / maxInterval : 0,
-        color: keyframe.interval > analysis.avgKeyframeInterval * 1.5 ? 'red' :
-               keyframe.interval < analysis.avgKeyframeInterval * 0.5 ? 'blue' : 'green'
+        color: keyframe.interval > currentAnalysis.avgKeyframeInterval * 1.5 ? 'red' :
+               keyframe.interval < currentAnalysis.avgKeyframeInterval * 0.5 ? 'blue' : 'green'
       }))
 
       console.log('keyframeVisualization result:', result)

@@ -69,6 +69,18 @@
     estimatedSize: number
   }
 
+  type PresetConfig = {
+    name: string
+    icon: typeof Gem
+    resolution: string
+    quality: string
+    framerate: number
+    bitrate: number | 'auto'
+    encodingSpeed: string
+    limitFileSize?: boolean
+    maxSize?: number
+  }
+
   // Default settings
   let resolution = $state<string>('source')
   let quality = $state<string>('high')
@@ -137,7 +149,7 @@
       bitrate: 20,
       encodingSpeed: 'slow'
     }
-  }
+  } satisfies Record<string, PresetConfig>
 
   // Resolution options
   const resolutionOptions = [
@@ -201,9 +213,9 @@
       manualBitrate = preset.bitrate as number
     }
     encodingSpeed = preset.encodingSpeed
-    if (preset.limitFileSize) {
+    if ('limitFileSize' in preset && preset.limitFileSize) {
       limitFileSize = true
-      maxFileSize = preset.maxSize || 100
+      maxFileSize = ('maxSize' in preset ? preset.maxSize : undefined) || 100
     }
   }
 
