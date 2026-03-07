@@ -131,14 +131,25 @@
     }
   }
 
-  function decodeFirstFrame(chunkData: ArrayBuffer, chunkInfo: any, rec: RecordingSummary): Promise<string> {
+  /** Shape of a single chunk entry from index.jsonl */
+  interface ChunkEntry {
+    offset: number
+    size: number
+    codec?: string
+    type?: 'key' | 'delta'
+    timestamp?: number
+    codedWidth?: number
+    codedHeight?: number
+  }
+
+  function decodeFirstFrame(chunkData: ArrayBuffer, chunkInfo: ChunkEntry, rec: RecordingSummary): Promise<string> {
     return new Promise((resolve, reject) => {
       let resolved = false
       let decoder: VideoDecoder | null = null
       const maxEdge = 320
 
       const timeout = setTimeout(() => {
-        if (!resolved) { resolved = true; try { decoder?.close() } catch {}; reject(new Error('timeout')) }
+        if (!resolved) { resolved = true; try { decoder?.close() } catch {}; reject(new Error('Thumbnail generation timed out after 5s')) }
       }, 5000)
 
       decoder = new VideoDecoder({
@@ -154,9 +165,11 @@
             const dstH = Math.max(1, Math.round(srcH * ratio))
             const canvas = document.createElement('canvas')
             canvas.width = dstW; canvas.height = dstH
-            const ctx = canvas.getContext('2d')!
+            const ctx = canvas.getContext('2d')
+            if (!ctx) { frame.close(); reject(new Error('Canvas 2d context unavailable')); return }
             ctx.drawImage(frame, 0, 0, dstW, dstH)
             frame.close()
+            // Try WebP first (smaller), fallback to JPEG if unsupported
             let dataUrl = ''
             try { dataUrl = canvas.toDataURL('image/webp', 0.7) } catch {}
             if (!dataUrl.startsWith('data:image/webp')) {
@@ -207,8 +220,7 @@
       const mimeMatch = header.match(/data:(.*);base64/)
       const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg'
       const binary = atob(base64)
-      const bytes = new Uint8Array(binary.length)
-      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+      const bytes = Uint8Array.from(binary, c => c.charCodeAt(0))
       await writable.write(new Blob([bytes], { type: mime }))
       await writable.close()
     } catch { /* ignore cache write failures */ }
