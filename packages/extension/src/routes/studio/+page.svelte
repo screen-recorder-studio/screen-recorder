@@ -403,9 +403,11 @@
         }
       } else if (type === "error") {
         console.error("❌ [OPFSReader] Error:", code, message);
-        // Distinguish invalid-recording (metadata/index parse errors) from generic load failures
+        // Heuristic: classify as invalid-recording when the error relates to
+        // data integrity (e.g. parse failures, missing index/meta). The worker
+        // only sends a generic READER_ERROR code, so we inspect the message.
         const errMsg = typeof message === 'string' ? message.toLowerCase() : ''
-        const isInvalidData = errMsg.includes('parse') || errMsg.includes('index') || errMsg.includes('meta') || errMsg.includes('invalid') || errMsg.includes('corrupt') || code === 'INVALID_RECORDING'
+        const isInvalidData = errMsg.includes('parse') || errMsg.includes('index') || errMsg.includes('meta') || errMsg.includes('invalid') || errMsg.includes('corrupt')
         showEmptyState = true
         emptyStateReason = isInvalidData ? 'invalid-recording' : 'load-failed'
         isResolvingInitialRecording = false
@@ -517,7 +519,7 @@
           // Mode B: no id – try to find the latest usable recording
           try {
             const allRecs = await listRecordings(true)
-            const latest = allRecs.find(r => r.id) ? await getLatestValidRecording(true) : null
+            const latest = await getLatestValidRecording(true)
             if (latest) {
               loadRecordingById(latest.id)
               try {

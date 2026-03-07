@@ -232,7 +232,7 @@
 
     } catch (error) {
       console.error('❌ [Export] GIF export failed:', error)
-      exportErrorMessage = error instanceof Error ? error.message : t('export_error_gif_failed')
+      exportErrorMessage = t('export_error_gif_failed')
     } finally {
       isExportingGIF = false
       resetProgressAnimation()
@@ -454,7 +454,7 @@
 
     } catch (error) {
       console.error('❌ [Export] WebM export failed:', error)
-      exportErrorMessage = error instanceof Error ? error.message : t('export_error_webm_failed')
+      exportErrorMessage = t('export_error_webm_failed')
     } finally {
       isExportingWebM = false
       resetProgressAnimation()
@@ -559,7 +559,7 @@
 
     } catch (error) {
       console.error('❌ [Export] MP4 export failed:', error)
-      exportErrorMessage = error instanceof Error ? error.message : t('export_error_mp4_failed')
+      exportErrorMessage = t('export_error_mp4_failed')
     } finally {
       isExportingMP4 = false
       resetProgressAnimation()
