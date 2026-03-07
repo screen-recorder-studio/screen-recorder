@@ -13,10 +13,14 @@
     Zap,
     CircleCheck,
     X,
-    Infinity as InfinityIcon,
     Film,
     ShieldCheck,
-    Sparkles
+    Sparkles,
+    Puzzle,
+    Video,
+    Scissors,
+    Download,
+    ChevronRight
   } from '@lucide/svelte'
   import { onDestroy, onMount } from 'svelte'
   import { _t } from '$lib/utils/i18n'
@@ -111,16 +115,16 @@
     welcome_headline: 'Record, Edit, and Export in Seconds. 🎉',
     welcome_subheadline: 'Capture hours of footage smoothly, then edit and export as high-quality Videos or GIFs—all processed securely in your browser.',
     welcome_proTrialActive: 'PRO Trial Activated',
-    welcome_feat1Title: 'Unlimited Recording',
-    welcome_feat2Title: '100% Private (Local)',
+    welcome_feat1Title: 'Private & Local',
+    welcome_feat2Title: 'No Watermarks',
     welcome_feat3Title: 'Quick Editing',
     welcome_feat4Title: 'Video & GIF Export',
     welcome_trustNoWatermark: 'No Watermarks',
     welcome_trustHD: 'HD Quality',
-    welcome_trustLocal: 'Local Storage Only',
+    welcome_trustLocal: 'Private & Local',
+    welcome_trustQuickEditing: 'Quick Editing',
     welcome_tryTitle: 'Start Your First Recording 🚀',
-    welcome_trySubtitle: 'Choose what you want to capture and jump right in. The Studio will open automatically when you\'re done.',
-    welcome_tryFeatures: 'No setup required • $SECONDS$-second countdown • Professional quality',
+    welcome_trySubtitle: 'Pick what to capture and start recording—Studio opens when you stop.',
     control_modeTab: 'Tab',
     control_modeTabDesc: 'Record current tab',
     control_modeWindow: 'Window',
@@ -138,14 +142,16 @@
     control_statusPaused: 'Recording Paused',
     welcome_statusRecording: 'Recording in Progress',
     welcome_modeLabel: 'Mode',
-    welcome_howTitle: 'How It Works',
-    welcome_howDesc: 'Three simple steps to get the most out of your extension',
-    welcome_step1Title: 'Pin Extension',
-    welcome_step1Desc: 'Click the puzzle icon 🧩 in your browser toolbar and pin this extension for quick access anytime',
-    welcome_step2Title: 'Choose Your Target',
-    welcome_step2Desc: 'Select what to record: current tab, entire window, or full screen - whatever fits your needs',
-    welcome_step3Title: 'Hit Record & Edit',
-    welcome_step3Desc: 'Click "$BTN$" to start. Stop anytime to automatically open the Studio for trimming and exporting.',
+    welcome_howTitle: 'Your Recording Journey',
+    welcome_howDesc: 'From capturing to exporting, everything happens securely in your browser.',
+    journey_step1Title: 'Pin to Toolbar',
+    journey_step1Desc: 'Click the puzzle icon 🧩 and pin the extension for quick access to start capturing anytime.',
+    journey_step2Title: 'Record',
+    journey_step2Desc: 'Capture your tab, window, or entire screen. Enjoy unlimited recording time without lagging.',
+    journey_step3Title: 'Quick Edit',
+    journey_step3Desc: 'Trim out mistakes, crop to the perfect ratio, and zoom to highlight details.',
+    journey_step4Title: 'Export Video & GIF',
+    journey_step4Desc: 'Save instantly as high-quality MP4, WebM, or GIF. 100% processed locally—no uploads.',
     control_btnStarting: 'Starting in $1...',
     control_overlayRecordingStarts: 'Recording will begin after the countdown',
     control_btnSkipCountdown: 'Skip countdown',
@@ -444,21 +450,20 @@
   <div class="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 text-slate-900 font-sans selection:bg-blue-100 selection:text-blue-900">
     <!-- Header -->
     <header class="bg-white/80 border-b border-slate-200/60 shadow-sm flex-shrink-0">
-      <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <div class="flex items-center gap-4">
+      <div class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+        <div class="flex items-center gap-3">
           <div class="relative">
              <div class="absolute inset-0 bg-blue-500/20 blur-lg rounded-full"></div>
-             <img src="/assets/icon.svg" alt={t('appName')} class="w-8 h-8 relative z-10" />
+             <img src="/assets/icon.svg" alt={t('appName')} class="w-7 h-7 relative z-10" />
           </div>
           <div>
             <h1 class="text-lg font-bold text-slate-900 tracking-tight leading-none flex items-center gap-2">
               {t('appName')}
               {#if extensionVersion}<span class="text-xs font-normal text-slate-400">v{extensionVersion}</span>{/if}
             </h1>
-            <p class="text-xs text-slate-500 font-medium tracking-wide mt-0.5">{t('welcome_headerSubtitle')}</p>
           </div>
         </div>
-        <div class="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 rounded-full text-[10px] shadow-sm">
+        <div class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 rounded-full text-[10px] shadow-sm">
           <Sparkles class="w-3.5 h-3.5 text-amber-500" />
           <span class="bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent font-bold tracking-widest uppercase">{t('welcome_proTrialActive')}</span>
         </div>
@@ -489,13 +494,13 @@
         <section class="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-4xl mx-auto w-full animate-fade-in-up">
           <div class="flex items-center justify-center gap-2.5 bg-white p-3 rounded-2xl shadow-sm border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all cursor-default group">
             <div class="p-2 bg-blue-50 rounded-xl text-blue-600 group-hover:scale-110 group-hover:bg-blue-100 transition-all flex-shrink-0">
-              <InfinityIcon class="w-5 h-5" />
+              <ShieldCheck class="w-5 h-5" />
             </div>
             <span class="text-xs font-bold text-slate-800 tracking-wide leading-tight">{t('welcome_feat1Title')}</span>
           </div>
           <div class="flex items-center justify-center gap-2.5 bg-white p-3 rounded-2xl shadow-sm border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all cursor-default group">
             <div class="p-2 bg-emerald-50 rounded-xl text-emerald-600 group-hover:scale-110 group-hover:bg-emerald-100 transition-all flex-shrink-0">
-              <HardDrive class="w-5 h-5" />
+              <Sparkles class="w-5 h-5" />
             </div>
             <span class="text-xs font-bold text-slate-800 tracking-wide leading-tight">{t('welcome_feat2Title')}</span>
           </div>
@@ -515,16 +520,12 @@
       </div>
 
       <!-- Main Action Area (Recording Controls) -->
-      <section class="bg-white rounded-[2rem] shadow-xl shadow-blue-900/5 border border-slate-200/60 overflow-hidden relative max-w-2xl mx-auto w-full">
-        <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
-        <div class="p-6 md:p-8">
-          <div class="text-center mb-6">
-            <h3 class="text-xl font-bold text-slate-900 mb-2">{t('welcome_tryTitle')}</h3>
-            <p class="text-sm text-slate-600 mb-2">
+      <section class="bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-slate-200/60 overflow-hidden relative max-w-[40rem] mx-auto w-full">
+        <div class="p-5 md:p-6">
+          <div class="text-center mb-5">
+            <h3 class="text-lg font-bold text-slate-900 mb-1.5">{t('welcome_tryTitle')}</h3>
+            <p class="text-sm text-slate-600">
               {t('welcome_trySubtitle')}
-            </p>
-            <p class="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
-              {t('welcome_tryFeatures', String(countdownSeconds))}
             </p>
           </div>
 
@@ -560,11 +561,11 @@
             </div>
           {/if}
         
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
             {#each recordingModes as mode}
               {@const IconComponent = mode.icon}
               <button
-                class="group relative flex flex-col items-center p-4 rounded-2xl border-2 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] outline-none"
+                class="group relative flex flex-col items-center p-3 rounded-xl border-2 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] outline-none"
                 class:border-blue-500={selectedMode === mode.id}
                 class:bg-blue-50={selectedMode === mode.id && !isRecording}
                 class:shadow-blue-100={selectedMode === mode.id}
@@ -581,23 +582,23 @@
               >
                 <!-- Selection indicator -->
                 {#if selectedMode === mode.id}
-                  <div class="absolute -top-3 -right-3 bg-blue-500 text-white p-1 rounded-full shadow-md ring-4 ring-white">
-                    <CircleCheck class="w-4 h-4" />
+                  <div class="absolute -top-2 -right-2 bg-blue-500 text-white p-0.5 rounded-full shadow-md ring-2 ring-white">
+                    <CircleCheck class="w-3.5 h-3.5" />
                   </div>
                 {/if}
 
                 <!-- Icon -->
-                <div class="w-12 h-12 mb-3 rounded-2xl flex items-center justify-center transition-colors duration-300"
+                <div class="w-10 h-10 mb-2 rounded-xl flex items-center justify-center transition-colors duration-300"
                       class:bg-white={true}
                       class:text-blue-600={selectedMode === mode.id}
                       class:shadow-sm={selectedMode === mode.id}
                       class:text-slate-400={selectedMode !== mode.id}
                       class:group-hover:text-blue-500={selectedMode !== mode.id && !isRecording}>
-                  <IconComponent class="w-6 h-6" />
+                  <IconComponent class="w-5 h-5" />
                 </div>
 
                 <!-- Label -->
-                <h4 class="text-base font-bold mb-1 transition-colors duration-200"
+                <h4 class="text-sm font-bold mb-1 transition-colors duration-200"
                     class:text-blue-900={selectedMode === mode.id}
                     class:text-slate-700={selectedMode !== mode.id}
                     class:group-hover:text-blue-800={selectedMode !== mode.id && !isRecording}>
@@ -605,8 +606,8 @@
                 </h4>
                 
                 <!-- Description -->
-                <p class="text-xs text-slate-500 mb-2 text-center leading-snug">{t(mode.descriptionKey)}</p>
-                <div class="mt-auto pt-2 border-t border-slate-200/50 w-full text-center">
+                <p class="text-[11px] text-slate-500 mb-1.5 text-center leading-snug">{t(mode.descriptionKey)}</p>
+                <div class="mt-auto pt-1.5 border-t border-slate-200/50 w-full text-center">
                     <p class="text-[9px] font-medium text-slate-400 uppercase tracking-wide">{t(mode.detailKey)}</p>
                 </div>
               </button>
@@ -614,10 +615,10 @@
           </div>
 
           <!-- Recording Controls -->
-          <div class="max-w-md mx-auto space-y-4">
+          <div class="max-w-sm mx-auto space-y-3">
             <!-- Main control button -->
             <button
-              class={`w-full group relative flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-bold text-lg text-white transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-xl hover:shadow-2xl active:scale-[0.98] ${
+              class={`w-full group relative flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl font-bold text-base text-white transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-xl hover:shadow-2xl active:scale-[0.98] ${
                 !isRecording
                   ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 focus:ring-blue-500 shadow-blue-500/30'
                   : 'bg-red-500 hover:bg-red-600 focus:ring-red-500 shadow-red-500/30'
@@ -627,12 +628,12 @@
             >
               <div class="relative flex items-center justify-center">
                 {#if isLoading}
-                  <LoaderCircle class="w-6 h-6 animate-spin" />
+                  <LoaderCircle class="w-5 h-5 animate-spin" />
                 {:else if isRecording}
-                   <Square class="w-6 h-6 fill-current" />
+                   <Square class="w-5 h-5 fill-current" />
                 {:else}
                   {@const ButtonIcon = getButtonIcon()}
-                  <ButtonIcon class="w-6 h-6 group-hover:scale-110 transition-transform" />
+                  <ButtonIcon class="w-5 h-5 group-hover:scale-110 transition-transform" />
                 {/if}
               </div>
               
@@ -646,14 +647,14 @@
               
               <!-- Shine effect -->
               {#if !isRecording}
-                <div class="absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/20"></div>
+                <div class="absolute inset-0 rounded-xl ring-1 ring-inset ring-white/20"></div>
               {/if}
             </button>
 
             <!-- Secondary button (Pause/Resume) -->
             {#if isRecording}
               <button
-                class="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 rounded-xl font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-1 shadow-sm"
+                class="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 rounded-xl font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-1 shadow-sm"
                 onclick={togglePause}
                 disabled={isLoading}
               >
@@ -670,10 +671,11 @@
 
           <!-- Reassurance Microcopy -->
           {#if !isRecording && !isLoading}
-          <div class="mt-6 flex flex-wrap items-center justify-center gap-5 text-xs font-semibold text-slate-500 bg-slate-50 py-3 rounded-xl border border-slate-100 max-w-lg mx-auto">
+          <div class="mt-5 flex flex-wrap sm:flex-nowrap items-center justify-center gap-x-3 gap-y-2 text-xs font-semibold text-slate-500 bg-slate-50 py-2.5 px-3 rounded-xl border border-slate-100 max-w-lg mx-auto">
+            <div class="flex items-center gap-1.5"><HardDrive class="w-4 h-4 text-emerald-500"/> {t('welcome_trustLocal')}</div>
             <div class="flex items-center gap-1.5"><ShieldCheck class="w-4 h-4 text-emerald-500"/> {t('welcome_trustNoWatermark')}</div>
             <div class="flex items-center gap-1.5"><Film class="w-4 h-4 text-emerald-500"/> {t('welcome_trustHD')}</div>
-            <div class="flex items-center gap-1.5"><HardDrive class="w-4 h-4 text-emerald-500"/> {t('welcome_trustLocal')}</div>
+            <div class="flex items-center gap-1.5"><Zap class="w-4 h-4 text-emerald-500"/> {t('welcome_trustQuickEditing')}</div>
           </div>
           {/if}
 
@@ -724,6 +726,11 @@
                   </div>
                 </div>
               </div>
+              <div class="mt-4 pt-3 border-t text-center text-xs font-medium opacity-80" 
+                   class:border-amber-200={isPaused} class:text-amber-800={isPaused} 
+                   class:border-red-200={!isPaused} class:text-red-800={!isPaused}>
+                💡 Tip: Click the extension icon 🧩 to stop recording from any page.
+              </div>
             </div>
           {/if}
         </div>
@@ -731,46 +738,78 @@
 
       <div class="flex-1"></div> <!-- Spacer to push lower content down -->
 
-      <!-- Quick Start Guide -->
-      <section class="max-w-3xl mx-auto w-full mt-auto pt-8">
+      <!-- Quick Start Guide (User Journey) -->
+      <section class="max-w-5xl mx-auto w-full mt-auto pt-8">
         <div class="text-center mb-10">
           <h3 class="text-2xl font-bold text-slate-900 mb-3">{t('welcome_howTitle')}</h3>
           <p class="text-slate-500 max-w-xl mx-auto">{t('welcome_howDesc')}</p>
         </div>
         
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
           <!-- Step 1 -->
-          <div class="relative group">
-            <div class="absolute inset-0 bg-white rounded-2xl shadow-sm border border-slate-200 transform transition-transform group-hover:-translate-y-1"></div>
-            <div class="relative p-6 text-center">
-              <div class="w-14 h-14 bg-slate-100 text-slate-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-xl font-bold shadow-inner">1</div>
-              <h4 class="text-lg font-bold text-slate-900 mb-2">{t('welcome_step1Title')}</h4>
+          <div class="relative group transition-transform duration-300 hover:-translate-y-1">
+            <div class="absolute inset-0 bg-white rounded-2xl shadow-sm border border-slate-200 z-0"></div>
+            <div class="relative p-6 text-center z-10 flex flex-col items-center">
+              <div class="w-14 h-14 bg-slate-50 text-slate-600 rounded-2xl flex items-center justify-center mb-4 shadow-inner ring-1 ring-slate-200 group-hover:bg-slate-100 group-hover:text-slate-700 transition-colors">
+                <Puzzle class="w-6 h-6" />
+              </div>
+              <h4 class="text-lg font-bold text-slate-900 mb-2">{t('journey_step1Title')}</h4>
               <p class="text-sm text-slate-500 leading-relaxed">
-                {t('welcome_step1Desc')}
+                {t('journey_step1Desc')}
               </p>
+            </div>
+            <!-- Chevron pointing right (desktop only) -->
+            <div class="hidden md:flex absolute top-1/2 -right-3 translate-x-1/2 -translate-y-1/2 z-20 text-slate-200 group-hover:text-blue-300 transition-colors pointer-events-none">
+              <ChevronRight class="w-6 h-6" />
             </div>
           </div>
 
           <!-- Step 2 -->
-          <div class="relative group">
-            <div class="absolute inset-0 bg-white rounded-2xl shadow-sm border border-slate-200 transform transition-transform group-hover:-translate-y-1"></div>
-            <div class="relative p-6 text-center">
-              <div class="w-14 h-14 bg-slate-100 text-slate-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-xl font-bold shadow-inner">2</div>
-              <h4 class="text-lg font-bold text-slate-900 mb-2">{t('welcome_step2Title')}</h4>
+          <div class="relative group transition-transform duration-300 hover:-translate-y-1">
+            <div class="absolute inset-0 bg-white rounded-2xl shadow-sm border border-slate-200 z-0"></div>
+            <div class="relative p-6 text-center z-10 flex flex-col items-center">
+              <div class="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4 shadow-inner ring-1 ring-blue-200 group-hover:bg-blue-100 group-hover:text-blue-700 transition-colors">
+                <Video class="w-6 h-6" />
+              </div>
+              <h4 class="text-lg font-bold text-slate-900 mb-2">{t('journey_step2Title')}</h4>
               <p class="text-sm text-slate-500 leading-relaxed">
-                {t('welcome_step2Desc')}
+                {t('journey_step2Desc')}
               </p>
+            </div>
+            <!-- Chevron pointing right (desktop only) -->
+            <div class="hidden md:flex absolute top-1/2 -right-3 translate-x-1/2 -translate-y-1/2 z-20 text-slate-200 group-hover:text-purple-300 transition-colors pointer-events-none">
+              <ChevronRight class="w-6 h-6" />
             </div>
           </div>
 
           <!-- Step 3 -->
-          <div class="relative group">
-            <div class="absolute inset-0 bg-white rounded-2xl shadow-sm border border-slate-200 transform transition-transform group-hover:-translate-y-1"></div>
-            <div class="relative p-6 text-center">
-              <div class="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-xl font-bold shadow-inner ring-2 ring-blue-100">3</div>
-              <h4 class="text-lg font-bold text-slate-900 mb-2">{t('welcome_step3Title')}</h4>
+          <div class="relative group transition-transform duration-300 hover:-translate-y-1">
+            <div class="absolute inset-0 bg-white rounded-2xl shadow-sm border border-slate-200 z-0"></div>
+            <div class="relative p-6 text-center z-10 flex flex-col items-center">
+              <div class="w-14 h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center mb-4 shadow-inner ring-1 ring-purple-200 group-hover:bg-purple-100 group-hover:text-purple-700 transition-colors">
+                <Scissors class="w-6 h-6" />
+              </div>
+              <h4 class="text-lg font-bold text-slate-900 mb-2">{t('journey_step3Title')}</h4>
               <p class="text-sm text-slate-500 leading-relaxed">
-                {t('welcome_step3Desc', [t('control_btnStart'), String(countdownSeconds)])}
+                {t('journey_step3Desc')}
+              </p>
+            </div>
+            <!-- Chevron pointing right (desktop only) -->
+            <div class="hidden md:flex absolute top-1/2 -right-3 translate-x-1/2 -translate-y-1/2 z-20 text-slate-200 group-hover:text-emerald-300 transition-colors pointer-events-none">
+              <ChevronRight class="w-6 h-6" />
+            </div>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="relative group transition-transform duration-300 hover:-translate-y-1">
+            <div class="absolute inset-0 bg-white rounded-2xl shadow-sm border border-slate-200 z-0"></div>
+            <div class="relative p-6 text-center z-10 flex flex-col items-center">
+              <div class="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-4 shadow-inner ring-1 ring-emerald-200 group-hover:bg-emerald-100 group-hover:text-emerald-700 transition-colors">
+                <Download class="w-6 h-6" />
+              </div>
+              <h4 class="text-lg font-bold text-slate-900 mb-2">{t('journey_step4Title')}</h4>
+              <p class="text-sm text-slate-500 leading-relaxed">
+                {t('journey_step4Desc')}
               </p>
             </div>
           </div>
