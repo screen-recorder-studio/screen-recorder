@@ -13,7 +13,7 @@
   import StudioEmptyState from "$lib/components/studio/StudioEmptyState.svelte";
   import StudioDriveOverlay from "$lib/components/studio/StudioDriveOverlay.svelte";
   import { _t as t, initI18n } from "$lib/utils/i18n";
-  import { getLatestValidRecording, listRecordings, invalidateRecordingsCache } from "$lib/utils/opfs-recordings";
+  import { getLatestValidRecording, listRecordings, isRecordingUsable, invalidateRecordingsCache } from "$lib/utils/opfs-recordings";
   import type { RecordingSummary } from "$lib/types/recordings";
 
   // Extension version
@@ -396,14 +396,19 @@
 
           recordingStore.updateStatus("completed");
           recordingStore.setEngine("webcodecs");
+          isResolvingInitialRecording = false
         } else {
           console.warn("⚠️ [OPFSReader] Empty range received");
+          isResolvingInitialRecording = false
         }
       } else if (type === "error") {
         console.error("❌ [OPFSReader] Error:", code, message);
-        // If the specified recording cannot be loaded, show empty state
+        // Distinguish invalid-recording (metadata/index parse errors) from generic load failures
+        const errMsg = typeof message === 'string' ? message.toLowerCase() : ''
+        const isInvalidData = errMsg.includes('parse') || errMsg.includes('index') || errMsg.includes('meta') || errMsg.includes('invalid') || errMsg.includes('corrupt') || code === 'INVALID_RECORDING'
         showEmptyState = true
-        emptyStateReason = 'load-failed'
+        emptyStateReason = isInvalidData ? 'invalid-recording' : 'load-failed'
+        isResolvingInitialRecording = false
       }
     };
 
@@ -493,28 +498,45 @@
         const dirId = params.get("id") || "";
 
         if (dirId) {
-          // Mode A: explicit id
+          // Mode A: explicit id – validate usability before loading
+          try {
+            const allRecs = await listRecordings(true)
+            const target = allRecs.find(r => r.id === dirId)
+            if (target && !(await isRecordingUsable(target))) {
+              showEmptyState = true
+              emptyStateReason = 'invalid-recording'
+              isResolvingInitialRecording = false
+              return
+            }
+          } catch {
+            // If listing fails, still attempt to load – worker will report errors
+          }
+          // isResolvingInitialRecording remains true; will be set false by worker callback
           loadRecordingById(dirId)
-          isResolvingInitialRecording = false
         } else {
           // Mode B: no id – try to find the latest usable recording
           try {
-            const latest = await getLatestValidRecording(true)
+            const allRecs = await listRecordings(true)
+            const latest = allRecs.find(r => r.id) ? await getLatestValidRecording(true) : null
             if (latest) {
               loadRecordingById(latest.id)
               try {
                 history.replaceState(null, '', `/studio.html?id=${encodeURIComponent(latest.id)}`)
               } catch {}
+              // isResolvingInitialRecording remains true; will be set false by worker callback
             } else {
+              // Distinguish: there are recordings but none are usable vs no recordings at all
+              const hasAnyRecordings = allRecs.length > 0
               showEmptyState = true
-              emptyStateReason = 'no-recording'
+              emptyStateReason = hasAnyRecordings ? 'invalid-recording' : 'no-recording'
+              isResolvingInitialRecording = false
             }
           } catch (e) {
             console.error('[Studio] Failed to resolve latest recording:', e)
             showEmptyState = true
             emptyStateReason = (typeof navigator.storage?.getDirectory === 'function') ? 'no-recording' : 'opfs-unavailable'
+            isResolvingInitialRecording = false
           }
-          isResolvingInitialRecording = false
         }
       } catch (error) {
         console.error("❌ [Studio] Failed to open OPFS recording:", error);
