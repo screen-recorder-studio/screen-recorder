@@ -5,8 +5,8 @@
 - 项目：Screen Recorder Studio
 - 文档类型：技术设计文档
 - 关联文档：
-  - `/home/runner/work/screen-recorder/screen-recorder/docs/action-entry-retention-evaluation.md`
-  - `/home/runner/work/screen-recorder/screen-recorder/docs/action-entry-product-design.md`
+  - `./action-entry-retention-evaluation.md`
+  - `./action-entry-product-design.md`
 - 设计范围：
   1. Action 菜单入口改造
   2. Drive 直达能力
@@ -54,7 +54,7 @@
 
 当前实现位于：
 
-- `/home/runner/work/screen-recorder/screen-recorder/packages/extension/src/extensions/background.ts`
+- `packages/extension/src/extensions/background.ts`
 - `chrome.action.onClicked.addListener(...)`
 
 现状：
@@ -82,7 +82,7 @@
 
 配置来源：
 
-- `/home/runner/work/screen-recorder/screen-recorder/packages/extension/svelte.config.js`
+- `packages/extension/svelte.config.js`
 
 结论：
 
@@ -94,7 +94,7 @@
 
 Drive 页面位于：
 
-- `/home/runner/work/screen-recorder/screen-recorder/packages/extension/src/routes/drive/+page.svelte`
+- `packages/extension/src/routes/drive/+page.svelte`
 
 核心能力：
 
@@ -114,7 +114,7 @@ Drive 页面位于：
 
 Studio 页面位于：
 
-- `/home/runner/work/screen-recorder/screen-recorder/packages/extension/src/routes/studio/+page.svelte`
+- `packages/extension/src/routes/studio/+page.svelte`
 
 现状：
 
@@ -133,8 +133,8 @@ Studio 页面位于：
 
 已存在组件：
 
-- `/home/runner/work/screen-recorder/screen-recorder/packages/extension/src/lib/components/drive/RecordingList.svelte`
-- `/home/runner/work/screen-recorder/screen-recorder/packages/extension/src/lib/components/drive/RecordingCard.svelte`
+- `packages/extension/src/lib/components/drive/RecordingList.svelte`
+- `packages/extension/src/lib/components/drive/RecordingCard.svelte`
 
 现状问题：
 
@@ -239,7 +239,7 @@ Background* ────┘
 
 推荐方案：
 
-- 保留 `/home/runner/work/screen-recorder/screen-recorder/packages/extension/src/routes/popup/+page.svelte`
+- 保留 `packages/extension/src/routes/popup/+page.svelte`
 - 将其从“迷你录制面板”改造成“launcher”
 - 在 manifest 中把 action 入口改为 popup 页面
 
@@ -365,7 +365,7 @@ background 需要承担以下新职责：
 
 当前仓库存在：
 
-- `/home/runner/work/screen-recorder/screen-recorder/packages/extension/src/lib/types/background.d.ts`
+- `packages/extension/src/lib/types/background.d.ts`
 
 建议：
 
@@ -444,7 +444,7 @@ type LatestRecordingCache = {
 
 建议新增：
 
-- `/home/runner/work/screen-recorder/screen-recorder/packages/extension/src/lib/utils/opfs-recordings.ts`
+- `packages/extension/src/lib/utils/opfs-recordings.ts`
 
 ## 6.3.3 建议导出能力
 
