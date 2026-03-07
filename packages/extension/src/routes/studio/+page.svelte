@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { HardDrive, Video, Github, MessageCircle, BookOpen } from "@lucide/svelte";
+  import { HardDrive, Video, Github, MessageCircle, BookOpen, Sparkles } from "@lucide/svelte";
 
   import { recordingStore } from "$lib/stores/recording.svelte";
   import VideoPreviewComposite from "$lib/components/VideoPreviewComposite.svelte";
@@ -11,7 +11,7 @@
   import AspectRatioControl from "$lib/components/AspectRatioControl.svelte";
   import ShadowControl from "$lib/components/ShadowControl.svelte";
   import StudioEmptyState from "$lib/components/studio/StudioEmptyState.svelte";
-  import StudioDrawer from "$lib/components/studio/StudioDrawer.svelte";
+  import StudioDriveOverlay from "$lib/components/studio/StudioDriveOverlay.svelte";
   import { _t as t, initI18n, isI18nInitialized } from "$lib/utils/i18n";
   import { getLatestValidRecording, listRecordings, invalidateRecordingsCache } from "$lib/utils/opfs-recordings";
   import type { RecordingSummary } from "$lib/types/recordings";
@@ -698,13 +698,17 @@
     <!-- Preview area header -->
     <div class="flex-shrink-0 px-4 py-2 border-b border-gray-200 bg-white">
       <div class="flex items-center justify-between relative">
-        <!-- Left title -->
+        <!-- Left title + license badge -->
         <div class="flex items-center gap-2">
           <Video class="w-6 h-6 text-blue-600" />
           <h1 class="text-xl font-bold text-gray-800">
             {t('studio_headerTitle')}
             {#if extensionVersion}<span class="text-xs font-normal text-gray-400 ml-1">v{extensionVersion}</span>{/if}
           </h1>
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-md bg-blue-50 text-blue-600 border border-blue-200">
+            <Sparkles class="w-3 h-3" />
+            {t('export_panel_tier_trial')}
+          </span>
         </div>
 
         <!-- Center video aspect ratio control -->
@@ -752,16 +756,6 @@
             />
             <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">{t('studio_helpText')}</span>
           </a>
-          <button
-            class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-300 hover:border-blue-400 hover:bg-white/70 hover:shadow-sm transition-all duration-200 group text-sm"
-            onclick={openDrawer}
-            title={t('studio_driveTooltip')}
-          >
-            <HardDrive
-              class="w-4 h-4 text-gray-600 group-hover:text-blue-600 transition-colors duration-200"
-            />
-            <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">{t('studio_recentRecordings')}</span>
-          </button>
         </div>
       </div>
     </div>
@@ -815,17 +809,30 @@
   <!-- Right editing panel - allows scrolling -->
   {#if !showEmptyState && !isResolvingInitialRecording}
   <div class="w-100 bg-white border-l border-gray-200 flex flex-col h-full">
-    <!-- Editing panel header - license badge + export button -->
+    <!-- Right panel header: Drive button + Export button -->
     <div class="flex-shrink-0 px-4 py-3">
-      <VideoExportPanel
-        encodedChunks={workerEncodedChunks}
-        isRecordingComplete={workerStatus === "completed" ||
-          workerStatus === "idle"}
-        totalFramesAll={globalTotalFrames}
-        {opfsDirId}
-        {sourceFps}
-        licenseTier="pro-trial"
-      />
+      <div class="flex items-center justify-between gap-3">
+        <!-- Drive button (replaces license badge position) -->
+        <button
+          class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-300 hover:border-blue-400 hover:bg-blue-50 text-gray-600 hover:text-blue-600 transition-all duration-200"
+          onclick={openDrawer}
+          title={t('studio_driveTooltip')}
+        >
+          <HardDrive class="w-3.5 h-3.5" />
+          {t('studio_recentRecordings')}
+        </button>
+        <!-- Export button -->
+        <VideoExportPanel
+          encodedChunks={workerEncodedChunks}
+          isRecordingComplete={workerStatus === "completed" ||
+            workerStatus === "idle"}
+          totalFramesAll={globalTotalFrames}
+          {opfsDirId}
+          {sourceFps}
+          licenseTier="pro-trial"
+          showLicenseBadge={false}
+        />
+      </div>
     </div>
 
     <!-- Scrollable editing content area -->
@@ -863,9 +870,9 @@
   {/if}
 </div>
 
-<!-- Drive drawer overlay -->
+<!-- Drive overlay -->
 {#if showDriveDrawer}
-  <StudioDrawer
+  <StudioDriveOverlay
     recordings={drawerRecordings}
     isLoading={drawerLoading}
     selectedRecordingId={currentRecordingId}

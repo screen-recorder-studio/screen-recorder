@@ -34,6 +34,11 @@
      * Current license tier for the user
      */
     licenseTier?: LicenseTier
+    /**
+     * Whether to show the license tier badge. Set false to hide it
+     * when the badge is rendered elsewhere (e.g. in the Studio header).
+     */
+    showLicenseBadge?: boolean
   }
 
   let {
@@ -43,7 +48,8 @@
     opfsDirId = '',
     className = '',
     sourceFps = 30,
-    licenseTier = 'pro-trial'
+    licenseTier = 'pro-trial',
+    showLicenseBadge = true
   }: Props = $props()
 
   // License tier labels and styles (using getters for reactive translations)
@@ -603,11 +609,13 @@
 
 <!-- Video export panel component - License badge + Export button -->
 <div class="{className} flex items-center justify-between gap-3">
-  <!-- License tier badge -->
+  <!-- License tier badge (can be hidden when badge is placed elsewhere) -->
+  {#if showLicenseBadge}
   <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md {currentTier.classes}">
     <Sparkles class="w-3 h-3" />
     {currentTier.label}
   </span>
+  {/if}
 
   <!-- Export button or warning -->
   {#if !isRecordingComplete || encodedChunks.length === 0}
