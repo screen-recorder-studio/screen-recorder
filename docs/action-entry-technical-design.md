@@ -205,7 +205,7 @@ drive.html
 建议新增一层共享工具：
 
 ```text
-src/lib/utils/opfs-recordings.ts
+packages/extension/src/lib/utils/opfs-recordings.ts
   ├─ listRecordings()
   ├─ getLatestValidRecording()
   ├─ readRecordingSummary()
@@ -500,7 +500,7 @@ function invalidateRecordingsCache(): void
 
 推荐位置：
 
-- `/src/lib/types/recording.ts`
+- `packages/extension/src/lib/types/recording.ts`
 
 至少包含：
 
@@ -625,7 +625,7 @@ onMount
 
 ### 推荐新增组件
 
-- `/src/lib/components/studio/StudioEmptyState.svelte`
+- `packages/extension/src/lib/components/studio/StudioEmptyState.svelte`
 
 原因：
 
