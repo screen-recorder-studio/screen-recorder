@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "Tiện ích Chrome chuyên nghiệp để quay tab, cửa sổ, màn hình và các vùng chỉ định" },
+  "common_close": { "message": "Đóng" },
   "action_defaultTitle": { "message": "Mở bảng điều khiển quay phim" },
 
   "control_headerTitle": { "message": "Quay màn hình" },

@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "Estensione Chrome professionale per registrare schede, finestre, schermi, aree e elementi" },
+  "common_close": { "message": "Chiudi" },
   "action_defaultTitle": { "message": "Apri pannello di registrazione" },
 
   "control_headerTitle": { "message": "Registratore Schermo" },

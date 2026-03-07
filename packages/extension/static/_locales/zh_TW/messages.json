@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "專業級 Chrome 擴充功能，支援錄製分頁、視窗、全螢幕、指定區域及元素" },
+  "common_close": { "message": "關閉" },
   "action_defaultTitle": { "message": "開啟錄影面板" },
 
   "control_headerTitle": { "message": "螢幕錄影" },

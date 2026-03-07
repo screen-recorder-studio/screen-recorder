@@ -26,7 +26,7 @@
 
   let deletingId = $state<string | null>(null)
   let confirmDeleteId = $state<string | null>(null)
-  let panelEl: HTMLDivElement | null = null
+  let panelEl = $state<HTMLDivElement | null>(null)
 
   // Thumbnail state per recording
   let thumbnails = $state<Record<string, { url: string | null; loading: boolean; error: boolean }>>({})
@@ -141,7 +141,6 @@
     if (!confirmDeleteId || deletingId) return
 
     const id = confirmDeleteId
-    if (deletingId) return
     deletingId = id
     try {
       await onDelete(id)
@@ -367,7 +366,7 @@
   <button
     type="button"
     class="absolute inset-0 bg-black/40"
-    aria-label={t('drive_close_error')}
+    aria-label={t('common_close')}
     tabindex="-1"
     onclick={onClose}
   ></button>
@@ -405,7 +404,7 @@
         <button
           type="button"
           class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
-          aria-label={t('drive_close_error')}
+          aria-label={t('common_close')}
           onclick={onClose}
         >
           <X class="w-5 h-5" />

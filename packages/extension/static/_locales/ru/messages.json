@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "Профессиональное расширение Chrome для записи вкладок, окон, экрана, областей и элементов" },
+  "common_close": { "message": "Закрыть" },
   "action_defaultTitle": { "message": "Открыть панель записи" },
 
   "control_headerTitle": { "message": "Запись экрана" },

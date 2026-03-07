@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "Extension Chrome professionnelle pour enregistrer onglets, fenêtres, écrans, zones et éléments" },
+  "common_close": { "message": "Fermer" },
   "action_defaultTitle": { "message": "Ouvrir le panneau d'enregistrement" },
 
   "control_headerTitle": { "message": "Enregistreur d'écran" },

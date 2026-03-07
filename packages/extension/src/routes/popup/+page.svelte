@@ -67,8 +67,8 @@
       <button
         type="button"
         class="-mr-1 -mt-1 rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
-        aria-label={t('drive_close_error')}
-        title={t('drive_close_error')}
+        aria-label={t('common_close')}
+        title={t('common_close')}
         onclick={() => window.close()}
       >
         <X class="w-4 h-4" />

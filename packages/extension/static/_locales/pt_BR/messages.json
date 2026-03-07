@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "Extensão profissional do Chrome para gravar guias, janelas, telas, regiões e elementos" },
+  "common_close": { "message": "Fechar" },
   "action_defaultTitle": { "message": "Abrir painel de gravação" },
 
   "control_headerTitle": { "message": "Gravador de Tela" },

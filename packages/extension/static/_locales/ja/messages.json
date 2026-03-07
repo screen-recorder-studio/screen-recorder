@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "タブ、ウィンドウ、画面全体、指定範囲や要素を録画できるプロ仕様のChrome拡張機能" },
+  "common_close": { "message": "閉じる" },
   "action_defaultTitle": { "message": "録画パネルを開く" },
 
   "control_headerTitle": { "message": "スクリーンレコーダー" },

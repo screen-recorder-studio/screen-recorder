@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "A Chrome extension for recording tabs, windows, screens, page regions, and elements" },
+  "common_close": { "message": "Close" },
   "action_defaultTitle": { "message": "Open Recording Panel" },
 
   "control_headerTitle": { "message": "Screen Recorder" },

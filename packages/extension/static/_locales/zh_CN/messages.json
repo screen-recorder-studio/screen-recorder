@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "Chrome 扩展程序，用于录制标签页、窗口、屏幕、页面区域和元素" },
+  "common_close": { "message": "关闭" },
   "action_defaultTitle": { "message": "打开录制面板" },
 
   "control_headerTitle": { "message": "屏幕录制" },

@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "Ekstensi Chrome untuk merekam tab, jendela, layar, dan area halaman" },
+  "common_close": { "message": "Tutup" },
   "action_defaultTitle": { "message": "Buka Panel Perekaman" },
 
   "control_headerTitle": { "message": "Perekam Layar" },

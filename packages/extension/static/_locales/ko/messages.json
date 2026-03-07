@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "탭, 창, 전체 화면 및 특정 영역 녹화를 위한 전문가용 Chrome 확장 프로그램" },
+  "common_close": { "message": "닫기" },
   "action_defaultTitle": { "message": "녹화 패널 열기" },
 
   "control_headerTitle": { "message": "스크린 레코더" },

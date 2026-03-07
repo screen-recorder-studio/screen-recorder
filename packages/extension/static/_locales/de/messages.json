@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "Professionelle Chrome-Erweiterung zur Aufnahme von Tabs, Fenstern, Bildschirmen, Bereichen und Elementen" },
+  "common_close": { "message": "Schließen" },
   "action_defaultTitle": { "message": "Aufnahme-Panel öffnen" },
 
   "control_headerTitle": { "message": "Bildschirmrecorder" },

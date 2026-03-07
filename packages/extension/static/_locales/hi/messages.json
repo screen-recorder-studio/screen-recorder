@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "टैब, विंडो, स्क्रीन, क्षेत्रों और तत्वों को रिकॉर्ड करने के लिए पेशेवर क्रोम एक्सटेंशन" },
+  "common_close": { "message": "बंद करें" },
   "action_defaultTitle": { "message": "रिकॉर्डिंग पैनल खोलें" },
 
   "control_headerTitle": { "message": "स्क्रीन रिकॉर्डर" },

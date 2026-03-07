@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "Sekme, pencere, tam ekran ve belirli bölgeleri kaydetmek için profesyonel Chrome uzantısı" },
+  "common_close": { "message": "Kapat" },
   "action_defaultTitle": { "message": "Kayıt panelini aç" },
 
   "control_headerTitle": { "message": "Ekran Kaydedici" },
