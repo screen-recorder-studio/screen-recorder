@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "Tiện ích Chrome chuyên nghiệp để quay tab, cửa sổ, màn hình và các vùng chỉ định" },
+  "common_close": { "message": "Đóng" },
   "action_defaultTitle": { "message": "Mở bảng điều khiển quay phim" },
 
   "control_headerTitle": { "message": "Quay màn hình" },
@@ -379,5 +380,32 @@
   "webRecord_tipsTitle": { "message": "Mẹo:" },
   "webRecord_tip1": { "message": "Nhấn Bắt đầu để chọn màn hình, cửa sổ hoặc tab cần ghi." },
   "webRecord_tip2": { "message": "Các bản ghi được lưu cục bộ trong bộ nhớ trình duyệt của bạn." },
-  "webRecord_tip3": { "message": "Nhấn Bản ghi để xem, chỉnh sửa và xuất bản ghi của bạn." }
+  "webRecord_tip3": { "message": "Nhấn Bản ghi để xem, chỉnh sửa và xuất bản ghi của bạn." },
+
+  "drive_drawerDelete": { "message": "Xóa" },
+  "drive_drawerEmpty": { "message": "Chưa có bản ghi nào" },
+  "drive_drawerJustNow": { "message": "Vừa xong" },
+  "drive_drawerOpenFull": { "message": "Mở Drive đầy đủ" },
+  "drive_drawerTitle": { "message": "Bản ghi gần đây" },
+  "launcher_drive": { "message": "Drive" },
+  "launcher_driveDesc": { "message": "Xem và quản lý bản ghi" },
+  "launcher_pageTitle": { "message": "Screen Recorder Studio" },
+  "launcher_record": { "message": "Ghi hình" },
+  "launcher_recordDesc": { "message": "Bắt đầu ghi màn hình mới" },
+  "launcher_studio": { "message": "Studio" },
+  "launcher_studioDesc": { "message": "Chỉnh sửa bản ghi gần nhất" },
+  "launcher_subtitle": { "message": "Ghi hình, quản lý và xuất" },
+  "launcher_title": { "message": "Screen Recorder Studio" },
+  "studio_emptyDesc": { "message": "Sau khi ghi hình, video của bạn sẽ tự động xuất hiện tại đây. Bạn có thể xem trước, cắt, tạo kiểu và xuất trong Studio." },
+  "studio_emptyFeatureExport": { "message": "Xuất" },
+  "studio_emptyFeaturePreview": { "message": "Xem trước" },
+  "studio_emptyFeatureTrim": { "message": "Cắt và tạo kiểu" },
+  "studio_emptyOpenDrive": { "message": "Mở Drive" },
+  "studio_emptyReasonInvalid": { "message": "Không thể tải các bản ghi gần đây." },
+  "studio_emptyReasonLoadFailed": { "message": "Không thể tải bản ghi được chỉ định." },
+  "studio_emptyReasonOpfs": { "message": "Bộ nhớ không khả dụng trên trình duyệt này." },
+  "studio_emptyStartRecording": { "message": "Bắt đầu ghi hình" },
+  "studio_emptyTitle": { "message": "Chưa có video để chỉnh sửa" },
+  "studio_loading": { "message": "Đang tải..." },
+  "studio_recentRecordings": { "message": "Bản ghi" }
 }

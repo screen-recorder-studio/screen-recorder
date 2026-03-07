@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "Ekstensi Chrome untuk merekam tab, jendela, layar, dan area halaman" },
+  "common_close": { "message": "Tutup" },
   "action_defaultTitle": { "message": "Buka Panel Perekaman" },
 
   "control_headerTitle": { "message": "Perekam Layar" },
@@ -379,5 +380,32 @@
   "webRecord_tipsTitle": { "message": "Tips:" },
   "webRecord_tip1": { "message": "Klik Mulai untuk memilih layar, jendela, atau tab yang akan direkam." },
   "webRecord_tip2": { "message": "Rekaman disimpan secara lokal di penyimpanan browser Anda." },
-  "webRecord_tip3": { "message": "Klik Rekaman untuk melihat, mengedit, dan mengekspor rekaman Anda." }
+  "webRecord_tip3": { "message": "Klik Rekaman untuk melihat, mengedit, dan mengekspor rekaman Anda." },
+
+  "drive_drawerDelete": { "message": "Hapus" },
+  "drive_drawerEmpty": { "message": "Belum ada rekaman" },
+  "drive_drawerJustNow": { "message": "Baru saja" },
+  "drive_drawerOpenFull": { "message": "Buka Drive lengkap" },
+  "drive_drawerTitle": { "message": "Rekaman Terbaru" },
+  "launcher_drive": { "message": "Drive" },
+  "launcher_driveDesc": { "message": "Lihat dan kelola rekaman" },
+  "launcher_pageTitle": { "message": "Screen Recorder Studio" },
+  "launcher_record": { "message": "Rekam" },
+  "launcher_recordDesc": { "message": "Mulai perekaman layar baru" },
+  "launcher_studio": { "message": "Studio" },
+  "launcher_studioDesc": { "message": "Edit rekaman terbaru Anda" },
+  "launcher_subtitle": { "message": "Rekam, kelola, dan ekspor" },
+  "launcher_title": { "message": "Screen Recorder Studio" },
+  "studio_emptyDesc": { "message": "Setelah merekam, video Anda akan muncul di sini secara otomatis. Anda dapat melihat pratinjau, memotong, menata gaya, dan mengekspornya di Studio." },
+  "studio_emptyFeatureExport": { "message": "Ekspor" },
+  "studio_emptyFeaturePreview": { "message": "Pratinjau" },
+  "studio_emptyFeatureTrim": { "message": "Potong & Tata Gaya" },
+  "studio_emptyOpenDrive": { "message": "Buka Drive" },
+  "studio_emptyReasonInvalid": { "message": "Rekaman terbaru tidak dapat dimuat." },
+  "studio_emptyReasonLoadFailed": { "message": "Gagal memuat rekaman yang ditentukan." },
+  "studio_emptyReasonOpfs": { "message": "Penyimpanan tidak tersedia di browser ini." },
+  "studio_emptyStartRecording": { "message": "Mulai Merekam" },
+  "studio_emptyTitle": { "message": "Belum ada video untuk diedit" },
+  "studio_loading": { "message": "Memuat..." },
+  "studio_recentRecordings": { "message": "Rekaman" }
 }

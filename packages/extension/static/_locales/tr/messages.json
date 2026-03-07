@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "Sekme, pencere, tam ekran ve belirli bölgeleri kaydetmek için profesyonel Chrome uzantısı" },
+  "common_close": { "message": "Kapat" },
   "action_defaultTitle": { "message": "Kayıt panelini aç" },
 
   "control_headerTitle": { "message": "Ekran Kaydedici" },
@@ -379,5 +380,32 @@
   "webRecord_tipsTitle": { "message": "İpuçları:" },
   "webRecord_tip1": { "message": "Kaydedilecek bir ekran, pencere veya sekme seçmek için Başlat'a tıklayın." },
   "webRecord_tip2": { "message": "Kayıtlar tarayıcı depolama alanınıza yerel olarak kaydedilir." },
-  "webRecord_tip3": { "message": "Kayıtlarınızı görüntülemek, düzenlemek ve dışa aktarmak için Kayıtlar'a tıklayın." }
+  "webRecord_tip3": { "message": "Kayıtlarınızı görüntülemek, düzenlemek ve dışa aktarmak için Kayıtlar'a tıklayın." },
+
+  "drive_drawerDelete": { "message": "Sil" },
+  "drive_drawerEmpty": { "message": "Henüz kayıt yok" },
+  "drive_drawerJustNow": { "message": "Az önce" },
+  "drive_drawerOpenFull": { "message": "Tam Drive'ı aç" },
+  "drive_drawerTitle": { "message": "Son Kayıtlar" },
+  "launcher_drive": { "message": "Drive" },
+  "launcher_driveDesc": { "message": "Kayıtları görüntüle ve yönet" },
+  "launcher_pageTitle": { "message": "Screen Recorder Studio" },
+  "launcher_record": { "message": "Kaydet" },
+  "launcher_recordDesc": { "message": "Yeni bir ekran kaydı başlat" },
+  "launcher_studio": { "message": "Studio" },
+  "launcher_studioDesc": { "message": "Son kaydınızı düzenleyin" },
+  "launcher_subtitle": { "message": "Kaydet, yönet ve dışa aktar" },
+  "launcher_title": { "message": "Screen Recorder Studio" },
+  "studio_emptyDesc": { "message": "Kayıttan sonra videonuz burada otomatik olarak görünecektir. Studio'da önizleme yapabilir, kırpabilir, stilize edebilir ve dışa aktarabilirsiniz." },
+  "studio_emptyFeatureExport": { "message": "Dışa aktar" },
+  "studio_emptyFeaturePreview": { "message": "Önizleme" },
+  "studio_emptyFeatureTrim": { "message": "Kırp ve stilize et" },
+  "studio_emptyOpenDrive": { "message": "Drive'ı aç" },
+  "studio_emptyReasonInvalid": { "message": "Son kayıtlar yüklenemedi." },
+  "studio_emptyReasonLoadFailed": { "message": "Belirtilen kayıt yüklenemedi." },
+  "studio_emptyReasonOpfs": { "message": "Bu tarayıcıda depolama kullanılamıyor." },
+  "studio_emptyStartRecording": { "message": "Kaydı başlat" },
+  "studio_emptyTitle": { "message": "Henüz düzenlenecek video yok" },
+  "studio_loading": { "message": "Yükleniyor..." },
+  "studio_recentRecordings": { "message": "Kayıtlar" }
 }

@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "टैब, विंडो, स्क्रीन, क्षेत्रों और तत्वों को रिकॉर्ड करने के लिए पेशेवर क्रोम एक्सटेंशन" },
+  "common_close": { "message": "बंद करें" },
   "action_defaultTitle": { "message": "रिकॉर्डिंग पैनल खोलें" },
 
   "control_headerTitle": { "message": "स्क्रीन रिकॉर्डर" },
@@ -379,5 +380,32 @@
   "webRecord_tipsTitle": { "message": "सुझाव:" },
   "webRecord_tip1": { "message": "रिकॉर्ड करने के लिए स्क्रीन, विंडो या टैब चुनने के लिए 'शुरू करें' पर क्लिक करें।" },
   "webRecord_tip2": { "message": "रिकॉर्डिंग आपके ब्राउज़र स्टोरेज में स्थानीय रूप से सहेजी जाती हैं।" },
-  "webRecord_tip3": { "message": "अपनी रिकॉर्डिंग देखने, संपादित करने और निर्यात करने के लिए 'रिकॉर्डिंग' पर क्लिक करें।" }
+  "webRecord_tip3": { "message": "अपनी रिकॉर्डिंग देखने, संपादित करने और निर्यात करने के लिए 'रिकॉर्डिंग' पर क्लिक करें।" },
+
+  "drive_drawerDelete": { "message": "हटाएँ" },
+  "drive_drawerEmpty": { "message": "अभी तक कोई रिकॉर्डिंग नहीं" },
+  "drive_drawerJustNow": { "message": "अभी" },
+  "drive_drawerOpenFull": { "message": "पूरा Drive खोलें" },
+  "drive_drawerTitle": { "message": "हाल की रिकॉर्डिंग" },
+  "launcher_drive": { "message": "Drive" },
+  "launcher_driveDesc": { "message": "रिकॉर्डिंग देखें और प्रबंधित करें" },
+  "launcher_pageTitle": { "message": "Screen Recorder Studio" },
+  "launcher_record": { "message": "रिकॉर्ड" },
+  "launcher_recordDesc": { "message": "नई स्क्रीन रिकॉर्डिंग शुरू करें" },
+  "launcher_studio": { "message": "Studio" },
+  "launcher_studioDesc": { "message": "अपनी नवीनतम रिकॉर्डिंग संपादित करें" },
+  "launcher_subtitle": { "message": "रिकॉर्ड करें, प्रबंधित करें और निर्यात करें" },
+  "launcher_title": { "message": "Screen Recorder Studio" },
+  "studio_emptyDesc": { "message": "रिकॉर्डिंग के बाद, आपका वीडियो यहाँ स्वचालित रूप से दिखाई देगा। आप Studio में इसे प्रीव्यू, ट्रिम, स्टाइल और एक्सपोर्ट कर सकते हैं।" },
+  "studio_emptyFeatureExport": { "message": "एक्सपोर्ट" },
+  "studio_emptyFeaturePreview": { "message": "प्रीव्यू" },
+  "studio_emptyFeatureTrim": { "message": "ट्रिम और स्टाइल" },
+  "studio_emptyOpenDrive": { "message": "Drive खोलें" },
+  "studio_emptyReasonInvalid": { "message": "हाल की रिकॉर्डिंग लोड नहीं हो सकीं।" },
+  "studio_emptyReasonLoadFailed": { "message": "निर्दिष्ट रिकॉर्डिंग लोड करने में विफल।" },
+  "studio_emptyReasonOpfs": { "message": "इस ब्राउज़र में स्टोरेज उपलब्ध नहीं है।" },
+  "studio_emptyStartRecording": { "message": "रिकॉर्डिंग शुरू करें" },
+  "studio_emptyTitle": { "message": "अभी तक कोई वीडियो संपादित करने के लिए नहीं है" },
+  "studio_loading": { "message": "लोड हो रहा है..." },
+  "studio_recentRecordings": { "message": "रिकॉर्डिंग" }
 }

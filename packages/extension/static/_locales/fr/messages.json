@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "Extension Chrome professionnelle pour enregistrer onglets, fenêtres, écrans, zones et éléments" },
+  "common_close": { "message": "Fermer" },
   "action_defaultTitle": { "message": "Ouvrir le panneau d'enregistrement" },
 
   "control_headerTitle": { "message": "Enregistreur d'écran" },
@@ -379,5 +380,32 @@
   "webRecord_tipsTitle": { "message": "Astuces :" },
   "webRecord_tip1": { "message": "Cliquez sur Démarrer pour sélectionner un écran, une fenêtre ou un onglet à enregistrer." },
   "webRecord_tip2": { "message": "Les enregistrements sont sauvegardés localement dans le stockage de votre navigateur." },
-  "webRecord_tip3": { "message": "Cliquez sur Enregistrements pour voir, éditer et exporter vos enregistrements." }
+  "webRecord_tip3": { "message": "Cliquez sur Enregistrements pour voir, éditer et exporter vos enregistrements." },
+
+  "drive_drawerDelete": { "message": "Supprimer" },
+  "drive_drawerEmpty": { "message": "Aucun enregistrement pour l'instant" },
+  "drive_drawerJustNow": { "message": "À l'instant" },
+  "drive_drawerOpenFull": { "message": "Ouvrir Drive complet" },
+  "drive_drawerTitle": { "message": "Enregistrements récents" },
+  "launcher_drive": { "message": "Drive" },
+  "launcher_driveDesc": { "message": "Voir et gérer les enregistrements" },
+  "launcher_pageTitle": { "message": "Screen Recorder Studio" },
+  "launcher_record": { "message": "Enregistrer" },
+  "launcher_recordDesc": { "message": "Démarrer un nouvel enregistrement d'écran" },
+  "launcher_studio": { "message": "Studio" },
+  "launcher_studioDesc": { "message": "Modifier votre dernier enregistrement" },
+  "launcher_subtitle": { "message": "Enregistrer, gérer et exporter" },
+  "launcher_title": { "message": "Screen Recorder Studio" },
+  "studio_emptyDesc": { "message": "Après l'enregistrement, votre vidéo apparaîtra ici automatiquement. Vous pouvez la prévisualiser, la découper, la styliser et l'exporter dans Studio." },
+  "studio_emptyFeatureExport": { "message": "Exporter" },
+  "studio_emptyFeaturePreview": { "message": "Aperçu" },
+  "studio_emptyFeatureTrim": { "message": "Découper et styliser" },
+  "studio_emptyOpenDrive": { "message": "Ouvrir Drive" },
+  "studio_emptyReasonInvalid": { "message": "Les enregistrements récents n'ont pas pu être chargés." },
+  "studio_emptyReasonLoadFailed": { "message": "Impossible de charger l'enregistrement spécifié." },
+  "studio_emptyReasonOpfs": { "message": "Le stockage n'est pas disponible dans ce navigateur." },
+  "studio_emptyStartRecording": { "message": "Démarrer l'enregistrement" },
+  "studio_emptyTitle": { "message": "Aucune vidéo à modifier pour l'instant" },
+  "studio_loading": { "message": "Chargement..." },
+  "studio_recentRecordings": { "message": "Enregistrements" }
 }

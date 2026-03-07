@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "Chrome 扩展程序，用于录制标签页、窗口、屏幕、页面区域和元素" },
+  "common_close": { "message": "关闭" },
   "action_defaultTitle": { "message": "打开录制面板" },
 
   "control_headerTitle": { "message": "屏幕录制" },
@@ -384,5 +385,32 @@
   "webRecord_tipsTitle": { "message": "提示：" },
   "webRecord_tip1": { "message": "点击开始选择要录制的屏幕、窗口或标签页。" },
   "webRecord_tip2": { "message": "录制内容保存在浏览器本地存储中。" },
-  "webRecord_tip3": { "message": "点击录制列表可查看、编辑和导出您的录制。" }
+  "webRecord_tip3": { "message": "点击录制列表可查看、编辑和导出您的录制。" },
+
+  "drive_drawerDelete": { "message": "删除" },
+  "drive_drawerEmpty": { "message": "暂无录制" },
+  "drive_drawerJustNow": { "message": "刚刚" },
+  "drive_drawerOpenFull": { "message": "打开完整 Drive" },
+  "drive_drawerTitle": { "message": "最近录制" },
+  "launcher_drive": { "message": "Drive" },
+  "launcher_driveDesc": { "message": "查看和管理历史录制" },
+  "launcher_pageTitle": { "message": "Screen Recorder Studio" },
+  "launcher_record": { "message": "录制" },
+  "launcher_recordDesc": { "message": "开始新的屏幕录制" },
+  "launcher_studio": { "message": "Studio" },
+  "launcher_studioDesc": { "message": "继续编辑最近录制" },
+  "launcher_subtitle": { "message": "录制、管理与导出" },
+  "launcher_title": { "message": "Screen Recorder Studio" },
+  "studio_emptyDesc": { "message": "完成录制后，视频会自动出现在这里。你可以在 Studio 中预览、裁剪、美化并导出视频。" },
+  "studio_emptyFeatureExport": { "message": "导出" },
+  "studio_emptyFeaturePreview": { "message": "预览" },
+  "studio_emptyFeatureTrim": { "message": "裁剪与美化" },
+  "studio_emptyOpenDrive": { "message": "打开 Drive" },
+  "studio_emptyReasonInvalid": { "message": "最近的录制无法加载。" },
+  "studio_emptyReasonLoadFailed": { "message": "无法加载指定的录制。" },
+  "studio_emptyReasonOpfs": { "message": "此浏览器不支持存储功能。" },
+  "studio_emptyStartRecording": { "message": "开始录制" },
+  "studio_emptyTitle": { "message": "还没有可编辑的视频" },
+  "studio_loading": { "message": "加载中..." },
+  "studio_recentRecordings": { "message": "录制列表" }
 }

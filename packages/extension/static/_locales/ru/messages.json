@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "Профессиональное расширение Chrome для записи вкладок, окон, экрана, областей и элементов" },
+  "common_close": { "message": "Закрыть" },
   "action_defaultTitle": { "message": "Открыть панель записи" },
 
   "control_headerTitle": { "message": "Запись экрана" },
@@ -379,5 +380,32 @@
   "webRecord_tipsTitle": { "message": "Советы:" },
   "webRecord_tip1": { "message": "Нажмите 'Начать', чтобы выбрать экран, окно или вкладку для записи." },
   "webRecord_tip2": { "message": "Записи сохраняются локально в хранилище вашего браузера." },
-  "webRecord_tip3": { "message": "Нажмите 'Записи', чтобы просмотреть, отредактировать и экспортировать свои записи." }
+  "webRecord_tip3": { "message": "Нажмите 'Записи', чтобы просмотреть, отредактировать и экспортировать свои записи." },
+
+  "drive_drawerDelete": { "message": "Удалить" },
+  "drive_drawerEmpty": { "message": "Записей пока нет" },
+  "drive_drawerJustNow": { "message": "Только что" },
+  "drive_drawerOpenFull": { "message": "Открыть полный Drive" },
+  "drive_drawerTitle": { "message": "Недавние записи" },
+  "launcher_drive": { "message": "Drive" },
+  "launcher_driveDesc": { "message": "Просмотр и управление записями" },
+  "launcher_pageTitle": { "message": "Screen Recorder Studio" },
+  "launcher_record": { "message": "Запись" },
+  "launcher_recordDesc": { "message": "Начать новую запись экрана" },
+  "launcher_studio": { "message": "Studio" },
+  "launcher_studioDesc": { "message": "Редактировать последнюю запись" },
+  "launcher_subtitle": { "message": "Запись, управление и экспорт" },
+  "launcher_title": { "message": "Screen Recorder Studio" },
+  "studio_emptyDesc": { "message": "После записи видео появится здесь автоматически. Вы можете просматривать, обрезать, стилизовать и экспортировать его в Studio." },
+  "studio_emptyFeatureExport": { "message": "Экспорт" },
+  "studio_emptyFeaturePreview": { "message": "Предпросмотр" },
+  "studio_emptyFeatureTrim": { "message": "Обрезка и стилизация" },
+  "studio_emptyOpenDrive": { "message": "Открыть Drive" },
+  "studio_emptyReasonInvalid": { "message": "Не удалось загрузить недавние записи." },
+  "studio_emptyReasonLoadFailed": { "message": "Не удалось загрузить указанную запись." },
+  "studio_emptyReasonOpfs": { "message": "Хранилище недоступно в этом браузере." },
+  "studio_emptyStartRecording": { "message": "Начать запись" },
+  "studio_emptyTitle": { "message": "Пока нет видео для редактирования" },
+  "studio_loading": { "message": "Загрузка..." },
+  "studio_recentRecordings": { "message": "Записи" }
 }

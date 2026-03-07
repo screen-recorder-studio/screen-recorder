@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "タブ、ウィンドウ、画面全体、指定範囲や要素を録画できるプロ仕様のChrome拡張機能" },
+  "common_close": { "message": "閉じる" },
   "action_defaultTitle": { "message": "録画パネルを開く" },
 
   "control_headerTitle": { "message": "スクリーンレコーダー" },
@@ -379,5 +380,32 @@
   "webRecord_tipsTitle": { "message": "ヒント:" },
   "webRecord_tip1": { "message": "「開始」をクリックして、録画する画面、ウィンドウ、またはタブを選択してください。" },
   "webRecord_tip2": { "message": "録画はブラウザのストレージにローカル保存されます。" },
-  "webRecord_tip3": { "message": "「録画一覧」をクリックして、録画の視聴、編集、エクスポートを行えます。" }
+  "webRecord_tip3": { "message": "「録画一覧」をクリックして、録画の視聴、編集、エクスポートを行えます。" },
+
+  "drive_drawerDelete": { "message": "削除" },
+  "drive_drawerEmpty": { "message": "録画はまだありません" },
+  "drive_drawerJustNow": { "message": "たった今" },
+  "drive_drawerOpenFull": { "message": "Drive を完全に開く" },
+  "drive_drawerTitle": { "message": "最近の録画" },
+  "launcher_drive": { "message": "Drive" },
+  "launcher_driveDesc": { "message": "録画を表示・管理" },
+  "launcher_pageTitle": { "message": "Screen Recorder Studio" },
+  "launcher_record": { "message": "録画" },
+  "launcher_recordDesc": { "message": "新しい画面録画を開始" },
+  "launcher_studio": { "message": "Studio" },
+  "launcher_studioDesc": { "message": "最新の録画を編集" },
+  "launcher_subtitle": { "message": "録画、管理、エクスポート" },
+  "launcher_title": { "message": "Screen Recorder Studio" },
+  "studio_emptyDesc": { "message": "録画後、動画はここに自動的に表示されます。Studio でプレビュー、トリミング、スタイル設定、エクスポートができます。" },
+  "studio_emptyFeatureExport": { "message": "エクスポート" },
+  "studio_emptyFeaturePreview": { "message": "プレビュー" },
+  "studio_emptyFeatureTrim": { "message": "トリミングとスタイル" },
+  "studio_emptyOpenDrive": { "message": "Drive を開く" },
+  "studio_emptyReasonInvalid": { "message": "最近の録画を読み込めませんでした。" },
+  "studio_emptyReasonLoadFailed": { "message": "指定された録画の読み込みに失敗しました。" },
+  "studio_emptyReasonOpfs": { "message": "このブラウザではストレージを利用できません。" },
+  "studio_emptyStartRecording": { "message": "録画を開始" },
+  "studio_emptyTitle": { "message": "編集できる動画がまだありません" },
+  "studio_loading": { "message": "読み込み中..." },
+  "studio_recentRecordings": { "message": "録画一覧" }
 }

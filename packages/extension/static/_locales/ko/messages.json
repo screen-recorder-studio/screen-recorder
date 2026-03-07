@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "탭, 창, 전체 화면 및 특정 영역 녹화를 위한 전문가용 Chrome 확장 프로그램" },
+  "common_close": { "message": "닫기" },
   "action_defaultTitle": { "message": "녹화 패널 열기" },
 
   "control_headerTitle": { "message": "스크린 레코더" },
@@ -379,5 +380,32 @@
   "webRecord_tipsTitle": { "message": "팁:" },
   "webRecord_tip1": { "message": "시작을 클릭하여 녹화할 화면, 창 또는 탭을 선택하세요." },
   "webRecord_tip2": { "message": "녹화는 브라우저 저장소에 로컬로 저장됩니다." },
-  "webRecord_tip3": { "message": "녹화 목록을 클릭하여 녹화를 확인, 편집 및 내보내기 하세요." }
+  "webRecord_tip3": { "message": "녹화 목록을 클릭하여 녹화를 확인, 편집 및 내보내기 하세요." },
+
+  "drive_drawerDelete": { "message": "삭제" },
+  "drive_drawerEmpty": { "message": "아직 녹화가 없습니다" },
+  "drive_drawerJustNow": { "message": "방금" },
+  "drive_drawerOpenFull": { "message": "전체 Drive 열기" },
+  "drive_drawerTitle": { "message": "최근 녹화" },
+  "launcher_drive": { "message": "Drive" },
+  "launcher_driveDesc": { "message": "녹화 보기 및 관리" },
+  "launcher_pageTitle": { "message": "Screen Recorder Studio" },
+  "launcher_record": { "message": "녹화" },
+  "launcher_recordDesc": { "message": "새 화면 녹화 시작" },
+  "launcher_studio": { "message": "Studio" },
+  "launcher_studioDesc": { "message": "최근 녹화 편집" },
+  "launcher_subtitle": { "message": "녹화, 관리 및 내보내기" },
+  "launcher_title": { "message": "Screen Recorder Studio" },
+  "studio_emptyDesc": { "message": "녹화 후 영상이 여기에 자동으로 표시됩니다. Studio에서 미리보기, 자르기, 스타일 지정 및 내보내기를 할 수 있습니다." },
+  "studio_emptyFeatureExport": { "message": "내보내기" },
+  "studio_emptyFeaturePreview": { "message": "미리보기" },
+  "studio_emptyFeatureTrim": { "message": "자르기 및 스타일" },
+  "studio_emptyOpenDrive": { "message": "Drive 열기" },
+  "studio_emptyReasonInvalid": { "message": "최근 녹화를 불러올 수 없습니다." },
+  "studio_emptyReasonLoadFailed": { "message": "지정된 녹화를 불러오지 못했습니다." },
+  "studio_emptyReasonOpfs": { "message": "이 브라우저에서는 저장소를 사용할 수 없습니다." },
+  "studio_emptyStartRecording": { "message": "녹화 시작" },
+  "studio_emptyTitle": { "message": "아직 편집할 영상이 없습니다" },
+  "studio_loading": { "message": "로딩 중..." },
+  "studio_recentRecordings": { "message": "녹화 목록" }
 }

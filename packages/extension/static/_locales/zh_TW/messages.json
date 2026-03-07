@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "專業級 Chrome 擴充功能，支援錄製分頁、視窗、全螢幕、指定區域及元素" },
+  "common_close": { "message": "關閉" },
   "action_defaultTitle": { "message": "開啟錄影面板" },
 
   "control_headerTitle": { "message": "螢幕錄影" },
@@ -379,5 +380,32 @@
   "webRecord_tipsTitle": { "message": "提示：" },
   "webRecord_tip1": { "message": "點擊「開始錄影」以選擇要錄製的螢幕、視窗或分頁。" },
   "webRecord_tip2": { "message": "錄影檔案將儲存在您的瀏覽器本機儲存空間中。" },
-  "webRecord_tip3": { "message": "點擊「我的錄影」以檢視、編輯和匯出您的錄影。" }
+  "webRecord_tip3": { "message": "點擊「我的錄影」以檢視、編輯和匯出您的錄影。" },
+
+  "drive_drawerDelete": { "message": "刪除" },
+  "drive_drawerEmpty": { "message": "尚無錄製" },
+  "drive_drawerJustNow": { "message": "剛剛" },
+  "drive_drawerOpenFull": { "message": "開啟完整 Drive" },
+  "drive_drawerTitle": { "message": "最近錄製" },
+  "launcher_drive": { "message": "Drive" },
+  "launcher_driveDesc": { "message": "檢視和管理錄製內容" },
+  "launcher_pageTitle": { "message": "Screen Recorder Studio" },
+  "launcher_record": { "message": "錄製" },
+  "launcher_recordDesc": { "message": "開始新的螢幕錄製" },
+  "launcher_studio": { "message": "Studio" },
+  "launcher_studioDesc": { "message": "編輯您最近的錄製" },
+  "launcher_subtitle": { "message": "錄製、管理與匯出" },
+  "launcher_title": { "message": "Screen Recorder Studio" },
+  "studio_emptyDesc": { "message": "錄製完成後，影片會自動顯示在這裡。您可以在 Studio 中預覽、裁剪、美化並匯出影片。" },
+  "studio_emptyFeatureExport": { "message": "匯出" },
+  "studio_emptyFeaturePreview": { "message": "預覽" },
+  "studio_emptyFeatureTrim": { "message": "裁剪與美化" },
+  "studio_emptyOpenDrive": { "message": "開啟 Drive" },
+  "studio_emptyReasonInvalid": { "message": "無法載入最近的錄製。" },
+  "studio_emptyReasonLoadFailed": { "message": "無法載入指定的錄製。" },
+  "studio_emptyReasonOpfs": { "message": "此瀏覽器不支援儲存功能。" },
+  "studio_emptyStartRecording": { "message": "開始錄製" },
+  "studio_emptyTitle": { "message": "尚無可編輯的影片" },
+  "studio_loading": { "message": "載入中..." },
+  "studio_recentRecordings": { "message": "錄製列表" }
 }

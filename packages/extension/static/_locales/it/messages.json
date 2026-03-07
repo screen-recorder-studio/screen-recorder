@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "Estensione Chrome professionale per registrare schede, finestre, schermi, aree e elementi" },
+  "common_close": { "message": "Chiudi" },
   "action_defaultTitle": { "message": "Apri pannello di registrazione" },
 
   "control_headerTitle": { "message": "Registratore Schermo" },
@@ -379,5 +380,32 @@
   "webRecord_tipsTitle": { "message": "Suggerimenti:" },
   "webRecord_tip1": { "message": "Fai clic su Avvia per selezionare uno schermo, una finestra o una scheda da registrare." },
   "webRecord_tip2": { "message": "Le registrazioni vengono salvate localmente nella memoria del browser." },
-  "webRecord_tip3": { "message": "Fai clic su Registrazioni per visualizzare, modificare ed esportare le tue registrazioni." }
+  "webRecord_tip3": { "message": "Fai clic su Registrazioni per visualizzare, modificare ed esportare le tue registrazioni." },
+
+  "drive_drawerDelete": { "message": "Elimina" },
+  "drive_drawerEmpty": { "message": "Nessuna registrazione ancora" },
+  "drive_drawerJustNow": { "message": "Proprio ora" },
+  "drive_drawerOpenFull": { "message": "Apri Drive completo" },
+  "drive_drawerTitle": { "message": "Registrazioni recenti" },
+  "launcher_drive": { "message": "Drive" },
+  "launcher_driveDesc": { "message": "Visualizza e gestisci le registrazioni" },
+  "launcher_pageTitle": { "message": "Screen Recorder Studio" },
+  "launcher_record": { "message": "Registra" },
+  "launcher_recordDesc": { "message": "Avvia una nuova registrazione dello schermo" },
+  "launcher_studio": { "message": "Studio" },
+  "launcher_studioDesc": { "message": "Modifica la tua ultima registrazione" },
+  "launcher_subtitle": { "message": "Registra, gestisci ed esporta" },
+  "launcher_title": { "message": "Screen Recorder Studio" },
+  "studio_emptyDesc": { "message": "Dopo la registrazione, il tuo video apparirà qui automaticamente. Puoi visualizzarlo in anteprima, tagliarlo, personalizzarlo ed esportarlo in Studio." },
+  "studio_emptyFeatureExport": { "message": "Esporta" },
+  "studio_emptyFeaturePreview": { "message": "Anteprima" },
+  "studio_emptyFeatureTrim": { "message": "Taglia e personalizza" },
+  "studio_emptyOpenDrive": { "message": "Apri Drive" },
+  "studio_emptyReasonInvalid": { "message": "Le registrazioni recenti non possono essere caricate." },
+  "studio_emptyReasonLoadFailed": { "message": "Impossibile caricare la registrazione specificata." },
+  "studio_emptyReasonOpfs": { "message": "L'archiviazione non è disponibile in questo browser." },
+  "studio_emptyStartRecording": { "message": "Avvia registrazione" },
+  "studio_emptyTitle": { "message": "Nessun video da modificare" },
+  "studio_loading": { "message": "Caricamento..." },
+  "studio_recentRecordings": { "message": "Registrazioni" }
 }

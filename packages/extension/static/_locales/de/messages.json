@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "Professionelle Chrome-Erweiterung zur Aufnahme von Tabs, Fenstern, Bildschirmen, Bereichen und Elementen" },
+  "common_close": { "message": "Schließen" },
   "action_defaultTitle": { "message": "Aufnahme-Panel öffnen" },
 
   "control_headerTitle": { "message": "Bildschirmrecorder" },
@@ -379,5 +380,32 @@
   "webRecord_tipsTitle": { "message": "Tipps:" },
   "webRecord_tip1": { "message": "Klicken Sie auf Start, um einen Bildschirm, ein Fenster oder einen Tab für die Aufnahme auszuwählen." },
   "webRecord_tip2": { "message": "Aufnahmen werden lokal in Ihrem Browserspeicher gespeichert." },
-  "webRecord_tip3": { "message": "Klicken Sie auf Aufnahmen, um Ihre Aufnahmen anzusehen, zu bearbeiten und zu exportieren." }
+  "webRecord_tip3": { "message": "Klicken Sie auf Aufnahmen, um Ihre Aufnahmen anzusehen, zu bearbeiten und zu exportieren." },
+
+  "drive_drawerDelete": { "message": "Löschen" },
+  "drive_drawerEmpty": { "message": "Noch keine Aufnahmen" },
+  "drive_drawerJustNow": { "message": "Gerade eben" },
+  "drive_drawerOpenFull": { "message": "Vollständiges Drive öffnen" },
+  "drive_drawerTitle": { "message": "Letzte Aufnahmen" },
+  "launcher_drive": { "message": "Drive" },
+  "launcher_driveDesc": { "message": "Aufnahmen anzeigen und verwalten" },
+  "launcher_pageTitle": { "message": "Screen Recorder Studio" },
+  "launcher_record": { "message": "Aufnehmen" },
+  "launcher_recordDesc": { "message": "Neue Bildschirmaufnahme starten" },
+  "launcher_studio": { "message": "Studio" },
+  "launcher_studioDesc": { "message": "Letzte Aufnahme bearbeiten" },
+  "launcher_subtitle": { "message": "Aufnehmen, verwalten und exportieren" },
+  "launcher_title": { "message": "Screen Recorder Studio" },
+  "studio_emptyDesc": { "message": "Nach der Aufnahme erscheint Ihr Video hier automatisch. Sie können es in Studio ansehen, zuschneiden, gestalten und exportieren." },
+  "studio_emptyFeatureExport": { "message": "Exportieren" },
+  "studio_emptyFeaturePreview": { "message": "Vorschau" },
+  "studio_emptyFeatureTrim": { "message": "Zuschneiden & Gestalten" },
+  "studio_emptyOpenDrive": { "message": "Drive öffnen" },
+  "studio_emptyReasonInvalid": { "message": "Letzte Aufnahmen konnten nicht geladen werden." },
+  "studio_emptyReasonLoadFailed": { "message": "Die angegebene Aufnahme konnte nicht geladen werden." },
+  "studio_emptyReasonOpfs": { "message": "Speicher ist in diesem Browser nicht verfügbar." },
+  "studio_emptyStartRecording": { "message": "Aufnahme starten" },
+  "studio_emptyTitle": { "message": "Noch kein Video zum Bearbeiten" },
+  "studio_loading": { "message": "Wird geladen..." },
+  "studio_recentRecordings": { "message": "Aufnahmen" }
 }

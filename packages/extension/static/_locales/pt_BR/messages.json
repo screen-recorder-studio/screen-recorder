@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "Extensão profissional do Chrome para gravar guias, janelas, telas, regiões e elementos" },
+  "common_close": { "message": "Fechar" },
   "action_defaultTitle": { "message": "Abrir painel de gravação" },
 
   "control_headerTitle": { "message": "Gravador de Tela" },
@@ -379,5 +380,32 @@
   "webRecord_tipsTitle": { "message": "Dicas:" },
   "webRecord_tip1": { "message": "Clique em Iniciar para selecionar uma tela, janela ou guia para gravar." },
   "webRecord_tip2": { "message": "As gravações são salvas localmente no armazenamento do seu navegador." },
-  "webRecord_tip3": { "message": "Clique em Gravações para visualizar, editar e exportar suas gravações." }
+  "webRecord_tip3": { "message": "Clique em Gravações para visualizar, editar e exportar suas gravações." },
+
+  "drive_drawerDelete": { "message": "Excluir" },
+  "drive_drawerEmpty": { "message": "Nenhuma gravação ainda" },
+  "drive_drawerJustNow": { "message": "Agora mesmo" },
+  "drive_drawerOpenFull": { "message": "Abrir Drive completo" },
+  "drive_drawerTitle": { "message": "Gravações recentes" },
+  "launcher_drive": { "message": "Drive" },
+  "launcher_driveDesc": { "message": "Ver e gerenciar gravações" },
+  "launcher_pageTitle": { "message": "Screen Recorder Studio" },
+  "launcher_record": { "message": "Gravar" },
+  "launcher_recordDesc": { "message": "Iniciar uma nova gravação de tela" },
+  "launcher_studio": { "message": "Studio" },
+  "launcher_studioDesc": { "message": "Editar sua última gravação" },
+  "launcher_subtitle": { "message": "Gravar, gerenciar e exportar" },
+  "launcher_title": { "message": "Screen Recorder Studio" },
+  "studio_emptyDesc": { "message": "Após a gravação, seu vídeo aparecerá aqui automaticamente. Você pode visualizar, cortar, estilizar e exportar no Studio." },
+  "studio_emptyFeatureExport": { "message": "Exportar" },
+  "studio_emptyFeaturePreview": { "message": "Pré-visualização" },
+  "studio_emptyFeatureTrim": { "message": "Cortar e estilizar" },
+  "studio_emptyOpenDrive": { "message": "Abrir Drive" },
+  "studio_emptyReasonInvalid": { "message": "Não foi possível carregar as gravações recentes." },
+  "studio_emptyReasonLoadFailed": { "message": "Falha ao carregar a gravação especificada." },
+  "studio_emptyReasonOpfs": { "message": "O armazenamento não está disponível neste navegador." },
+  "studio_emptyStartRecording": { "message": "Iniciar gravação" },
+  "studio_emptyTitle": { "message": "Nenhum vídeo para editar ainda" },
+  "studio_loading": { "message": "Carregando..." },
+  "studio_recentRecordings": { "message": "Gravações" }
 }

@@ -1,6 +1,7 @@
 {
   "appName": { "message": "Screen Recorder Studio" },
   "appDesc": { "message": "A Chrome extension for recording tabs, windows, screens, page regions, and elements" },
+  "common_close": { "message": "Close" },
   "action_defaultTitle": { "message": "Open Recording Panel" },
 
   "control_headerTitle": { "message": "Screen Recorder" },
@@ -383,5 +384,32 @@
   "webRecord_tipsTitle": { "message": "Tips:" },
   "webRecord_tip1": { "message": "Click Start to select a screen, window, or tab to record." },
   "webRecord_tip2": { "message": "Recordings are saved locally in your browser storage." },
-  "webRecord_tip3": { "message": "Click Recordings to view, edit, and export your recordings." }
+  "webRecord_tip3": { "message": "Click Recordings to view, edit, and export your recordings." },
+
+  "drive_drawerDelete": { "message": "Delete" },
+  "drive_drawerEmpty": { "message": "No recordings yet" },
+  "drive_drawerJustNow": { "message": "Just now" },
+  "drive_drawerOpenFull": { "message": "Open full Drive" },
+  "drive_drawerTitle": { "message": "Recent Recordings" },
+  "launcher_drive": { "message": "Drive" },
+  "launcher_driveDesc": { "message": "View and manage recordings" },
+  "launcher_pageTitle": { "message": "Screen Recorder Studio" },
+  "launcher_record": { "message": "Record" },
+  "launcher_recordDesc": { "message": "Start a new screen recording" },
+  "launcher_studio": { "message": "Studio" },
+  "launcher_studioDesc": { "message": "Edit your latest recording" },
+  "launcher_subtitle": { "message": "Record, manage and export" },
+  "launcher_title": { "message": "Screen Recorder Studio" },
+  "studio_emptyDesc": { "message": "After recording, your video will appear here automatically. You can preview, trim, style and export it in Studio." },
+  "studio_emptyFeatureExport": { "message": "Export" },
+  "studio_emptyFeaturePreview": { "message": "Preview" },
+  "studio_emptyFeatureTrim": { "message": "Trim & Style" },
+  "studio_emptyOpenDrive": { "message": "Open Drive" },
+  "studio_emptyReasonInvalid": { "message": "Recent recordings could not be loaded." },
+  "studio_emptyReasonLoadFailed": { "message": "Failed to load the specified recording." },
+  "studio_emptyReasonOpfs": { "message": "Storage is not available in this browser." },
+  "studio_emptyStartRecording": { "message": "Start Recording" },
+  "studio_emptyTitle": { "message": "No video to edit yet" },
+  "studio_loading": { "message": "Loading..." },
+  "studio_recentRecordings": { "message": "Recordings" }
 }

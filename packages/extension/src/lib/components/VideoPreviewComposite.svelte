@@ -205,6 +205,7 @@
 
   // Update preview size - intelligent adaptive full height layout
   function updatePreviewSize() {
+    if (displayWidth <= 0 || displayHeight <= 0) return
     const aspectRatio = outputWidth / outputHeight
 
     // Calculate available space - consider control bar and timeline height
