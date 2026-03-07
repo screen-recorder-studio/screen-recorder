@@ -2,6 +2,7 @@
 
 > 评估目标：围绕当前版本“用户卸载率高”的问题，从录制起点到 Studio 编辑/导出完成一次端到端审查，只做评估、不改代码。  
 > 评估范围：`packages/extension/src/routes/control/+page.svelte`、`packages/extension/src/routes/studio/+page.svelte`，以及它们直接依赖的后台、offscreen、OPFS、导出链路。
+> 说明：文中涉及的源码行号基于本次评估时的仓库快照（2026-03-07），后续代码演进后可能发生漂移。
 
 ## 1. 评估方法与基线
 
@@ -39,7 +40,7 @@
 ## 3.1 从 Control 开始录制
 
 ### 阶段 A：进入控制面板
-- Control 载入后读取扩展版本、倒计时设置，并向 background 拉取当前录制状态：`packages/extension/src/routes/control/+page.svelte:145-169`
+- Control 载入后读取扩展版本、倒计时设置, 并向 background 拉取当前录制状态：`packages/extension/src/routes/control/+page.svelte:145-169`
 - 当前 UI 支持的模式只有 `tab / window / screen` 三种：`packages/extension/src/routes/control/+page.svelte:323-343`
 
 ### 阶段 B：点击 Start
@@ -128,7 +129,7 @@
 
 ### P1-3. Control 起点暴露的录制模式，与项目能力描述不一致
 **证据**
-- CLAUDE.md 描述支持 tabs/windows/screens/page regions/DOM elements：`CLAUDE.md:5-8,66-73`
+- `CLAUDE.md` 的 `Project Overview` 与 `UI Pages` 章节描述支持 tabs/windows/screens/page regions/DOM elements
 - Control 实际只暴露 `tab / window / screen`：`packages/extension/src/routes/control/+page.svelte:323-343`
 
 **影响**
@@ -224,7 +225,7 @@
 ### P0-10. WebM 保存到 OPFS 后若回读下载失败，当前流程会“静默成功”
 **证据**
 - WebM 导出成功后，如果 worker 返回 `savedToOpfs`，UI 会尝试从 OPFS 再读回来并下载：`packages/extension/src/lib/components/VideoExportPanel.svelte:426-439`
-- 如果这一步失败，只打印 warning，不报错、不提示、不 fallback：`packages/extension/src/lib/components/VideoExportPanel.svelte:437-439`
+- 如果这一步失败，只打印 warning，不报错、不提示、不 fallback：`packages/extension/src/lib/components/VideoExportPanel.svelte:437-438`
 - 随后仍然关闭导出对话框，按成功流结束：`packages/extension/src/lib/components/VideoExportPanel.svelte:445-446`
 
 **影响**

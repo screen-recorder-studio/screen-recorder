@@ -2,6 +2,7 @@
 
 > 目标：基于《Control → Studio 端到端留存风险评估》，识别**低耦合、低回归、可快速上线**的修复项。  
 > 说明：本方案只给出技术修复建议，不实施代码修改。
+> 注：文中源码行号基于本次评估时的仓库快照（2026-03-07），后续代码演进后可能发生漂移。
 
 ## 1. 修复策略原则
 
@@ -84,7 +85,7 @@
 ### 证据
 - 定义存在：`packages/extension/src/routes/studio/+page.svelte:26-27`
 - 组件支持：`packages/extension/src/lib/components/studio/StudioEmptyState.svelte:13-24`
-- 实际未赋值：`packages/extension/src/routes/studio/+page.svelte:405-406,468-469,509-515,521-522`
+- 实际赋值集中在 Studio 的 `readerWorker.onmessage` 错误处理和 `onMount` 初始分流逻辑中，当前只落到 `no-recording / opfs-unavailable / load-failed`，没有任何 `invalid-recording` 赋值：`packages/extension/src/routes/studio/+page.svelte`
 
 ### 方案
 - 在以下场景显式映射为 `invalid-recording`：
