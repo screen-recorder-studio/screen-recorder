@@ -32,6 +32,8 @@
   "control_tipsPaused": { "message": "Đã tạm dừng, nhấn Tiếp tục để quay lại." },
   "control_tipsRecording": { "message": "Đang quay, nhấn Tạm dừng nếu cần thiết." },
   "control_overlayRecordingStarts": { "message": "Sắp bắt đầu quay..." },
+  "control_statusSaving": { "message": "Đang lưu bản ghi..." },
+  "control_btnSaving": { "message": "Đang lưu..." },
 
   "drive_pageTitle": { "message": "Danh sách quay phim - Screen Recorder" },
   "drive_headerTitle": { "message": "Quản lý bản quay" },
@@ -182,6 +184,11 @@
   "export_panel_tooltip_incomplete": { "message": "Hoàn thành quay để xuất video" },
   "export_panel_tooltip_no_data": { "message": "Không có dữ liệu video" },
   "export_panel_btn_exporting": { "message": "Đang xuất..." },
+  "export_error_gif_failed": { "message": "Xuất GIF thất bại. Vui lòng thử lại." },
+  "export_error_webm_failed": { "message": "Xuất WebM thất bại. Vui lòng thử lại." },
+  "export_error_mp4_failed": { "message": "Xuất MP4 thất bại. Vui lòng thử lại." },
+  "export_error_retry_hint": { "message": "Thử lại hoặc sử dụng định dạng khác." },
+  "export_error_opfs_download_failed": { "message": "Tệp đã lưu vào Drive nhưng tải xuống thất bại. Mở Drive để lấy tệp của bạn." },
 
   "export_dialog_title": { "message": "Xuất Video" },
   "export_source_res": { "message": "Độ phân giải" },

@@ -32,6 +32,8 @@
   "control_tipsPaused": { "message": "Gravação pausada, clique em Retomar para continuar." },
   "control_tipsRecording": { "message": "Gravação em curso, clique em Pausar se necessário." },
   "control_overlayRecordingStarts": { "message": "A gravação começará em breve..." },
+  "control_statusSaving": { "message": "Salvando gravação..." },
+  "control_btnSaving": { "message": "Salvando..." },
 
   "drive_pageTitle": { "message": "Gravações - Screen Recorder" },
   "drive_headerTitle": { "message": "Gerenciador de Gravações" },
@@ -182,6 +184,11 @@
   "export_panel_tooltip_incomplete": { "message": "Conclua a gravação para exportar" },
   "export_panel_tooltip_no_data": { "message": "Sem dados de vídeo" },
   "export_panel_btn_exporting": { "message": "Exportando..." },
+  "export_error_gif_failed": { "message": "Falha ao exportar GIF. Tente novamente." },
+  "export_error_webm_failed": { "message": "Falha ao exportar WebM. Tente novamente." },
+  "export_error_mp4_failed": { "message": "Falha ao exportar MP4. Tente novamente." },
+  "export_error_retry_hint": { "message": "Tente novamente ou use um formato diferente." },
+  "export_error_opfs_download_failed": { "message": "Arquivo salvo no Drive, mas o download falhou. Abra o Drive para recuperar seu arquivo." },
 
   "export_dialog_title": { "message": "Exportar Vídeo" },
   "export_source_res": { "message": "Resolução" },

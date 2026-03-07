@@ -36,6 +36,8 @@
   "control_errorStartFailed": { "message": "Failed to start recording. Please try again." },
   "control_errorRecordingFailed": { "message": "Recording encountered an error and was stopped." },
   "control_errorStorageLow": { "message": "Storage space is running low. Recording may fail." },
+  "control_statusSaving": { "message": "Saving recording..." },
+  "control_btnSaving": { "message": "Saving..." },
 
   "drive_pageTitle": { "message": "Recordings - Screen Recorder Extension" },
   "drive_headerTitle": { "message": "Recording Manager" },
@@ -186,6 +188,11 @@
   "export_panel_tooltip_incomplete": { "message": "Complete recording to export" },
   "export_panel_tooltip_no_data": { "message": "No video data" },
   "export_panel_btn_exporting": { "message": "Exporting..." },
+  "export_error_gif_failed": { "message": "GIF export failed. Please try again." },
+  "export_error_webm_failed": { "message": "WebM export failed. Please try again." },
+  "export_error_mp4_failed": { "message": "MP4 export failed. Please try again." },
+  "export_error_retry_hint": { "message": "Try again or use a different format." },
+  "export_error_opfs_download_failed": { "message": "File saved to Drive but download failed. Open Drive to retrieve your file." },
 
   "export_dialog_title": { "message": "Export Video" },
   "export_source_res": { "message": "Resolution" },

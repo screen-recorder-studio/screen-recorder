@@ -32,6 +32,8 @@
   "control_tipsPaused": { "message": "रिकॉर्डिंग रुकी हुई है, जारी रखने के लिए फिर से शुरू करें पर क्लिक करें।" },
   "control_tipsRecording": { "message": "रिकॉर्डिंग जारी है, ज़रूरत पड़ने पर पॉज़ करें।" },
   "control_overlayRecordingStarts": { "message": "रिकॉर्डिंग जल्द ही शुरू होगी..." },
+  "control_statusSaving": { "message": "रिकॉर्डिंग सहेजी जा रही है..." },
+  "control_btnSaving": { "message": "सहेजा जा रहा है..." },
 
   "drive_pageTitle": { "message": "रिकॉर्डिंग सूची - Screen Recorder" },
   "drive_headerTitle": { "message": "रिकॉर्डिंग प्रबंधक" },
@@ -182,6 +184,11 @@
   "export_panel_tooltip_incomplete": { "message": "एक्सपोर्ट करने के लिए रिकॉर्डिंग पूरी करें" },
   "export_panel_tooltip_no_data": { "message": "कोई वीडियो डेटा नहीं" },
   "export_panel_btn_exporting": { "message": "एक्सपोर्ट हो रहा है..." },
+  "export_error_gif_failed": { "message": "GIF निर्यात विफल रहा। कृपया पुनः प्रयास करें।" },
+  "export_error_webm_failed": { "message": "WebM निर्यात विफल रहा। कृपया पुनः प्रयास करें।" },
+  "export_error_mp4_failed": { "message": "MP4 निर्यात विफल रहा। कृपया पुनः प्रयास करें।" },
+  "export_error_retry_hint": { "message": "पुनः प्रयास करें या कोई अन्य प्रारूप उपयोग करें।" },
+  "export_error_opfs_download_failed": { "message": "फ़ाइल Drive में सहेजी गई लेकिन डाउनलोड विफल रहा। अपनी फ़ाइल प्राप्त करने के लिए Drive खोलें।" },
 
   "export_dialog_title": { "message": "वीडियो एक्सपोर्ट करें" },
   "export_source_res": { "message": "रिज़ॉल्यूशन" },

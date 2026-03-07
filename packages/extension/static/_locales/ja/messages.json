@@ -32,6 +32,8 @@
   "control_tipsPaused": { "message": "録画は一時停止中です。「録画再開」をクリックして続行します。" },
   "control_tipsRecording": { "message": "録画が進行中です。一時停止ボタンで中断できます。" },
   "control_overlayRecordingStarts": { "message": "まもなく録画を開始します..." },
+  "control_statusSaving": { "message": "録画を保存中..." },
+  "control_btnSaving": { "message": "保存中..." },
 
   "drive_pageTitle": { "message": "録画リスト - Screen Recorder" },
   "drive_headerTitle": { "message": "録画マネージャー" },
@@ -182,6 +184,11 @@
   "export_panel_tooltip_incomplete": { "message": "録画を完了してから書き出してください" },
   "export_panel_tooltip_no_data": { "message": "ビデオデータがありません" },
   "export_panel_btn_exporting": { "message": "書き出し中..." },
+  "export_error_gif_failed": { "message": "GIFのエクスポートに失敗しました。もう一度お試しください。" },
+  "export_error_webm_failed": { "message": "WebMのエクスポートに失敗しました。もう一度お試しください。" },
+  "export_error_mp4_failed": { "message": "MP4のエクスポートに失敗しました。もう一度お試しください。" },
+  "export_error_retry_hint": { "message": "もう一度試すか、別の形式をお使いください。" },
+  "export_error_opfs_download_failed": { "message": "ファイルはDriveに保存されましたが、ダウンロードに失敗しました。Driveを開いてファイルを取得してください。" },
 
   "export_dialog_title": { "message": "ビデオの書き出し" },
   "export_source_res": { "message": "解像度" },

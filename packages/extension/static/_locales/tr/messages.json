@@ -32,6 +32,8 @@
   "control_tipsPaused": { "message": "Kayıt duraklatıldı, devam etmek için tıklayın." },
   "control_tipsRecording": { "message": "Kayıt sürüyor, duraklatmak için tıklayabilirsiniz." },
   "control_overlayRecordingStarts": { "message": "Kayıt yakında başlayacak..." },
+  "control_statusSaving": { "message": "Kayıt kaydediliyor..." },
+  "control_btnSaving": { "message": "Kaydediliyor..." },
 
   "drive_pageTitle": { "message": "Kayıtlar - Screen Recorder" },
   "drive_headerTitle": { "message": "Kayıt Yöneticisi" },
@@ -182,6 +184,11 @@
   "export_panel_tooltip_incomplete": { "message": "Aktarmak için kaydı tamamlayın" },
   "export_panel_tooltip_no_data": { "message": "Video verisi yok" },
   "export_panel_btn_exporting": { "message": "Aktarılıyor..." },
+  "export_error_gif_failed": { "message": "GIF dışa aktarma başarısız oldu. Lütfen tekrar deneyin." },
+  "export_error_webm_failed": { "message": "WebM dışa aktarma başarısız oldu. Lütfen tekrar deneyin." },
+  "export_error_mp4_failed": { "message": "MP4 dışa aktarma başarısız oldu. Lütfen tekrar deneyin." },
+  "export_error_retry_hint": { "message": "Tekrar deneyin veya farklı bir format kullanın." },
+  "export_error_opfs_download_failed": { "message": "Dosya Drive'a kaydedildi ancak indirme başarısız oldu. Dosyanızı almak için Drive'ı açın." },
 
   "export_dialog_title": { "message": "Videoyu Dışa Aktar" },
   "export_source_res": { "message": "Çözünürlük" },

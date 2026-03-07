@@ -36,6 +36,8 @@
   "control_errorStartFailed": { "message": "启动录制失败，请重试。" },
   "control_errorRecordingFailed": { "message": "录制遇到错误已停止。" },
   "control_errorStorageLow": { "message": "存储空间不足，录制可能失败。" },
+  "control_statusSaving": { "message": "正在保存录制..." },
+  "control_btnSaving": { "message": "保存中..." },
 
   "drive_pageTitle": { "message": "录制列表 - Screen Recorder" },
   "drive_headerTitle": { "message": "录制管理" },
@@ -186,6 +188,11 @@
   "export_panel_tooltip_incomplete": { "message": "录制未完成，无法导出" },
   "export_panel_tooltip_no_data": { "message": "无视频数据" },
   "export_panel_btn_exporting": { "message": "导出中..." },
+  "export_error_gif_failed": { "message": "GIF 导出失败，请重试。" },
+  "export_error_webm_failed": { "message": "WebM 导出失败，请重试。" },
+  "export_error_mp4_failed": { "message": "MP4 导出失败，请重试。" },
+  "export_error_retry_hint": { "message": "请重试或使用其他格式。" },
+  "export_error_opfs_download_failed": { "message": "文件已保存到 Drive，但下载失败。请打开 Drive 获取您的文件。" },
 
   "export_dialog_title": { "message": "导出视频" },
   "export_source_res": { "message": "分辨率" },

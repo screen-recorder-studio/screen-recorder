@@ -32,6 +32,8 @@
   "control_tipsPaused": { "message": "錄製已暫停，點擊恢復錄製繼續。" },
   "control_tipsRecording": { "message": "錄製進行中，點擊暫停可暫時停止錄製。" },
   "control_overlayRecordingStarts": { "message": "錄製即將開始..." },
+  "control_statusSaving": { "message": "正在儲存錄製..." },
+  "control_btnSaving": { "message": "儲存中..." },
 
   "drive_pageTitle": { "message": "錄影列表 - Screen Recorder" },
   "drive_headerTitle": { "message": "錄影管理" },
@@ -182,6 +184,11 @@
   "export_panel_tooltip_incomplete": { "message": "錄製未完成，無法匯出" },
   "export_panel_tooltip_no_data": { "message": "無影片資料" },
   "export_panel_btn_exporting": { "message": "匯出中..." },
+  "export_error_gif_failed": { "message": "GIF 匯出失敗，請重試。" },
+  "export_error_webm_failed": { "message": "WebM 匯出失敗，請重試。" },
+  "export_error_mp4_failed": { "message": "MP4 匯出失敗，請重試。" },
+  "export_error_retry_hint": { "message": "請重試或使用其他格式。" },
+  "export_error_opfs_download_failed": { "message": "檔案已儲存至 Drive，但下載失敗。請開啟 Drive 取回您的檔案。" },
 
   "export_dialog_title": { "message": "匯出影片" },
   "export_source_res": { "message": "解析度" },

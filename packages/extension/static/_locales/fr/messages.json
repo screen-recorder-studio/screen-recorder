@@ -32,6 +32,8 @@
   "control_tipsPaused": { "message": "Enregistrement en pause, cliquez sur Reprendre pour continuer." },
   "control_tipsRecording": { "message": "Enregistrement en cours, cliquez sur Pause pour suspendre." },
   "control_overlayRecordingStarts": { "message": "L'enregistrement commence bientôt..." },
+  "control_statusSaving": { "message": "Enregistrement en cours de sauvegarde..." },
+  "control_btnSaving": { "message": "Sauvegarde..." },
 
   "drive_pageTitle": { "message": "Enregistrements - Screen Recorder" },
   "drive_headerTitle": { "message": "Gestionnaire d'enregistrements" },
@@ -182,6 +184,11 @@
   "export_panel_tooltip_incomplete": { "message": "Terminez l'enregistrement pour exporter" },
   "export_panel_tooltip_no_data": { "message": "Aucune donnée vidéo" },
   "export_panel_btn_exporting": { "message": "Exportation..." },
+  "export_error_gif_failed": { "message": "Échec de l'exportation GIF. Veuillez réessayer." },
+  "export_error_webm_failed": { "message": "Échec de l'exportation WebM. Veuillez réessayer." },
+  "export_error_mp4_failed": { "message": "Échec de l'exportation MP4. Veuillez réessayer." },
+  "export_error_retry_hint": { "message": "Réessayez ou utilisez un format différent." },
+  "export_error_opfs_download_failed": { "message": "Fichier enregistré dans Drive mais le téléchargement a échoué. Ouvrez Drive pour récupérer votre fichier." },
 
   "export_dialog_title": { "message": "Exporter la vidéo" },
   "export_source_res": { "message": "Résolution" },
