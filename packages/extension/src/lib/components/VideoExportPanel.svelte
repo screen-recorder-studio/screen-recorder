@@ -18,7 +18,7 @@
   export type LicenseTier = 'free' | 'pro' | 'pro-trial'
 
   // Props
-  interface Props {
+  export interface Props {
     encodedChunks?: any[]
     isRecordingComplete?: boolean
     totalFramesAll?: number
@@ -85,7 +85,6 @@
   let isExportingWebM = $state(false)
   let isExportingMP4 = $state(false)
   let isExportingGIF = $state(false)
-  let isGifLibReady = $state(false)
 
   // Unified export dialog
   let showExportDialog = $state(false)
@@ -161,7 +160,6 @@
       if (!gifLibLoaded) {
         throw new Error('Failed to load gif.js library')
       }
-      isGifLibReady = true
 
       // Convert Svelte 5 Proxy objects to plain objects using utility
       const plainBackgroundConfig = convertBackgroundConfigForExport(backgroundConfig, videoCropStore)
@@ -620,7 +618,7 @@
   <!-- Export button or warning -->
   {#if !isRecordingComplete || encodedChunks.length === 0}
     <button
-      class="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-400 text-sm font-medium rounded-lg border border-gray-200 cursor-not-allowed"
+      class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-100 text-gray-400 text-sm font-medium rounded-lg border border-gray-200 cursor-not-allowed"
       disabled
       title={!isRecordingComplete ? t('export_panel_tooltip_incomplete') : t('export_panel_tooltip_no_data')}
     >
@@ -629,7 +627,7 @@
     </button>
   {:else}
     <button
-      class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       disabled={isExporting}
       onclick={openExportDialog}
     >

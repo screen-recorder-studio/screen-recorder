@@ -12,12 +12,9 @@
   import ShadowControl from "$lib/components/ShadowControl.svelte";
   import StudioEmptyState from "$lib/components/studio/StudioEmptyState.svelte";
   import StudioDriveOverlay from "$lib/components/studio/StudioDriveOverlay.svelte";
-  import { _t as t, initI18n, isI18nInitialized } from "$lib/utils/i18n";
+  import { _t as t, initI18n } from "$lib/utils/i18n";
   import { getLatestValidRecording, listRecordings, invalidateRecordingsCache } from "$lib/utils/opfs-recordings";
   import type { RecordingSummary } from "$lib/types/recordings";
-
-  // i18n state for web mode
-  let i18nReady = $state(isI18nInitialized());
 
   // Extension version
   let extensionVersion = $state('')
@@ -280,7 +277,6 @@
   let previewContainerEl = $state<HTMLDivElement | null>(null);
   let previewDisplayW = $state(0);
   let previewDisplayH = $state(0);
-  let resizeObserver: ResizeObserver | null = null;
 
   // Reactively set up ResizeObserver when preview container mounts/unmounts
   $effect(() => {
@@ -297,10 +293,8 @@
       }
     });
     observer.observe(el);
-    resizeObserver = observer;
     return () => {
       observer.disconnect();
-      resizeObserver = null;
     };
   });
 
@@ -346,9 +340,7 @@
       const {
         type,
         summary,
-        meta,
         start,
-        count,
         chunks,
         code,
         message,
@@ -363,7 +355,7 @@
       }
 
       if (isFetchingSingleFrameGOP && type === "singleFrameGOP") {
-        const { targetFrame, targetIndexInGOP, chunks: gopChunks } = ev.data;
+        const { targetIndexInGOP, chunks: gopChunks } = ev.data;
         isFetchingSingleFrameGOP = false;
         singleFrameGOPResolver?.({
           chunks: gopChunks || [],
@@ -492,9 +484,7 @@
     try { extensionVersion = chrome.runtime.getManifest().version } catch {}
 
     // Initialize i18n for web mode
-    initI18n().then(() => {
-      i18nReady = true;
-    }).catch(e => console.error('[Studio] i18n init failed:', e));
+    initI18n().catch(e => console.error('[Studio] i18n init failed:', e));
 
     // Recording resolution: check URL id first, then fallback to latest
     (async () => {
@@ -810,15 +800,15 @@
   {#if !showEmptyState && !isResolvingInitialRecording}
   <div class="w-100 bg-white border-l border-gray-200 flex flex-col h-full">
     <!-- Right panel header: Drive button + Export button -->
-    <div class="flex-shrink-0 px-4 py-3">
+    <div class="flex-shrink-0 px-4 py-2">
       <div class="flex items-center justify-between gap-3">
         <!-- Drive button (replaces license badge position) -->
         <button
-          class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-gray-300 hover:border-blue-400 hover:bg-blue-50 text-gray-600 hover:text-blue-600 transition-all duration-200"
+          class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium rounded-lg border border-blue-200 bg-blue-50 text-blue-700 shadow-sm hover:border-blue-300 hover:bg-blue-100 hover:text-blue-800 transition-all duration-200 whitespace-nowrap"
           onclick={openDrawer}
           title={t('studio_driveTooltip')}
         >
-          <HardDrive class="w-3.5 h-3.5" />
+          <HardDrive class="w-4 h-4 text-blue-600" />
           {t('studio_recentRecordings')}
         </button>
         <!-- Export button -->
@@ -837,7 +827,7 @@
 
     <!-- Scrollable editing content area -->
     <div class="flex-1 overflow-y-auto">
-      <div class="px-4 py-2 space-y-4">
+      <div class="px-4 pt-1 pb-2 space-y-4">
         <!-- Video configuration blocks -->
 
         <!-- Background color selection -->

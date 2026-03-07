@@ -1,16 +1,14 @@
 <script lang="ts">
-  import { Video, HardDrive, CircleDot, ChevronRight } from '@lucide/svelte'
+  import { Video, HardDrive, CircleDot, ChevronRight, X } from '@lucide/svelte'
   import { onMount } from 'svelte'
-  import { _t as t, initI18n, isI18nInitialized } from '$lib/utils/i18n'
+  import { _t as t, initI18n } from '$lib/utils/i18n'
 
-  let i18nReady = $state(isI18nInitialized())
   let extensionVersion = $state('')
   let actionInProgress = $state<string | null>(null)
 
   onMount(async () => {
     try { extensionVersion = chrome.runtime.getManifest().version } catch {}
     await initI18n()
-    i18nReady = true
   })
 
   async function openRecord() {
@@ -57,12 +55,25 @@
 <div class="w-[320px] bg-white font-sans select-none">
   <!-- Header -->
   <div class="px-5 pt-5 pb-3">
-    <h1 class="text-base font-semibold text-gray-900">
-      {t('launcher_title')}
-    </h1>
-    <p class="text-xs text-gray-500 mt-0.5">
-      {t('launcher_subtitle')}
-    </p>
+    <div class="flex items-start justify-between gap-3">
+      <div class="min-w-0">
+        <h1 class="text-base font-semibold text-gray-900">
+          {t('launcher_title')}
+        </h1>
+        <p class="text-xs text-gray-500 mt-0.5">
+          {t('launcher_subtitle')}
+        </p>
+      </div>
+      <button
+        type="button"
+        class="-mr-1 -mt-1 rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+        aria-label={t('drive_close_error')}
+        title={t('drive_close_error')}
+        onclick={() => window.close()}
+      >
+        <X class="w-4 h-4" />
+      </button>
+    </div>
   </div>
 
   <!-- Action cards -->
