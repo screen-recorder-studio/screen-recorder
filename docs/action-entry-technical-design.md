@@ -5,8 +5,8 @@
 - 项目：Screen Recorder Studio
 - 文档类型：技术设计文档
 - 关联文档：
-  - `./action-entry-retention-evaluation.md`
-  - `./action-entry-product-design.md`
+  - `docs/action-entry-retention-evaluation.md`
+  - `docs/action-entry-product-design.md`
 - 设计范围：
   1. Action 菜单入口改造
   2. Drive 直达能力
