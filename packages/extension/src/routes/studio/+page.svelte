@@ -277,10 +277,32 @@
   }
 
   // 预览容器尺寸测量（确保时间轴可见、画布自适应）
-  let previewContainerEl: HTMLDivElement | null = null;
+  let previewContainerEl = $state<HTMLDivElement | null>(null);
   let previewDisplayW = $state(0);
   let previewDisplayH = $state(0);
   let resizeObserver: ResizeObserver | null = null;
+
+  // Reactively set up ResizeObserver when preview container mounts/unmounts
+  $effect(() => {
+    const el = previewContainerEl;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    previewDisplayW = Math.floor(rect.width);
+    previewDisplayH = Math.floor(rect.height);
+    const observer = new ResizeObserver((entries) => {
+      const cr = entries[0]?.contentRect;
+      if (cr) {
+        previewDisplayW = Math.floor(cr.width);
+        previewDisplayH = Math.floor(cr.height);
+      }
+    });
+    observer.observe(el);
+    resizeObserver = observer;
+    return () => {
+      observer.disconnect();
+      resizeObserver = null;
+    };
+  });
 
   const workerStatus = $derived(recordingStore.state.status);
 
@@ -512,35 +534,12 @@
       }
     })()
 
-    // 测量预览容器实际尺寸，驱动自适应布局（确保时间轴始终可见）
-    try {
-      if (previewContainerEl) {
-        const rect = previewContainerEl.getBoundingClientRect();
-        previewDisplayW = Math.floor(rect.width);
-        previewDisplayH = Math.floor(rect.height);
-        resizeObserver = new ResizeObserver((entries) => {
-          const cr = entries[0]?.contentRect;
-          if (cr) {
-            previewDisplayW = Math.floor(cr.width);
-            previewDisplayH = Math.floor(cr.height);
-          }
-        });
-        resizeObserver.observe(previewContainerEl);
-      }
-    } catch (e) {
-      console.warn("[layout] ResizeObserver setup failed:", e);
-    }
-
     return () => {
       try {
         workerCurrentWorker?.postMessage({ type: "close" });
       } catch {}
       workerCurrentWorker?.terminate?.();
       workerCurrentWorker = null;
-      try {
-        resizeObserver?.disconnect?.();
-      } catch {}
-      resizeObserver = null;
     };
   });
 
