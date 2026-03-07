@@ -1248,3 +1248,133 @@ Studio 通过 `id` 读取录制目录。
 - 现有 i18n 与独立 route 架构
 
 从工程视角看，这不是一次高风险架构变更，而是一次**入口组织、页面职责和共享查询层的重构**。
+
+---
+
+## 16. 实施评估与技术微调
+
+> 本节为实施阶段补充，记录对原技术方案评估后的微调。
+
+### 16.1 技术方案评估结论
+
+经过对当前代码的深入评估，原技术方案总体合理，仅做以下微调：
+
+#### 微调一：`OPEN_LATEST_RECORDING` 简化为"打开空参数 Studio"
+
+原方案建议 background 通过 OPFS 查询获取最新录制后拼接 `studio.html?id=...`。评估后发现：
+
+- Service Worker 环境下访问 OPFS 稳定性不如页面上下文
+- Studio 页面本身已经需要 OPFS 读取能力
+- 双重查询（background 查一次 + Studio 再加载一次）增加了不必要的延迟
+
+**微调方案**：`OPEN_LATEST_RECORDING` 只负责打开 `studio.html`（不带 id），Studio 页面自行执行 `getLatestValidRecording()` fallback。这是技术文档中 5.2 节"background 负责打开，studio 负责兜底"的双保险设计的简化落地。
+
+#### 微调二：Drive 组件不改造，新建 StudioDrawer
+
+原方案建议方案 A（轻改 RecordingList 增加 drawer mode），评估后选择独立方案：
+
+- `RecordingList.svelte` + `RecordingCard.svelte` 包含缩略图生成、预览模态框等重逻辑
+- Drawer 只需要列表 + 选中态 + 删除按钮
+- 新建独立 `StudioDrawer.svelte` 更轻量、职责更清晰
+- 数据来源复用 `listRecordings()`，不重复 OPFS 逻辑
+
+#### 微调三：`_t()` 调用不使用 fallback 参数
+
+原方案未说明 fallback 策略。评估 `_t()` 函数签名后确认：
+
+- 第三参数 `fallbackMessages` 是 `Record<string, string>` 类型（消息字典），非单个 fallback 字符串
+- 所有新增 key 已覆盖全部 15 个 locale，无需运行时 fallback
+- Chrome 扩展环境下 `chrome.i18n.getMessage()` 可直接读取 locale 文件
+
+### 16.2 文件变更清单
+
+| 文件 | 变更类型 | 说明 |
+|------|---------|------|
+| `lib/types/recordings.ts` | 新增 | 共享 RecordingSummary 类型 |
+| `lib/utils/opfs-recordings.ts` | 新增 | 共享 OPFS 查询层 |
+| `lib/components/studio/StudioEmptyState.svelte` | 新增 | Studio 空状态组件 |
+| `lib/components/studio/StudioDrawer.svelte` | 新增 | Studio 内嵌 Drive 抽屉 |
+| `extensions/background.ts` | 修改 | 抽取 openOrFocusControlWindow()；新增消息处理 |
+| `routes/popup/+page.svelte` | 重写 | 从录制面板改为 3 卡片 Launcher |
+| `routes/studio/+page.svelte` | 修改 | 支持无 id fallback、空状态、Drawer 集成 |
+| `routes/drive/+page.svelte` | 修改 | 使用共享 opfs-recordings 层替代内联逻辑 |
+| `static/manifest.json` | 修改 | 增加 action.default_popup |
+| `static/_locales/*/messages.json` | 修改 | 新增 27 个 key（覆盖 15 个 locale） |
+
+---
+
+## 17. 端到端任务清单
+
+> 以下清单覆盖产品设计文档和技术设计文档中的所有任务。
+
+### Phase 1：共享层与后台能力
+
+- [x] 1.1 创建 `RecordingSummary` 共享类型（`lib/types/recordings.ts`）
+- [x] 1.2 创建 `opfs-recordings.ts` 共享查询层
+  - [x] `listRecordings()` 带 30s TTL 缓存
+  - [x] `getLatestValidRecording()` 按 createdAt 倒序 + 可用性校验
+  - [x] `isRecordingUsable()` 校验 meta.json / data.bin / index.jsonl
+  - [x] `invalidateRecordingsCache()` 缓存失效
+- [x] 1.3 抽取 `openOrFocusControlWindow()` 为可复用函数
+- [x] 1.4 新增 `OPEN_CONTROL_WINDOW` 消息处理
+- [x] 1.5 新增 `OPEN_DRIVE` 消息处理
+- [x] 1.6 新增 `OPEN_LATEST_RECORDING` 消息处理
+- [x] 1.7 将新消息类型加入 `globalTypes` 集合
+
+### Phase 2：Action Launcher
+
+- [x] 2.1 将 `/popup` 从录制面板改造为 3 卡片 Launcher
+  - [x] 录制卡：发送 OPEN_CONTROL_WINDOW → 关闭 popup
+  - [x] Drive 卡：发送 OPEN_DRIVE → 关闭 popup
+  - [x] Studio 卡：发送 OPEN_LATEST_RECORDING → 关闭 popup
+- [x] 2.2 更新 manifest.json：`action.default_popup = "popup.html"`
+- [x] 2.3 保留 `chrome.action.onClicked` 作为降级兼容
+- [x] 2.4 新增 Launcher i18n key（launcher_* 系列，15 个 locale）
+
+### Phase 3：Studio fallback 与空状态
+
+- [x] 3.1 Studio 支持无 `id` 参数打开
+  - [x] 使用 `getLatestValidRecording()` 自动加载最近可用录制
+  - [x] URL 使用 `history.replaceState` 更新为 `?id=...`
+- [x] 3.2 创建 `StudioEmptyState.svelte` 组件
+  - [x] 支持 4 种 reason：no-recording / invalid-recording / opfs-unavailable / load-failed
+  - [x] 主按钮：开始录制（→ OPEN_CONTROL_WINDOW）
+  - [x] 次按钮：打开 Drive（→ OPEN_DRIVE）
+  - [x] 辅助说明：预览 / 裁剪与美化 / 导出
+- [x] 3.3 新增 loading 态（resolving initial recording）
+- [x] 3.4 空状态时隐藏右侧编辑面板
+- [x] 3.5 抽取 `loadRecordingById()` 为可复用函数
+- [x] 3.6 新增 Studio 空状态 i18n key（studio_empty* 系列，15 个 locale）
+
+### Phase 4：Studio Drive Drawer
+
+- [x] 4.1 创建 `StudioDrawer.svelte` 组件
+  - [x] 右侧覆盖式抽屉，带遮罩与关闭按钮
+  - [x] 录制列表：名称 / 相对时间 / 时长 / 大小
+  - [x] 当前选中态高亮
+  - [x] 单条删除能力
+  - [x] "打开完整 Drive" 二级入口
+- [x] 4.2 Studio 顶部 Drive 按钮改为打开 Drawer
+- [x] 4.3 Drawer 数据来源：`listRecordings(true)`（强制刷新）
+- [x] 4.4 切换录制逻辑：
+  - [x] 关闭当前 reader worker
+  - [x] 重置所有页面状态
+  - [x] 使用 `loadRecordingById()` 加载新录制
+  - [x] `history.replaceState` 更新 URL
+- [x] 4.5 删除当前录制时的处理：
+  - [x] 自动切换到下一条可用录制
+  - [x] 若列表为空则进入空状态
+  - [x] URL 清理
+- [x] 4.6 新增 Drawer i18n key（drive_drawer* 系列，15 个 locale）
+
+### Phase 5：Drive 页面重构
+
+- [x] 5.1 使用共享 `opfs-recordings.ts` 替代内联 OPFS 逻辑
+- [x] 5.2 删除后调用 `invalidateRecordingsCache()`
+
+### Phase 6：验证
+
+- [x] 6.1 类型检查通过（无新增错误）
+- [x] 6.2 扩展构建通过
+- [x] 6.3 代码审查
+- [x] 6.4 安全扫描
