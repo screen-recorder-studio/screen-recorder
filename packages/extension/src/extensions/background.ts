@@ -135,17 +135,21 @@ chrome.runtime.onInstalled.addListener((details) => {
   }
 })
 
-// Control window management - open control page when clicking extension icon
+// Control window management
 let controlWinId: number | null = null;
 
-chrome.action.onClicked.addListener(async () => {
+/**
+ * Open or focus the Control window.  Reusable by:
+ *  – OPEN_CONTROL_WINDOW message (from Launcher / Studio empty state)
+ *  – chrome.action.onClicked fallback (if popup is not set)
+ */
+async function openOrFocusControlWindow(): Promise<void> {
   // If control window exists, focus it
   if (controlWinId !== null) {
     try {
       await chrome.windows.update(controlWinId, { focused: true });
       return;
     } catch {
-      // Window no longer exists
       controlWinId = null;
     }
   }
@@ -161,11 +165,10 @@ chrome.action.onClicked.addListener(async () => {
         return;
       }
     }
-  } catch (e) {
+  } catch {
     // Window recovery failed, will create new window
   }
 
-  // Open new control window
   const controlWidth = 360;
   const controlHeight = 470;
 
@@ -186,7 +189,7 @@ chrome.action.onClicked.addListener(async () => {
       height: controlHeight,
       left,
       top,
-      focused: true
+      focused: true,
     });
 
     if (win?.id) {
@@ -195,7 +198,10 @@ chrome.action.onClicked.addListener(async () => {
   } catch (e) {
     console.error('Failed to open control window:', e);
   }
-});
+}
+
+// Fallback: if manifest does not specify default_popup, keep action click working
+chrome.action.onClicked.addListener(() => openOrFocusControlWindow());
 
 // Clean up control window ID when window is closed
 chrome.windows.onRemoved.addListener((windowId) => {
@@ -215,7 +221,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // 处理 lab 功能的消息类型
   if (message.type) {
     const tabId = sender.tab?.id ?? message.tabId;
-    const globalTypes = new Set(['REQUEST_START_RECORDING','REQUEST_STOP_RECORDING','REQUEST_RECORDING_STATE','REQUEST_TOGGLE_PAUSE','OFFSCREEN_START_RECORDING','OFFSCREEN_STOP_RECORDING','REQUEST_OFFSCREEN_PING','GET_RECORDING_STATE','RECORDING_COMPLETE','OPFS_RECORDING_READY','STREAM_START','STREAM_META','STREAM_END','STREAM_ERROR','BADGE_TICK']);
+    const globalTypes = new Set(['REQUEST_START_RECORDING','REQUEST_STOP_RECORDING','REQUEST_RECORDING_STATE','REQUEST_TOGGLE_PAUSE','OFFSCREEN_START_RECORDING','OFFSCREEN_STOP_RECORDING','REQUEST_OFFSCREEN_PING','GET_RECORDING_STATE','RECORDING_COMPLETE','OPFS_RECORDING_READY','STREAM_START','STREAM_META','STREAM_END','STREAM_ERROR','BADGE_TICK','OPEN_CONTROL_WINDOW','OPEN_DRIVE','OPEN_LATEST_RECORDING']);
     let state: any;
     if (!globalTypes.has(message.type)) {
       if (!tabId) return;
@@ -592,6 +598,49 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             try { sendResponse({ ok: true, paused: newPaused }) } catch (e) {}
           } catch (e) {
             try { sendResponse(toErrorResponse(e)) } catch (_) {}
+          }
+        })()
+        return true;
+      }
+
+      // ---- Launcher / entry messages ----
+      case 'OPEN_CONTROL_WINDOW': {
+        (async () => {
+          try {
+            await openOrFocusControlWindow()
+            try { sendResponse({ ok: true }) } catch {}
+          } catch (e) {
+            try { sendResponse({ ok: false, error: String(e) }) } catch {}
+          }
+        })()
+        return true;
+      }
+
+      case 'OPEN_DRIVE': {
+        (async () => {
+          try {
+            const driveUrl = chrome.runtime.getURL('drive.html')
+            await chrome.tabs.create({ url: driveUrl })
+            try { sendResponse({ ok: true }) } catch {}
+          } catch (e) {
+            try { sendResponse({ ok: false, error: String(e) }) } catch {}
+          }
+        })()
+        return true;
+      }
+
+      case 'OPEN_LATEST_RECORDING': {
+        // Open Studio with the latest recording, or empty Studio if none exists.
+        // The actual "latest recording" resolution is done by Studio itself –
+        // background just opens studio.html (without id) and lets Studio perform
+        // the OPFS lookup in its own page context where OPFS is fully available.
+        (async () => {
+          try {
+            const studioUrl = chrome.runtime.getURL('studio.html')
+            await chrome.tabs.create({ url: studioUrl })
+            try { sendResponse({ ok: true }) } catch {}
+          } catch (e) {
+            try { sendResponse({ ok: false, error: String(e) }) } catch {}
           }
         })()
         return true;

@@ -19,7 +19,8 @@
     "type": "module"
   },
   "action": {
-    "default_title": "__MSG_action_defaultTitle__"
+    "default_title": "__MSG_action_defaultTitle__",
+    "default_popup": "popup.html"
   },
   "icons": {
     "16": "assets/icon16.png",

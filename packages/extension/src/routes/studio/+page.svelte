@@ -10,7 +10,11 @@
   import PaddingControl from "$lib/components/PaddingControl.svelte";
   import AspectRatioControl from "$lib/components/AspectRatioControl.svelte";
   import ShadowControl from "$lib/components/ShadowControl.svelte";
+  import StudioEmptyState from "$lib/components/studio/StudioEmptyState.svelte";
+  import StudioDrawer from "$lib/components/studio/StudioDrawer.svelte";
   import { _t as t, initI18n, isI18nInitialized } from "$lib/utils/i18n";
+  import { getLatestValidRecording, listRecordings, invalidateRecordingsCache } from "$lib/utils/opfs-recordings";
+  import type { RecordingSummary } from "$lib/types/recordings";
 
   // i18n state for web mode
   let i18nReady = $state(isI18nInitialized());
@@ -20,6 +24,19 @@
 
   // 当前会话的 OPFS 目录 id（用于导出时触发只读日志）
   let opfsDirId = $state("");
+
+  // Studio shell state: resolving → ready | empty | error
+  let showEmptyState = $state(false)
+  let emptyStateReason = $state<'no-recording' | 'invalid-recording' | 'opfs-unavailable' | 'load-failed'>('no-recording')
+  let isResolvingInitialRecording = $state(true)
+
+  // Drive drawer state
+  let showDriveDrawer = $state(false)
+  let drawerRecordings = $state<RecordingSummary[]>([])
+  let drawerLoading = $state(false)
+
+  // Current recording id for drawer highlighting
+  let currentRecordingId = $state('')
 
   // Worker 录制数据收集
   let workerEncodedChunks = $state<any[]>([]);
@@ -267,6 +284,186 @@
 
   const workerStatus = $derived(recordingStore.state.status);
 
+  /**
+   * Load a recording by its OPFS directory id.
+   * Extracted so it can be called from onMount *and* from the drawer switch.
+   */
+  function loadRecordingById(dirId: string) {
+    // Clean up previous worker
+    try { workerCurrentWorker?.postMessage({ type: "close" }) } catch {}
+    workerCurrentWorker?.terminate?.()
+    workerCurrentWorker = null
+
+    // Reset state
+    workerEncodedChunks = []
+    durationMs = 0
+    windowStartMs = 0
+    windowEndMs = 0
+    globalTotalFrames = 0
+    windowStartIndex = 0
+    keyframeInfo = null
+    isPrefetchingRange = false
+    prefetchRangeResolver = null
+    isFetchingSingleFrameGOP = false
+    singleFrameGOPResolver = null
+
+    opfsDirId = dirId
+    currentRecordingId = dirId
+    showEmptyState = false
+
+    if (!dirId) return
+
+    const readerWorker = new Worker(
+      new URL("$lib/workers/opfs-reader-worker.ts", import.meta.url),
+      { type: "module" },
+    );
+
+    workerCurrentWorker = readerWorker;
+
+    readerWorker.onmessage = (ev: MessageEvent<any>) => {
+      const {
+        type,
+        summary,
+        meta,
+        start,
+        count,
+        chunks,
+        code,
+        message,
+        keyframeInfo: receivedKeyframeInfo,
+      } = ev.data || {};
+
+      if (isPrefetchingRange && type === "range") {
+        isPrefetchingRange = false;
+        prefetchRangeResolver?.({ start, chunks });
+        prefetchRangeResolver = null;
+        return;
+      }
+
+      if (isFetchingSingleFrameGOP && type === "singleFrameGOP") {
+        const { targetFrame, targetIndexInGOP, chunks: gopChunks } = ev.data;
+        isFetchingSingleFrameGOP = false;
+        singleFrameGOPResolver?.({
+          chunks: gopChunks || [],
+          targetIndexInGOP: targetIndexInGOP ?? 0,
+        });
+        singleFrameGOPResolver = null;
+        return;
+      }
+
+      if (type === "ready") {
+        if (summary?.durationMs) durationMs = summary.durationMs;
+        if (summary?.totalChunks) globalTotalFrames = summary.totalChunks;
+        if (receivedKeyframeInfo) keyframeInfo = receivedKeyframeInfo;
+
+        const initialFrameCount = Math.min(90, globalTotalFrames);
+        readerWorker.postMessage({
+          type: "getRange",
+          start: 0,
+          count: initialFrameCount,
+        });
+      } else if (type === "range") {
+        if (Array.isArray(chunks) && chunks.length > 0) {
+          workerEncodedChunks = chunks;
+          windowStartIndex = typeof start === "number" ? start : 0;
+
+          const firstGlobalTimestamp =
+            summary?.firstTimestamp || chunks[0]?.timestamp || 0;
+          const windowStartTimestamp = chunks[0]?.timestamp || 0;
+          const windowEndTimestamp =
+            chunks[chunks.length - 1]?.timestamp || 0;
+
+          windowStartMs = Math.floor(
+            (windowStartTimestamp - firstGlobalTimestamp) / 1000,
+          );
+          windowEndMs = Math.floor(
+            (windowEndTimestamp - firstGlobalTimestamp) / 1000,
+          );
+
+          recordingStore.updateStatus("completed");
+          recordingStore.setEngine("webcodecs");
+        } else {
+          console.warn("⚠️ [OPFSReader] Empty range received");
+        }
+      } else if (type === "error") {
+        console.error("❌ [OPFSReader] Error:", code, message);
+        // If the specified recording cannot be loaded, show empty state
+        showEmptyState = true
+        emptyStateReason = 'load-failed'
+      }
+    };
+
+    readerWorker.postMessage({ type: "open", dirId });
+  }
+
+  /** Handle start-recording from empty state or drawer */
+  function handleStartRecording() {
+    try {
+      chrome.runtime.sendMessage({ type: 'OPEN_CONTROL_WINDOW' })
+    } catch {
+      window.open('/control.html', '_blank')
+    }
+  }
+
+  /** Handle open-drive from empty state */
+  function handleOpenDrive() {
+    try {
+      chrome.runtime.sendMessage({ type: 'OPEN_DRIVE' })
+    } catch {
+      window.open('/drive.html', '_blank')
+    }
+  }
+
+  /** Open the drive drawer */
+  async function openDrawer() {
+    showDriveDrawer = true
+    drawerLoading = true
+    try {
+      drawerRecordings = await listRecordings(true)
+    } catch (e) {
+      console.warn('[Studio] Failed to load drawer recordings:', e)
+      drawerRecordings = []
+    } finally {
+      drawerLoading = false
+    }
+  }
+
+  /** Switch to a different recording from the drawer */
+  function handleDrawerSelect(recording: RecordingSummary) {
+    showDriveDrawer = false
+    loadRecordingById(recording.id)
+    // Update URL without creating a new history entry
+    try {
+      history.replaceState(null, '', `/studio.html?id=${encodeURIComponent(recording.id)}`)
+    } catch {}
+  }
+
+  /** Handle recording deletion from drawer */
+  async function handleDrawerDelete(id: string) {
+    try {
+      const root = await navigator.storage.getDirectory()
+      await root.removeEntry(id, { recursive: true })
+      invalidateRecordingsCache()
+      // Remove from drawer list
+      drawerRecordings = drawerRecordings.filter(r => r.id !== id)
+      // If deleted the current recording, switch to next or empty state
+      if (id === currentRecordingId) {
+        if (drawerRecordings.length > 0) {
+          handleDrawerSelect(drawerRecordings[0])
+        } else {
+          showEmptyState = true
+          emptyStateReason = 'no-recording'
+          currentRecordingId = ''
+          opfsDirId = ''
+          workerEncodedChunks = []
+          try { history.replaceState(null, '', '/studio.html') } catch {}
+        }
+      }
+    } catch (e) {
+      console.error('[Studio] Failed to delete recording:', e)
+    }
+  }
+
   // 组件挂载时的初始化
   onMount(() => {
     // Load extension version
@@ -277,103 +474,43 @@
       i18nReady = true;
     }).catch(e => console.error('[Studio] i18n init failed:', e));
 
-    // 检查扩展环境
-    // checkExtensionEnvironment()
+    // Recording resolution: check URL id first, then fallback to latest
+    (async () => {
+      try {
+        const params = new URLSearchParams(location.search);
+        const dirId = params.get("id") || "";
 
-    // 基于 OPFSReaderWorker 打开录制并获取首批编码块
-    try {
-      const params = new URLSearchParams(location.search);
-      const dirId = params.get("id") || "";
-      opfsDirId = dirId;
-      if (dirId && workerEncodedChunks.length === 0) {
-        const readerWorker = new Worker(
-          new URL("$lib/workers/opfs-reader-worker.ts", import.meta.url),
-          { type: "module" },
-        );
-
-        workerCurrentWorker = readerWorker;
-
-        // 监听 Reader 事件
-        readerWorker.onmessage = (ev: MessageEvent<any>) => {
-          const {
-            type,
-            summary,
-            meta,
-            start,
-            count,
-            chunks,
-            code,
-            message,
-            keyframeInfo: receivedKeyframeInfo,
-          } = ev.data || {};
-
-          // 拦截：如果是预取模式下收到的 range，则只交给预取 resolver，不更新UI状态
-          if (isPrefetchingRange && type === "range") {
-            isPrefetchingRange = false;
-            prefetchRangeResolver?.({ start, chunks });
-            prefetchRangeResolver = null;
-            return;
-          }
-
-          // Intercept: Single-frame GOP preview response
-          if (isFetchingSingleFrameGOP && type === "singleFrameGOP") {
-            const { targetFrame, targetIndexInGOP, chunks: gopChunks } = ev.data;
-            isFetchingSingleFrameGOP = false;
-            singleFrameGOPResolver?.({
-              chunks: gopChunks || [],
-              targetIndexInGOP: targetIndexInGOP ?? 0,
-            });
-            singleFrameGOPResolver = null;
-            return;
-          }
-
-          if (type === "ready") {
-            if (summary?.durationMs) durationMs = summary.durationMs;
-            if (summary?.totalChunks) globalTotalFrames = summary.totalChunks;
-            if (receivedKeyframeInfo) keyframeInfo = receivedKeyframeInfo;
-
-            const initialFrameCount = Math.min(90, globalTotalFrames);
-            readerWorker.postMessage({
-              type: "getRange",
-              start: 0,
-              count: initialFrameCount,
-            });
-          } else if (type === "range") {
-            if (Array.isArray(chunks) && chunks.length > 0) {
-              workerEncodedChunks = chunks;
-              windowStartIndex = typeof start === "number" ? start : 0;
-
-              const firstGlobalTimestamp =
-                summary?.firstTimestamp || chunks[0]?.timestamp || 0;
-              const windowStartTimestamp = chunks[0]?.timestamp || 0;
-              const windowEndTimestamp =
-                chunks[chunks.length - 1]?.timestamp || 0;
-
-              windowStartMs = Math.floor(
-                (windowStartTimestamp - firstGlobalTimestamp) / 1000,
-              );
-              windowEndMs = Math.floor(
-                (windowEndTimestamp - firstGlobalTimestamp) / 1000,
-              );
-
-              recordingStore.updateStatus("completed");
-              recordingStore.setEngine("webcodecs");
+        if (dirId) {
+          // Mode A: explicit id
+          loadRecordingById(dirId)
+          isResolvingInitialRecording = false
+        } else {
+          // Mode B: no id – try to find the latest usable recording
+          try {
+            const latest = await getLatestValidRecording(true)
+            if (latest) {
+              loadRecordingById(latest.id)
+              try {
+                history.replaceState(null, '', `/studio.html?id=${encodeURIComponent(latest.id)}`)
+              } catch {}
             } else {
-              console.warn("⚠️ [OPFSReader] Empty range received");
+              showEmptyState = true
+              emptyStateReason = 'no-recording'
             }
-          } else if (type === "error") {
-            console.error("❌ [OPFSReader] Error:", code, message);
+          } catch (e) {
+            console.error('[Studio] Failed to resolve latest recording:', e)
+            showEmptyState = true
+            emptyStateReason = (typeof navigator.storage?.getDirectory === 'function') ? 'no-recording' : 'opfs-unavailable'
           }
-        };
-
-        // 打开目录
-        readerWorker.postMessage({ type: "open", dirId });
+          isResolvingInitialRecording = false
+        }
+      } catch (error) {
+        console.error("❌ [Studio] Failed to open OPFS recording:", error);
+        showEmptyState = true
+        emptyStateReason = 'load-failed'
+        isResolvingInitialRecording = false
       }
-    } catch (error) {
-      console.error("❌ [Studio] Failed to open OPFS recording:", error);
-    }
-
-    // 结束 OPFSReader 初始化
+    })()
 
     // 测量预览容器实际尺寸，驱动自适应布局（确保时间轴始终可见）
     try {
@@ -395,11 +532,6 @@
     }
 
     return () => {
-      // if (typeof chrome !== 'undefined' && chrome.runtime) {
-      //   chrome.runtime.onMessage.removeListener(messageListener)
-      // }
-      // 清理元素录制监听器
-      // elementRecordingIntegration.removeListener(elementRecordingListener)
       try {
         workerCurrentWorker?.postMessage({ type: "close" });
       } catch {}
@@ -623,13 +755,13 @@
           </a>
           <button
             class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-300 hover:border-blue-400 hover:bg-white/70 hover:shadow-sm transition-all duration-200 group text-sm"
-            onclick={() => window.open("/drive.html", "_blank")}
+            onclick={openDrawer}
             title={t('studio_driveTooltip')}
           >
             <HardDrive
               class="w-4 h-4 text-gray-600 group-hover:text-blue-600 transition-colors duration-200"
             />
-            <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">{t('studio_driveText')}</span>
+            <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">{t('studio_recentRecordings')}</span>
           </button>
         </div>
       </div>
@@ -637,35 +769,52 @@
 
     <!-- Preview player content area -->
     <div class="flex-1 min-h-0 flex flex-col relative">
-      <!-- Using new VideoPreviewComposite component -->
-      <div
-        class="flex-1 min-h-0 flex items-stretch justify-center"
-        bind:this={previewContainerEl}
-      >
-        <VideoPreviewComposite
-          encodedChunks={workerEncodedChunks}
-          isRecordingComplete={workerStatus === "completed" ||
-            workerStatus === "idle"}
-          displayWidth={previewDisplayW}
-          displayHeight={previewDisplayH}
-          showControls={true}
-          showTimeline={true}
-          {durationMs}
-          {windowStartMs}
-          {windowEndMs}
-          totalFramesAll={globalTotalFrames}
-          {windowStartIndex}
-          {keyframeInfo}
-          onRequestWindow={handleWindowRequest}
-          {fetchWindowData}
-          {fetchSingleFrameGOP}
-          className="worker-video-preview w-full h-full"
+      {#if isResolvingInitialRecording}
+        <!-- Loading state while resolving initial recording -->
+        <div class="flex-1 flex items-center justify-center">
+          <div class="text-center">
+            <div class="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+            <p class="text-sm text-gray-500">{t('studio_loading')}</p>
+          </div>
+        </div>
+      {:else if showEmptyState}
+        <StudioEmptyState
+          reason={emptyStateReason}
+          onStartRecording={handleStartRecording}
+          onOpenDrive={handleOpenDrive}
         />
-      </div>
+      {:else}
+        <!-- Using new VideoPreviewComposite component -->
+        <div
+          class="flex-1 min-h-0 flex items-stretch justify-center"
+          bind:this={previewContainerEl}
+        >
+          <VideoPreviewComposite
+            encodedChunks={workerEncodedChunks}
+            isRecordingComplete={workerStatus === "completed" ||
+              workerStatus === "idle"}
+            displayWidth={previewDisplayW}
+            displayHeight={previewDisplayH}
+            showControls={true}
+            showTimeline={true}
+            {durationMs}
+            {windowStartMs}
+            {windowEndMs}
+            totalFramesAll={globalTotalFrames}
+            {windowStartIndex}
+            {keyframeInfo}
+            onRequestWindow={handleWindowRequest}
+            {fetchWindowData}
+            {fetchSingleFrameGOP}
+            className="worker-video-preview w-full h-full"
+          />
+        </div>
+      {/if}
     </div>
   </div>
 
   <!-- Right editing panel - allows scrolling -->
+  {#if !showEmptyState && !isResolvingInitialRecording}
   <div class="w-100 bg-white border-l border-gray-200 flex flex-col h-full">
     <!-- Editing panel header - license badge + export button -->
     <div class="flex-shrink-0 px-4 py-3">
@@ -712,7 +861,21 @@
       </div>
     </div>
   </div>
+  {/if}
 </div>
+
+<!-- Drive drawer overlay -->
+{#if showDriveDrawer}
+  <StudioDrawer
+    recordings={drawerRecordings}
+    isLoading={drawerLoading}
+    selectedRecordingId={currentRecordingId}
+    onSelect={handleDrawerSelect}
+    onDelete={handleDrawerDelete}
+    onClose={() => { showDriveDrawer = false }}
+    onOpenDriveFull={() => { window.open('/drive.html', '_blank') }}
+  />
+{/if}
 
 <style>
   /* Custom animation classes */
