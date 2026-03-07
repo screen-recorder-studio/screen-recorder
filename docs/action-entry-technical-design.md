@@ -928,7 +928,7 @@ Studio 最近录制选择必须只针对“已完成录制”。
 - `meta.json` 可读
 - `data.bin` / `index.jsonl` 存在
 
-不要依赖 `currentRecording.isRecording === false` 作为唯一依据。  
+不要只依赖 `packages/extension/src/extensions/background.ts` 中运行时状态对象 `currentRecording.isRecording === false` 作为唯一依据。  
 因为页面刷新、后台重启、残留目录等情况都会导致状态与资产不同步。
 
 ---
