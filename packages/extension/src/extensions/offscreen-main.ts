@@ -62,6 +62,7 @@
   let wcReader: ReadableStreamDefaultReader<VideoFrame> | null = null
   let wcFrameLoopActive = false
   let wcWorkerPreloaded = false  // ✅ Track if worker was preloaded
+  let isStarting = false  // Guard against concurrent start requests
 
   // OPFS writer (side-write) state
   const OPFS_WRITER_ENABLED = true
@@ -71,8 +72,104 @@
   let opfsLastMeta: any = null
   const opfsPendingChunks: Array<{ data: any; timestamp?: number; type?: string; codedWidth?: number; codedHeight?: number; codec?: string }> = []
   let opfsEndPending = false
+  let opfsInitPromise: Promise<void> | null = null
+  let resolveOpfsInit: (() => void) | null = null
+  let rejectOpfsInit: ((error: any) => void) | null = null
 
   function ensureOpfsSessionId() { if (!opfsSessionId) opfsSessionId = `${Date.now()}`; return opfsSessionId }
+
+  function getErrorMessage(error: any, fallback = 'Unknown error') {
+    if (error instanceof Error && typeof error.message === 'string' && error.message.trim()) return error.message
+    if (typeof error?.message === 'string' && error.message.trim()) return error.message
+    if (typeof error === 'string' && error.trim()) return error
+    return fallback
+  }
+
+  function createErrorWithCode(message: string, code?: string) {
+    const error: any = new Error(message)
+    if (code) error.code = code
+    return error
+  }
+
+  function emitStreamWarning(warning: string, code?: string) {
+    try { chrome.runtime?.sendMessage({ type: 'STREAM_WARNING', warning, code }) } catch {}
+  }
+
+  function emitStreamError(error: string, code?: string) {
+    try { chrome.runtime?.sendMessage({ type: 'STREAM_ERROR', error, code }) } catch {}
+  }
+
+  function clearOpfsInitState() {
+    opfsInitPromise = null
+    resolveOpfsInit = null
+    rejectOpfsInit = null
+  }
+
+  function resolveOpfsInitIfPending() {
+    const resolve = resolveOpfsInit
+    clearOpfsInitState()
+    try { resolve?.() } catch {}
+  }
+
+  function rejectOpfsInitIfPending(error: any) {
+    const reject = rejectOpfsInit
+    clearOpfsInitState()
+    if (!reject) return false
+    try { reject(error) } catch {}
+    return true
+  }
+
+  function resetOpfsWriterState() {
+    try { opfsWriter?.terminate() } catch {}
+    opfsWriter = null
+    opfsWriterReady = false
+    opfsSessionId = null
+    opfsLastMeta = null
+    opfsPendingChunks.length = 0
+    opfsEndPending = false
+    clearOpfsInitState()
+  }
+
+  function cleanupFailedStart() {
+    try { stopBadgeTicker() } catch {}
+    try { wcFrameLoopActive = false; wcWorker?.postMessage({ type: 'stop' }) } catch {}
+    wcWorker = null
+    wcReader = null
+    if (currentStream) {
+      try {
+        currentStream.getTracks().forEach((track) => {
+          try { track.stop() } catch {}
+        })
+      } catch {}
+      currentStream = null
+    }
+    mediaRecorder = null
+    recordedChunks = []
+    isPaused = false
+    recordingStartTime = null
+    resetOpfsWriterState()
+  }
+
+  function handleOpfsWriterWarning(payload: any) {
+    const warning = getErrorMessage(payload?.message || payload?.warning, 'Storage space is running low. Recording may fail.')
+    const code = typeof payload?.code === 'string' && payload.code.trim() ? payload.code : 'STORAGE_LOW_WARNING'
+    log('[Offscreen][OPFS] warning:', payload)
+    emitStreamWarning(warning, code)
+  }
+
+  function handleOpfsWriterFatalError(payload: any) {
+    const code = typeof payload?.code === 'string' && payload.code.trim() ? payload.code : 'OPFS_WRITE_ERROR'
+    const message = getErrorMessage(payload?.message || payload?.error, 'Failed to write recording data')
+    const error = createErrorWithCode(message, code)
+    const wasWaitingForInit = rejectOpfsInitIfPending(error)
+    log('[Offscreen][OPFS] fatal error:', payload)
+    resetOpfsWriterState()
+    if (wasWaitingForInit) return
+    emitStreamError(message, code)
+    if (isRecording) {
+      stopRecordingInternal()
+    }
+  }
 
   function normalizeMeta(m: any) {
     if (!m) return {} as any
@@ -81,31 +178,44 @@
     return { codec: m.codec || 'vp8', width: metaW ?? 1920, height: metaH ?? 1080, fps: m.framerate || m.fps || 30 }
   }
 
-  function initOpfsWriter(meta?: any) {
+  async function initOpfsWriter(meta?: any): Promise<void> {
     if (!OPFS_WRITER_ENABLED) return
+    if (opfsWriterReady) return
+    if (opfsInitPromise) return opfsInitPromise
     if (opfsWriter) return
     opfsWriterReady = false
     opfsLastMeta = normalizeMeta(meta || opfsLastMeta)
+    opfsInitPromise = new Promise<void>((resolve, reject) => {
+      resolveOpfsInit = resolve
+      rejectOpfsInit = reject
+    })
     try {
       opfsWriter = new Worker(new URL('../lib/workers/opfs-writer-worker.ts', import.meta.url), { type: 'module' })
       const id = ensureOpfsSessionId()
       opfsWriter.onmessage = (ev: MessageEvent) => {
         const d: any = ev.data || {}
-        if (d.type === 'ready') { opfsWriterReady = true; flushOpfsPendingIfReady() }
+        if (d.type === 'ready') { opfsWriterReady = true; resolveOpfsInitIfPending(); flushOpfsPendingIfReady() }
+        else if (d.type === 'warning') { handleOpfsWriterWarning(d) }
         else if (d.type === 'progress') { /* light log omitted */ }
+        else if (d.type === 'error') { handleOpfsWriterFatalError(d) }
         else if (d.type === 'finalized') {
           try {
             log('[stop-share] offscreen: sending OPFS_RECORDING_READY')
             chrome.runtime?.sendMessage({ type: 'OPFS_RECORDING_READY', id: `rec_${d?.id ?? id}`, meta: opfsLastMeta })
           } catch {}
+          clearOpfsInitState()
           try { opfsWriter?.terminate() } catch {}
-          opfsWriter = null; opfsWriterReady = false; opfsSessionId = null
+          opfsWriter = null; opfsWriterReady = false; opfsSessionId = null; opfsLastMeta = null; opfsPendingChunks.length = 0; opfsEndPending = false
         }
       }
       opfsWriter.postMessage({ type: 'init', id, meta: opfsLastMeta })
+      return opfsInitPromise
     } catch (e) {
       log('[Offscreen][OPFS] failed to start writer', e)
-      opfsWriter = null; opfsWriterReady = false
+      const error = createErrorWithCode(getErrorMessage(e, 'Failed to start OPFS writer'), 'OPFS_INIT_ERROR')
+      rejectOpfsInitIfPending(error)
+      resetOpfsWriterState()
+      throw error
     }
   }
 
@@ -295,6 +405,13 @@
     const timestamp = new Date().toISOString()
     log(`🎯 [${timestamp}] Starting recording directly in offscreen document...`, { options })
 
+    // Guard against concurrent start requests
+    if (isStarting) {
+      log('⚠️ Recording start already in progress, rejecting duplicate request')
+      throw createErrorWithCode('Recording start already in progress', 'START_ALREADY_IN_PROGRESS')
+    }
+    isStarting = true
+
     try {
       // Stop any existing recording
       if (isRecording) {
@@ -360,7 +477,7 @@
       }
       wcWorkerPreloaded = false  // Reset preload flag as we're now using it for recording
 
-      let configured = false
+      let configuredEncoderConfig: any = null
       let resolveConfigured: (() => void) | null = null
       const waitForConfigured = new Promise<void>((res) => { resolveConfigured = res })
       recordedChunks = []
@@ -373,10 +490,9 @@
             log(`👷 WebCodecs worker initialized${wasPreloaded ? ' (was preloaded)' : ''}`)
             break
           case 'configured':
-            configured = true
+            configuredEncoderConfig = config
             try { resolveConfigured?.(); resolveConfigured = null } catch {}
             log('✅ WebCodecs worker configured:', config)
-            try { if (OPFS_WRITER_ENABLED) initOpfsWriter({ codec: config?.codec, width: config?.width, height: config?.height, framerate }) } catch {}
             break
           case 'chunk': {
             // track chunk meta count; avoid retaining big buffers here to save memory
@@ -469,6 +585,9 @@
 
       // Wait until worker confirms configured to avoid unconfigured encode errors
       await waitForConfigured
+      if (OPFS_WRITER_ENABLED) {
+        await initOpfsWriter({ codec: configuredEncoderConfig?.codec, width, height, framerate })
+      }
       // Global pre-start countdown for all modes to avoid early layout shifts and unify UX
       // After user grants capture (stream available), open centralized countdown via background
       const COUNTDOWN_SECONDS = (typeof options?.countdown === 'number' && options.countdown >= 1 && options.countdown <= 5) ? options.countdown : 3;
@@ -543,14 +662,15 @@
     } catch (e) {
       log('❌ Failed to start recording:', e)
       isRecording = false
+      isPaused = false
       recordingStartTime = null
-      try {
-        chrome.runtime.sendMessage({
-          type: 'STREAM_ERROR',
-          error: String(e)
-        })
-      } catch {}
-      throw e
+      cleanupFailedStart()
+      const errorMessage = getErrorMessage(e, 'Failed to start recording')
+      const code = typeof (e as any)?.code === 'string' && (e as any).code.trim() ? (e as any).code : undefined
+      emitStreamError(errorMessage, code)
+      throw createErrorWithCode(errorMessage, code)
+    } finally {
+      isStarting = false
     }
   }
 
@@ -696,12 +816,14 @@
                 log('❌ Failed to send success response:', e)
               }
             } catch (e) {
-              const error = String(e)
+              const error = getErrorMessage(e, 'Failed to start recording')
+              const code = typeof (e as any)?.code === 'string' && (e as any).code.trim() ? (e as any).code : undefined
               log(`❌ [${timestamp}] Failed to start recording:`, error)
               try {
                 sendResponse?.({
                   ok: false,
                   error,
+                  ...(code ? { code } : {}),
                   timestamp
                 })
               } catch (err) {

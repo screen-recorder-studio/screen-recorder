@@ -5,6 +5,37 @@
 // 引入 offscreen 管理工具
 import { ensureOffscreenDocument, sendToOffscreen } from '../lib/utils/offscreen-manager'
 
+const OFFSCREEN_REASONS = ['DISPLAY_MEDIA', 'WORKERS', 'BLOBS']
+const OFFSCREEN_ENSURE_TIMEOUT_MS = 10_000
+const OFFSCREEN_START_TIMEOUT_MS = 45_000
+const OFFSCREEN_CONTROL_TIMEOUT_MS = 10_000
+const OFFSCREEN_PING_TIMEOUT_MS = 5_000
+
+function getErrorMessage(error, fallback = 'Unknown error') {
+  if (error instanceof Error && typeof error.message === 'string' && error.message.trim()) {
+    return error.message
+  }
+  if (typeof error?.message === 'string' && error.message.trim()) {
+    return error.message
+  }
+  if (typeof error === 'string' && error.trim()) {
+    return error
+  }
+  return fallback
+}
+
+function createErrorWithCode(message, code) {
+  const error = new Error(message)
+  if (code) error.code = code
+  return error
+}
+
+function toErrorResponse(error) {
+  const message = getErrorMessage(error)
+  const code = typeof error?.code === 'string' && error.code.trim() ? error.code : undefined
+  return code ? { ok: false, error: message, code } : { ok: false, error: message }
+}
+
 
 // 添加 lab 功能：每个标签页的状态管理
 const tabStates = new Map(); // tabId -> { mode: 'element'|'region', selecting: boolean, recording: boolean, uiSelectedMode?: 'area'|'element'|'camera'|'tab'|'window'|'screen' }
@@ -302,7 +333,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       case 'RECORDING_COMPLETE': {
         // Treat as a stop event when it originates from offscreen
-        try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
+        try {
+          currentRecording.isRecording = false
+          currentRecording.isPaused = false
+          currentRecording.startTime = null
+          currentRecording.elapsedMs = 0
+        } catch {}
         try { void stopBadgeTimer() } catch {}
         try {
           const p = chrome.runtime.sendMessage({ type: 'STATE_UPDATE', state: { recording: false } })
@@ -318,7 +354,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         try {
           const id = message?.id
           const doOpen = () => {
-            try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
+            try {
+              currentRecording.isRecording = false
+              currentRecording.isPaused = false
+              currentRecording.startTime = null
+              currentRecording.elapsedMs = 0
+            } catch {}
             try { void stopBadgeTimer() } catch {}
             try {
               const p = chrome.runtime.sendMessage({ type: 'STATE_UPDATE', state: { recording: false } })
@@ -364,7 +405,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       // Stream signaling from content via sendMessage (no Port)
       case 'STREAM_START': {
         // Dual-path handling: tab-scoped (content pipeline) vs global (offscreen pipeline)
-        try { currentRecording.isRecording = true; currentRecording.isPaused = false } catch {}
+        try {
+          currentRecording.isRecording = true
+          currentRecording.isPaused = false
+          currentRecording.startTime = typeof currentRecording.startTime === 'number' && currentRecording.startTime > 0
+            ? currentRecording.startTime
+            : Date.now()
+          currentRecording.elapsedMs = 0
+        } catch {}
         try { void updateBadgeFromElapsed(0) } catch {}
         if (tabId) {
           try { state.recording = true } catch {}
@@ -409,6 +457,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           ? message.elapsedMs
           : (typeof message?.elapsed === 'number' ? message.elapsed : null);
         if (typeof elapsed === 'number' && elapsed >= 0) {
+          try { currentRecording.elapsedMs = elapsed } catch {}
           void updateBadgeFromElapsed(elapsed);
         }
         try { sendResponse({ ok: true }) } catch (e) {}
@@ -420,7 +469,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
       }
       case 'STREAM_END': {
-        try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
+        try {
+          currentRecording.isRecording = false
+          currentRecording.isPaused = false
+          currentRecording.startTime = null
+          currentRecording.elapsedMs = 0
+        } catch {}
         disableTabAnnotation()
         currentRecording.tabId = null
         currentRecording.mode = null
@@ -436,7 +490,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true;
       }
       case 'STREAM_ERROR': {
-        try { currentRecording.isRecording = false; currentRecording.isPaused = false } catch {}
+        try {
+          currentRecording.isRecording = false
+          currentRecording.isPaused = false
+          currentRecording.startTime = null
+          currentRecording.elapsedMs = 0
+        } catch {}
         disableTabAnnotation()
         currentRecording.tabId = null
         currentRecording.mode = null
@@ -454,21 +513,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'REQUEST_START_RECORDING':
       case 'OFFSCREEN_START_RECORDING': {
         (async () => {
-          const raw = message?.payload?.options ?? message?.payload
-          // Inject countdown from storage if missing / invalid
-          let c = raw?.countdown
-          if (!(typeof c === 'number' && c >=1 && c <=5)) {
-            try {
-              const stored = await new Promise<any>(res => chrome.storage.local.get(['settings'], r => res(r)));
-              const v = stored?.settings?.countdownSeconds;
-              if (typeof v === 'number' && v >=1 && v <=5) c = v; else c = 3;
-            } catch { c = 3 }
+          const raw = (message?.payload?.options && typeof message.payload.options === 'object')
+            ? { ...message.payload.options }
+            : (message?.payload && typeof message.payload === 'object')
+              ? { ...message.payload }
+              : {}
+          try {
+            // Inject countdown from storage if missing / invalid
+            let c = raw?.countdown
+            if (!(typeof c === 'number' && c >=1 && c <=5)) {
+              try {
+                const stored = await new Promise<any>(res => chrome.storage.local.get(['settings'], r => res(r)));
+                const v = stored?.settings?.countdownSeconds;
+                if (typeof v === 'number' && v >=1 && v <=5) c = v; else c = 3;
+              } catch { c = 3 }
+            }
+            raw.countdown = c;
+            // Countdown should open only after user grants capture permission (stream ready)
+            // Offscreen will trigger via STREAM_META once stream is available
+            await startRecordingViaOffscreen(raw)
+            try { sendResponse({ ok: true }) } catch (e) {}
+          } catch (e) {
+            try { sendResponse(toErrorResponse(e)) } catch (_) {}
           }
-          raw.countdown = c;
-          // Countdown should open only after user grants capture permission (stream ready)
-          // Offscreen will trigger via STREAM_META once stream is available
-          await startRecordingViaOffscreen(raw)
-          try { sendResponse({ ok: true }) } catch (e) {}
         })()
         return true;
       }
@@ -476,16 +543,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Only handle stop requests from popup, not OFFSCREEN_STOP_RECORDING
         // OFFSCREEN_STOP_RECORDING is sent TO offscreen, not FROM it
         (async () => {
-          await stopRecordingViaOffscreen()
-          try { sendResponse({ ok: true }) } catch (e) {}
+          try {
+            await stopRecordingViaOffscreen()
+            try { sendResponse({ ok: true }) } catch (e) {}
+          } catch (e) {
+            try { sendResponse(toErrorResponse(e)) } catch (_) {}
+          }
         })()
         return true;
       }
       case 'REQUEST_OFFSCREEN_PING': {
         (async () => {
-          await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
-          await sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_PING', when: Date.now() })
-          try { sendResponse({ ok: true }) } catch (e) {}
+          try {
+            const resp = await sendToOffscreen(
+              { target: 'offscreen-doc', type: 'OFFSCREEN_PING', when: Date.now() },
+              { url: 'offscreen.html', reasons: OFFSCREEN_REASONS, timeoutMs: OFFSCREEN_ENSURE_TIMEOUT_MS, messageTimeoutMs: OFFSCREEN_PING_TIMEOUT_MS }
+            )
+            if (resp?.ok !== true) {
+              throw createErrorWithCode(resp?.error || 'Offscreen ping failed', resp?.code)
+            }
+            try { sendResponse({ ok: true }) } catch (e) {}
+          } catch (e) {
+            try { sendResponse(toErrorResponse(e)) } catch (_) {}
+          }
         })()
         return true;
       }
@@ -501,12 +581,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           try {
             // Control offscreen recording pause for Tab/Window/Screen modes
             const newPaused = !currentRecording.isPaused
-            await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
-            await sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_TOGGLE_PAUSE', payload: { paused: newPaused } })
+            const resp = await sendToOffscreen(
+              { target: 'offscreen-doc', type: 'OFFSCREEN_TOGGLE_PAUSE', payload: { paused: newPaused } },
+              { url: 'offscreen.html', reasons: OFFSCREEN_REASONS, timeoutMs: OFFSCREEN_ENSURE_TIMEOUT_MS, messageTimeoutMs: OFFSCREEN_CONTROL_TIMEOUT_MS }
+            )
+            if (resp?.ok !== true) {
+              throw createErrorWithCode(resp?.error || 'Failed to toggle pause', resp?.code)
+            }
             currentRecording.isPaused = newPaused
             try { sendResponse({ ok: true, paused: newPaused }) } catch (e) {}
           } catch (e) {
-            try { sendResponse({ ok: false, error: String(e) }) } catch (_) {}
+            try { sendResponse(toErrorResponse(e)) } catch (_) {}
           }
         })()
         return true;
@@ -840,6 +925,7 @@ let currentRecording = {
   isPaused: false,
   streamId: null,
   startTime: null,
+  elapsedMs: 0,
   tabId: null as number | null,
   mode: null as string | null
 }
@@ -939,10 +1025,15 @@ async function startRecordingViaOffscreen(options) {
       targetTabId = await resolveTargetTabId();
     }
 
-    await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
-    await sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_START_RECORDING', payload: { options: normalizedOptions } })
+    const resp = await sendToOffscreen(
+      { target: 'offscreen-doc', type: 'OFFSCREEN_START_RECORDING', payload: { options: normalizedOptions } },
+      { url: 'offscreen.html', reasons: OFFSCREEN_REASONS, timeoutMs: OFFSCREEN_ENSURE_TIMEOUT_MS, messageTimeoutMs: OFFSCREEN_START_TIMEOUT_MS }
+    )
+    if (resp?.ok !== true) {
+      throw createErrorWithCode(resp?.error || 'Failed to start recording', resp?.code)
+    }
     // Enter preparing phase: will flip to active on STREAM_START
-    currentRecording = { isRecording: false, isPaused: false, streamId: 'offscreen', startTime: null, tabId: targetTabId, mode }
+    currentRecording = { isRecording: false, isPaused: false, streamId: 'offscreen', startTime: null, elapsedMs: 0, tabId: targetTabId, mode }
     try { await chrome.action.setBadgeBackgroundColor({ color: '#fb8c00' }) } catch {}
     try { await chrome.action.setBadgeText({ text: '' }) } catch {}
     if (mode === 'tab' && targetTabId != null) {
@@ -955,13 +1046,12 @@ async function startRecordingViaOffscreen(options) {
 }
 
 async function stopRecordingViaOffscreen() {
-  try {
-    await ensureOffscreenDocument({ url: 'offscreen.html', reasons: ['DISPLAY_MEDIA','WORKERS','BLOBS'] })
-    await sendToOffscreen({ target: 'offscreen-doc', type: 'OFFSCREEN_STOP_RECORDING' })
-  } finally {
-    disableTabAnnotation()
-    currentRecording = { isRecording: false, isPaused: false, streamId: null, startTime: null, tabId: null, mode: null }
-    try { await stopBadgeTimer() } catch (e) { /* optional badge clear failure */ }
+  const resp = await sendToOffscreen(
+    { target: 'offscreen-doc', type: 'OFFSCREEN_STOP_RECORDING' },
+    { url: 'offscreen.html', reasons: OFFSCREEN_REASONS, timeoutMs: OFFSCREEN_ENSURE_TIMEOUT_MS, messageTimeoutMs: OFFSCREEN_CONTROL_TIMEOUT_MS }
+  )
+  if (resp?.ok !== true) {
+    throw createErrorWithCode(resp?.error || 'Failed to stop recording', resp?.code)
   }
 }
 
@@ -975,6 +1065,7 @@ async function handleStartRecording(message, sendResponse) {
       isPaused: false,
       streamId: message.streamId,
       startTime: Date.now(),
+      elapsedMs: 0,
       tabId: message.tabId ?? null,
       mode: null
     }
@@ -1014,6 +1105,7 @@ async function handleStopRecording(message, sendResponse) {
       isPaused: false,
       streamId: null,
       startTime: null,
+      elapsedMs: 0,
       tabId: null,
       mode: null
     }

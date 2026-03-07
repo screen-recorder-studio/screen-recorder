@@ -69,6 +69,18 @@ export interface EnsureOffscreenOptions extends Partial<CreateOffscreenOptions> 
    * @default false
    */
   forceRecreate?: boolean;
+
+  /**
+   * Timeout for ensuring the offscreen document exists.
+   * @default 10000
+   */
+  timeoutMs?: number;
+
+  /**
+   * Timeout for waiting on a response after sending a message.
+   * @default 45000
+   */
+  messageTimeoutMs?: number;
 }
 
 /**
@@ -111,6 +123,34 @@ export const OFFSCREEN_JUSTIFICATIONS: Record<OffscreenReason, string> = {
   MATCH_MEDIA: 'Query media features and respond to viewport changes',
   GEOLOCATION: 'Access user location information for location-based features'
 };
+
+const DEFAULT_ENSURE_TIMEOUT_MS = 10_000;
+const DEFAULT_MESSAGE_TIMEOUT_MS = 45_000;
+
+function normalizeTimeoutMs(value: number | undefined, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0
+    ? value
+    : fallback;
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, actionLabel: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`[OffscreenManager] Timed out while ${actionLabel} after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
 
 /**
  * Get recommended justification for a given reason
@@ -282,29 +322,33 @@ export async function ensureOffscreenDocument(
     };
   }
 
+  const timeoutMs = normalizeTimeoutMs(options.timeoutMs, DEFAULT_ENSURE_TIMEOUT_MS);
+
   try {
-    const exists = await hasOffscreenDocument();
-    
-    if (exists && !options.forceRecreate) {
-      return { success: true }; // Already exists
-    }
-
-    if (exists && options.forceRecreate) {
-      const closeResult = await closeOffscreenDocument();
-      if (!closeResult.success) {
-        return closeResult;
+    return await withTimeout((async () => {
+      const exists = await hasOffscreenDocument();
+      
+      if (exists && !options.forceRecreate) {
+        return { success: true }; // Already exists
       }
-    }
 
-    // Create new document with default options
-    const reasons = options.reasons || ['BLOBS'];
-    const createOptions: CreateOffscreenOptions = {
-      url: options.url || 'offscreen.html',
-      reasons,
-      justification: options.justification || getRecommendedJustificationForReasons(reasons)
-    };
+      if (exists && options.forceRecreate) {
+        const closeResult = await closeOffscreenDocument();
+        if (!closeResult.success) {
+          return closeResult;
+        }
+      }
 
-    return await createOffscreenDocument(createOptions);
+      // Create new document with default options
+      const reasons = options.reasons || ['BLOBS'];
+      const createOptions: CreateOffscreenOptions = {
+        url: options.url || 'offscreen.html',
+        reasons,
+        justification: options.justification || getRecommendedJustificationForReasons(reasons)
+      };
+
+      return await createOffscreenDocument(createOptions);
+    })(), timeoutMs, 'ensuring offscreen document');
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('[OffscreenManager] Failed to ensure document:', errorMessage);
@@ -403,8 +447,14 @@ export async function sendToOffscreen<T = any>(
   }
 
   // Send message and wait for response
+  const messageTimeoutMs = normalizeTimeoutMs(options.messageTimeoutMs, DEFAULT_MESSAGE_TIMEOUT_MS);
   return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`[OffscreenManager] Timed out waiting for offscreen response after ${messageTimeoutMs}ms`));
+    }, messageTimeoutMs);
+
     chrome.runtime.sendMessage(message, (response) => {
+      clearTimeout(timer);
       if (chrome.runtime.lastError) {
         reject(new Error(chrome.runtime.lastError.message));
       } else {

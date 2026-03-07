@@ -6,27 +6,105 @@
     Play,
     Pause,
     Square,
-    Loader2,
+    LoaderCircle,
+    Clock,
+    CircleAlert,
+    HardDrive,
     Zap,
-    ArrowRight,
-    CheckCircle2
+    CircleCheck,
+    X,
+    Film,
+    ShieldCheck,
+    Sparkles,
+    Puzzle,
+    Video,
+    Scissors,
+    Download,
+    ChevronRight
   } from '@lucide/svelte'
   import { onDestroy, onMount } from 'svelte'
   import { _t } from '$lib/utils/i18n'
+  import { formatRecordingDuration, normalizeElapsedMs } from '$lib/utils/recording-duration'
+
+  // Extension version
+  let extensionVersion = $state('')
 
   // Recording state management
   let isRecording = $state(false)
   let isPaused = $state(false)
   let selectedMode = $state<'tab' | 'window' | 'screen'>('tab')
   let isLoading = $state(false)
+  let errorMessage = $state('')
+  let warningMessage = $state('')
+  let elapsedBaseMs = $state(0)
+  let elapsedAnchorAt = $state<number | null>(null)
+  let displayElapsedMs = $state(0)
   let countdownActive = $state(false)
   let countdownValue = $state(0)
   let countdownTimer: ReturnType<typeof setTimeout> | null = null
-  const COUNTDOWN_SECONDS = 3
+  let elapsedTimer: ReturnType<typeof setInterval> | null = null
+  const DEFAULT_COUNTDOWN_SECONDS = 3
   const MAX_COUNTDOWN_SECONDS = 10
+  let countdownSeconds = $state(DEFAULT_COUNTDOWN_SECONDS)
 
   function sanitizeCountdown(seconds: number) {
-    return Number.isFinite(seconds) ? Math.max(0, Math.min(MAX_COUNTDOWN_SECONDS, seconds)) : COUNTDOWN_SECONDS
+    return Number.isFinite(seconds) ? Math.max(0, Math.min(MAX_COUNTDOWN_SECONDS, seconds)) : DEFAULT_COUNTDOWN_SECONDS
+  }
+
+  function clearError() {
+    errorMessage = ''
+  }
+
+  function clearWarning() {
+    warningMessage = ''
+  }
+
+  function clearElapsedTimer() {
+    if (elapsedTimer) {
+      clearInterval(elapsedTimer)
+      elapsedTimer = null
+    }
+  }
+
+  function syncElapsedDisplay() {
+    if (isRecording && !isPaused && typeof elapsedAnchorAt === 'number') {
+      displayElapsedMs = elapsedBaseMs + Math.max(0, Date.now() - elapsedAnchorAt)
+      return
+    }
+    displayElapsedMs = elapsedBaseMs
+  }
+
+  function startElapsedTimer() {
+    clearElapsedTimer()
+    if (!isRecording || isPaused) return
+    elapsedAnchorAt = typeof elapsedAnchorAt === 'number' ? elapsedAnchorAt : Date.now()
+    syncElapsedDisplay()
+    elapsedTimer = setInterval(syncElapsedDisplay, 250)
+  }
+
+  function setElapsedSnapshot(rawElapsedMs: unknown, options: { running?: boolean; fallbackStartTime?: unknown } = {}) {
+    const running = options.running ?? (isRecording && !isPaused)
+    const safeElapsedMs = normalizeElapsedMs(rawElapsedMs)
+    const fallbackStartTime = typeof options.fallbackStartTime === 'number' && Number.isFinite(options.fallbackStartTime) && options.fallbackStartTime > 0
+      ? options.fallbackStartTime
+      : null
+
+    elapsedBaseMs = safeElapsedMs > 0 || fallbackStartTime === null
+      ? safeElapsedMs
+      : Math.max(0, Date.now() - fallbackStartTime)
+
+    elapsedAnchorAt = running ? Date.now() : null
+    syncElapsedDisplay()
+
+    if (running) startElapsedTimer()
+    else clearElapsedTimer()
+  }
+
+  function resetElapsedDisplay() {
+    elapsedBaseMs = 0
+    elapsedAnchorAt = null
+    displayElapsedMs = 0
+    clearElapsedTimer()
   }
 
   const FALLBACK_MESSAGES: Record<string, string> = {
@@ -34,11 +112,19 @@
     welcome_pageTitle: 'Welcome to Screen Recorder Studio',
     welcome_headerSubtitle: 'Professional Browser Recording Tool',
     welcome_installSuccess: 'Installation Successful',
-    welcome_headline: 'Welcome to Screen Recorder Studio! 🎉',
-    welcome_subheadline: 'Ready to create your first recording? It only takes seconds to get started!',
-    welcome_tryTitle: 'Try It Now! 🚀',
-    welcome_trySubtitle: 'Select your recording mode and hit the button below',
-    welcome_tryFeatures: 'No setup required • $SECONDS$-second countdown • Professional quality',
+    welcome_headline: 'Record, Edit, and Export in Seconds. 🎉',
+    welcome_subheadline: 'Capture hours of footage smoothly, then edit and export as high-quality Videos or GIFs—all processed securely in your browser.',
+    welcome_proTrialActive: 'PRO Trial Activated',
+    welcome_feat1Title: 'Private & Local',
+    welcome_feat2Title: 'No Watermarks',
+    welcome_feat3Title: 'Quick Editing',
+    welcome_feat4Title: 'Video & GIF Export',
+    welcome_trustNoWatermark: 'No Watermarks',
+    welcome_trustHD: 'HD Quality',
+    welcome_trustLocal: 'Private & Local',
+    welcome_trustQuickEditing: 'Quick Editing',
+    welcome_tryTitle: 'Start Your First Recording 🚀',
+    welcome_trySubtitle: 'Pick what to capture and start recording—Studio opens when you stop.',
     control_modeTab: 'Tab',
     control_modeTabDesc: 'Record current tab',
     control_modeWindow: 'Window',
@@ -56,24 +142,20 @@
     control_statusPaused: 'Recording Paused',
     welcome_statusRecording: 'Recording in Progress',
     welcome_modeLabel: 'Mode',
-    welcome_readyTitle: '🎬 Everything is Ready!',
-    welcome_readyDesc: "You've selected $MODE$ mode. Click the big blue button above to start your first recording!",
-    welcome_readyTip: '$SECONDS$-second countdown before recording starts',
-    welcome_howTitle: 'How It Works',
-    welcome_howDesc: 'Three simple steps to get the most out of your extension',
-    welcome_step1Title: 'Pin Extension',
-    welcome_step1Desc: 'Click the puzzle icon 🧩 in your browser toolbar and pin this extension for quick access anytime',
-    welcome_step2Title: 'Choose Your Target',
-    welcome_step2Desc: 'Select what to record: current tab, entire window, or full screen - whatever fits your needs',
-    welcome_step3Title: 'Hit Record',
-    welcome_step3Desc: 'Click "$BTN$" and get ready - a $SECONDS$-second countdown gives you time to prepare!',
-    welcome_advancedTitle: 'Need More Control?',
-    welcome_advancedDesc: 'Click the extension icon in your browser toolbar to access the full control panel',
-    welcome_openControl: 'Open Full Control Panel',
+    welcome_howTitle: 'Your Recording Journey',
+    welcome_howDesc: 'From capturing to exporting, everything happens securely in your browser.',
+    journey_step1Title: 'Pin to Toolbar',
+    journey_step1Desc: 'Click the puzzle icon 🧩 and pin the extension for quick access to start capturing anytime.',
+    journey_step2Title: 'Record',
+    journey_step2Desc: 'Capture your tab, window, or entire screen. Enjoy unlimited recording time without lagging.',
+    journey_step3Title: 'Quick Edit',
+    journey_step3Desc: 'Trim out mistakes, crop to the perfect ratio, and zoom to highlight details.',
+    journey_step4Title: 'Export Video & GIF',
+    journey_step4Desc: 'Save instantly as high-quality MP4, WebM, or GIF. 100% processed locally—no uploads.',
     control_btnStarting: 'Starting in $1...',
     control_overlayRecordingStarts: 'Recording will begin after the countdown',
     control_btnSkipCountdown: 'Skip countdown',
-    welcome_footerHelp: 'Need help? Click the extension icon for the control panel with advanced features.',
+    welcome_footerHelp: 'Need more control? Click the extension icon to access advanced recording and export settings.',
     welcome_footerMeta: 'Screen Recorder Studio • Made for professionals'
   }
 
@@ -104,15 +186,34 @@
     }
   ]
 
-  // Initialize: sync background state
+  // Initialize: sync background state and load settings
   onMount(async () => {
+    try {
+      extensionVersion = chrome.runtime.getManifest().version
+    } catch {}
+
     try {
       const resp = await chrome.runtime.sendMessage({ type: 'REQUEST_RECORDING_STATE' })
       isRecording = !!resp?.state?.isRecording
       isPaused = !!resp?.state?.isPaused
+      if (isRecording) {
+        setElapsedSnapshot(resp?.state?.elapsedMs, { running: !isPaused, fallbackStartTime: resp?.state?.startTime })
+      } else {
+        resetElapsedDisplay()
+      }
     } catch (e) {
       console.warn('Failed to initialize recording state', e)
     }
+    // Load user's countdown setting from storage
+    try {
+      const stored = await new Promise<any>((res) =>
+        chrome.storage.local.get(['settings'], (r) => res(r))
+      )
+      const v = stored?.settings?.countdownSeconds
+      if (typeof v === 'number' && v >= 1 && v <= 5) {
+        countdownSeconds = v
+      }
+    } catch {}
   })
 
   // Listen for recording status updates
@@ -122,11 +223,28 @@
         if (msg?.type === 'STREAM_META') {
           const meta = msg?.meta
           if (meta && typeof meta.paused === 'boolean') {
-            isPaused = !!meta.paused
+            const nextPaused = !!meta.paused
+            if (nextPaused) {
+              syncElapsedDisplay()
+              isPaused = true
+              setElapsedSnapshot(displayElapsedMs, { running: false })
+            } else {
+              isPaused = false
+              setElapsedSnapshot(displayElapsedMs, { running: true })
+            }
           }
           // Background signals countdown when preparing is true and countdown provides remaining seconds
           if (meta?.preparing && typeof meta.countdown === 'number') {
             startCountdown(meta.countdown)
+          }
+        }
+        if (msg?.type === 'BADGE_TICK') {
+          const badgeElapsedMs = typeof msg?.elapsedMs === 'number' || typeof msg?.elapsed === 'number'
+            ? (msg?.elapsedMs ?? msg?.elapsed)
+            : null
+          if (badgeElapsedMs !== null) {
+            isRecording = true
+            setElapsedSnapshot(badgeElapsedMs, { running: !isPaused })
           }
         }
         if (msg?.type === 'STREAM_START') {
@@ -134,12 +252,28 @@
           isPaused = false
           isLoading = false
           resetCountdown()
+          clearError()
+          setElapsedSnapshot(0, { running: true })
         }
-        if (msg?.type === 'STREAM_END' || msg?.type === 'STREAM_ERROR' || msg?.type === 'RECORDING_COMPLETE' || msg?.type === 'OPFS_RECORDING_READY') {
+        if (msg?.type === 'STREAM_WARNING') {
+          warningMessage = (typeof msg?.warning === 'string' && msg.warning.trim()) ? msg.warning : t('control_errorStorageLow')
+        }
+        if (msg?.type === 'STREAM_END' || msg?.type === 'RECORDING_COMPLETE' || msg?.type === 'OPFS_RECORDING_READY') {
           isRecording = false
           isPaused = false
           isLoading = false
           resetCountdown()
+          clearWarning()
+          resetElapsedDisplay()
+        }
+        if (msg?.type === 'STREAM_ERROR') {
+          isRecording = false
+          isPaused = false
+          isLoading = false
+          resetCountdown()
+          clearWarning()
+          resetElapsedDisplay()
+          errorMessage = (typeof msg?.error === 'string' && msg.error.trim()) ? msg.error : t('control_errorRecordingFailed')
         }
       } catch (e) {
         // ignore handler errors
@@ -159,14 +293,21 @@
   // Start recording
   async function startRecording() {
     if (isLoading) return
+    clearError()
+    clearWarning()
     isLoading = true
     try {
-      await chrome.runtime.sendMessage({
+      const resp = await chrome.runtime.sendMessage({
         type: 'REQUEST_START_RECORDING',
-        payload: { options: { mode: selectedMode, video: true, audio: false, countdown: COUNTDOWN_SECONDS } }
+        payload: { options: { mode: selectedMode, video: true, audio: false, countdown: countdownSeconds } }
       })
+      if (resp?.ok !== true) {
+        errorMessage = (typeof resp?.error === 'string' && resp.error.trim()) ? resp.error : t('control_errorStartFailed')
+        isLoading = false
+      }
     } catch (error) {
       console.error('Failed to start recording:', error)
+      errorMessage = t('control_errorStartFailed')
       isLoading = false
     }
   }
@@ -187,26 +328,17 @@
     }
   }
 
-  // Stop recording
+  // Stop recording - state reset handled by STREAM_END/STREAM_ERROR message handlers
   async function stopRecording() {
     try {
       await chrome.runtime.sendMessage({ type: 'REQUEST_STOP_RECORDING' })
     } catch (e) {
       console.warn('Failed to send stop recording message', e)
+      // Only reset state on message failure since we won't receive STREAM_END
+      isRecording = false
+      isPaused = false
+      resetElapsedDisplay()
     }
-    isRecording = false
-    isPaused = false
-  }
-
-  // Open control panel (popup)
-  function openControlPanel() {
-    // Open popup in new window for better visibility
-    chrome.windows.create({
-      url: chrome.runtime.getURL('popup.html'),
-      type: 'popup',
-      width: 380,
-      height: 600
-    })
   }
 
   // Get button text
@@ -221,7 +353,7 @@
 
   // Get button icon
   function getButtonIcon() {
-    if (isLoading) return Loader2
+    if (isLoading) return LoaderCircle
     if (isRecording) {
       return isPaused ? Play : Pause
     }
@@ -280,6 +412,7 @@
 
   onDestroy(() => {
     resetCountdown()
+    clearElapsedTimer()
   })
 
 </script>
@@ -314,59 +447,125 @@
     </div>
   {/if}
 
-  <div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 text-slate-900 font-sans selection:bg-blue-100 selection:text-blue-900">
+  <div class="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 text-slate-900 font-sans selection:bg-blue-100 selection:text-blue-900">
     <!-- Header -->
-    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-30 border-b border-slate-200/60 shadow-sm">
-      <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+    <header class="bg-white/80 border-b border-slate-200/60 shadow-sm flex-shrink-0">
+      <div class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
         <div class="flex items-center gap-3">
           <div class="relative">
              <div class="absolute inset-0 bg-blue-500/20 blur-lg rounded-full"></div>
-             <img src="/assets/icon.svg" alt={t('appName')} class="w-8 h-8 relative z-10" />
+             <img src="/assets/icon.svg" alt={t('appName')} class="w-7 h-7 relative z-10" />
           </div>
           <div>
-            <h1 class="text-lg font-bold text-slate-900 tracking-tight leading-none">{t('appName')}</h1>
-            <p class="text-xs text-slate-500 font-medium tracking-wide">{t('welcome_headerSubtitle')}</p>
+            <h1 class="text-lg font-bold text-slate-900 tracking-tight leading-none flex items-center gap-2">
+              {t('appName')}
+              {#if extensionVersion}<span class="text-xs font-normal text-slate-400">v{extensionVersion}</span>{/if}
+            </h1>
           </div>
+        </div>
+        <div class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 rounded-full text-[10px] shadow-sm">
+          <Sparkles class="w-3.5 h-3.5 text-amber-500" />
+          <span class="bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent font-bold tracking-widest uppercase">{t('welcome_proTrialActive')}</span>
         </div>
       </div>
     </header>
 
-    <main class="max-w-5xl mx-auto px-6 py-12 space-y-16">
-      <!-- Welcome Banner -->
-      <section class="text-center space-y-6 max-w-3xl mx-auto">
-        <div class="inline-flex items-center gap-2 px-4 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-full text-xs font-semibold shadow-sm animate-fade-in-down">
-          <CheckCircle2 class="w-3.5 h-3.5" />
-          {t('welcome_installSuccess')}
-        </div>
-        
-        <div class="space-y-4">
-          <h2 class="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight">
-            {t('welcome_headline')}
-          </h2>
-          <p class="text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
-            {t('welcome_subheadline')}
-          </p>
-        </div>
-      </section>
-
-      <!-- Main Action Area -->
-      <section class="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden ring-1 ring-slate-900/5">
-        <div class="p-8 md:p-10">
-          <div class="text-center mb-10">
-            <h3 class="text-2xl font-bold text-slate-900 mb-2">{t('welcome_tryTitle')}</h3>
-            <p class="text-slate-600 mb-2">
-              {t('welcome_trySubtitle')}
-            </p>
-            <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">
-              {t('welcome_tryFeatures', String(COUNTDOWN_SECONDS))}
+    <main class="flex-1 flex flex-col justify-center max-w-6xl mx-auto px-6 py-4 w-full gap-6">
+      <!-- Welcome Banner & Features Wrapper to keep them compact -->
+      <div class="space-y-6">
+        <!-- Welcome Banner -->
+        <section class="text-center space-y-4 max-w-4xl mx-auto animate-fade-in-down pt-4">
+          <div class="inline-flex items-center gap-1.5 px-4 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-full text-xs font-semibold shadow-sm">
+            <CircleCheck class="w-4 h-4" />
+            {t('welcome_installSuccess')}
+          </div>
+          
+          <div class="space-y-2">
+            <h2 class="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
+              {t('welcome_headline')}
+            </h2>
+            <p class="text-base text-slate-600 max-w-2xl mx-auto leading-relaxed">
+              {t('welcome_subheadline')}
             </p>
           </div>
+        </section>
+
+        <!-- Core Features Highlight -->
+        <section class="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-4xl mx-auto w-full animate-fade-in-up">
+          <div class="flex items-center justify-center gap-2.5 bg-white p-3 rounded-2xl shadow-sm border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all cursor-default group">
+            <div class="p-2 bg-blue-50 rounded-xl text-blue-600 group-hover:scale-110 group-hover:bg-blue-100 transition-all flex-shrink-0">
+              <ShieldCheck class="w-5 h-5" />
+            </div>
+            <span class="text-xs font-bold text-slate-800 tracking-wide leading-tight">{t('welcome_feat1Title')}</span>
+          </div>
+          <div class="flex items-center justify-center gap-2.5 bg-white p-3 rounded-2xl shadow-sm border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all cursor-default group">
+            <div class="p-2 bg-emerald-50 rounded-xl text-emerald-600 group-hover:scale-110 group-hover:bg-emerald-100 transition-all flex-shrink-0">
+              <Sparkles class="w-5 h-5" />
+            </div>
+            <span class="text-xs font-bold text-slate-800 tracking-wide leading-tight">{t('welcome_feat2Title')}</span>
+          </div>
+          <div class="flex items-center justify-center gap-2.5 bg-white p-3 rounded-2xl shadow-sm border border-slate-200 hover:border-purple-300 hover:shadow-md transition-all cursor-default group">
+            <div class="p-2 bg-purple-50 rounded-xl text-purple-600 group-hover:scale-110 group-hover:bg-purple-100 transition-all flex-shrink-0">
+              <Zap class="w-5 h-5" />
+            </div>
+            <span class="text-xs font-bold text-slate-800 tracking-wide leading-tight">{t('welcome_feat3Title')}</span>
+          </div>
+          <div class="flex items-center justify-center gap-2.5 bg-white p-3 rounded-2xl shadow-sm border border-slate-200 hover:border-amber-300 hover:shadow-md transition-all cursor-default group">
+            <div class="p-2 bg-amber-50 rounded-xl text-amber-600 group-hover:scale-110 group-hover:bg-amber-100 transition-all flex-shrink-0">
+              <Film class="w-5 h-5" />
+            </div>
+            <span class="text-xs font-bold text-slate-800 tracking-wide leading-tight">{t('welcome_feat4Title')}</span>
+          </div>
+        </section>
+      </div>
+
+      <!-- Main Action Area (Recording Controls) -->
+      <section class="bg-white rounded-3xl shadow-xl shadow-blue-900/5 border border-slate-200/60 overflow-hidden relative max-w-[40rem] mx-auto w-full">
+        <div class="p-5 md:p-6">
+          <div class="text-center mb-5">
+            <h3 class="text-lg font-bold text-slate-900 mb-1.5">{t('welcome_tryTitle')}</h3>
+            <p class="text-sm text-slate-600">
+              {t('welcome_trySubtitle')}
+            </p>
+          </div>
+
+          {#if warningMessage}
+            <div class="mb-6 max-w-3xl mx-auto rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+              <div class="flex items-start gap-3">
+                <HardDrive class="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
+                <p class="flex-1 text-sm text-amber-800">{warningMessage}</p>
+                <button
+                  class="rounded p-1 text-amber-600 transition-colors hover:bg-amber-100"
+                  type="button"
+                  onclick={clearWarning}
+                >
+                  <X class="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          {/if}
+
+          {#if errorMessage}
+            <div class="mb-6 max-w-3xl mx-auto rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
+              <div class="flex items-start gap-3">
+                <CircleAlert class="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600" />
+                <p class="flex-1 text-sm text-red-700">{errorMessage}</p>
+                <button
+                  class="rounded p-1 text-red-500 transition-colors hover:bg-red-100"
+                  type="button"
+                  onclick={clearError}
+                >
+                  <X class="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          {/if}
         
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
             {#each recordingModes as mode}
               {@const IconComponent = mode.icon}
               <button
-                class="group relative flex flex-col items-center p-6 rounded-2xl border-2 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] outline-none"
+                class="group relative flex flex-col items-center p-3 rounded-xl border-2 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] outline-none"
                 class:border-blue-500={selectedMode === mode.id}
                 class:bg-blue-50={selectedMode === mode.id && !isRecording}
                 class:shadow-blue-100={selectedMode === mode.id}
@@ -383,23 +582,23 @@
               >
                 <!-- Selection indicator -->
                 {#if selectedMode === mode.id}
-                  <div class="absolute -top-3 -right-3 bg-blue-500 text-white p-1 rounded-full shadow-md ring-4 ring-white">
-                    <CheckCircle2 class="w-4 h-4" />
+                  <div class="absolute -top-2 -right-2 bg-blue-500 text-white p-0.5 rounded-full shadow-md ring-2 ring-white">
+                    <CircleCheck class="w-3.5 h-3.5" />
                   </div>
                 {/if}
 
                 <!-- Icon -->
-                <div class="w-16 h-16 mb-4 rounded-2xl flex items-center justify-center transition-colors duration-300"
+                <div class="w-10 h-10 mb-2 rounded-xl flex items-center justify-center transition-colors duration-300"
                       class:bg-white={true}
                       class:text-blue-600={selectedMode === mode.id}
                       class:shadow-sm={selectedMode === mode.id}
                       class:text-slate-400={selectedMode !== mode.id}
                       class:group-hover:text-blue-500={selectedMode !== mode.id && !isRecording}>
-                  <IconComponent class="w-8 h-8" />
+                  <IconComponent class="w-5 h-5" />
                 </div>
 
                 <!-- Label -->
-                <h4 class="text-lg font-bold mb-2 transition-colors duration-200"
+                <h4 class="text-sm font-bold mb-1 transition-colors duration-200"
                     class:text-blue-900={selectedMode === mode.id}
                     class:text-slate-700={selectedMode !== mode.id}
                     class:group-hover:text-blue-800={selectedMode !== mode.id && !isRecording}>
@@ -407,19 +606,19 @@
                 </h4>
                 
                 <!-- Description -->
-                <p class="text-sm text-slate-500 mb-3 text-center leading-snug">{t(mode.descriptionKey)}</p>
-                <div class="mt-auto pt-3 border-t border-slate-200/50 w-full text-center">
-                    <p class="text-[10px] font-medium text-slate-400 uppercase tracking-wide">{t(mode.detailKey)}</p>
+                <p class="text-[11px] text-slate-500 mb-1.5 text-center leading-snug">{t(mode.descriptionKey)}</p>
+                <div class="mt-auto pt-1.5 border-t border-slate-200/50 w-full text-center">
+                    <p class="text-[9px] font-medium text-slate-400 uppercase tracking-wide">{t(mode.detailKey)}</p>
                 </div>
               </button>
             {/each}
           </div>
 
           <!-- Recording Controls -->
-          <div class="max-w-md mx-auto space-y-4">
+          <div class="max-w-sm mx-auto space-y-3">
             <!-- Main control button -->
             <button
-              class={`w-full group relative flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-bold text-lg text-white transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-xl hover:shadow-2xl active:scale-[0.98] ${
+              class={`w-full group relative flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl font-bold text-base text-white transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-xl hover:shadow-2xl active:scale-[0.98] ${
                 !isRecording
                   ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 focus:ring-blue-500 shadow-blue-500/30'
                   : 'bg-red-500 hover:bg-red-600 focus:ring-red-500 shadow-red-500/30'
@@ -429,12 +628,12 @@
             >
               <div class="relative flex items-center justify-center">
                 {#if isLoading}
-                  <Loader2 class="w-6 h-6 animate-spin" />
+                  <LoaderCircle class="w-5 h-5 animate-spin" />
                 {:else if isRecording}
-                   <Square class="w-6 h-6 fill-current" />
+                   <Square class="w-5 h-5 fill-current" />
                 {:else}
                   {@const ButtonIcon = getButtonIcon()}
-                  <ButtonIcon class="w-6 h-6 group-hover:scale-110 transition-transform" />
+                  <ButtonIcon class="w-5 h-5 group-hover:scale-110 transition-transform" />
                 {/if}
               </div>
               
@@ -448,14 +647,14 @@
               
               <!-- Shine effect -->
               {#if !isRecording}
-                <div class="absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/20"></div>
+                <div class="absolute inset-0 rounded-xl ring-1 ring-inset ring-white/20"></div>
               {/if}
             </button>
 
             <!-- Secondary button (Pause/Resume) -->
             {#if isRecording}
               <button
-                class="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 rounded-xl font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-1 shadow-sm"
+                class="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 rounded-xl font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-1 shadow-sm"
                 onclick={togglePause}
                 disabled={isLoading}
               >
@@ -470,126 +669,157 @@
             {/if}
           </div>
 
+          <!-- Reassurance Microcopy -->
+          {#if !isRecording && !isLoading}
+          <div class="mt-5 flex flex-wrap sm:flex-nowrap items-center justify-center gap-x-3 gap-y-2 text-xs font-semibold text-slate-500 bg-slate-50 py-2.5 px-3 rounded-xl border border-slate-100 max-w-lg mx-auto">
+            <div class="flex items-center gap-1.5"><HardDrive class="w-4 h-4 text-emerald-500"/> {t('welcome_trustLocal')}</div>
+            <div class="flex items-center gap-1.5"><ShieldCheck class="w-4 h-4 text-emerald-500"/> {t('welcome_trustNoWatermark')}</div>
+            <div class="flex items-center gap-1.5"><Film class="w-4 h-4 text-emerald-500"/> {t('welcome_trustHD')}</div>
+            <div class="flex items-center gap-1.5"><Zap class="w-4 h-4 text-emerald-500"/> {t('welcome_trustQuickEditing')}</div>
+          </div>
+          {/if}
+
           <!-- Recording status display -->
           {#if isRecording}
-            <div class="mt-8 p-4 bg-orange-50/50 border border-orange-100 rounded-xl max-w-md mx-auto">
+            <div class={isPaused
+              ? 'mt-6 max-w-md mx-auto rounded-xl border p-4 bg-amber-50/70 border-amber-200'
+              : 'mt-6 max-w-md mx-auto rounded-xl border p-4 bg-red-50/70 border-red-100'}>
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
                   <span class="relative flex h-3 w-3">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                    {#if !isPaused}
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    {/if}
+                    <span
+                      class="relative inline-flex h-3 w-3 rounded-full"
+                      class:bg-amber-500={isPaused}
+                      class:bg-red-500={!isPaused}
+                    ></span>
                   </span>
-                  <span class="text-sm font-semibold text-orange-900">
+                  <span
+                    class="text-sm font-semibold"
+                    class:text-amber-900={isPaused}
+                    class:text-red-800={!isPaused}
+                  >
                     {isPaused ? t('control_statusPaused') : t('welcome_statusRecording')}
                   </span>
                 </div>
-                <div class="px-3 py-1 bg-white border border-orange-200/60 rounded-full text-xs font-medium text-orange-800 shadow-sm">
-                  {getModeName(selectedMode)} {t('welcome_modeLabel')}
-                </div>
-              </div>
-            </div>
-          {:else}
-            <div class="mt-8 p-4 bg-slate-50 border border-slate-100 rounded-xl max-w-md mx-auto">
-              <div class="flex items-start gap-4">
-                <div class="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Play class="w-5 h-5 ml-0.5" />
-                </div>
-                <div class="flex-1">
-                  <p class="font-bold text-slate-900 mb-1 text-sm">{t('welcome_readyTitle')}</p>
-                  <p class="text-xs text-slate-500 mb-2 leading-relaxed">
-                    {t('welcome_readyDesc', getModeName(selectedMode))}
-                  </p>
-                  <div class="flex items-center gap-2 text-xs text-blue-600 font-medium">
-                    <CheckCircle2 class="w-3.5 h-3.5" />
-                    <span>{t('welcome_readyTip', String(COUNTDOWN_SECONDS))}</span>
+                <div class="flex items-center gap-2">
+                  <div
+                    class="inline-flex items-center gap-1.5 rounded-full border bg-white px-3 py-1 text-xs font-semibold shadow-sm"
+                    class:border-amber-200={isPaused}
+                    class:text-amber-800={isPaused}
+                    class:border-red-200={!isPaused}
+                    class:text-red-700={!isPaused}
+                  >
+                    <Clock class="h-3.5 w-3.5" />
+                    <span class="tabular-nums">{formatRecordingDuration(displayElapsedMs)}</span>
+                  </div>
+                  <div
+                    class="rounded-full border bg-white px-3 py-1 text-xs font-medium shadow-sm"
+                    class:border-amber-200={isPaused}
+                    class:text-amber-800={isPaused}
+                    class:border-red-200={!isPaused}
+                    class:text-red-700={!isPaused}
+                  >
+                    {getModeName(selectedMode)} {t('welcome_modeLabel')}
                   </div>
                 </div>
+              </div>
+              <div class="mt-4 pt-3 border-t text-center text-xs font-medium opacity-80" 
+                   class:border-amber-200={isPaused} class:text-amber-800={isPaused} 
+                   class:border-red-200={!isPaused} class:text-red-800={!isPaused}>
+                💡 Tip: Click the extension icon 🧩 to stop recording from any page.
               </div>
             </div>
           {/if}
         </div>
       </section>
 
-      <!-- Quick Start Guide -->
-      <section>
+      <div class="flex-1"></div> <!-- Spacer to push lower content down -->
+
+      <!-- Quick Start Guide (User Journey) -->
+      <section class="max-w-5xl mx-auto w-full mt-auto pt-8">
         <div class="text-center mb-10">
           <h3 class="text-2xl font-bold text-slate-900 mb-3">{t('welcome_howTitle')}</h3>
           <p class="text-slate-500 max-w-xl mx-auto">{t('welcome_howDesc')}</p>
         </div>
         
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
           <!-- Step 1 -->
-          <div class="relative group">
-            <div class="absolute inset-0 bg-white rounded-2xl shadow-sm border border-slate-200 transform transition-transform group-hover:-translate-y-1"></div>
-            <div class="relative p-6 text-center">
-              <div class="w-14 h-14 bg-slate-100 text-slate-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-xl font-bold shadow-inner">1</div>
-              <h4 class="text-lg font-bold text-slate-900 mb-2">{t('welcome_step1Title')}</h4>
+          <div class="relative group transition-transform duration-300 hover:-translate-y-1">
+            <div class="absolute inset-0 bg-white rounded-2xl shadow-sm border border-slate-200 z-0"></div>
+            <div class="relative p-6 text-center z-10 flex flex-col items-center">
+              <div class="w-14 h-14 bg-slate-50 text-slate-600 rounded-2xl flex items-center justify-center mb-4 shadow-inner ring-1 ring-slate-200 group-hover:bg-slate-100 group-hover:text-slate-700 transition-colors">
+                <Puzzle class="w-6 h-6" />
+              </div>
+              <h4 class="text-lg font-bold text-slate-900 mb-2">{t('journey_step1Title')}</h4>
               <p class="text-sm text-slate-500 leading-relaxed">
-                {t('welcome_step1Desc')}
+                {t('journey_step1Desc')}
               </p>
+            </div>
+            <!-- Chevron pointing right (desktop only) -->
+            <div class="hidden md:flex absolute top-1/2 -right-3 translate-x-1/2 -translate-y-1/2 z-20 text-slate-200 group-hover:text-blue-300 transition-colors pointer-events-none">
+              <ChevronRight class="w-6 h-6" />
             </div>
           </div>
 
           <!-- Step 2 -->
-          <div class="relative group">
-            <div class="absolute inset-0 bg-white rounded-2xl shadow-sm border border-slate-200 transform transition-transform group-hover:-translate-y-1"></div>
-            <div class="relative p-6 text-center">
-              <div class="w-14 h-14 bg-slate-100 text-slate-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-xl font-bold shadow-inner">2</div>
-              <h4 class="text-lg font-bold text-slate-900 mb-2">{t('welcome_step2Title')}</h4>
+          <div class="relative group transition-transform duration-300 hover:-translate-y-1">
+            <div class="absolute inset-0 bg-white rounded-2xl shadow-sm border border-slate-200 z-0"></div>
+            <div class="relative p-6 text-center z-10 flex flex-col items-center">
+              <div class="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4 shadow-inner ring-1 ring-blue-200 group-hover:bg-blue-100 group-hover:text-blue-700 transition-colors">
+                <Video class="w-6 h-6" />
+              </div>
+              <h4 class="text-lg font-bold text-slate-900 mb-2">{t('journey_step2Title')}</h4>
               <p class="text-sm text-slate-500 leading-relaxed">
-                {t('welcome_step2Desc')}
+                {t('journey_step2Desc')}
               </p>
+            </div>
+            <!-- Chevron pointing right (desktop only) -->
+            <div class="hidden md:flex absolute top-1/2 -right-3 translate-x-1/2 -translate-y-1/2 z-20 text-slate-200 group-hover:text-purple-300 transition-colors pointer-events-none">
+              <ChevronRight class="w-6 h-6" />
             </div>
           </div>
 
           <!-- Step 3 -->
-          <div class="relative group">
-            <div class="absolute inset-0 bg-white rounded-2xl shadow-sm border border-slate-200 transform transition-transform group-hover:-translate-y-1"></div>
-            <div class="relative p-6 text-center">
-              <div class="w-14 h-14 bg-slate-100 text-slate-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-xl font-bold shadow-inner">3</div>
-              <h4 class="text-lg font-bold text-slate-900 mb-2">{t('welcome_step3Title')}</h4>
+          <div class="relative group transition-transform duration-300 hover:-translate-y-1">
+            <div class="absolute inset-0 bg-white rounded-2xl shadow-sm border border-slate-200 z-0"></div>
+            <div class="relative p-6 text-center z-10 flex flex-col items-center">
+              <div class="w-14 h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center mb-4 shadow-inner ring-1 ring-purple-200 group-hover:bg-purple-100 group-hover:text-purple-700 transition-colors">
+                <Scissors class="w-6 h-6" />
+              </div>
+              <h4 class="text-lg font-bold text-slate-900 mb-2">{t('journey_step3Title')}</h4>
               <p class="text-sm text-slate-500 leading-relaxed">
-                {t('welcome_step3Desc', [t('control_btnStart'), String(COUNTDOWN_SECONDS)])}
+                {t('journey_step3Desc')}
+              </p>
+            </div>
+            <!-- Chevron pointing right (desktop only) -->
+            <div class="hidden md:flex absolute top-1/2 -right-3 translate-x-1/2 -translate-y-1/2 z-20 text-slate-200 group-hover:text-emerald-300 transition-colors pointer-events-none">
+              <ChevronRight class="w-6 h-6" />
+            </div>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="relative group transition-transform duration-300 hover:-translate-y-1">
+            <div class="absolute inset-0 bg-white rounded-2xl shadow-sm border border-slate-200 z-0"></div>
+            <div class="relative p-6 text-center z-10 flex flex-col items-center">
+              <div class="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-4 shadow-inner ring-1 ring-emerald-200 group-hover:bg-emerald-100 group-hover:text-emerald-700 transition-colors">
+                <Download class="w-6 h-6" />
+              </div>
+              <h4 class="text-lg font-bold text-slate-900 mb-2">{t('journey_step4Title')}</h4>
+              <p class="text-sm text-slate-500 leading-relaxed">
+                {t('journey_step4Desc')}
               </p>
             </div>
           </div>
-        </div>
-      </section>
-
-      <!-- Advanced Features Guide -->
-      <section class="relative overflow-hidden rounded-3xl bg-slate-900 shadow-2xl">
-        <!-- Decorative background elements -->
-        <div class="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl"></div>
-        <div class="absolute bottom-0 left-0 -mb-10 -ml-10 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl"></div>
-        
-        <div class="relative p-8 md:p-10 flex flex-col md:flex-row items-center gap-8 md:gap-12">
-           <div class="flex-shrink-0 w-20 h-20 bg-white/10 rounded-3xl flex items-center justify-center backdrop-blur-sm border border-white/10 shadow-inner">
-             <Zap class="w-10 h-10 text-yellow-400" />
-           </div>
-           
-           <div class="flex-1 text-center md:text-left">
-             <h3 class="text-2xl md:text-3xl font-bold text-white mb-3 tracking-tight">{t('welcome_advancedTitle')}</h3>
-             <p class="text-slate-300 text-lg leading-relaxed">
-               {t('welcome_advancedDesc')}
-             </p>
-           </div>
-           
-           <div class="flex-shrink-0 w-full md:w-auto">
-             <button
-               class="w-full md:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-white text-slate-900 hover:bg-blue-50 rounded-xl font-bold transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 group"
-               onclick={openControlPanel}
-             >
-               <span>{t('welcome_openControl')}</span>
-               <ArrowRight class="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-             </button>
-           </div>
         </div>
       </section>
     </main>
 
     <!-- Footer -->
     <footer class="border-t border-slate-200 bg-white/50 backdrop-blur-sm mt-12">
-      <div class="max-w-5xl mx-auto px-6 py-8">
+      <div class="max-w-6xl mx-auto px-6 py-8">
         <div class="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-slate-500">
           <p>{t('welcome_footerHelp')}</p>
           <div class="flex items-center gap-6">
