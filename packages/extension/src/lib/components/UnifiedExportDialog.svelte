@@ -9,7 +9,9 @@
     Zap,
     Palette,
     Info,
-    Clock
+    Clock,
+    TriangleAlert,
+    HardDrive
   } from '@lucide/svelte'
   import { trimStore } from '$lib/stores/trim.svelte'
   import { _t as t } from '$lib/utils/i18n'
@@ -18,6 +20,7 @@
     open: boolean
     onClose: () => void
     onExport: (format: ExportFormat, options: VideoExportOptions | GifExportOptions) => void
+    onOpenDrive?: () => void
     sourceInfo: SourceVideoInfo
     sourceFps?: number
     isExporting?: boolean
@@ -29,17 +32,24 @@
       estimatedTimeRemaining?: number
     } | null
     hasBackground?: boolean
+    errorMessage?: string
+    errorHint?: string
+    showOpenDriveAction?: boolean
   }
 
   let {
     open = $bindable(),
     onClose,
     onExport,
+    onOpenDrive,
     sourceInfo,
     sourceFps = 30,
     isExporting = false,
     exportProgress = null,
-    hasBackground = false
+    hasBackground = false,
+    errorMessage = '',
+    errorHint = '',
+    showOpenDriveAction = false
   }: Props = $props()
 
   // Types
@@ -652,6 +662,27 @@
         {/if}
 
       </div>
+
+      {#if errorMessage && !isExporting}
+        <div class="mx-6 mt-4 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+          <TriangleAlert class="mt-0.5 h-4 w-4 flex-shrink-0 text-red-500" />
+          <div class="min-w-0 flex-1">
+            <p class="text-sm text-red-700">{errorMessage}</p>
+            {#if errorHint}
+              <p class="mt-1 text-xs text-red-600">{errorHint}</p>
+            {/if}
+          </div>
+          {#if showOpenDriveAction && onOpenDrive}
+            <button
+              class="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-100"
+              onclick={onOpenDrive}
+            >
+              <HardDrive class="h-3.5 w-3.5" />
+              {t('studio_emptyOpenDrive')}
+            </button>
+          {/if}
+        </div>
+      {/if}
 
       <!-- Footer -->
       <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">

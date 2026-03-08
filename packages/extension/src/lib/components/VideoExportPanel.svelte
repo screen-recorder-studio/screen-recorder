@@ -1,6 +1,6 @@
 <!-- Video export panel component -->
 <script lang="ts">
-  import { Download, LoaderCircle, TriangleAlert, Sparkles } from '@lucide/svelte'
+  import { Download, HardDrive, LoaderCircle, TriangleAlert, Sparkles } from '@lucide/svelte'
   import { ExportManager } from '$lib/services/export-manager'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import { trimStore } from '$lib/stores/trim.svelte'
@@ -88,6 +88,8 @@
 
   // Export error feedback
   let exportErrorMessage = $state('')
+  let exportErrorHint = $state('')
+  let exportErrorAction = $state<'none' | 'open-drive'>('none')
 
   // Unified export dialog
   let showExportDialog = $state(false)
@@ -145,6 +147,7 @@
     if (!canExport) return
 
     try {
+      clearExportError()
       isExportingGIF = true
       exportProgress = {
         type: 'gif',
@@ -228,11 +231,12 @@
       console.log('✅ [Export] GIF export completed:', filename)
 
       // 导出成功，关闭对话框
+      clearExportError()
       showExportDialog = false
 
     } catch (error) {
       console.error('❌ [Export] GIF export failed:', error)
-      exportErrorMessage = t('export_error_gif_failed')
+      setExportError(t('export_error_gif_failed'), t('export_error_retry_hint'))
     } finally {
       isExportingGIF = false
       resetProgressAnimation()
@@ -319,10 +323,30 @@
   // Check if any export is in progress
   const isExporting = $derived(isExportingWebM || isExportingMP4 || isExportingGIF)
 
+  function clearExportError() {
+    exportErrorMessage = ''
+    exportErrorHint = ''
+    exportErrorAction = 'none'
+  }
+
+  function setExportError(message: string, hint = '', action: 'none' | 'open-drive' = 'none') {
+    exportErrorMessage = message
+    exportErrorHint = hint
+    exportErrorAction = action
+  }
+
+  function openDriveFromExportError() {
+    try {
+      chrome.runtime.sendMessage({ type: 'OPEN_DRIVE' })
+    } catch {
+      window.open('/drive.html', '_blank')
+    }
+  }
+
   // Open unified export dialog
   function openExportDialog() {
     if (!canExport) return
-    exportErrorMessage = ''
+    clearExportError()
     showExportDialog = true
   }
 
@@ -346,6 +370,7 @@
     if (!canExport) return
 
     try {
+      clearExportError()
       isExportingWebM = true
       exportProgress = {
         type: 'webm',
@@ -440,7 +465,7 @@
           console.log('⬇️ [Export] Downloaded WebM from OPFS:', info.fileName)
         } catch (e) {
           console.warn('⚠️ [Export] Failed to read WebM from OPFS:', e)
-          exportErrorMessage = t('export_error_opfs_download_failed')
+          setExportError(t('export_error_opfs_download_failed'), '', 'open-drive')
           // Do not close dialog – user needs to know file is in Drive
           return
         }
@@ -450,11 +475,12 @@
       }
 
       // Close dialog on success
+      clearExportError()
       showExportDialog = false
 
     } catch (error) {
       console.error('❌ [Export] WebM export failed:', error)
-      exportErrorMessage = t('export_error_webm_failed')
+      setExportError(t('export_error_webm_failed'), t('export_error_retry_hint'))
     } finally {
       isExportingWebM = false
       resetProgressAnimation()
@@ -467,6 +493,7 @@
     if (!canExport) return
 
     try {
+      clearExportError()
       isExportingMP4 = true
       exportProgress = {
         type: 'mp4',
@@ -555,11 +582,12 @@
       console.log('✅ [Export] MP4 export completed:', filename)
 
       // Close dialog on success
+      clearExportError()
       showExportDialog = false
 
     } catch (error) {
       console.error('❌ [Export] MP4 export failed:', error)
-      exportErrorMessage = t('export_error_mp4_failed')
+      setExportError(t('export_error_mp4_failed'), t('export_error_retry_hint'))
     } finally {
       isExportingMP4 = false
       resetProgressAnimation()
@@ -651,16 +679,27 @@
   </div>
 
   <!-- Export error banner -->
-  {#if exportErrorMessage}
+  {#if exportErrorMessage && !showExportDialog}
     <div class="flex items-start gap-2 px-2.5 py-2 bg-red-50 border border-red-200 rounded-lg">
       <TriangleAlert class="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
       <div class="flex-1 min-w-0">
         <p class="text-xs text-red-700">{exportErrorMessage}</p>
-        <p class="text-xs text-red-500 mt-0.5">{t('export_error_retry_hint')}</p>
+        {#if exportErrorHint}
+          <p class="text-xs text-red-500 mt-0.5">{exportErrorHint}</p>
+        {/if}
       </div>
+      {#if exportErrorAction === 'open-drive'}
+        <button
+          class="inline-flex items-center gap-1 rounded border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 flex-shrink-0"
+          onclick={openDriveFromExportError}
+        >
+          <HardDrive class="w-3 h-3" />
+          {t('studio_emptyOpenDrive')}
+        </button>
+      {/if}
       <button
         class="p-0.5 rounded hover:bg-red-100 transition-colors flex-shrink-0"
-        onclick={() => { exportErrorMessage = '' }}
+        onclick={clearExportError}
         title={t('common_close')}
       >
         <span class="text-red-400 text-xs">✕</span>
@@ -674,9 +713,13 @@
   bind:open={showExportDialog}
   onClose={() => { showExportDialog = false }}
   onExport={handleExport}
+  onOpenDrive={openDriveFromExportError}
   sourceInfo={sourceInfo}
   sourceFps={sourceFps}
   isExporting={isExporting}
+  errorMessage={exportErrorMessage}
+  errorHint={exportErrorHint}
+  showOpenDriveAction={exportErrorAction === 'open-drive'}
   exportProgress={exportProgress ? {
     stage: exportProgress.stage,
     progress: displayedProgress,

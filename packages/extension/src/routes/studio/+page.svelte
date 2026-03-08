@@ -311,6 +311,7 @@
     workerCurrentWorker = null
 
     // Reset state
+    isResolvingInitialRecording = true
     workerEncodedChunks = []
     durationMs = 0
     windowStartMs = 0
