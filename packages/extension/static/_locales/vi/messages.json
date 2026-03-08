@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio" },
-  "appDesc": { "message": "Tiện ích Chrome chuyên nghiệp để quay tab, cửa sổ, màn hình và các vùng chỉ định" },
+  "appName": { "message": "Screen Recorder Studio - Không giới hạn, Thu phóng, Video & GIF" },
+  "appDesc": { "message": "Quay màn hình ổn định không giới hạn thời gian. Trình chỉnh sửa tích hợp giúp thu phóng, cắt và xuất MP4 hoặc GIF chất lượng cao." },
   "common_close": { "message": "Đóng" },
   "action_defaultTitle": { "message": "Mở bảng điều khiển quay phim" },
 

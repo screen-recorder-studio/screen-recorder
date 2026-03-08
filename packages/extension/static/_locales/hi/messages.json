@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio" },
-  "appDesc": { "message": "टैब, विंडो, स्क्रीन, क्षेत्रों और तत्वों को रिकॉर्ड करने के लिए पेशेवर क्रोम एक्सटेंशन" },
+  "appName": { "message": "Screen Recorder Studio - असीमित, ज़ूम, वीडियो और GIF" },
+  "appDesc": { "message": "बिना समय सीमा के स्थिर स्क्रीन रिकॉर्डिंग। ज़ूम, ट्रिम और उच्च गुणवत्ता वाले MP4 या GIF एक्सपोर्ट के लिए बिल्ट-इन एडिटर।" },
   "common_close": { "message": "बंद करें" },
   "action_defaultTitle": { "message": "रिकॉर्डिंग पैनल खोलें" },
 

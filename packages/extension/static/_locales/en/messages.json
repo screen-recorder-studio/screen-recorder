@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio" },
-  "appDesc": { "message": "A Chrome extension for recording tabs, windows, screens, page regions, and elements" },
+  "appName": { "message": "Screen Recorder Studio - Unlimited, Zoom, Video & GIF" },
+  "appDesc": { "message": "Stable screen recording with no time limits. Built-in editor to seamlessly zoom, trim, and export to high-quality MP4 or GIF." },
   "common_close": { "message": "Close" },
   "action_defaultTitle": { "message": "Open Recording Panel" },
 

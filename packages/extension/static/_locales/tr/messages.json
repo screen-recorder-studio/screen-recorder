@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio" },
-  "appDesc": { "message": "Sekme, pencere, tam ekran ve belirli bölgeleri kaydetmek için profesyonel Chrome uzantısı" },
+  "appName": { "message": "Screen Recorder Studio - Sınırsız, Yakınlaştırma, Video ve GIF" },
+  "appDesc": { "message": "Süre sınırı olmadan sorunsuz ekran kaydı. Yakınlaştırma, kırpma ve yüksek kaliteli MP4/GIF dışa aktarma için yerleşik düzenleyici." },
   "common_close": { "message": "Kapat" },
   "action_defaultTitle": { "message": "Kayıt panelini aç" },
 
