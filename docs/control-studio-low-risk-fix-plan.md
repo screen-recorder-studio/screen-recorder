@@ -1,273 +1,426 @@
-# Control → Studio 低风险技术修复方案
+# Control → Studio 低成本低风险迭代计划（2026-03-08 刷新版）
 
-> 目标：基于《Control → Studio 端到端留存风险评估》，识别**低耦合、低回归、可快速上线**的修复项。  
-> 说明：本方案只给出技术修复建议，不实施代码修改。
-> 注：文中源码行号基于本次评估时的仓库快照（2026-03-07），后续代码演进后可能发生漂移。
+> 目标：基于当前代码现状，挑选**最小改动、最低耦合、最高用户感知收益**的迭代项，优先解决“默认体验不够惊艳、关键节点不够确定”这两个核心问题。  
+> 说明：本计划只给出详细实施方案，不在本次任务中修改代码。
 
-## 1. 修复策略原则
+---
 
-优先选择以下类型的问题：
+## 1. 迭代筛选原则
 
-- **不改录制底层协议**，只改 UI 状态与文案反馈
-- **不改 OPFS 数据结构**，只改页面上的状态分流与错误收口
-- **不改导出 worker 主流程**，只改面板层的用户提示与异常透出
-- **不引入新依赖**，复用现有 store / message / empty state / dialog 组件
+本计划只保留符合以下条件的事项：
 
-## 2. 建议拆分为两批
+- **不改 OPFS 数据结构**
+- **不重写 WebCodecs / offscreen 主链路**
+- **尽量只改 UI、状态收口、默认配置、入口组织方式**
+- **优先复用现有能力**（background state、store、ExportManager、现有组件）
+- **能在 0.5~2 天内独立交付并验证**
 
-### 第一批：近乎无风险，可直接进入开发
-1. Control 恢复真实录制模式
-2. Studio 首屏 loading 与 worker ready 对齐
-3. Studio 接通 `invalid-recording` 分支
-4. 导出失败时显示用户可见错误
-5. WebM OPFS 回读失败时不要静默成功
-6. Stop 后补一个“正在保存录制”状态提示
+---
 
-### 第二批：中风险，但仍建议尽快排期
-1. Preparing 阶段增加更明确的进度与超时策略
-2. Studio 首次 reader 初始化增加 timeout
-3. 录制过程增加中途存储剩余量监测
-4. 导出过程中增加取消能力
+## 2. 推荐分三批做
 
-## 3. 低风险修复项明细
+### Sprint 1：先把“第一印象”和“卡住感”解决
 
-## 3.1 Control 恢复真实录制模式
+1. 默认 Studio 美化模板
+2. Studio 一键模板预设
+3. Preparing 子状态 + timeout 对齐
+4. Studio 首屏主加载 timeout + retry
 
-### 问题
-- 当前 `REQUEST_RECORDING_STATE` 返回了录制态，但 Control 初始化时没有消费 `state.mode`，导致重开面板时模式可能显示错误。
+### Sprint 2：再把“可控感”和“可发现性”补齐
 
-### 证据
-- Control 初始化未恢复模式：`packages/extension/src/routes/control/+page.svelte:157-166`
-- background 有 `currentRecording.mode`：`packages/extension/src/extensions/background.ts:971-980`
+5. 导出中取消
+6. Studio 快速完成引导
+7. 录制前预检提示
 
-### 方案
-- 在 Control 初始化响应中，若 `resp.state.mode` 为 `tab/window/screen`，同步写入 `selectedMode`
-- 在 `STATE_UPDATE` 分支中继续保持现有回写逻辑
+### Sprint 3：再考虑入口扩展和音频策略
 
-### 风险评估
-- **低**
-- 只影响 UI 展示，不影响录制链路
+8. 主入口补区域/元素录制
+9. 音频开关与预期管理
 
-### 验收标准
-- 录制 screen/window 时关闭并重开 Control，模式标签与状态条显示正确
+> 其中 Sprint 1 是本次定义的“低成本、低风险、建议优先上线”的核心范围。
 
-## 3.2 Studio 首屏 loading 与 worker ready 对齐
+---
 
-### 问题
-- 当前只要调用了 `loadRecordingById()`，页面就会离开首屏 loading，但真实数据尚未 ready。
+## 3. Sprint 1 详细计划
 
-### 证据
-- `loadRecordingById(dirId)` 后立刻 `isResolvingInitialRecording = false`：`packages/extension/src/routes/studio/+page.svelte:495-499`
-- 数据真正 ready/range 回来在 `readerWorker.onmessage`：`packages/extension/src/routes/studio/+page.svelte:339-407`
+## 3.1 方案一：默认 Studio 美化模板
 
-### 方案
-- 将 `isResolvingInitialRecording` 的关闭时机后移到：
-  - 首个 `ready` + `range` 成功之后；或
-  - `error` / empty 分支确认之后
-- 对 drawer 切换录制也引入相同 loading 态
+### 要解决的问题
 
-### 风险评估
-- **低**
-- 只改 Studio 壳层状态，不改 reader worker 协议
+当前默认背景配置虽然是 `wallpaper`，但没有默认壁纸对象时会回退为白色/占位背景；同时圆角默认 `0`、阴影默认关闭。用户第一次打开 Studio 时，最容易看到的是“白底矩形原片”。
 
-### 验收标准
-- Studio 打开时只会看到：
-  - 明确 loading
-  - 明确空状态
-  - 明确内容页  
-  不再出现中间空白态
+### 代码证据
 
-## 3.3 接通 `invalid-recording` 分支
+- 默认背景配置：`background-config.svelte.ts:13-22`
+- 默认 `borderRadius: 0`
+- 默认只有 `type: 'wallpaper'`，没有默认 `wallpaper` 实体
+- wallpaper 为空时会回退占位/纯色：`background-config.svelte.ts:884-889`
 
-### 问题
-- 空状态组件支持 `invalid-recording`，但实际不会被赋值，导致错误归因不够准确。
+### 方案内容
 
-### 证据
-- 定义存在：`packages/extension/src/routes/studio/+page.svelte:26-27`
-- 组件支持：`packages/extension/src/lib/components/studio/StudioEmptyState.svelte:13-24`
-- 实际赋值集中在 Studio 的 `readerWorker.onmessage` 错误处理和 `onMount` 初始分流逻辑中，当前只落到 `no-recording / opfs-unavailable / load-failed`，没有任何 `invalid-recording` 赋值：`packages/extension/src/routes/studio/+page.svelte`
+新增一套**首条录制默认模板**，例如：
 
-### 方案
-- 在以下场景显式映射为 `invalid-recording`：
-  - `getLatestValidRecording()` 返回空但存在不可用录制
-  - `opfs-reader-worker` 抛出索引/元数据解析错误
-  - 指定 `id` 存在，但 `isRecordingUsable()` 不通过
+- 背景：预置渐变或内置壁纸
+- 圆角：20~32
+- Padding：60（沿用当前）
+- 阴影：轻阴影 preset
 
-### 风险评估
-- **低**
-- 只增加错误分流，不改变主逻辑
+### 为什么低风险
+
+- 只改默认 store 初始化或首次进入 Studio 的默认套用逻辑
+- 不影响录制数据结构
+- 不影响导出格式与 worker
+- 用户仍可手动改回原样
+
+### 预估成本
+
+**0.5 ~ 1 天**
+
+### 涉及文件
+
+- `packages/extension/src/lib/stores/background-config.svelte.ts`
+- 可能补充：`packages/extension/src/routes/studio/+page.svelte`
 
 ### 验收标准
-- `no-recording / invalid-recording / opfs-unavailable / load-failed` 四类原因能被明确区分
 
-## 3.4 导出失败时显示用户可见错误
+- 新录制进入 Studio 后，不再默认看到白底矩形原片
+- 未手动操作时，导出结果已经具备基础美化效果
+- 老用户已有自定义配置时，不强制覆盖历史配置
 
-### 问题
-- GIF/WebM/MP4 导出失败都只写 console，没有页面反馈。
+### 预期收益
 
-### 证据
-- `TODO: Show error message`：  
-  `packages/extension/src/lib/components/VideoExportPanel.svelte:230-233,448-451,553-556`
+- 直接提升第一印象
+- 降低“我还要自己调半天”的心理成本
+- 最接近用户问题描述中的核心诉求
 
-### 方案
-- 在 `VideoExportPanel` 内增加一个本地 `exportErrorMessage` 状态
-- 三个 `catch` 中统一写入：
-  - 失败原因
-  - 推荐动作（重试 / 降低分辨率 / 去 Drive 查看原文件）
-- 在 `UnifiedExportDialog` 或按钮下方展示错误 banner
+---
 
-### 风险评估
-- **低**
-- 只加显示层，不动导出 worker
+## 3.2 方案二：Studio 一键模板预设
 
-### 验收标准
-- 任意导出失败后，用户能明确看到失败原因与下一步建议
+### 要解决的问题
 
-## 3.5 WebM OPFS 回读失败时不要静默成功
+当前背景、圆角、Padding、阴影都能调，但用户必须逐项操作，导致“能力强但不够快”。
 
-### 问题
-- 导出文件已经写到 OPFS，但回读下载失败时，当前逻辑只打印 warning，然后仍然关闭对话框。
+### 方案内容
 
-### 证据
-- 回读失败仅 warning：`packages/extension/src/lib/components/VideoExportPanel.svelte:426-439`
-- 随后仍关闭 dialog：`packages/extension/src/lib/components/VideoExportPanel.svelte:445-446`
+在 Studio 右侧顶部或 BackgroundPicker 上方增加模板区：
 
-### 方案
-- 将该分支从“静默吞掉”改为“显式成功但未下载”或“显式失败待用户处理”：
-  - 方案 A：提示“文件已保存到 Drive，可前往 Drive 下载”
-  - 方案 B：保持导出 dialog 打开，并给出“打开 Drive / 重试下载”按钮
+- Clean Demo
+- Creator Gradient
+- Dark Glass
+- Business Presentation
 
-### 风险评估
-- **低**
-- 不改 worker，只改成功收口逻辑
+每个模板本质上只是批量设置现有 store：
 
-### 验收标准
-- 回读失败时，用户至少知道：
-  - 文件是否已经存在于 OPFS
-  - 现在应该点哪里继续拿到文件
+- `backgroundConfigStore.update...`
+- `updateBorderRadius`
+- `updatePadding`
+- `updateShadow`
+- `updateOutputRatio`
 
-## 3.6 Stop 后增加“正在保存录制”提示
+### 为什么低风险
 
-### 问题
-- Stop 不等于文件已完成保存，但当前页面没有保存态。
+- 全部复用现有状态结构
+- 不改导出算法
+- 不改录制链路
+- 仅增加“组合应用”的产品层入口
 
-### 证据
-- Stop 只发消息：`packages/extension/src/routes/control/+page.svelte:398-406`
-- finalize OPFS 发生在 offscreen 完成编码之后：`packages/extension/src/extensions/offscreen-main.ts:538-553`
+### 预估成本
 
-### 方案
-- Control 增加 `saving` 或 `finishing` 子阶段
-- Stop 点击后：
-  - 按钮禁用
-  - 状态文案切成“正在保存录制”
-  - 等待 `OPFS_RECORDING_READY / STREAM_ERROR`
+**1 ~ 1.5 天**
 
-### 风险评估
-- **低**
-- 只是页面状态补全，不影响消息协议
+### 涉及文件
+
+- `packages/extension/src/routes/studio/+page.svelte`
+- `packages/extension/src/lib/components/BackgroundPicker/index.svelte`
+- `packages/extension/src/lib/stores/background-config.svelte.ts`
 
 ### 验收标准
-- 用户点击 Stop 后，不会再误以为“点完立刻就结束了”
 
-## 4. 中风险修复项（建议排期，但不建议和第一批混做）
+- 用户点击模板后，预览即时变化
+- 模板应用后仍可用现有单项控件继续微调
+- 导出结果与预览一致
 
-## 4.1 Preparing 阶段升级为更可解释的状态机
+### 预期收益
 
-### 问题
-- Preparing 只有一个大状态，无法区分：
-  - 等系统权限选择
-  - 权限已给，正在初始化
-  - 倒计时开始前
+- 把“功能丰富”变成“上手很快”
+- 明显降低首次编辑成本
+- 提高导出率与分享率
 
-### 方案
-- 新增细分文案或子状态：
-  - `awaiting-permission`
-  - `initializing-recorder`
-  - `countdown`
-- 允许用户在 preparing 态取消
+---
 
-### 风险评估
-- **中**
-- 会影响 control/offscreen/background 的状态协作
+## 3.3 方案三：Preparing 子状态 + timeout 对齐
 
-## 4.2 Studio reader 首次加载增加 timeout
+### 要解决的问题
 
-### 问题
-- 主加载链路没有 timeout，理论上可能卡死在 waiting 状态。
+当前 Control 的 preparing 反馈仍然太粗：
 
-### 方案
-- `loadRecordingById()` 对首次 `ready` 设定超时
-- 超时后落到 `load-failed`，并提供“重试 / 打开 Drive / 重新录制”
+- UI timeout：30 秒
+- background/offscreen timeout：45 秒
+- 用户只看到一个 Preparing 文案
 
-### 风险评估
-- **中**
-- 要避免和正常的大文件慢加载误判
+### 代码证据
 
-## 4.3 录制中途增加存储余量监测
+- Control 30 秒超时：`control/+page.svelte:40-43,121-130`
+- background offscreen start timeout：`background.ts:9-11`
+- offscreen 真正流程包含多个阶段：`offscreen-main.ts:426-455,584-600`
 
-### 问题
-- 目前只在 writer init 时检查一次磁盘余量。
+### 方案内容
 
-### 方案
-- 在 writer append/progress 周期性调用 `navigator.storage.estimate()`
-- 建立阈值：
-  - warning：提示用户尽快停止
-  - hard stop：优雅结束录制并明确提示原因
+把 preparing 细分为至少 3 个用户可理解状态：
 
-### 风险评估
-- **中**
-- 会增加录制过程中的 I/O/估算调用，需要性能验证
+1. 等待屏幕选择/权限确认
+2. 正在初始化录制引擎
+3. 即将开始倒计时
 
-## 4.4 导出过程中增加取消能力
+同时统一 timeout 策略：
 
-### 问题
-- `ExportManager.cancelExport()` 已存在，但 UI 没接线。
+- UI 与 background 使用同一超时值
+- 超时后文案明确区分“用户未授权”与“系统初始化过慢”
 
-### 方案
-- 在导出 dialog 中增加 Cancel 按钮
-- 调用 `exportManager.cancelExport()`
-- 中断后保留当前参数，允许重试
+### 为什么低风险
 
-### 风险评估
-- **中**
-- 需要验证 worker cancel 后的资源清理完整性
+- 不需要改录制数据协议
+- 只是在现有消息流上增加更清晰的 UI 映射
+- 主要风险在文案和状态同步，技术面可控
 
-## 5. 推荐实施顺序
+### 预估成本
 
-## Sprint 1：先修“看不见的问题”
-1. Control 模式恢复
-2. Studio 首屏 loading 对齐
-3. `invalid-recording` 分支接通
-4. 导出错误可视化
-5. WebM 回读失败不再静默
-6. Stop 后保存态
+**0.5 ~ 1 天**
 
-## Sprint 2：再修“容易误判为卡死的问题”
-1. Preparing 状态细化
-2. Studio 首次 reader timeout
-3. 导出取消能力
+### 涉及文件
 
-## Sprint 3：最后修“长视频稳定性”
-1. 录制过程存储余量监测
-2. 基于长视频场景补充手工回归 checklist
+- `packages/extension/src/routes/control/+page.svelte`
+- `packages/extension/src/extensions/background.ts`
+- `packages/extension/src/extensions/offscreen-main.ts`
 
-## 6. 建议验收指标
+### 验收标准
 
-上线后建议重点观察以下指标：
+- 点击 Start 后，用户能明确知道当前卡在哪个阶段
+- 30s/45s 不一致问题被消除
+- 超时后给出明确下一步动作（重试 / 检查权限）
 
-- Start 点击后 10 秒内进入 `STREAM_START` 的成功率
+### 预期收益
+
+- 降低首次使用误判“卡死”的概率
+- 提升 Start → Recording 的转化体验
+
+---
+
+## 3.4 方案四：Studio 首屏主加载 timeout + retry
+
+### 要解决的问题
+
+Studio 现在已经把 loading 与 worker range 返回对齐，但首次 `open -> ready -> getRange` 主链路仍然没有独立 timeout。
+
+### 代码证据
+
+- 主加载逻辑：`studio/+page.svelte:307-421`
+- 预取与单帧 GOP 已有 timeout：`studio/+page.svelte:610-643,667-699`
+
+### 方案内容
+
+给首次加载增加独立 timeout，例如 4~6 秒：
+
+- 超时 -> 切到 `load-failed`
+- 展示 `Retry` 按钮
+- 同时保留 `Open Drive / Start Recording`
+
+### 为什么低风险
+
+- 不改 reader worker 协议
+- 只改 Studio 壳层状态机
+- 已有空状态组件可以复用
+
+### 预估成本
+
+**0.5 天**
+
+### 涉及文件
+
+- `packages/extension/src/routes/studio/+page.svelte`
+- `packages/extension/src/lib/components/studio/StudioEmptyState.svelte`
+
+### 验收标准
+
+- 首屏加载不会无限转圈
+- 加载失败后用户有明确重试动作
+- 大文件正常场景不被误判
+
+### 预期收益
+
+- 避免“录完却打不开”导致的高挫败体验
+- 提高 Studio 首次可用性
+
+---
+
+## 4. Sprint 2 详细计划（仍然建议做，但优先级次于 Sprint 1）
+
+## 4.1 方案五：导出中取消
+
+### 现状
+
+- `ExportManager.cancelExport()` 已实现：`export-manager.ts:247-254`
+- `UnifiedExportDialog` 的 Cancel 按钮导出时被禁用：`UnifiedExportDialog.svelte:689-699`
+
+### 方案内容
+
+- 导出中把 Cancel 按钮从“关闭对话框”改为“取消导出”
+- 取消后保留当前参数，允许用户立即重试
+
+### 预估成本
+
+**0.5 ~ 1 天**
+
+### 风险
+
+**低到中**。主要是验证 worker cancel 后资源是否完整释放。
+
+---
+
+## 4.2 方案六：Studio 快速完成引导
+
+### 要解决的问题
+
+用户未必知道应该先改背景、再裁剪、再导出。
+
+### 方案内容
+
+增加轻量引导条：
+
+1. 套模板
+2. 裁掉多余边缘（可选）
+3. 导出 MP4/WebM/GIF
+
+### 预估成本
+
+**0.5 天**
+
+### 风险
+
+**低**。纯展示与入口组织。
+
+---
+
+## 4.3 方案七：录制前预检提示
+
+### 要解决的问题
+
+background 已具备 capability 检测，但用户侧感知较弱。
+
+### 方案内容
+
+在 Control 增加录制前提示区：
+
+- 会弹出系统共享选择器
+- 某些页面不能注入/不能选区域
+- 建议关闭敏感页面
+- 存储空间不足时建议先清理
+
+### 预估成本
+
+**0.5 ~ 1 天**
+
+### 风险
+
+**低**。即使先做静态提示，也已经有价值。
+
+---
+
+## 5. 暂不归入“低风险快迭代”的事项
+
+下面这些方向价值不低，但不适合本轮当成“低成本低风险”处理：
+
+### 5.1 主入口补区域/元素录制
+
+价值：高  
+风险：中
+
+原因：
+
+- 需要把 Control、background、content、权限能力判断串起来
+- 不只是加一个按钮，还涉及入口可用性和失败分流
+
+### 5.2 音频录制开关
+
+价值：高  
+风险：中到高
+
+原因：
+
+- Control、offscreen、导出、浏览器兼容、权限提示都要一并评估
+- 一旦做不好，可能引入更多兼容性问题
+
+---
+
+## 6. 建议实施顺序（最现实版本）
+
+### 第一周
+
+1. 默认 Studio 美化模板
+2. Studio 一键模板预设
+
+### 第二周
+
+3. Preparing 子状态 + timeout 对齐
+4. Studio 首屏 timeout + retry
+
+### 第三周
+
+5. 导出中取消
+6. 快速完成引导
+7. 录制前预检提示
+
+---
+
+## 7. 每项迭代建议观察的指标
+
+### 指标 1：录制进入 Studio 的完成率
+
+关注：
+
+- Start 点击后进入 `STREAM_START` 的成功率
 - Stop 后成功进入 Studio 的比率
-- Studio 首次打开失败率
-- 导出失败率（按 WebM / MP4 / GIF 分开）
-- 导出失败后重试成功率
-- 用户从 Studio 空状态点击“重新录制 / 打开 Drive”的转化率
 
-## 7. 最终建议
+### 指标 2：Studio 导出率
 
-若目标是**尽快压低卸载率**，建议不要一上来改底层编码与 OPFS 协议，而是优先修复：
+关注：
 
-1. **状态看不懂**
-2. **失败看不见**
-3. **成功不确定**
+- 打开 Studio 后是否完成首次导出
+- 是否在未编辑直接离开
 
-这些问题大都集中在 Control 与 Studio 壳层，属于低耦合修复，收益会明显高于风险。
+### 指标 3：首次编辑深度
+
+关注：
+
+- 模板使用率
+- 背景、圆角、阴影至少改动 1 次的比例
+- Crop / Focus 的点击率
+
+### 指标 4：失败感知下降
+
+关注：
+
+- Preparing 阶段超时率
+- Studio 首屏加载失败率
+- 导出取消率 / 导出失败率
+
+---
+
+## 8. 最终建议
+
+如果只能做最少的事，我建议立刻做下面四项：
+
+1. **默认 Studio 美化模板**
+2. **一键模板预设**
+3. **Preparing 子状态 + timeout 对齐**
+4. **Studio 首屏 timeout + retry**
+
+它们共同特点是：
+
+- 代码改动面小
+- 不碰底层数据格式
+- 不重写录制/导出算法
+- 用户感知非常强
+
+对“卸载率高”这个问题来说，这四项是当前阶段**投入产出比最高**的一组低成本迭代。
