@@ -29,8 +29,8 @@
   // Countdown display state
   let countdownActive = $state(false)
   let countdownValue = $state(0)
-  // Phase: 'idle' | 'preparing' | 'countdown' | 'recording'
-  let phase = $state<'idle' | 'preparing' | 'countdown' | 'recording'>('idle')
+  // Phase: 'idle' | 'preparing' | 'countdown' | 'recording' | 'saving'
+  let phase = $state<'idle' | 'preparing' | 'countdown' | 'recording' | 'saving'>('idle')
   // Error feedback for user
   let errorMessage = $state('')
   let warningMessage = $state('')
@@ -158,6 +158,11 @@
       const resp = await chrome.runtime.sendMessage({ type: 'REQUEST_RECORDING_STATE' })
       isRecording = !!resp?.state?.isRecording
       isPaused = !!resp?.state?.isPaused
+      // Restore recording mode from background state
+      const respMode = resp?.state?.mode
+      if (respMode === 'tab' || respMode === 'window' || respMode === 'screen') {
+        selectedMode = respMode
+      }
       if (isRecording) {
         phase = 'recording'
         setElapsedSnapshot(resp?.state?.elapsedMs, { running: !isPaused, fallbackStartTime: resp?.state?.startTime })
@@ -397,11 +402,13 @@
   // Stop recording
   async function stopRecording() {
     stopRequested = true
+    phase = 'saving'
     try {
       await chrome.runtime.sendMessage({ type: 'REQUEST_STOP_RECORDING' })
     } catch (e) {
       console.warn('Failed to send stop recording message', e)
       stopRequested = false
+      phase = 'idle'
     }
   }
 
@@ -576,6 +583,16 @@
     </div>
   {/if}
 
+  <!-- Saving status -->
+  {#if phase === 'saving'}
+    <div class="px-4 py-3 bg-blue-50 border-t border-blue-100">
+      <div class="flex items-center gap-2">
+        <LoaderCircle class="w-4 h-4 text-blue-600 animate-spin" />
+        <span class="text-sm font-medium text-blue-700">{t('control_statusSaving')}</span>
+      </div>
+    </div>
+  {/if}
+
   <!-- Error feedback -->
   {#if warningMessage}
     <div class="px-4 py-3 bg-amber-50 border-t border-amber-200">
@@ -616,7 +633,16 @@
   <!-- Control buttons - fixed at bottom -->
   <div class="flex-shrink-0 p-4 border-t border-gray-200 bg-gray-50">
     <div class="space-y-3">
-      {#if isRecording}
+      {#if phase === 'saving'}
+        <!-- Saving state: disabled button -->
+        <button
+          class="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-xl font-semibold text-white bg-slate-400 shadow-sm cursor-not-allowed"
+          disabled
+        >
+          <LoaderCircle class="w-5 h-5 animate-spin" />
+          <span>{t('control_btnSaving')}</span>
+        </button>
+      {:else if isRecording}
         <!-- Primary action during recording: Stop -->
         <button
           class="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-xl font-semibold text-white bg-gradient-to-r from-rose-600 to-red-600 shadow-sm transition-all duration-200 hover:from-rose-700 hover:to-red-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2"

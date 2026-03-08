@@ -32,6 +32,8 @@
   "control_tipsPaused": { "message": "녹화가 일시 중지되었습니다. 계속하려면 재개를 클릭하세요." },
   "control_tipsRecording": { "message": "녹화가 진행 중입니다. 일시 중지를 클릭하여 멈출 수 있습니다." },
   "control_overlayRecordingStarts": { "message": "곧 녹화가 시작됩니다..." },
+  "control_statusSaving": { "message": "녹화 저장 중..." },
+  "control_btnSaving": { "message": "저장 중..." },
 
   "drive_pageTitle": { "message": "녹화 목록 - Screen Recorder" },
   "drive_headerTitle": { "message": "녹화 관리자" },
@@ -182,6 +184,11 @@
   "export_panel_tooltip_incomplete": { "message": "녹화를 완료한 후 내보내세요" },
   "export_panel_tooltip_no_data": { "message": "비디오 데이터 없음" },
   "export_panel_btn_exporting": { "message": "내보내는 중..." },
+  "export_error_gif_failed": { "message": "GIF 내보내기에 실패했습니다. 다시 시도해 주세요." },
+  "export_error_webm_failed": { "message": "WebM 내보내기에 실패했습니다. 다시 시도해 주세요." },
+  "export_error_mp4_failed": { "message": "MP4 내보내기에 실패했습니다. 다시 시도해 주세요." },
+  "export_error_retry_hint": { "message": "다시 시도하거나 다른 형식을 사용해 주세요." },
+  "export_error_opfs_download_failed": { "message": "파일이 Drive에 저장되었지만 다운로드에 실패했습니다. Drive를 열어 파일을 가져오세요." },
 
   "export_dialog_title": { "message": "비디오 내보내기" },
   "export_source_res": { "message": "해상도" },

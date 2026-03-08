@@ -32,6 +32,8 @@
   "control_tipsPaused": { "message": "Perekaman dijeda, klik Lanjutkan untuk meneruskan." },
   "control_tipsRecording": { "message": "Sedang merekam, klik Jeda untuk berhenti sebentar." },
   "control_overlayRecordingStarts": { "message": "Perekaman segera dimulai..." },
+  "control_statusSaving": { "message": "Menyimpan rekaman..." },
+  "control_btnSaving": { "message": "Menyimpan..." },
 
   "drive_pageTitle": { "message": "Rekaman - Screen Recorder" },
   "drive_headerTitle": { "message": "Manajer Rekaman" },
@@ -182,6 +184,11 @@
   "export_panel_tooltip_incomplete": { "message": "Selesaikan rekaman untuk mengekspor" },
   "export_panel_tooltip_no_data": { "message": "Tidak ada data video" },
   "export_panel_btn_exporting": { "message": "Mengekspor..." },
+  "export_error_gif_failed": { "message": "Ekspor GIF gagal. Silakan coba lagi." },
+  "export_error_webm_failed": { "message": "Ekspor WebM gagal. Silakan coba lagi." },
+  "export_error_mp4_failed": { "message": "Ekspor MP4 gagal. Silakan coba lagi." },
+  "export_error_retry_hint": { "message": "Coba lagi atau gunakan format lain." },
+  "export_error_opfs_download_failed": { "message": "File tersimpan di Drive tetapi unduhan gagal. Buka Drive untuk mengambil file Anda." },
 
   "export_dialog_title": { "message": "Ekspor Video" },
   "export_source_res": { "message": "Resolusi" },

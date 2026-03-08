@@ -32,6 +32,8 @@
   "control_tipsPaused": { "message": "Aufnahme pausiert, zum Fortfahren klicken." },
   "control_tipsRecording": { "message": "Aufnahme läuft, klicken Sie auf Pause zum Unterbrechen." },
   "control_overlayRecordingStarts": { "message": "Die Aufnahme startet in Kürze..." },
+  "control_statusSaving": { "message": "Aufnahme wird gespeichert..." },
+  "control_btnSaving": { "message": "Speichern..." },
 
   "drive_pageTitle": { "message": "Aufnahmen - Screen Recorder" },
   "drive_headerTitle": { "message": "Aufnahme-Manager" },
@@ -182,6 +184,11 @@
   "export_panel_tooltip_incomplete": { "message": "Aufnahme abschließen zum Export" },
   "export_panel_tooltip_no_data": { "message": "Keine Videodaten" },
   "export_panel_btn_exporting": { "message": "Exportiert..." },
+  "export_error_gif_failed": { "message": "GIF-Export fehlgeschlagen. Bitte versuchen Sie es erneut." },
+  "export_error_webm_failed": { "message": "WebM-Export fehlgeschlagen. Bitte versuchen Sie es erneut." },
+  "export_error_mp4_failed": { "message": "MP4-Export fehlgeschlagen. Bitte versuchen Sie es erneut." },
+  "export_error_retry_hint": { "message": "Versuchen Sie es erneut oder verwenden Sie ein anderes Format." },
+  "export_error_opfs_download_failed": { "message": "Datei in Drive gespeichert, aber Download fehlgeschlagen. Öffnen Sie Drive, um Ihre Datei abzurufen." },
 
   "export_dialog_title": { "message": "Video exportieren" },
   "export_source_res": { "message": "Auflösung" },

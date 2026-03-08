@@ -1,6 +1,6 @@
 <!-- Video export panel component -->
 <script lang="ts">
-  import { Download, LoaderCircle, TriangleAlert, Sparkles } from '@lucide/svelte'
+  import { Download, HardDrive, LoaderCircle, TriangleAlert, Sparkles } from '@lucide/svelte'
   import { ExportManager } from '$lib/services/export-manager'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import { trimStore } from '$lib/stores/trim.svelte'
@@ -86,6 +86,11 @@
   let isExportingMP4 = $state(false)
   let isExportingGIF = $state(false)
 
+  // Export error feedback
+  let exportErrorMessage = $state('')
+  let exportErrorHint = $state('')
+  let exportErrorAction = $state<'none' | 'open-drive'>('none')
+
   // Unified export dialog
   let showExportDialog = $state(false)
   
@@ -142,6 +147,7 @@
     if (!canExport) return
 
     try {
+      clearExportError()
       isExportingGIF = true
       exportProgress = {
         type: 'gif',
@@ -225,11 +231,12 @@
       console.log('✅ [Export] GIF export completed:', filename)
 
       // 导出成功，关闭对话框
+      clearExportError()
       showExportDialog = false
 
     } catch (error) {
       console.error('❌ [Export] GIF export failed:', error)
-      // TODO: Show error message
+      setExportError(t('export_error_gif_failed'), t('export_error_retry_hint'))
     } finally {
       isExportingGIF = false
       resetProgressAnimation()
@@ -316,9 +323,30 @@
   // Check if any export is in progress
   const isExporting = $derived(isExportingWebM || isExportingMP4 || isExportingGIF)
 
+  function clearExportError() {
+    exportErrorMessage = ''
+    exportErrorHint = ''
+    exportErrorAction = 'none'
+  }
+
+  function setExportError(message: string, hint = '', action: 'none' | 'open-drive' = 'none') {
+    exportErrorMessage = message
+    exportErrorHint = hint
+    exportErrorAction = action
+  }
+
+  function openDriveFromExportError() {
+    try {
+      chrome.runtime.sendMessage({ type: 'OPEN_DRIVE' })
+    } catch {
+      window.open('/drive.html', '_blank')
+    }
+  }
+
   // Open unified export dialog
   function openExportDialog() {
     if (!canExport) return
+    clearExportError()
     showExportDialog = true
   }
 
@@ -342,6 +370,7 @@
     if (!canExport) return
 
     try {
+      clearExportError()
       isExportingWebM = true
       exportProgress = {
         type: 'webm',
@@ -435,7 +464,10 @@
           await downloadBlob(blob, info.fileName)
           console.log('⬇️ [Export] Downloaded WebM from OPFS:', info.fileName)
         } catch (e) {
-          console.warn('⚠️ [Export] Failed to read WebM from OPFS, falling back to no-op:', e)
+          console.warn('⚠️ [Export] Failed to read WebM from OPFS:', e)
+          setExportError(t('export_error_opfs_download_failed'), '', 'open-drive')
+          // Do not close dialog – user needs to know file is in Drive
+          return
         }
       } else {
         await downloadBlob(videoResult as Blob, fallbackFilename)
@@ -443,11 +475,12 @@
       }
 
       // Close dialog on success
+      clearExportError()
       showExportDialog = false
 
     } catch (error) {
       console.error('❌ [Export] WebM export failed:', error)
-      // TODO: Show error message
+      setExportError(t('export_error_webm_failed'), t('export_error_retry_hint'))
     } finally {
       isExportingWebM = false
       resetProgressAnimation()
@@ -460,6 +493,7 @@
     if (!canExport) return
 
     try {
+      clearExportError()
       isExportingMP4 = true
       exportProgress = {
         type: 'mp4',
@@ -520,14 +554,6 @@
             totalFrames: progress.totalFrames,
             estimatedTimeRemaining: progress.estimatedTimeRemaining || 0
           }
-          //
-
-
-
-
-
-
-
 
           const denomMp4 = displayTotalFrames || progress.totalFrames || 0
           const frameBasedPctMp4 = denomMp4 > 0 ? (progress.currentFrame / denomMp4) * 100 : progress.progress
@@ -548,11 +574,12 @@
       console.log('✅ [Export] MP4 export completed:', filename)
 
       // Close dialog on success
+      clearExportError()
       showExportDialog = false
 
     } catch (error) {
       console.error('❌ [Export] MP4 export failed:', error)
-      // TODO: Show error message
+      setExportError(t('export_error_mp4_failed'), t('export_error_retry_hint'))
     } finally {
       isExportingMP4 = false
       resetProgressAnimation()
@@ -606,39 +633,70 @@
 </script>
 
 <!-- Video export panel component - License badge + Export button -->
-<div class="{className} flex items-center justify-between gap-3">
-  <!-- License tier badge (can be hidden when badge is placed elsewhere) -->
-  {#if showLicenseBadge}
-  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md {currentTier.classes}">
-    <Sparkles class="w-3 h-3" />
-    {currentTier.label}
-  </span>
-  {/if}
+<div class="{className} flex flex-col gap-2">
+  <div class="flex items-center justify-between gap-3">
+    <!-- License tier badge (can be hidden when badge is placed elsewhere) -->
+    {#if showLicenseBadge}
+    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md {currentTier.classes}">
+      <Sparkles class="w-3 h-3" />
+      {currentTier.label}
+    </span>
+    {/if}
 
-  <!-- Export button or warning -->
-  {#if !isRecordingComplete || encodedChunks.length === 0}
-    <button
-      class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-100 text-gray-400 text-sm font-medium rounded-lg border border-gray-200 cursor-not-allowed"
-      disabled
-      title={!isRecordingComplete ? t('export_panel_tooltip_incomplete') : t('export_panel_tooltip_no_data')}
-    >
-      <TriangleAlert class="w-4 h-4" />
-      {t('export_panel_btn')}
-    </button>
-  {:else}
-    <button
-      class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-      disabled={isExporting}
-      onclick={openExportDialog}
-    >
-      {#if isExporting}
-        <LoaderCircle class="w-4 h-4 animate-spin" />
-        {t('export_panel_btn_exporting')}
-      {:else}
-        <Download class="w-4 h-4" />
+    <!-- Export button or warning -->
+    {#if !isRecordingComplete || encodedChunks.length === 0}
+      <button
+        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-100 text-gray-400 text-sm font-medium rounded-lg border border-gray-200 cursor-not-allowed"
+        disabled
+        title={!isRecordingComplete ? t('export_panel_tooltip_incomplete') : t('export_panel_tooltip_no_data')}
+      >
+        <TriangleAlert class="w-4 h-4" />
         {t('export_panel_btn')}
+      </button>
+    {:else}
+      <button
+        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        disabled={isExporting}
+        onclick={openExportDialog}
+      >
+        {#if isExporting}
+          <LoaderCircle class="w-4 h-4 animate-spin" />
+          {t('export_panel_btn_exporting')}
+        {:else}
+          <Download class="w-4 h-4" />
+          {t('export_panel_btn')}
+        {/if}
+      </button>
+    {/if}
+  </div>
+
+  <!-- Export error banner -->
+  {#if exportErrorMessage && !showExportDialog}
+    <div class="flex items-start gap-2 px-2.5 py-2 bg-red-50 border border-red-200 rounded-lg">
+      <TriangleAlert class="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+      <div class="flex-1 min-w-0">
+        <p class="text-xs text-red-700">{exportErrorMessage}</p>
+        {#if exportErrorHint}
+          <p class="text-xs text-red-500 mt-0.5">{exportErrorHint}</p>
+        {/if}
+      </div>
+      {#if exportErrorAction === 'open-drive'}
+        <button
+          class="inline-flex items-center gap-1 rounded border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 flex-shrink-0"
+          onclick={openDriveFromExportError}
+        >
+          <HardDrive class="w-3 h-3" />
+          {t('studio_emptyOpenDrive')}
+        </button>
       {/if}
-    </button>
+      <button
+        class="p-0.5 rounded hover:bg-red-100 transition-colors flex-shrink-0"
+        onclick={clearExportError}
+        title={t('common_close')}
+      >
+        <span class="text-red-400 text-xs">✕</span>
+      </button>
+    </div>
   {/if}
 </div>
 
@@ -647,9 +705,13 @@
   bind:open={showExportDialog}
   onClose={() => { showExportDialog = false }}
   onExport={handleExport}
+  onOpenDrive={openDriveFromExportError}
   sourceInfo={sourceInfo}
   sourceFps={sourceFps}
   isExporting={isExporting}
+  errorMessage={exportErrorMessage}
+  errorHint={exportErrorHint}
+  showOpenDriveAction={exportErrorAction === 'open-drive'}
   exportProgress={exportProgress ? {
     stage: exportProgress.stage,
     progress: displayedProgress,

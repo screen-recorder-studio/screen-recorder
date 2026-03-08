@@ -32,6 +32,8 @@
   "control_tipsPaused": { "message": "Запись приостановлена, нажмите «Продолжить» для возобновления." },
   "control_tipsRecording": { "message": "Идет запись, нажмите «Пауза» при необходимости." },
   "control_overlayRecordingStarts": { "message": "Запись скоро начнется..." },
+  "control_statusSaving": { "message": "Сохранение записи..." },
+  "control_btnSaving": { "message": "Сохранение..." },
 
   "drive_pageTitle": { "message": "Записи - Screen Recorder" },
   "drive_headerTitle": { "message": "Менеджер записей" },
@@ -182,6 +184,11 @@
   "export_panel_tooltip_incomplete": { "message": "Завершите запись для экспорта" },
   "export_panel_tooltip_no_data": { "message": "Нет видеоданных" },
   "export_panel_btn_exporting": { "message": "Экспорт..." },
+  "export_error_gif_failed": { "message": "Ошибка экспорта GIF. Попробуйте снова." },
+  "export_error_webm_failed": { "message": "Ошибка экспорта WebM. Попробуйте снова." },
+  "export_error_mp4_failed": { "message": "Ошибка экспорта MP4. Попробуйте снова." },
+  "export_error_retry_hint": { "message": "Попробуйте снова или используйте другой формат." },
+  "export_error_opfs_download_failed": { "message": "Файл сохранён в Drive, но загрузка не удалась. Откройте Drive, чтобы получить файл." },
 
   "export_dialog_title": { "message": "Экспорт видео" },
   "export_source_res": { "message": "Разрешение" },
