@@ -1,0 +1,37 @@
+{
+	"name": "extension",
+	"private": true,
+	"version": "0.6.9",
+	"type": "module",
+	"description": "A Chrome extension for recording tabs, windows, screens, page regions, and elements",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "vite preview",
+		"prepare": "svelte-kit sync || echo ''",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"build:extension": "pnpm run build && node scripts/build-content.mjs && node scripts/build-background.mjs && node scripts/build-worker.mjs && node scripts/build-opfs-writer.mjs && node scripts/build-opfs-writer-worker.mjs && node scripts/build-offscreen2.mjs && cp static/manifest.json build/",
+		"package:extension": "pnpm run build:extension && cd build && zip -r ../screen-recorder-studio.zip ."
+	},
+	"devDependencies": {
+		"@sveltejs/adapter-static": "^3.0.9",
+		"@sveltejs/kit": "^2.22.0",
+		"@sveltejs/vite-plugin-svelte": "^6.0.0",
+		"@types/chrome": "^0.0.270",
+		"@types/gif.js": "^0.2.5",
+		"@types/node": "^22.18.0",
+		"svelte": "^5.0.0",
+		"svelte-check": "^4.0.0",
+		"sveltekit-adapter-chrome-extension": "^2.0.1",
+		"typescript": "^5.0.0",
+		"vite": "^7.0.4"
+	},
+	"dependencies": {
+		"@lucide/svelte": "^0.542.0",
+		"@tailwindcss/vite": "^4.1.12",
+		"gif.js": "^0.2.0",
+		"mediabunny": "^1.14.2",
+		"tailwindcss": "^4.1.12"
+	}
+}
