@@ -129,6 +129,9 @@
 
 建议字段：
 
+说明: 以下示例直接复用仓库现有类型，分别来自  
+`/home/runner/work/screen-recorder/screen-recorder/packages/extension/src/lib/types/background.d.ts` 中的 `GradientConfig`、`BackgroundConfig`。
+
 ```ts
 interface StudioDefaultAppearancePreset {
   id: string
@@ -157,6 +160,9 @@ interface StudioDefaultAppearancePreset {
 建议在 `backgroundConfigStore` 中增加明确方法，而不是让页面拼装一堆 `updateColor / updateShadow / updateBorderRadius` 调用。
 
 建议接口：
+
+说明: 以下接口中的 `ImagePreset` 也复用现有类型，定义位于  
+`/home/runner/work/screen-recorder/screen-recorder/packages/extension/src/lib/types/background.d.ts`。
 
 ```ts
 applyStudioDefaultPreset(preset: StudioDefaultAppearancePreset): void
