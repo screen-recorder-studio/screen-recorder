@@ -9,14 +9,28 @@ import type {
 } from '../types/background'
 import { imageBackgroundManager } from '../services/image-background-manager'
 
-// 默认背景配置
+// 默认背景配置 — 提供有辨识度的首屏视觉预设，避免白底原片观感
 const defaultBackgroundConfig: BackgroundConfig = {
-  type: 'wallpaper',
-  color: '#ffffff',
+  type: 'gradient',
+  color: '#667eea',
+  gradient: {
+    type: 'linear',
+    angle: 135,
+    stops: [
+      { color: '#667eea', position: 0 },
+      { color: '#764ba2', position: 1 }
+    ]
+  },
   padding: 60,
   outputRatio: '16:9',
   videoPosition: 'center',
-  borderRadius: 0,
+  borderRadius: 16,
+  shadow: {
+    offsetX: 0,
+    offsetY: 8,
+    blur: 32,
+    color: 'rgba(0, 0, 0, 0.3)'
+  },
   customWidth: 1920,
   customHeight: 1080
 }

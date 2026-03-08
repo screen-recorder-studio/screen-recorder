@@ -30,9 +30,7 @@
 
   // Sync activeTab with current config type
   $effect(() => {
-    if (currentType !== 'wallpaper') {
-      activeTab = currentType
-    }
+    activeTab = currentType
   })
 
   // Switch tab and update background type

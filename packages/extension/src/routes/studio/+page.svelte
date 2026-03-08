@@ -15,6 +15,8 @@
   import { _t as t, initI18n } from "$lib/utils/i18n";
   import { getLatestValidRecording, listRecordings, isRecordingUsable, invalidateRecordingsCache } from "$lib/utils/opfs-recordings";
   import type { RecordingSummary } from "$lib/types/recordings";
+  import { backgroundConfigStore } from "$lib/stores/background-config.svelte";
+  import { getWallpaperById } from "$lib/data/wallpaper-presets";
 
   // Extension version
   let extensionVersion = $state('')
@@ -34,6 +36,9 @@
 
   // Current recording id for drawer highlighting
   let currentRecordingId = $state('')
+
+  // Default wallpaper enhancement: only apply once per Studio session
+  let hasAppliedDefaultWallpaper = false
 
   // Worker 录制数据收集
   let workerEncodedChunks = $state<any[]>([]);
@@ -301,6 +306,22 @@
   const workerStatus = $derived(recordingStore.state.status);
 
   /**
+   * Async wallpaper enhancement: upgrade default gradient to a wallpaper image.
+   * Only runs once per Studio session. Silently falls back on failure.
+   */
+  async function applyDefaultWallpaperEnhancement() {
+    if (hasAppliedDefaultWallpaper) return
+    hasAppliedDefaultWallpaper = true
+    try {
+      const preset = getWallpaperById('gradient-abstract-1')
+      if (!preset) return
+      await backgroundConfigStore.handleWallpaperSelection(preset)
+    } catch (e) {
+      console.warn('[Studio] Default wallpaper enhancement failed, keeping gradient:', e)
+    }
+  }
+
+  /**
    * Load a recording by its OPFS directory id.
    * Extracted so it can be called from onMount *and* from the drawer switch.
    */
@@ -401,6 +422,9 @@
           recordingStore.updateStatus("completed");
           recordingStore.setEngine("webcodecs");
           isResolvingInitialRecording = false
+
+          // Async Layer 2: upgrade default gradient to wallpaper (once per session)
+          applyDefaultWallpaperEnhancement()
         } else {
           console.warn("⚠️ [OPFSReader] Empty range received");
           isResolvingInitialRecording = false
