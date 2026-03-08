@@ -554,14 +554,6 @@
             totalFrames: progress.totalFrames,
             estimatedTimeRemaining: progress.estimatedTimeRemaining || 0
           }
-          //
-
-
-
-
-
-
-
 
           const denomMp4 = displayTotalFrames || progress.totalFrames || 0
           const frameBasedPctMp4 = denomMp4 > 0 ? (progress.currentFrame / denomMp4) * 100 : progress.progress

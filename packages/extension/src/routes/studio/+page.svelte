@@ -328,7 +328,10 @@
     currentRecordingId = dirId
     showEmptyState = false
 
-    if (!dirId) return
+    if (!dirId) {
+      isResolvingInitialRecording = false
+      return
+    }
 
     const readerWorker = new Worker(
       new URL("$lib/workers/opfs-reader-worker.ts", import.meta.url),
