@@ -23,6 +23,7 @@
     recordings: RecordingSummary[]
     isLoading: boolean
     errorMessage: string
+    onStartRecording: () => void | Promise<void>
     onRefresh: () => void
     onDeleteRecording: (id: string) => Promise<void>
     onDeleteSelected: (ids: string[]) => Promise<void>
@@ -33,6 +34,7 @@
     recordings, 
     isLoading, 
     errorMessage, 
+    onStartRecording,
     onRefresh, 
     onDeleteRecording, 
     onDeleteSelected,
@@ -164,7 +166,13 @@
       <h3 class="text-lg font-medium text-gray-900 mb-2">{t('drive_empty_title')}</h3>
       <p class="text-gray-500 mb-4">{t('drive_empty_desc1')}</p>
       <p class="text-gray-500 mb-6">{t('drive_empty_desc2')}</p>
-      <a href="/sidepanel" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">{t('drive_start_recording_btn')}</a>
+      <button
+        type="button"
+        class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        onclick={() => void onStartRecording()}
+      >
+        {t('drive_start_recording_btn')}
+      </button>
     </div>
   {:else}
     <!-- Recording list -->
