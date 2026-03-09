@@ -1,5 +1,7 @@
 # Drive / Studio 无数据状态评估报告
 
+> English summary: This document evaluates the current empty-state behavior in Drive and Studio when no recordings exist, identifies the incorrect Drive entry to `/sidepanel`, and recommends routing both empty-state recording CTAs through the existing Control window flow.
+
 ## 1. 背景与目标
 
 本次评估聚焦以下页面在“没有任何视频数据”时的首屏体验：

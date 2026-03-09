@@ -1,5 +1,7 @@
 # Drive / Studio 无数据状态技术方案
 
+> English summary: This document compares low-risk implementation options and selects a shared navigation helper approach so Drive and Studio empty-state recording actions consistently open the Control page through the existing background message flow.
+
 ## 1. 目标
 
 基于评估报告，技术方案目标如下：

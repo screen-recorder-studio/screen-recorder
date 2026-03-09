@@ -1,5 +1,7 @@
 # Drive / Studio 无数据状态方案评审结论
 
+> English summary: This review confirms the final approach: keep the empty-state UI largely unchanged, reuse the existing background-based window routing, and implement only the minimal navigation updates needed for Drive and Studio.
+
 ## 1. 评审范围
 
 本次评审针对 `drive-studio-empty-state-technical-design.md` 中提出的三个候选方案，重点审查：

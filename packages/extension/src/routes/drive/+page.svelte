@@ -73,6 +73,7 @@
     loadRecordings()
   }
 
+  /** Open the Control page so users can start a new recording from the empty state. */
   function handleStartRecording() {
     void openControlWindow()
   }
