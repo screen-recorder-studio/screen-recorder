@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio" },
-  "appDesc": { "message": "Extension Chrome professionnelle pour enregistrer onglets, fenêtres, écrans, zones et éléments" },
+  "appName": { "message": "Screen Recorder Studio - Illimité, Zoom, Vidéo & GIF" },
+  "appDesc": { "message": "Enregistrement d'écran stable sans limite de temps. Éditeur intégré pour zoomer, couper et exporter en MP4 ou GIF HD." },
   "common_close": { "message": "Fermer" },
   "action_defaultTitle": { "message": "Ouvrir le panneau d'enregistrement" },
 

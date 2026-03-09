@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio" },
-  "appDesc": { "message": "Профессиональное расширение Chrome для записи вкладок, окон, экрана, областей и элементов" },
+  "appName": { "message": "Screen Recorder Studio - Безлимит, Зум, Видео и GIF" },
+  "appDesc": { "message": "Стабильная запись экрана без лимита времени. Встроенный редактор для масштабирования, обрезки и экспорта в качественный MP4 или GIF." },
   "common_close": { "message": "Закрыть" },
   "action_defaultTitle": { "message": "Открыть панель записи" },
 

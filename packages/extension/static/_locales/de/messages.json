@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio" },
-  "appDesc": { "message": "Professionelle Chrome-Erweiterung zur Aufnahme von Tabs, Fenstern, Bildschirmen, Bereichen und Elementen" },
+  "appName": { "message": "Screen Recorder Studio - Unbegrenzt, Zoom, Video & GIF" },
+  "appDesc": { "message": "Stabile Bildschirmaufnahme ohne Zeitlimit. Integrierter Editor zum Zoomen, Trimmen und Exportieren als hochwertiges MP4 oder GIF." },
   "common_close": { "message": "Schließen" },
   "action_defaultTitle": { "message": "Aufnahme-Panel öffnen" },
 

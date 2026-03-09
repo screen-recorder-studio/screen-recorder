@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio" },
-  "appDesc": { "message": "專業級 Chrome 擴充功能，支援錄製分頁、視窗、全螢幕、指定區域及元素" },
+  "appName": { "message": "Screen Recorder Studio - 無限錄影、畫面縮放與影片/GIF匯出" },
+  "appDesc": { "message": "告別崩潰與時長限制，支援超長時間穩定錄影。內建強大的影片編輯器，輕鬆實現畫面縮放、裁剪，並快速匯出為高畫質 MP4 影片或動圖 GIF。" },
   "common_close": { "message": "關閉" },
   "action_defaultTitle": { "message": "開啟錄影面板" },
 

@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio" },
-  "appDesc": { "message": "Chrome 扩展程序，用于录制标签页、窗口、屏幕、页面区域和元素" },
+  "appName": { "message": "Screen Recorder Studio - 无限录屏、画面缩放与视频/GIF导出" },
+  "appDesc": { "message": "告别崩溃与时长限制，支持超长时间稳定录屏。内置强大的视频编辑器，轻松实现画面缩放、裁剪，并快速导出为高清 MP4 视频或动图 GIF。" },
   "common_close": { "message": "关闭" },
   "action_defaultTitle": { "message": "打开录制面板" },
 

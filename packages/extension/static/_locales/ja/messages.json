@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio" },
-  "appDesc": { "message": "タブ、ウィンドウ、画面全体、指定範囲や要素を録画できるプロ仕様のChrome拡張機能" },
+  "appName": { "message": "Screen Recorder Studio - 無制限、ズーム、動画＆GIF出力" },
+  "appDesc": { "message": "時間制限なしの安定した画面録画。内蔵エディターでシームレスにズームやトリミングを行い、高画質なMP4やGIFとしてエクスポートできます。" },
   "common_close": { "message": "閉じる" },
   "action_defaultTitle": { "message": "録画パネルを開く" },
 

@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio" },
-  "appDesc": { "message": "Extensão profissional do Chrome para gravar guias, janelas, telas, regiões e elementos" },
+  "appName": { "message": "Screen Recorder Studio - Ilimitado, Zoom, Vídeo e GIF" },
+  "appDesc": { "message": "Gravação de tela estável sem limite de tempo. Editor integrado para dar zoom, cortar e exportar MP4 ou GIF de alta qualidade." },
   "common_close": { "message": "Fechar" },
   "action_defaultTitle": { "message": "Abrir painel de gravação" },
 
