@@ -4,6 +4,7 @@
   import RecordingList from '$lib/components/drive/RecordingList.svelte'
   import { _t as t, initI18n, isI18nInitialized } from '$lib/utils/i18n'
   import { listRecordings, invalidateRecordingsCache } from '$lib/utils/opfs-recordings'
+  import { openControlWindow } from '$lib/utils/window-navigation'
   import type { RecordingSummary } from '$lib/types/recordings'
 
   // State management
@@ -72,6 +73,10 @@
     loadRecordings()
   }
 
+  function handleStartRecording() {
+    void openControlWindow()
+  }
+
   // Load data when component mounts
   onMount(async () => {
     // Ensure i18n is initialized before loading
@@ -101,6 +106,7 @@
     {recordings}
     {isLoading}
     {errorMessage}
+    onStartRecording={handleStartRecording}
     onRefresh={refreshRecordings}
     onDeleteRecording={deleteRecording}
     onDeleteSelected={deleteSelectedRecordings}

@@ -14,6 +14,7 @@
   import StudioDriveOverlay from "$lib/components/studio/StudioDriveOverlay.svelte";
   import { _t as t, initI18n } from "$lib/utils/i18n";
   import { getLatestValidRecording, listRecordings, isRecordingUsable, invalidateRecordingsCache } from "$lib/utils/opfs-recordings";
+  import { openControlWindow, openDrivePage } from "$lib/utils/window-navigation";
   import type { RecordingSummary } from "$lib/types/recordings";
   import { backgroundConfigStore } from "$lib/stores/background-config.svelte";
   import { getWallpaperById } from "$lib/data/wallpaper-presets";
@@ -447,20 +448,12 @@
 
   /** Handle start-recording from empty state or drawer */
   function handleStartRecording() {
-    try {
-      chrome.runtime.sendMessage({ type: 'OPEN_CONTROL_WINDOW' })
-    } catch {
-      window.open('/control.html', '_blank')
-    }
+    void openControlWindow()
   }
 
   /** Handle open-drive from empty state */
   function handleOpenDrive() {
-    try {
-      chrome.runtime.sendMessage({ type: 'OPEN_DRIVE' })
-    } catch {
-      window.open('/drive.html', '_blank')
-    }
+    void openDrivePage()
   }
 
   /** Open the drive drawer */
