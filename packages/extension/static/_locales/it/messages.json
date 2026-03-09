@@ -32,6 +32,10 @@
   "control_tipsPaused": { "message": "Registrazione in pausa, clicca su Riprendi per continuare." },
   "control_tipsRecording": { "message": "Registrazione in corso, clicca su Pausa se necessario." },
   "control_overlayRecordingStarts": { "message": "La registrazione inizierà a breve..." },
+  "control_errorTimeout": { "message": "La preparazione della registrazione è scaduta. Riprova." },
+  "control_errorStartFailed": { "message": "Impossibile avviare la registrazione. Riprova." },
+  "control_errorRecordingFailed": { "message": "Si è verificato un errore durante la registrazione e questa è stata interrotta." },
+  "control_errorStorageLow": { "message": "Lo spazio di archiviazione sta per esaurirsi. La registrazione potrebbe non riuscire." },
   "control_statusSaving": { "message": "Salvataggio registrazione..." },
   "control_btnSaving": { "message": "Salvataggio..." },
 
@@ -252,6 +256,7 @@
 
   "wallpaper_cat_abstract_name": { "message": "Arte Astratta" },
   "wallpaper_cat_abstract_desc": { "message": "Motivi astratti e design moderni" },
+  "wallpaper_cat_minimal_name": { "message": "Stile Minimal" },
   "wallpaper_tab_minimal": { "message": "Minimale" },
   "wallpaper_cat_minimal_desc": { "message": "Geometria pulita ed estetica pura" },
   "wallpaper_cat_nature_name": { "message": "Natura" },

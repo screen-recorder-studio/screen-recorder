@@ -32,6 +32,10 @@
   "control_tipsPaused": { "message": "Enregistrement en pause, cliquez sur Reprendre pour continuer." },
   "control_tipsRecording": { "message": "Enregistrement en cours, cliquez sur Pause pour suspendre." },
   "control_overlayRecordingStarts": { "message": "L'enregistrement commence bientôt..." },
+  "control_errorTimeout": { "message": "Le délai de préparation de l'enregistrement a expiré. Réessayez." },
+  "control_errorStartFailed": { "message": "Impossible de démarrer l'enregistrement. Réessayez." },
+  "control_errorRecordingFailed": { "message": "Un problème est survenu pendant l'enregistrement et il a été arrêté." },
+  "control_errorStorageLow": { "message": "L'espace de stockage devient faible. L'enregistrement peut échouer." },
   "control_statusSaving": { "message": "Enregistrement en cours de sauvegarde..." },
   "control_btnSaving": { "message": "Sauvegarde..." },
 

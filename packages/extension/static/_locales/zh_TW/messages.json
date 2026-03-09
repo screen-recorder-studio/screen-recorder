@@ -32,6 +32,10 @@
   "control_tipsPaused": { "message": "錄製已暫停，點擊恢復錄製繼續。" },
   "control_tipsRecording": { "message": "錄製進行中，點擊暫停可暫時停止錄製。" },
   "control_overlayRecordingStarts": { "message": "錄製即將開始..." },
+  "control_errorTimeout": { "message": "錄影準備逾時，請再試一次。" },
+  "control_errorStartFailed": { "message": "無法開始錄影，請再試一次。" },
+  "control_errorRecordingFailed": { "message": "錄影時發生錯誤，已停止錄影。" },
+  "control_errorStorageLow": { "message": "儲存空間不足，錄影可能失敗。" },
   "control_statusSaving": { "message": "正在儲存錄製..." },
   "control_btnSaving": { "message": "儲存中..." },
 

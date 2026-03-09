@@ -32,6 +32,10 @@
   "control_tipsPaused": { "message": "Kayıt duraklatıldı, devam etmek için tıklayın." },
   "control_tipsRecording": { "message": "Kayıt sürüyor, duraklatmak için tıklayabilirsiniz." },
   "control_overlayRecordingStarts": { "message": "Kayıt yakında başlayacak..." },
+  "control_errorTimeout": { "message": "Kayıt hazırlığı zaman aşımına uğradı. Lütfen tekrar deneyin." },
+  "control_errorStartFailed": { "message": "Kayıt başlatılamadı. Lütfen tekrar deneyin." },
+  "control_errorRecordingFailed": { "message": "Kayıt sırasında bir hata oluştu ve kayıt durduruldu." },
+  "control_errorStorageLow": { "message": "Depolama alanı azalıyor. Kayıt başarısız olabilir." },
   "control_statusSaving": { "message": "Kayıt kaydediliyor..." },
   "control_btnSaving": { "message": "Kaydediliyor..." },
 

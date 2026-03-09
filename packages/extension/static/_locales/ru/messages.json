@@ -32,6 +32,10 @@
   "control_tipsPaused": { "message": "Запись приостановлена, нажмите «Продолжить» для возобновления." },
   "control_tipsRecording": { "message": "Идет запись, нажмите «Пауза» при необходимости." },
   "control_overlayRecordingStarts": { "message": "Запись скоро начнется..." },
+  "control_errorTimeout": { "message": "Время подготовки записи истекло. Попробуйте еще раз." },
+  "control_errorStartFailed": { "message": "Не удалось начать запись. Попробуйте еще раз." },
+  "control_errorRecordingFailed": { "message": "Во время записи произошла ошибка, и запись была остановлена." },
+  "control_errorStorageLow": { "message": "Свободное место заканчивается. Запись может завершиться с ошибкой." },
   "control_statusSaving": { "message": "Сохранение записи..." },
   "control_btnSaving": { "message": "Сохранение..." },
 

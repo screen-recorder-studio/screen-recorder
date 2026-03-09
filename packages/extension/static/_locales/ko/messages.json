@@ -32,6 +32,10 @@
   "control_tipsPaused": { "message": "녹화가 일시 중지되었습니다. 계속하려면 재개를 클릭하세요." },
   "control_tipsRecording": { "message": "녹화가 진행 중입니다. 일시 중지를 클릭하여 멈출 수 있습니다." },
   "control_overlayRecordingStarts": { "message": "곧 녹화가 시작됩니다..." },
+  "control_errorTimeout": { "message": "녹화 준비 시간이 초과되었습니다. 다시 시도해 주세요." },
+  "control_errorStartFailed": { "message": "녹화를 시작하지 못했습니다. 다시 시도해 주세요." },
+  "control_errorRecordingFailed": { "message": "녹화 중 오류가 발생하여 녹화가 중지되었습니다." },
+  "control_errorStorageLow": { "message": "저장 공간이 부족합니다. 녹화에 실패할 수 있습니다." },
   "control_statusSaving": { "message": "녹화 저장 중..." },
   "control_btnSaving": { "message": "저장 중..." },
 

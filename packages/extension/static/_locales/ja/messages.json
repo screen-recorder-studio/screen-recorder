@@ -32,6 +32,10 @@
   "control_tipsPaused": { "message": "録画は一時停止中です。「録画再開」をクリックして続行します。" },
   "control_tipsRecording": { "message": "録画が進行中です。一時停止ボタンで中断できます。" },
   "control_overlayRecordingStarts": { "message": "まもなく録画を開始します..." },
+  "control_errorTimeout": { "message": "録画の準備がタイムアウトしました。もう一度お試しください。" },
+  "control_errorStartFailed": { "message": "録画を開始できませんでした。もう一度お試しください。" },
+  "control_errorRecordingFailed": { "message": "録画中にエラーが発生したため、録画を停止しました。" },
+  "control_errorStorageLow": { "message": "ストレージ容量が不足しています。録画に失敗する可能性があります。" },
   "control_statusSaving": { "message": "録画を保存中..." },
   "control_btnSaving": { "message": "保存中..." },
 

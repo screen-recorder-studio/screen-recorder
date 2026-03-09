@@ -328,6 +328,7 @@
   "welcome_subheadline": { "message": "Capture hours of footage smoothly, then edit and export as high-quality Videos or GIFs—all processed securely in your browser." },
   "welcome_tryTitle": { "message": "Start Your First Recording 🚀" },
   "welcome_trySubtitle": { "message": "Pick what to capture and start recording—Studio opens when you stop." },
+  "welcome_tryFeatures": { "message": "No setup • $SECONDS$-second countdown • Professional quality", "placeholders": { "seconds": { "content": "$1" } } },
   "welcome_modeTabDetail": { "message": "Perfect for web demos and tutorials" },
   "welcome_modeWindowDetail": { "message": "Includes address bar and toolbar" },
   "welcome_modeScreenDetail": { "message": "Best for cross-application workflows" },

@@ -32,6 +32,10 @@
   "control_tipsPaused": { "message": "रिकॉर्डिंग रुकी हुई है, जारी रखने के लिए फिर से शुरू करें पर क्लिक करें।" },
   "control_tipsRecording": { "message": "रिकॉर्डिंग जारी है, ज़रूरत पड़ने पर पॉज़ करें।" },
   "control_overlayRecordingStarts": { "message": "रिकॉर्डिंग जल्द ही शुरू होगी..." },
+  "control_errorTimeout": { "message": "रिकॉर्डिंग की तैयारी का समय समाप्त हो गया। कृपया फिर से कोशिश करें।" },
+  "control_errorStartFailed": { "message": "रिकॉर्डिंग शुरू नहीं हो सकी। कृपया फिर से कोशिश करें।" },
+  "control_errorRecordingFailed": { "message": "रिकॉर्डिंग में त्रुटि आई और इसे रोक दिया गया।" },
+  "control_errorStorageLow": { "message": "स्टोरेज स्पेस कम हो रहा है। रिकॉर्डिंग विफल हो सकती है।" },
   "control_statusSaving": { "message": "रिकॉर्डिंग सहेजी जा रही है..." },
   "control_btnSaving": { "message": "सहेजा जा रहा है..." },
 

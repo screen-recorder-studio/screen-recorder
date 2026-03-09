@@ -32,6 +32,10 @@
   "control_tipsPaused": { "message": "Đã tạm dừng, nhấn Tiếp tục để quay lại." },
   "control_tipsRecording": { "message": "Đang quay, nhấn Tạm dừng nếu cần thiết." },
   "control_overlayRecordingStarts": { "message": "Sắp bắt đầu quay..." },
+  "control_errorTimeout": { "message": "Chuẩn bị ghi hình đã hết thời gian chờ. Vui lòng thử lại." },
+  "control_errorStartFailed": { "message": "Không thể bắt đầu ghi hình. Vui lòng thử lại." },
+  "control_errorRecordingFailed": { "message": "Đã xảy ra lỗi khi ghi hình và quá trình ghi đã dừng." },
+  "control_errorStorageLow": { "message": "Dung lượng lưu trữ sắp hết. Quá trình ghi có thể thất bại." },
   "control_statusSaving": { "message": "Đang lưu bản ghi..." },
   "control_btnSaving": { "message": "Đang lưu..." },
 

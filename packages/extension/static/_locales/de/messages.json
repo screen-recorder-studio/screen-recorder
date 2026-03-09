@@ -32,6 +32,10 @@
   "control_tipsPaused": { "message": "Aufnahme pausiert, zum Fortfahren klicken." },
   "control_tipsRecording": { "message": "Aufnahme läuft, klicken Sie auf Pause zum Unterbrechen." },
   "control_overlayRecordingStarts": { "message": "Die Aufnahme startet in Kürze..." },
+  "control_errorTimeout": { "message": "Die Vorbereitung der Aufnahme hat zu lange gedauert. Bitte versuche es erneut." },
+  "control_errorStartFailed": { "message": "Die Aufnahme konnte nicht gestartet werden. Bitte versuche es erneut." },
+  "control_errorRecordingFailed": { "message": "Bei der Aufnahme ist ein Fehler aufgetreten und sie wurde beendet." },
+  "control_errorStorageLow": { "message": "Der Speicherplatz wird knapp. Die Aufnahme könnte fehlschlagen." },
   "control_statusSaving": { "message": "Aufnahme wird gespeichert..." },
   "control_btnSaving": { "message": "Speichern..." },
 

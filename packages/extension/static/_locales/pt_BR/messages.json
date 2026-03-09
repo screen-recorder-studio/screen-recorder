@@ -32,6 +32,10 @@
   "control_tipsPaused": { "message": "Gravação pausada, clique em Retomar para continuar." },
   "control_tipsRecording": { "message": "Gravação em curso, clique em Pausar se necessário." },
   "control_overlayRecordingStarts": { "message": "A gravação começará em breve..." },
+  "control_errorTimeout": { "message": "O preparo da gravação expirou. Tente novamente." },
+  "control_errorStartFailed": { "message": "Não foi possível iniciar a gravação. Tente novamente." },
+  "control_errorRecordingFailed": { "message": "A gravação encontrou um erro e foi interrompida." },
+  "control_errorStorageLow": { "message": "O espaço de armazenamento está acabando. A gravação pode falhar." },
   "control_statusSaving": { "message": "Salvando gravação..." },
   "control_btnSaving": { "message": "Salvando..." },
 

@@ -8,8 +8,61 @@ const LANG_SESSION_KEY = 'screen_recorder_lang'
 
 // All supported locales (matching static/_locales directories)
 const SUPPORTED_LOCALES = [
-  'de', 'en', 'es', 'fr', 'hi', 'id', 'it', 'ja', 'ko', 
-  'pt_BR', 'ru', 'tr', 'vi', 'zh_CN', 'zh_TW'
+  'am',
+  'ar',
+  'bg',
+  'bn',
+  'ca',
+  'cs',
+  'da',
+  'de',
+  'el',
+  'en',
+  'en_GB',
+  'en_US',
+  'es',
+  'es_419',
+  'et',
+  'fa',
+  'fi',
+  'fil',
+  'fr',
+  'gu',
+  'he',
+  'hi',
+  'hr',
+  'hu',
+  'id',
+  'it',
+  'ja',
+  'kn',
+  'ko',
+  'lt',
+  'lv',
+  'ml',
+  'mr',
+  'ms',
+  'nl',
+  'no',
+  'pl',
+  'pt_BR',
+  'pt_PT',
+  'ro',
+  'ru',
+  'sk',
+  'sl',
+  'sr',
+  'sv',
+  'sw',
+  'ta',
+  'te',
+  'th',
+  'tr',
+  'uk',
+  'ur',
+  'vi',
+  'zh_CN',
+  'zh_TW'
 ]
 
 export function applyTemplateSubs(template: string, subs?: string | string[]) {
@@ -51,42 +104,73 @@ function getLanguageFromSession(): string | null {
  * Map browser language codes to our locale folder names
  */
 function mapBrowserLanguage(browserLang: string): string {
+  const normalizedLang = browserLang.trim()
+  const hyphenLang = normalizedLang.replace(/_/g, '-')
   const langMap: Record<string, string> = {
     // Chinese variants
     'zh-CN': 'zh_CN',
+    'zh-SG': 'zh_CN',
+    'zh-Hans': 'zh_CN',
     'zh-TW': 'zh_TW',
     'zh-HK': 'zh_TW',
+    'zh-MO': 'zh_TW',
+    'zh-Hant': 'zh_TW',
     'zh': 'zh_CN',
     // Portuguese variants
     'pt-BR': 'pt_BR',
+    'pt-PT': 'pt_PT',
     'pt': 'pt_BR',
     // Other languages - map to base locale
     'de-AT': 'de',
     'de-CH': 'de',
     'de-DE': 'de',
-    'en-US': 'en',
-    'en-GB': 'en',
+    'en-US': 'en_US',
+    'en-GB': 'en_GB',
     'en-AU': 'en',
     'es-ES': 'es',
-    'es-MX': 'es',
-    'es-AR': 'es',
+    'es-419': 'es_419',
+    'es-MX': 'es_419',
+    'es-AR': 'es_419',
+    'es-CL': 'es_419',
+    'es-CO': 'es_419',
+    'es-PE': 'es_419',
     'fr-FR': 'fr',
     'fr-CA': 'fr',
+    'fil-PH': 'fil',
+    'tl': 'fil',
+    'tl-PH': 'fil',
     'it-IT': 'it',
     'ja-JP': 'ja',
     'ko-KR': 'ko',
+    'ms-MY': 'ms',
+    'nb': 'no',
+    'nb-NO': 'no',
+    'nn': 'no',
+    'nn-NO': 'no',
+    'no-NO': 'no',
+    'pt-AO': 'pt_PT',
+    'pt-MZ': 'pt_PT',
     'ru-RU': 'ru',
+    'sw-KE': 'sw',
+    'sw-TZ': 'sw',
     'tr-TR': 'tr',
+    'uk-UA': 'uk',
     'vi-VN': 'vi',
     'hi-IN': 'hi',
-    'id-ID': 'id'
+    'id-ID': 'id',
+    'he-IL': 'he',
+    'iw': 'he',
+    'iw-IL': 'he',
+    'fa-IR': 'fa'
   }
+
+  if (SUPPORTED_LOCALES.includes(normalizedLang)) return normalizedLang
   
   // Try exact match first
-  if (langMap[browserLang]) return langMap[browserLang]
+  if (langMap[hyphenLang]) return langMap[hyphenLang]
   
   // Try base language code
-  const base = browserLang.split('-')[0]
+  const base = hyphenLang.split('-')[0]
   if (langMap[base]) return langMap[base]
   
   // Check if base language is directly supported
@@ -125,18 +209,13 @@ export function detectLanguage(): string {
 }
 
 /**
- * Load locale messages from /_locales/{lang}/messages.json
+ * Fetch locale messages from /_locales/{lang}/messages.json
  * Converts Chrome i18n format { "key": { "message": "Text" } } to flat { "key": "Text" }
  */
-async function loadLocaleMessages(lang: string): Promise<Record<string, string>> {
+async function fetchLocaleMessages(lang: string): Promise<Record<string, string>> {
   try {
     const response = await fetch(`/_locales/${lang}/messages.json`)
     if (!response.ok) {
-      // Fallback to English if language not found
-      if (lang !== 'en') {
-        console.warn(`[i18n] Locale ${lang} not found, falling back to English`)
-        return loadLocaleMessages('en')
-      }
       return {}
     }
     const chromeFormat = await response.json()
@@ -149,11 +228,33 @@ async function loadLocaleMessages(lang: string): Promise<Record<string, string>>
     }
     return flat
   } catch (e) {
-    console.error('[i18n] Failed to load locale messages:', e)
-    if (lang !== 'en') {
-      return loadLocaleMessages('en')
-    }
+    console.error(`[i18n] Failed to load locale messages for ${lang}:`, e)
     return {}
+  }
+}
+
+/**
+ * Load locale messages from /_locales/{lang}/messages.json
+ * In web mode, merge locale-specific messages over English so missing keys
+ * still resolve correctly instead of rendering the raw message key.
+ */
+async function loadLocaleMessages(lang: string): Promise<Record<string, string>> {
+  if (lang === 'en') {
+    return fetchLocaleMessages('en')
+  }
+
+  const [englishMessages, localizedMessages] = await Promise.all([
+    fetchLocaleMessages('en'),
+    fetchLocaleMessages(lang)
+  ])
+
+  if (!Object.keys(localizedMessages).length) {
+    console.warn(`[i18n] Locale ${lang} not found or empty, falling back to English`)
+  }
+
+  return {
+    ...englishMessages,
+    ...localizedMessages
   }
 }
 

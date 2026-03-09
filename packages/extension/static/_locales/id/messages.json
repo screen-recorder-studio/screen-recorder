@@ -32,6 +32,10 @@
   "control_tipsPaused": { "message": "Perekaman dijeda, klik Lanjutkan untuk meneruskan." },
   "control_tipsRecording": { "message": "Sedang merekam, klik Jeda untuk berhenti sebentar." },
   "control_overlayRecordingStarts": { "message": "Perekaman segera dimulai..." },
+  "control_errorTimeout": { "message": "Persiapan perekaman melebihi batas waktu. Coba lagi." },
+  "control_errorStartFailed": { "message": "Gagal memulai perekaman. Coba lagi." },
+  "control_errorRecordingFailed": { "message": "Perekaman mengalami kesalahan dan dihentikan." },
+  "control_errorStorageLow": { "message": "Ruang penyimpanan hampir habis. Perekaman mungkin gagal." },
   "control_statusSaving": { "message": "Menyimpan rekaman..." },
   "control_btnSaving": { "message": "Menyimpan..." },
 
