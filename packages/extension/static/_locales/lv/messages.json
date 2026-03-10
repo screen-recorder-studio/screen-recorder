@@ -93,9 +93,9 @@
   "ratio_sq": { "message": "Instagram kvadrāts" },
   "ratio_sq_desc": { "message": "Instagram ziņas, WeChat Moments" },
   "ratio_tiktok": { "message": "TikTok portrets" },
-  "ratio_tiktok_desc": { "message": "TikTok, Douyin, Kuaishou" },
-  "ratio_story": { "message": "Instagram Story" },
-  "ratio_story_desc": { "message": "Instagram Stories, Xiaohongshu" },
+  "ratio_tiktok_desc": { "message": "TikTok, Reels utt." },
+  "ratio_story": { "message": "Instagram stāsts" },
+  "ratio_story_desc": { "message": "Instagram Stories, Snapchat" },
 
   "shadow_title": { "message": "Video ēna" },
   "shadow_preset_title": { "message": "Sagatavotie efekti" },

@@ -93,9 +93,9 @@
   "ratio_sq": { "message": "Instagram квадрат" },
   "ratio_sq_desc": { "message": "Instagram публикации, WeChat Moments" },
   "ratio_tiktok": { "message": "TikTok портрет" },
-  "ratio_tiktok_desc": { "message": "TikTok, Douyin, Kuaishou" },
-  "ratio_story": { "message": "Instagram Story" },
-  "ratio_story_desc": { "message": "Instagram Stories, Xiaohongshu" },
+  "ratio_tiktok_desc": { "message": "TikTok, Reels и др." },
+  "ratio_story": { "message": "Instagram история" },
+  "ratio_story_desc": { "message": "Instagram Stories, Snapchat" },
 
   "shadow_title": { "message": "Сянка на видеото" },
   "shadow_preset_title": { "message": "Предварителни ефекти" },

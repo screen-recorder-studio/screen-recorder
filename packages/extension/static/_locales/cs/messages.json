@@ -93,7 +93,7 @@
   "ratio_sq": { "message": "Instagram čtverec" },
   "ratio_sq_desc": { "message": "Příspěvky Instagram, WeChat Moments" },
   "ratio_tiktok": { "message": "TikTok na výšku" },
-  "ratio_tiktok_desc": { "message": "TikTok, Douyin, Kuaishou" },
+  "ratio_tiktok_desc": { "message": "TikTok, Reels atd." },
   "ratio_story": { "message": "Instagram příběh" },
   "ratio_story_desc": { "message": "Instagram příběhy, Xiaohongshu" },
 
@@ -136,7 +136,7 @@
 
   "upload_processing": { "message": "Zpracování..." },
   "upload_drop_hint": { "message": "Klikněte nebo přetáhněte obrázek sem" },
-  "upload_format_hint": { "message": "JPEG, PNG, WebP, GIF · Max 5MB" },
+  "upload_format_hint": { "message": "JPEG, PNG, WebP, GIF · Max. 5MB" },
   "upload_error_select": { "message": "Vyberte obrázek" },
   "upload_error_failed": { "message": "Nahrání selhalo" },
 
@@ -238,7 +238,7 @@
   "export_label_scale": { "message": "Měřítko" },
   "export_scale_original": { "message": "100% (Původní)" },
   "export_label_workers": { "message": "Workery" },
-  "export_worker_singular": { "message": "$COUNT$ worker", "placeholders": { "count": { "content": "$1" } } },
+  "export_worker_singular": { "message": "$COUNT$ vlákno", "placeholders": { "count": { "content": "$1" } } },
   "export_worker_plural": { "message": "$COUNT$ workerů", "placeholders": { "count": { "content": "$1" } } },
   "export_label_dither": { "message": "Dithering" },
   "export_dither_none": { "message": "Žádný" },

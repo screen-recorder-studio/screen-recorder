@@ -89,11 +89,11 @@
   "padding_xl": { "message": "Spațiere Extra Mare" },
 
   "ratio_yt": { "message": "Peisaj YouTube" },
-  "ratio_yt_desc": { "message": "YouTube, Bilibili, iQiyi, etc." },
+  "ratio_yt_desc": { "message": "YouTube, Vimeo, Dailymotion etc." },
   "ratio_sq": { "message": "Pătrat Instagram" },
   "ratio_sq_desc": { "message": "Postări Instagram, Momente WeChat" },
   "ratio_tiktok": { "message": "Portret TikTok" },
-  "ratio_tiktok_desc": { "message": "TikTok, Douyin, Kuaishou" },
+  "ratio_tiktok_desc": { "message": "TikTok, Reels etc." },
   "ratio_story": { "message": "Story Instagram" },
   "ratio_story_desc": { "message": "Stories Instagram, Xiaohongshu" },
 
@@ -136,7 +136,7 @@
 
   "upload_processing": { "message": "Se procesează..." },
   "upload_drop_hint": { "message": "Faceți clic sau trageți imaginea aici" },
-  "upload_format_hint": { "message": "JPEG, PNG, WebP, GIF · Max 5MB" },
+  "upload_format_hint": { "message": "JPEG, PNG, WebP, GIF · Max. 5MB" },
   "upload_error_select": { "message": "Vă rugăm să selectați un fișier de imagine" },
   "upload_error_failed": { "message": "Încărcarea a eșuat" },
 
@@ -236,9 +236,9 @@
   "export_gif_fast": { "message": "Rapid" },
   "export_gif_fastest": { "message": "Cea mai rapidă" },
   "export_label_scale": { "message": "Scalare" },
-  "export_scale_original": { "message": "100% (Original)" },
+  "export_scale_original": { "message": "100% (Sursă)" },
   "export_label_workers": { "message": "Workeri" },
-  "export_worker_singular": { "message": "$COUNT$ worker", "placeholders": { "count": { "content": "$1" } } },
+  "export_worker_singular": { "message": "$COUNT$ fir", "placeholders": { "count": { "content": "$1" } } },
   "export_worker_plural": { "message": "$COUNT$ workeri", "placeholders": { "count": { "content": "$1" } } },
   "export_label_dither": { "message": "Dithering" },
   "export_dither_none": { "message": "Niciunul" },
@@ -250,7 +250,7 @@
   "export_progress_encoding": { "message": "Se codifică frame-urile..." },
   "export_progress_muxing": { "message": "Se multiplexează..." },
   "export_progress_finalizing": { "message": "Se finalizează..." },
-  "export_progress_frame": { "message": "Frame $CURRENT$ / $TOTAL$", "placeholders": { "current": { "content": "$1" }, "total": { "content": "$2" } } },
+  "export_progress_frame": { "message": "Cadru $CURRENT$ / $TOTAL$", "placeholders": { "current": { "content": "$1" }, "total": { "content": "$2" } } },
   "export_progress_time": { "message": "~${SECONDS}s rămas", "placeholders": { "seconds": { "content": "$1" } } },
   "export_progress_hint": { "message": "Vă rugăm să așteptați în timp ce video-ul dvs. este exportat..." },
 
