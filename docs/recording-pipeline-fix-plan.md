@@ -64,8 +64,9 @@ async function closeAllControlWindows(): Promise<void> {
   try {
     const allWindows = await chrome.windows.getAll({ populate: true });
     for (const win of allWindows) {
-      if (win.type === 'popup' && win.tabs?.some(tab => tab.url?.startsWith(controlUrl))) {
-        try { await chrome.windows.remove(win.id!); } catch {}
+      if (win.type === 'popup' && win.id !== null && win.id !== undefined
+          && win.tabs?.some(tab => tab.url?.startsWith(controlUrl))) {
+        try { await chrome.windows.remove(win.id); } catch {}
       }
     }
   } catch {}

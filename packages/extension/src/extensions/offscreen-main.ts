@@ -230,6 +230,7 @@
     if (!OPFS_WRITER_ENABLED) return
     if (!opfsWriter || !opfsWriterReady) {
       if (opfsPendingChunks.length >= OPFS_PENDING_CHUNKS_MAX) {
+        console.warn(`[Offscreen][OPFS] Pending chunks queue full (${OPFS_PENDING_CHUNKS_MAX}), dropping oldest chunk`)
         opfsPendingChunks.shift()
       }
       opfsPendingChunks.push(d); return
