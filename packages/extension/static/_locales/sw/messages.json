@@ -165,7 +165,7 @@
   "card_preview_load_error": { "message": "Imeshindwa kupakia data ya hakiki: $ERROR$", "placeholders": { "error": { "content": "$1" } } },
   "card_date_today": { "message": "Leo $TIME$", "placeholders": { "time": { "content": "$1" } } },
   "card_date_yesterday": { "message": "Jana $TIME$", "placeholders": { "time": { "content": "$1" } } },
-  "card_date_days_ago": { "message": "Siku $DA$ zilizopita", "placeholders": { "da": { "content": "$1" } } },
+  "card_date_days_ago": { "message": "Siku $DAYS$ zilizopita", "placeholders": { "days": { "content": "$1" } } },
   "export_panel_tier_free": { "message": "BURE" },
   "export_panel_tier_pro": { "message": "PRO" },
   "export_panel_tier_trial": { "message": "JARIBIO LA PRO" },
