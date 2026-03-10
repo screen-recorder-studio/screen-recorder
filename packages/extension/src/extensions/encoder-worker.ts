@@ -13,7 +13,7 @@ let cfg = { codec: 'auto', width: 1280, height: 720, framerate: 30, bitrate: 4_0
 let selectedCodec = 'unknown';
 let gopFrames = 60; // default ~2s at 30fps, will be recalculated on configure
 let frameCounter = 0;
-const BACKPRESSURE_MAX = 8; // drop frames if encode queue grows beyond this
+const BACKPRESSURE_MAX = 15; // drop frames if encode queue grows beyond this
 
 function postError(message) {
   try { postMessage({ type: 'error', message }); } catch {}

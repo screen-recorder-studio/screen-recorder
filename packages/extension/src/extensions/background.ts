@@ -137,13 +137,30 @@ chrome.runtime.onInstalled.addListener((details) => {
 
 // Control window management
 let controlWinId: number | null = null;
+let controlWindowPromise: Promise<void> | null = null;
 
 /**
  * Open or focus the Control window.  Reusable by:
  *  – OPEN_CONTROL_WINDOW message (from Launcher / Studio empty state)
  *  – chrome.action.onClicked fallback (if popup is not set)
+ *
+ * Uses a Promise-based mutex to prevent concurrent calls from creating
+ * duplicate windows (e.g. rapid Action clicks or service-worker wake-up races).
  */
 async function openOrFocusControlWindow(): Promise<void> {
+  if (controlWindowPromise) {
+    await controlWindowPromise;
+    return;
+  }
+  controlWindowPromise = _openOrFocusControlWindowImpl();
+  try {
+    await controlWindowPromise;
+  } finally {
+    controlWindowPromise = null;
+  }
+}
+
+async function _openOrFocusControlWindowImpl(): Promise<void> {
   // If control window exists, focus it
   if (controlWinId !== null) {
     try {
@@ -198,6 +215,22 @@ async function openOrFocusControlWindow(): Promise<void> {
   } catch (e) {
     console.error('Failed to open control window:', e);
   }
+}
+
+/**
+ * Close ALL control.html popup windows (handles stale windows from prior sessions).
+ */
+async function closeAllControlWindows(): Promise<void> {
+  const controlUrl = chrome.runtime.getURL('control.html');
+  try {
+    const allWindows = await chrome.windows.getAll({ populate: true });
+    for (const win of allWindows) {
+      if (win.type === 'popup' && win.id != null && win.tabs?.some(tab => tab.url?.startsWith(controlUrl))) {
+        try { await chrome.windows.remove(win.id); } catch {}
+      }
+    }
+  } catch {}
+  controlWinId = null;
 }
 
 // Fallback: if manifest does not specify default_popup, keep action click working
@@ -371,11 +404,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               const p = chrome.runtime.sendMessage({ type: 'STATE_UPDATE', state: { recording: false } })
               if (p && typeof p.catch === 'function') p.catch(() => {})
             } catch {}
-            // Close control window when recording completes to avoid stale windows
-            if (controlWinId !== null) {
-              try { chrome.windows.remove(controlWinId) } catch {}
-              controlWinId = null;
-            }
+            // Close all control windows when recording completes to avoid stale windows
+            void closeAllControlWindows()
             const targetUrl = chrome.runtime.getURL(`studio.html?id=${encodeURIComponent(id)}`)
             chrome.tabs.create({ url: targetUrl }, () => {
               const err = chrome.runtime.lastError
