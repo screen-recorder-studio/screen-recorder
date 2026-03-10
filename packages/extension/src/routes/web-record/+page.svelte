@@ -1,16 +1,14 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { Play, Square, LoaderCircle, CircleAlert, HardDrive, Video, TriangleAlert, Clock } from '@lucide/svelte'
-  import { _t } from '$lib/utils/i18n'
+  import { _t, detectLanguage, initI18n } from '$lib/utils/i18n'
   import { formatRecordingDuration } from '$lib/utils/recording-duration'
 
   // Recording state machine: 'idle' | 'preparing' | 'recording' | 'stopping' | 'error'
   let phase = $state<'idle' | 'preparing' | 'recording' | 'stopping' | 'error'>('idle')
   let errorMessage = $state('')
 
-  // i18n fallback messages (loaded from /_locales/{lang}/messages.json)
-  let fallbackMessages = $state<Record<string, string>>({})
-  let langLoaded = $state(false)
+  let i18nReady = $state(false)
 
   // Worker references
   let webcodecWorker: Worker | null = null
@@ -32,57 +30,7 @@
 
   // Helper function: translate with fallback
   function t(key: string, subs?: string | string[]): string {
-    return _t(key, subs, fallbackMessages)
-  }
-
-  // Parse language from URL or use browser language
-  function detectLanguage(): string {
-    const params = new URLSearchParams(window.location.search)
-    const urlLang = params.get('l')
-    if (urlLang) return urlLang
-
-    // Fallback to browser language
-    const browserLang = navigator.language || (navigator as any).userLanguage || 'en'
-    // Map common browser language codes to our locale folder names
-    const langMap: Record<string, string> = {
-      'zh-CN': 'zh_CN',
-      'zh-TW': 'zh_TW',
-      'zh': 'zh_CN',
-      'pt-BR': 'pt_BR',
-      'pt': 'pt_BR'
-    }
-    const base = browserLang.split('-')[0]
-    return langMap[browserLang] || langMap[base] || base || 'en'
-  }
-
-  // Load locale messages and convert Chrome i18n format to flat object
-  async function loadLocaleMessages(lang: string): Promise<Record<string, string>> {
-    try {
-      const response = await fetch(`/_locales/${lang}/messages.json`)
-      if (!response.ok) {
-        // Fallback to English if language not found
-        if (lang !== 'en') {
-          console.warn(`Locale ${lang} not found, falling back to English`)
-          return loadLocaleMessages('en')
-        }
-        return {}
-      }
-      const chromeFormat = await response.json()
-      // Convert Chrome i18n format { "key": { "message": "Text" } } to flat { "key": "Text" }
-      const flat: Record<string, string> = {}
-      for (const key in chromeFormat) {
-        if (chromeFormat[key]?.message) {
-          flat[key] = chromeFormat[key].message
-        }
-      }
-      return flat
-    } catch (e) {
-      console.error('Failed to load locale messages:', e)
-      if (lang !== 'en') {
-        return loadLocaleMessages('en')
-      }
-      return {}
-    }
+    return _t(key, subs)
   }
 
   // Check if running in secure context (required for getDisplayMedia)
@@ -458,11 +406,19 @@
   onMount(() => {
     const lang = detectLanguage()
     console.log('[WebRecord] Detected language:', lang)
-    loadLocaleMessages(lang).then((messages) => {
-      fallbackMessages = messages
-      langLoaded = true
+    initI18n().then(() => {
+      i18nReady = true
 
       // Check API support on load
+      const support = checkAPISupport()
+      if (!support.supported) {
+        phase = 'error'
+        errorMessage = support.reason || t('webRecord_errorGeneric')
+      }
+    }).catch((e) => {
+      console.error('[WebRecord] i18n init failed:', e)
+      i18nReady = true
+
       const support = checkAPISupport()
       if (!support.supported) {
         phase = 'error'
@@ -561,7 +517,7 @@
           <button
             class="w-full flex items-center justify-center gap-3 px-4 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg font-medium hover:from-blue-600 hover:to-blue-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             onclick={startRecording}
-            disabled={!langLoaded}
+            disabled={!i18nReady}
           >
             <Play class="w-5 h-5" />
             <span>{t('webRecord_btnStart')}</span>
