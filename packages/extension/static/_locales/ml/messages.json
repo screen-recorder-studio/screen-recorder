@@ -1,0 +1,1324 @@
+{
+  "appName": {
+    "message": "Screen Recorder Studio - അപരിമിതം, സൂം, GIF"
+  },
+  "appDesc": {
+    "message": "സമയ പരിധികളില്ലാത്ത സ്ഥിരമായ സ്ക്രീന്‍ റെക്കോഡിംഗ്. എഡിറ്ററില്‍ ജൂം, ട്രിം, MP4 അല്ലെങ്കില്‍ GIF എക്സ്‌പോര്‍ട്ട്."
+  },
+  "common_close": {
+    "message": "അടയ്ക്കുക"
+  },
+  "action_defaultTitle": {
+    "message": "റെക്കോഡിംഗ് പാനല്‍ തുറക്കുക"
+  },
+  "control_headerTitle": {
+    "message": "സ്ക്രീന്‍ റെക്കോഡര്‍"
+  },
+  "control_headerDesc": {
+    "message": "റെക്കോഡിംഗ് മോഡ് തിരഞ്ഞ് ആരംഭിക്കുക"
+  },
+  "control_openDriveTooltip": {
+    "message": "റെക്കോഡിംഗ് ഫയല്‍ മാനേജര്‍ തുറക്കുക"
+  },
+  "control_closePanelTooltip": {
+    "message": "കണ്‍ട്രോള്‍ പാനല്‍ അടയ്ക്കുക"
+  },
+  "control_recordingMode": {
+    "message": "റെക്കോഡിംഗ് മോഡ്"
+  },
+  "control_modeTab": {
+    "message": "ടാബ്"
+  },
+  "control_modeTabDesc": {
+    "message": "നിലവിലെ ടാബ് റെക്കോഡ് ചെയ്യുക"
+  },
+  "control_modeWindow": {
+    "message": "വിന്‍ഡോ"
+  },
+  "control_modeWindowDesc": {
+    "message": "മുഴുവന്‍ വിന്‍ഡോയും റെക്കോഡ് ചെയ്യുക"
+  },
+  "control_modeScreen": {
+    "message": "സ്ക്രീന്‍"
+  },
+  "control_modeScreenDesc": {
+    "message": "മുഴുവന്‍ സ്ക്രീനും റെക്കോഡ് ചെയ്യുക"
+  },
+  "control_statusRecording": {
+    "message": "റെക്കോഡിംഗ്"
+  },
+  "control_statusPaused": {
+    "message": "റെക്കോഡിംഗ് താല്‍ക്കാലികമായി നിര്‍ത്തി"
+  },
+  "control_statusPreparing": {
+    "message": "റെക്കോഡിംഗിനായി തയ്യാറാക്കുന്നു"
+  },
+  "control_btnStart": {
+    "message": "റെക്കോഡിംഗ് ആരംഭിക്കുക"
+  },
+  "control_btnStop": {
+    "message": "റെക്കോഡിംഗ് നിര്‍ത്തുക"
+  },
+  "control_btnPause": {
+    "message": "റെക്കോഡിംഗ് താല്‍ക്കാലികമായി നിര്‍ത്തുക"
+  },
+  "control_btnResume": {
+    "message": "റെക്കോഡിംഗ് തുടരുക"
+  },
+  "control_btnPreparing": {
+    "message": "തയ്യാറാക്കുന്നു"
+  },
+  "control_btnStarting": {
+    "message": "$SECONDS$ സെക്കന്‍ഡില്‍ ആരംഭിക്കും...",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_countdownLabel": {
+    "message": "കൗണ്ട്ഡൗണ്‍"
+  },
+  "control_tipsTitle": {
+    "message": "റെക്കോഡിംഗ് ടിപ്പുകള്‍:"
+  },
+  "control_tipsSelectMode": {
+    "message": "$MODE$ മോഡ് തിരഞ്ഞിരിക്കുന്നു, റെക്കോഡിംഗ് ആരംഭിക്കാന്‍ ക്ലിക്ക് ചെയ്യുക.",
+    "placeholders": {
+      "mode": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_tipsPreparing": {
+    "message": "സ്ക്രീന്‍ തിരഞ്ഞെടുക്കാനായി കാത്തിരിക്കുന്നു..."
+  },
+  "control_tipsCountdown": {
+    "message": "തയ്യാറാകുക! $SECONDS$ സെക്കന്‍ഡില്‍ റെക്കോഡിംഗ് ആരംഭിക്കും.",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_tipsPaused": {
+    "message": "റെക്കോഡിംഗ് താല്‍ക്കാലികമായി നിര്‍ത്തിയിരിക്കുന്നു, തുടരാന്‍ തുടരുക ക്ലിക്ക് ചെയ്യുക."
+  },
+  "control_tipsRecording": {
+    "message": "റെക്കോഡിംഗ് പുരോഗമിക്കുന്നു, താല്‍ക്കാലികമായി നിര്‍ത്താന്‍ പോസ് ക്ലിക്ക് ചെയ്യുക."
+  },
+  "control_overlayRecordingStarts": {
+    "message": "റെക്കോഡിംഗ് വേഗത്തില്‍ ആരംഭിക്കും..."
+  },
+  "control_errorTimeout": {
+    "message": "റെക്കോഡിംഗ് തയ്യാറാക്കുന്നതിന്‍റെ സമയം കഴിഞ്ഞിരിക്കുന്നു. വീണ്ടും ശ്രമിക്കുക."
+  },
+  "control_errorStartFailed": {
+    "message": "റെക്കോഡിംഗ് ആരംഭിക്കാന്‍ കഴിഞ്ഞില്ല. വീണ്ടും ശ്രമിക്കുക."
+  },
+  "control_errorRecordingFailed": {
+    "message": "റെക്കോഡിംഗില്‍ പിശക് സംഭവിച്ച് നിര്‍ത്തിയിരിക്കുന്നു."
+  },
+  "control_errorStorageLow": {
+    "message": "സംഭരണം കുറഞ്ഞുവരുന്നു. റെക്കോഡിംഗ് പരാജയപ്പെടാം."
+  },
+  "control_statusSaving": {
+    "message": "റെക്കോഡിംഗ് സംരക്ഷിക്കുന്നു..."
+  },
+  "control_btnSaving": {
+    "message": "സംരക്ഷിക്കുന്നു..."
+  },
+  "drive_pageTitle": {
+    "message": "റെക്കോഡിംഗ്സ് - സ്ക്രീന്‍ റെക്കോഡര്‍ എക്സ്റ്റന്‍ഷന്‍"
+  },
+  "drive_headerTitle": {
+    "message": "റെക്കോഡിംഗ് മാനേജര്‍"
+  },
+  "drive_errorSupport": {
+    "message": "നിങ്ങളുടെ ബ്രൗസര്‍ OPFS സംഭരണത്തെ പിന്തുണയ്ക്കുന്നില്ല"
+  },
+  "drive_errorMetaNotFound": {
+    "message": "meta.json കണ്ടെത്താനായില്ല"
+  },
+  "drive_errorEmpty": {
+    "message": "ശൂന്യമായ റെക്കോഡിംഗ് ഫയല്‍"
+  },
+  "drive_errorMetadata": {
+    "message": "റെക്കോഡിംഗ് മെറ്റാഡേറ്റാ വായിക്കാനായില്ല"
+  },
+  "drive_errorDataSize": {
+    "message": "ഡാറ്റാ ഫയലിന്‍റെ വലിപ്പം ലഭിക്കാനായില്ല"
+  },
+  "drive_recordingNamePrefix": {
+    "message": "സ്ക്രീന്‍ റെക്കോഡിംഗ്"
+  },
+  "drive_logDeleted": {
+    "message": "റെക്കോഡിംഗ് $ID$ ഇല്ലാതാക്കി",
+    "placeholders": {
+      "id": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_errorDelete": {
+    "message": "ഇല്ലാതാക്കാനായില്ല: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_logBatchDelete": {
+    "message": "$COUNT$ റെക്കോഡിംഗ്സ് വിജയകരമായി ഇല്ലാതാക്കി",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_errorLoad": {
+    "message": "റെക്കോഡിംഗ്സ് ലോഡ് ചെയ്യുന്നതില്‍ പിശക് സംഭവിച്ചു"
+  },
+  "drive_errorLoadPrefix": {
+    "message": "റെക്കോഡിംഗ്സ് ലോഡ് ചെയ്യാനായില്ല:"
+  },
+  "studio_pageTitle": {
+    "message": "സ്ക്രീന്‍ റെക്കോഡിംഗ് സ്റ്റുഡിയോ"
+  },
+  "studio_headerTitle": {
+    "message": "സ്ക്രീന്‍ റെക്കോഡര്‍ സ്റ്റുഡിയോ"
+  },
+  "studio_githubTooltip": {
+    "message": "GitHub-ല്‍ സോഴ്സ് കാണുക"
+  },
+  "studio_githubText": {
+    "message": "GitHub"
+  },
+  "studio_feedbackTooltip": {
+    "message": "ബഗ്ഗുകള്‍ റിപ്പോര്‍ട്ട് ചെയ്യുക അല്ലെങ്കില്‍ ഫീച്ചറുകള്‍ നിര്‍ദ്ദേശിക്കുക"
+  },
+  "studio_feedbackText": {
+    "message": "ഫീഡ്ബാക്ക്"
+  },
+  "studio_helpTooltip": {
+    "message": "സഹായവും ഡോക്യുമെന്‍റേഷനും"
+  },
+  "studio_helpText": {
+    "message": "സഹായം"
+  },
+  "studio_driveTooltip": {
+    "message": "റെക്കോഡിംഗ് ഫയല്‍ മാനേജര്‍ തുറക്കുക"
+  },
+  "studio_driveText": {
+    "message": "ഡ്രൈവ്"
+  },
+  "studio_fullscreenEnterTooltip": {
+    "message": "ഫുള്‍സ്ക്രീനില്‍ പ്രവേശിക്കുക"
+  },
+  "studio_fullscreenExitTooltip": {
+    "message": "ഫുള്‍സ്ക്രീനില്‍ നിന്ന് പുറത്ത് കടക്കുക"
+  },
+  "studio_fullscreenEnterText": {
+    "message": "ഫുള്‍സ്ക്രീന്‍"
+  },
+  "studio_fullscreenExitText": {
+    "message": "പുറത്ത്"
+  },
+  "bg_title": {
+    "message": "ബാക്കിലെ വരി"
+  },
+  "bg_tab_wallpaper": {
+    "message": "വാള്‍പേപ്പര്‍"
+  },
+  "bg_tab_gradient": {
+    "message": "ഗ്രേഡിയന്‍റ്"
+  },
+  "bg_tab_solid": {
+    "message": "സോളിഡ്"
+  },
+  "bg_tab_image": {
+    "message": "ചിത്രം"
+  },
+  "radius_title": {
+    "message": "വീഡിയോ ബോര്‍ഡര്‍ റേഡിയസ്"
+  },
+  "radius_none": {
+    "message": "റേഡിയസ് ഒന്നുമില്ല"
+  },
+  "radius_small": {
+    "message": "ചെറിയ റേഡിയസ്"
+  },
+  "radius_medium": {
+    "message": "ഇടത്തരം റേഡിയസ്"
+  },
+  "radius_large": {
+    "message": "വലിയ റേഡിയസ്"
+  },
+  "radius_xl": {
+    "message": "അധിക വലിയ റേഡിയസ്"
+  },
+  "padding_title": {
+    "message": "വീഡിയോ പാഡിംഗ്"
+  },
+  "padding_none": {
+    "message": "പാഡിംഗ് ഒന്നുമില്ല"
+  },
+  "padding_small": {
+    "message": "ചെറിയ പാഡിംഗ്"
+  },
+  "padding_medium": {
+    "message": "ഇടത്തരം പാഡിംഗ്"
+  },
+  "padding_large": {
+    "message": "വലിയ പാഡിംഗ്"
+  },
+  "padding_xl": {
+    "message": "അധിക വലിയ പാഡിംഗ്"
+  },
+  "ratio_yt": {
+    "message": "YouTube ലാന്‍ഡ്സ്കേപ്"
+  },
+  "ratio_yt_desc": {
+    "message": "YouTube, Bilibili, iQiyi തുടങ്ങിയവ."
+  },
+  "ratio_sq": {
+    "message": "Instagram സ്ക്വയര്‍"
+  },
+  "ratio_sq_desc": {
+    "message": "Instagram പോസ്റ്റുകള്‍, WeChat മൊമെന്‍റ്സ്"
+  },
+  "ratio_tiktok": {
+    "message": "TikTok പോര്‍ട്രെയിറ്റ്"
+  },
+  "ratio_tiktok_desc": {
+    "message": "TikTok, Douyin, Kuaishou"
+  },
+  "ratio_story": {
+    "message": "Instagram സ്റ്റോറി"
+  },
+  "ratio_story_desc": {
+    "message": "Instagram സ്റ്റോറികള്‍, Xiaohongshu"
+  },
+  "shadow_title": {
+    "message": "വീഡിയോ ഷാഡോ"
+  },
+  "shadow_preset_title": {
+    "message": "പ്രീസെറ്റ് ഇഫക്റ്റ്സ്"
+  },
+  "shadow_custom_title": {
+    "message": "കസ്റ്റം പാരാമീറ്ററുകള്‍"
+  },
+  "shadow_light": {
+    "message": "ലിറ്റ് ഷാഡോ"
+  },
+  "shadow_standard": {
+    "message": "സ്റ്റാന്‍ഡാര്‍ഡ് ഷാഡോ"
+  },
+  "shadow_deep": {
+    "message": "ഡീപ്പ് ഷാഡോ"
+  },
+  "shadow_distant": {
+    "message": "ഡിസ്റ്റന്‍റ് ഷാഡോ"
+  },
+  "shadow_offset_x": {
+    "message": "X ഒഫ്‌സെറ്റ്"
+  },
+  "shadow_offset_y": {
+    "message": "Y ഒഫ്‌സെറ്റ്"
+  },
+  "shadow_blur": {
+    "message": "ബ്ലര്‍"
+  },
+  "shadow_color": {
+    "message": "നിറം"
+  },
+  "shadow_opacity": {
+    "message": "ഒപാസിറ്റി"
+  },
+  "shadow_empty_state": {
+    "message": "ഷാഡോ ഇഫക്റ്റ്സ് കോണ്‍ഫിഗര്‍ ചെയ്യാന്‍ ഷാഡോ സ്വിച്ച് ഓണ്‍ ചെയ്യുക"
+  },
+  "color_tab_basic": {
+    "message": "അടിസ്ഥാനം"
+  },
+  "color_tab_light": {
+    "message": "ലിറ്റ്"
+  },
+  "color_tab_business": {
+    "message": "ബിസിനസ്"
+  },
+  "color_tab_creative": {
+    "message": "ക്രിയേറ്റിവ്"
+  },
+  "color_custom": {
+    "message": "കസ്റ്റം:"
+  },
+  "gradient_tab_linear": {
+    "message": "ലിനിയര്‍"
+  },
+  "gradient_tab_radial": {
+    "message": "റേഡിയല്‍"
+  },
+  "gradient_tab_conic": {
+    "message": "കോനിക്"
+  },
+  "gradient_tab_multi": {
+    "message": "മൾടി"
+  },
+  "gradient_current": {
+    "message": "നിലവിലെ:"
+  },
+  "gradient_select_hint": {
+    "message": "ഗ്രേഡിയന്‍റ് തിരഞ്ഞെടുക്കുക"
+  },
+  "gradient_colors_suffix": {
+    "message": "നിറങ്ങള്‍"
+  },
+  "wallpaper_tab_abstract": {
+    "message": "അബ്സ്ട്രാക്റ്റ്"
+  },
+  "wallpaper_tab_minimal": {
+    "message": "മിനിമല്‍"
+  },
+  "wallpaper_tab_nature": {
+    "message": "നേച്ചര്‍"
+  },
+  "wallpaper_tab_business": {
+    "message": "ബിസിനസ്"
+  },
+  "wallpaper_tab_tech": {
+    "message": "ടെക്"
+  },
+  "wallpaper_error": {
+    "message": "വാള്‍പേപ്പര്‍ ലോഡ് ചെയ്യാനായില്ല"
+  },
+  "wallpaper_stats": {
+    "message": "ഈ വിഭാഗത്തില്‍ $COUNT$ വാള്‍പേപ്പറുകള്‍",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "wallpaper_total": {
+    "message": "$TOTAL$ ആകെ",
+    "placeholders": {
+      "total": {
+        "content": "$1"
+      }
+    }
+  },
+  "upload_processing": {
+    "message": "പ്രോസസിംഗ്..."
+  },
+  "upload_drop_hint": {
+    "message": "ഇവിടെ ചിത്രം ക്ലിക്ക് ചെയ്യുക അല്ലെങ്കില്‍ വലിച്ചിടുക"
+  },
+  "upload_format_hint": {
+    "message": "JPEG, PNG, WebP, GIF · പരമാവധി 5MB"
+  },
+  "upload_error_select": {
+    "message": "ദയവായി ഒരു ചിത്രഫയല്‍ തിരഞ്ഞെടുക്കുക"
+  },
+  "upload_error_failed": {
+    "message": "അപ്‌ലോഡ് പരാജയപ്പെട്ടു"
+  },
+  "drive_delete_selected_btn": {
+    "message": "തിരഞ്ഞത് ഇല്ലാതാക്കുക ($COUNT$)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_clear_selection": {
+    "message": "തിരഞ്ഞത് മായ്ക്കുക"
+  },
+  "drive_refresh": {
+    "message": "റിഫ്രഷ്"
+  },
+  "drive_error_title": {
+    "message": "പിശക്"
+  },
+  "drive_close_error": {
+    "message": "അടയ്ക്കുക"
+  },
+  "drive_loading": {
+    "message": "റെക്കോഡിംഗ്സ് ലോഡ് ചെയ്യുന്നു..."
+  },
+  "drive_empty_title": {
+    "message": "ഇതുവരെ റെക്കോഡിംഗ്സ് ഒന്നുമില്ല"
+  },
+  "drive_empty_desc1": {
+    "message": "നിങ്ങളുടെ സ്ക്രീന്‍ റെക്കോഡിംഗ്സ് ഒന്നുമില്ല."
+  },
+  "drive_empty_desc2": {
+    "message": "നിങ്ങളുടെ സ്ക്രീന്‍ റെക്കോഡിംഗ് ആരംഭിക്കുക, നിങ്ങളുടെ റെക്കോഡിംഗ്സ് ഇവിടെ കാണപ്പെടും."
+  },
+  "drive_start_recording_btn": {
+    "message": "റെക്കോഡിംഗ് ആരംഭിക്കുക"
+  },
+  "drive_select_all": {
+    "message": "എല്ലാം തിരഞ്ഞെടുക്കുക ($COUNT$ റെക്കോഡിംഗ്സ്)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_sort_hint": {
+    "message": "സമയം അനുസരിച്ച് ക്രമപ്പെടുത്തി (പുതിയത് ആദ്യം)"
+  },
+  "drive_confirm_delete_title": {
+    "message": "ഇല്ലാതാക്കുന്നത് സ്ഥിരീകരിക്കുക"
+  },
+  "drive_confirm_delete_selected": {
+    "message": "തിരഞ്ഞ $COUNT$ റെക്കോഡിംഗ്സ് ഇല്ലാതാക്കണമെന്ന് നിങ്ങള്‍ ആഗ്രഹിക്കുന്നുണ്ടാവട്ടെ?",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_confirm_delete_single": {
+    "message": "ഈ റെക്കോഡിംഗ് ഇല്ലാതാക്കണമെന്ന് നിങ്ങള്‍ ആഗ്രഹിക്കുന്നുണ്ടാവട്ടെ?"
+  },
+  "drive_action_undone": {
+    "message": "ഈ പ്രവര്‍ത്തനം പഴയ അവസ്ഥയിലേക്ക് തിരിച്ച് 持രിക്കാനാകില്ല."
+  },
+  "drive_cancel": {
+    "message": "റദ്ദാക്കുക"
+  },
+  "drive_delete": {
+    "message": "ഇല്ലാതാക്കുക"
+  },
+  "card_status_completed": {
+    "message": "പൂര്‍ത്തിയായി"
+  },
+  "card_status_incomplete": {
+    "message": "അപൂര്‍ണ്ണം"
+  },
+  "card_label_created": {
+    "message": "സൃഷ്ടിച്ചത്:"
+  },
+  "card_label_status": {
+    "message": "സ്റ്റാറ്റസ്:"
+  },
+  "card_label_codec": {
+    "message": "കോഡെക്:"
+  },
+  "card_label_resolution": {
+    "message": "റിസല്യൂഷന്‍:"
+  },
+  "card_label_fps": {
+    "message": "FPS:"
+  },
+  "card_label_size": {
+    "message": "ഫയല്‍ വലിപ്പം:"
+  },
+  "card_label_frames": {
+    "message": "ആകെ ഫ്രെയിമുകള്‍:"
+  },
+  "card_incomplete_title": {
+    "message": "അപൂര്‍ണ്ണം റെക്കോഡിംഗ്"
+  },
+  "card_incomplete_desc": {
+    "message": "വീഡിയോ ഡാറ്റാ നഷ്ടപ്പെട്ടിരിക്കുന്നു"
+  },
+  "card_preview_error": {
+    "message": "പ്രിവ്യൂ ലോഡ് ചെയ്യാനാകില്ല"
+  },
+  "card_preview_loading": {
+    "message": "പ്രിവ്യൂ സൃഷ്ടിക്കുന്നു..."
+  },
+  "card_btn_edit": {
+    "message": "എഡിറ്റ്"
+  },
+  "card_btn_delete": {
+    "message": "ഇല്ലാതാക്കുക"
+  },
+  "card_edit_disabled_tooltip": {
+    "message": "അപൂര്‍ണ്ണം റെക്കോഡിംഗ് എഡിറ്റ് ചെയ്യാനാകില്ല"
+  },
+  "card_edit_tooltip": {
+    "message": "റെക്കോഡിംഗ് എഡിറ്റ് ചെയ്യുക"
+  },
+  "card_preview_load_error": {
+    "message": "പ്രിവ്യൂ ഡാറ്റാ ലോഡ് ചെയ്യാനായില്ല: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_today": {
+    "message": "ഇന്ന് $TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_yesterday": {
+    "message": "ഇന്നലെ $TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_days_ago": {
+    "message": "$DAYS$ ദിനങ്ങള്‍ക്ക് മുമ്പ്",
+    "placeholders": {
+      "days": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_panel_tier_free": {
+    "message": "സൗജന്യം"
+  },
+  "export_panel_tier_pro": {
+    "message": "പ്രോ"
+  },
+  "export_panel_tier_trial": {
+    "message": "പ്രോ ട്രയല്‍"
+  },
+  "export_panel_btn": {
+    "message": "എക്സ്പോര്‍ട്ട്"
+  },
+  "export_panel_tooltip_incomplete": {
+    "message": "എക്സ്പോര്‍ട്ട് ചെയ്യാന്‍ റെക്കോഡിംഗ് പൂര്‍ത്തിയാക്കുക"
+  },
+  "export_panel_tooltip_no_data": {
+    "message": "വീഡിയോ ഡാറ്റാ ഒന്നുമില്ല"
+  },
+  "export_panel_btn_exporting": {
+    "message": "എക്സ്പോര്‍ട്ട് ചെയ്യുന്നു..."
+  },
+  "export_error_gif_failed": {
+    "message": "GIF എക്സ്പോര്‍ട്ട് പരാജയപ്പെട്ടു. വീണ്ടും ശ്രമിക്കുക."
+  },
+  "export_error_webm_failed": {
+    "message": "WebM എക്സ്പോര്‍ട്ട് പരാജയപ്പെട്ടു. വീണ്ടും ശ്രമിക്കുക."
+  },
+  "export_error_mp4_failed": {
+    "message": "MP4 എക്സ്പോര്‍ട്ട് പരാജയപ്പെട്ടു. വീണ്ടും ശ്രമിക്കുക."
+  },
+  "export_error_retry_hint": {
+    "message": "വീണ്ടും ശ്രമിക്കുക അല്ലെങ്കില്‍ മറ്റൊരു ഫോര്‍മാറ്റ് ഉപയോഗിക്കുക."
+  },
+  "export_error_opfs_download_failed": {
+    "message": "ഫയല്‍ ഡ്രൈവില്‍ സംരക്ഷിച്ചിട്ടുണ്ടെങ്കിലും ഡൗണ്‍ലോഡ് പരാജയപ്പെട്ടു. ഫയല്‍ ലഭിക്കാന്‍ ഡ്രൈവ് തുറക്കുക."
+  },
+  "export_dialog_title": {
+    "message": "വീഡിയോ എക്സ്പോര്‍ട്ട്"
+  },
+  "export_source_res": {
+    "message": "റിസല്യൂഷന്‍"
+  },
+  "export_source_codec": {
+    "message": "കോഡെക്"
+  },
+  "export_source_duration": {
+    "message": "ദൈര്‍ഘ്യം"
+  },
+  "export_source_frames": {
+    "message": "ഫ്രെയിമുകള്‍"
+  },
+  "export_badge_bg": {
+    "message": "ബാക്കിലെ വരി"
+  },
+  "export_badge_trim": {
+    "message": "ട്രിമ്പ് ചെയ്തത്"
+  },
+  "export_format_mp4": {
+    "message": "MP4"
+  },
+  "export_format_webm": {
+    "message": "WebM"
+  },
+  "export_format_gif": {
+    "message": "GIF"
+  },
+  "export_quality_title": {
+    "message": "ഗുണനിലവാരം പ്രീസെറ്റ്"
+  },
+  "export_quality_draft": {
+    "message": "ഡ്രാഫ്റ്റ്"
+  },
+  "export_quality_draft_desc": {
+    "message": "ഏറ്റവും വേഗത്തില്‍ എക്സ്പോര്‍ട്ട്, കുറഞ്ഞ ഗുണനിലവാരം"
+  },
+  "export_quality_balanced": {
+    "message": "സമതുലിതം"
+  },
+  "export_quality_balanced_desc": {
+    "message": "നല്ല ഗുണനിലവാരം, യുക്തിസഹമായ വേഗത"
+  },
+  "export_quality_high": {
+    "message": "ഉയര്‍ന്ന"
+  },
+  "export_quality_high_desc": {
+    "message": "ഉയര്‍ന്ന ഗുണനിലവാരം, സാവധാനത്തില്‍"
+  },
+  "export_quality_best": {
+    "message": "ഏറ്റവും നല്ലത്"
+  },
+  "export_quality_best_desc": {
+    "message": "പരമാവധി ഗുണനിലവാരം, ഏറ്റവും സാവധാനത്തില്‍"
+  },
+  "export_label_resolution": {
+    "message": "റിസല്യൂഷന്‍"
+  },
+  "export_res_source": {
+    "message": "സോഴ്സിനൊപ്പം ചേര്‍ക്കുക ($WIDTH$×$HEIGHT$)",
+    "placeholders": {
+      "width": {
+        "content": "$1"
+      },
+      "height": {
+        "content": "$2"
+      }
+    }
+  },
+  "export_label_framerate": {
+    "message": "ഫ്രെയിം റേറ്റ്"
+  },
+  "export_fps_source": {
+    "message": "$FPS$ fps (സോഴ്സ്)",
+    "placeholders": {
+      "fps": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_bitrate": {
+    "message": "ബിറ്റ്റേറ്റ്"
+  },
+  "export_bitrate_auto": {
+    "message": "ഓട്ടോ"
+  },
+  "export_bitrate_manual": {
+    "message": "മാനുവല്‍"
+  },
+  "export_bitrate_auto_hint": {
+    "message": "ഓട്ടോ: $RATE$ Mbps (റിസല്യൂഷന്‍�റെയും ഗുണനിലവാരത്തെയും അടിസ്ഥാനമാക്കി)",
+    "placeholders": {
+      "rate": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_speed": {
+    "message": "എന്‍കോഡിംഗ് വേഗത"
+  },
+  "export_speed_fastest": {
+    "message": "ഏറ്റവും വേഗത്തില്‍"
+  },
+  "export_speed_fast": {
+    "message": "വേഗത്തില്‍"
+  },
+  "export_speed_balanced": {
+    "message": "സമതുലിതം"
+  },
+  "export_speed_slow": {
+    "message": "സാവധാനത്തില്‍"
+  },
+  "export_speed_slowest": {
+    "message": "ഏറ്റവും സാവധാനത്തില്‍"
+  },
+  "export_est_output": {
+    "message": "കണക്കാക്കിയ ഔട്പ്പട്ട്"
+  },
+  "export_est_size": {
+    "message": "കണക്കാക്കിയ വലിപ്പം"
+  },
+  "export_label_gif_quality": {
+    "message": "ഗുണനിലവാരം"
+  },
+  "export_gif_best": {
+    "message": "ഏറ്റവും നല്ലത് (ഏറ്റവും സാവധാനത്തില്‍)"
+  },
+  "export_gif_high": {
+    "message": "ഉയര്‍ന്ന"
+  },
+  "export_gif_good": {
+    "message": "നല്ലത് (ഡിഫോള്‍ട്ട്)"
+  },
+  "export_gif_fast": {
+    "message": "വേഗത്തില്‍"
+  },
+  "export_gif_fastest": {
+    "message": "ഏറ്റവും വേഗത്തില്‍"
+  },
+  "export_label_scale": {
+    "message": "സ്കെയില്‍"
+  },
+  "export_scale_original": {
+    "message": "100% (യഥാര്‍ത്ഥം)"
+  },
+  "export_label_workers": {
+    "message": "വര്‍ക്കര്‍മാര്‍"
+  },
+  "export_worker_singular": {
+    "message": "$COUNT$ വര്‍ക്കര്‍",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_worker_plural": {
+    "message": "$COUNT$ വര്‍ക്കര്‍",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_dither": {
+    "message": "ഡിതറിംഗ്"
+  },
+  "export_dither_none": {
+    "message": "ഒന്നുമില്ല"
+  },
+  "export_btn_cancel": {
+    "message": "റദ്ദാക്കുക"
+  },
+  "export_btn_export_mp4": {
+    "message": "MP4 എക്സ്പോര്‍ട്ട്"
+  },
+  "export_btn_export_webm": {
+    "message": "WebM എക്സ്പോര്‍ട്ട്"
+  },
+  "export_btn_export_gif": {
+    "message": "GIF എക്സ്പോര്‍ട്ട്"
+  },
+  "export_progress_preparing": {
+    "message": "തയ്യാറാക്കുന്നു..."
+  },
+  "export_progress_encoding": {
+    "message": "ഫ്രെയിമുകള്‍ എന്‍കോഡ് ചെയ്യുന്നു..."
+  },
+  "export_progress_muxing": {
+    "message": "മക്സിംഗ്..."
+  },
+  "export_progress_finalizing": {
+    "message": "ഫിനലൈസിംഗ്..."
+  },
+  "export_progress_frame": {
+    "message": "ഫ്രെയിം $CURRENT$ / $TOTAL$",
+    "placeholders": {
+      "current": {
+        "content": "$1"
+      },
+      "total": {
+        "content": "$2"
+      }
+    }
+  },
+  "export_progress_time": {
+    "message": "~$SECONDS$s ശേഷിക്കുന്നു",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_progress_hint": {
+    "message": "നിങ്ങളുടെ വീഡിയോ എക്സ്പോര്‍ട്ട് ചെയ്യപ്പെടുന്നതിനായി കാത്തിരിക്കുക..."
+  },
+  "wallpaper_cat_abstract_name": {
+    "message": "അബ്സ്ട്രാക്റ്റ് ആര്‍ട്ട്"
+  },
+  "wallpaper_cat_abstract_desc": {
+    "message": "അബ്സ്ട്രാക്റ്റ് പാറ്ററ്ററുകള്‍, കലാത്മക സൃഷ്ടികളും ആധുനിക ഡിസൈനുകളും"
+  },
+  "wallpaper_cat_minimal_name": {
+    "message": "മിനിമല്‍ ശൈലി"
+  },
+  "wallpaper_cat_minimal_desc": {
+    "message": "ശുചിത്വമുള്ള ജിയോമെട്രി, മിനിമലിസ്റ്റ് ഡിസൈനും ശുദ്ധമായ സൗന്ദര്യവും"
+  },
+  "wallpaper_cat_nature_name": {
+    "message": "നേച്ചര്‍ സിനറി"
+  },
+  "wallpaper_cat_nature_desc": {
+    "message": "പ്രകൃതിദൃശ്യങ്ങള്‍, സസ്യ ടെക്സ്ചറുകളും ഓര്‍ഗാനിക് രൂപങ്ങളും"
+  },
+  "wallpaper_cat_business_name": {
+    "message": "ബിസിനസ് പ്രൊഫഷണല്‍"
+  },
+  "wallpaper_cat_business_desc": {
+    "message": "ബിസിനസ് ദൃശ്യങ്ങള്‍, പ്രൊഫഷണല്‍ അന്തരീക്ഷവും കോര്‍പറേറ്റ് ശൈലിയും"
+  },
+  "wallpaper_cat_tech_name": {
+    "message": "ടെക് ഫ്യൂചര്‍"
+  },
+  "wallpaper_cat_tech_desc": {
+    "message": "ടെക്‌നോളജി ഘടകങ്ങള്‍, ഫ്യൂചറിസ്റ്റിക് അനുഭവവും ഡിജിറ്റല്‍ ആര്‍ട്ടും"
+  },
+  "wallpaper_gradient_abstract_1_name": {
+    "message": "Abstract Gradient"
+  },
+  "wallpaper_gradient_abstract_1_desc": {
+    "message": "Modern abstract gradient background, perfect for tech and creative content"
+  },
+  "wallpaper_geometric_pattern_1_name": {
+    "message": "Geometric Pattern"
+  },
+  "wallpaper_geometric_pattern_1_desc": {
+    "message": "Clean geometric pattern background, ideal for business and professional content"
+  },
+  "wallpaper_abstract_2425706_name": {
+    "message": "Abstract Colors"
+  },
+  "wallpaper_abstract_2425706_desc": {
+    "message": "Vibrant abstract color texture with strong visual impact"
+  },
+  "wallpaper_abstract_2512412_name": {
+    "message": "Abstract Colors"
+  },
+  "wallpaper_abstract_2512412_desc": {
+    "message": "Flowing abstract color background, perfect for creative content"
+  },
+  "wallpaper_abstract_6297317_name": {
+    "message": "Abstract Forms"
+  },
+  "wallpaper_abstract_6297317_desc": {
+    "message": "Abstract geometric forms with color block composition"
+  },
+  "wallpaper_ai_generated_9083808_name": {
+    "message": "AI Generated Art"
+  },
+  "wallpaper_ai_generated_9083808_desc": {
+    "message": "AI-generated futuristic art background"
+  },
+  "wallpaper_beach_4938036_name": {
+    "message": "Beach"
+  },
+  "wallpaper_beach_4938036_desc": {
+    "message": "Natural beach scenery with sand and waves, fresh and comfortable"
+  },
+  "wallpaper_bulb_5665770_name": {
+    "message": "Creative Bulb"
+  },
+  "wallpaper_bulb_5665770_desc": {
+    "message": "Light bulb theme symbolizing creativity and inspiration"
+  },
+  "wallpaper_cpu_8892400_name": {
+    "message": "CPU Circuit"
+  },
+  "wallpaper_cpu_8892400_desc": {
+    "message": "CPU chip and circuit board with high-tech appeal"
+  },
+  "wallpaper_feather_5488401_name": {
+    "message": "Feather Close-up"
+  },
+  "wallpaper_feather_5488401_desc": {
+    "message": "Soft feather texture with rich detail"
+  },
+  "wallpaper_fractal_8902060_name": {
+    "message": "Fractal Art"
+  },
+  "wallpaper_fractal_8902060_desc": {
+    "message": "Brilliant fractal patterns in abstract art style"
+  },
+  "wallpaper_orange_3036097_name": {
+    "message": "Orange Slice"
+  },
+  "wallpaper_orange_3036097_desc": {
+    "message": "Vibrant orange slices with bright colors"
+  },
+  "wallpaper_orange_6508617_name": {
+    "message": "Orange Background"
+  },
+  "wallpaper_orange_6508617_desc": {
+    "message": "Bright orange themed background full of energy"
+  },
+  "wallpaper_polar_lights_5858656_name": {
+    "message": "Aurora"
+  },
+  "wallpaper_polar_lights_5858656_desc": {
+    "message": "Northern lights night sky, dreamy natural phenomenon"
+  },
+  "wallpaper_spiral_3112405_name": {
+    "message": "Spiral Pattern"
+  },
+  "wallpaper_spiral_3112405_desc": {
+    "message": "Abstract spiral texture with dynamic layers"
+  },
+  "wallpaper_steelwool_458842_name": {
+    "message": "Steel Wool Light Painting"
+  },
+  "wallpaper_steelwool_458842_desc": {
+    "message": "Long exposure light painting effect, abstract and dynamic"
+  },
+  "wallpaper_swimming_pool_8306716_name": {
+    "message": "Pool Ripples"
+  },
+  "wallpaper_swimming_pool_8306716_desc": {
+    "message": "Swimming pool water ripples with cool summer atmosphere"
+  },
+  "wallpaper_abstract_2426502_name": {
+    "message": "Abstract Colors"
+  },
+  "wallpaper_abstract_2426502_desc": {
+    "message": "Modern design with abstract colors and shapes"
+  },
+  "wallpaper_camera_1248682_name": {
+    "message": "Camera Close-up"
+  },
+  "wallpaper_camera_1248682_desc": {
+    "message": "Camera and lens close-up with textured tech style"
+  },
+  "wallpaper_circle_5090539_name": {
+    "message": "Circular Geometry"
+  },
+  "wallpaper_circle_5090539_desc": {
+    "message": "Clean circular geometric pattern, perfect for visually unified layouts"
+  },
+  "wallpaper_feather_7009025_name": {
+    "message": "Feather Texture"
+  },
+  "wallpaper_feather_7009025_desc": {
+    "message": "Soft feather texture with delicate natural patterns"
+  },
+  "wallpaper_fiber_4814456_name": {
+    "message": "Fiber Lines"
+  },
+  "wallpaper_fiber_4814456_desc": {
+    "message": "Abstract tech feel with fiber optics and lines"
+  },
+  "wallpaper_frost_6702335_name": {
+    "message": "Frost Texture"
+  },
+  "wallpaper_frost_6702335_desc": {
+    "message": "Cold textured frost pattern background"
+  },
+  "wallpaper_leaves_4291098_name": {
+    "message": "Green Leaves"
+  },
+  "wallpaper_leaves_4291098_desc": {
+    "message": "Natural texture of green leaves, fresh and healing"
+  },
+  "wallpaper_light_1834289_name": {
+    "message": "Light Bokeh"
+  },
+  "wallpaper_light_1834289_desc": {
+    "message": "Light and shadow bokeh effect, atmospheric abstract background"
+  },
+  "wallpaper_light_942231_name": {
+    "message": "Light Streaks"
+  },
+  "wallpaper_light_942231_desc": {
+    "message": "Flowing light streaks, dynamic abstract background"
+  },
+  "wallpaper_luck_4397584_name": {
+    "message": "Four-leaf Clover"
+  },
+  "wallpaper_luck_4397584_desc": {
+    "message": "Lucky four-leaf clover with fresh natural green tones"
+  },
+  "wallpaper_waterdrop_2256201_name": {
+    "message": "Water Drop Close-up"
+  },
+  "wallpaper_waterdrop_2256201_desc": {
+    "message": "Water drop and surface tension macro texture"
+  },
+
+  "welcome_pageTitle": {
+    "message": "Screen Recorder Studio-യിലേക്ക് സ്വാഗതം"
+  },
+  "welcome_headerSubtitle": {
+    "message": "പ്രൊഫഷണല്‍ ബ്രൗസര്‍ റെക്കോഡിംഗ് ടൂള്‍"
+  },
+  "welcome_installSuccess": {
+    "message": "ഇന്‍സ്റ്റലേഷന്‍ വിജയകരമായി"
+  },
+  "welcome_headline": {
+    "message": "റെക്കോഡ്, എഡിറ്റ്, സെക്കന്‍ഡുകളില്‍ എക്സ്പോര്‍ട്ട് ചെയ്യുക. 🎉"
+  },
+  "welcome_subheadline": {
+    "message": "മണിക്കൂറുകളായി ഫൂട്ടേജ് മിഴിവുള്ളതായി ക്യാപ്ചര്‍ ചെയ്യുക, അതിനുശേഷം എഡിറ്റ് ചെയ്ത് ഹൈ-ക്വാലിറ്റി വീഡിയോകളായോ GIF ആയോ എക്സ്പോര്‍ട്ട് ചെയ്യുക—എല്ലാം നിങ്ങളുടെ ബ്രൗസറില്‍ സുരക്ഷിതമായി പ്രോസസ് ചെയ്യപ്പെടും."
+  },
+  "welcome_tryTitle": {
+    "message": "നിങ്ങളുടെ ആദ്യ റെക്കോഡിംഗ് ആരംഭിക്കുക 🚀"
+  },
+  "welcome_trySubtitle": {
+    "message": "എന്താണ് ക്യാപ്ചര്‍ ചെയ്യാനുള്ളത് തിരഞ്ഞെടുത്ത് റെക്കോഡിംഗ് ആരംഭിക്കുക—സ്റ്റുഡിയോ നിങ്ങള്‍ നിര്‍ത്തുമ്പോള്‍ തുറക്കും."
+  },
+  "welcome_modeTabDetail": {
+    "message": "വെബ് ഡെമോകള്‍ക്കും ട്യൂട്ടോറിയല്‍കള്‍ക്കും പറ്റിയ"
+  },
+  "welcome_modeWindowDetail": {
+    "message": "അഡ്രസ്സ് ബാറിനെയും ടൂള്‍ബാറിനെയും ഉള്‍ക്കൊള്ളുന്ന"
+  },
+  "welcome_modeScreenDetail": {
+    "message": "ക്രോസ്-ആപ്ലിക്കേഷന്‍ വര്‍ക്ക്ഫ്ലോകള്‍ക്ക് ഏറ്റവും നല്ല"
+  },
+  "welcome_statusRecording": {
+    "message": "റെക്കോഡിംഗ് പുരോഗമിക്കുന്നു"
+  },
+  "welcome_modeLabel": {
+    "message": "മോഡ്"
+  },
+  "welcome_proTrialActive": {
+    "message": "പ്രോ ട്രയല്‍ സജീവം"
+  },
+  "welcome_feat1Title": {
+    "message": "സ്വകാര്യവും ലോക്കലും"
+  },
+  "welcome_feat2Title": {
+    "message": "വാട്ടര്‍മാര്‍ക്ക് ഇല്ല"
+  },
+  "welcome_feat3Title": {
+    "message": "വേഗത്തിലുള്ള എഡിറ്റിംഗ്"
+  },
+  "welcome_feat4Title": {
+    "message": "വീഡിയോ & GIF എക്സ്പോര്‍ട്ട്"
+  },
+  "welcome_howTitle": {
+    "message": "നിങ്ങളുടെ റെക്കോഡിംഗ് യാത്ര"
+  },
+  "welcome_howDesc": {
+    "message": "ക്യാപ്ചറില്‍ നിന്ന് എക്സ്പോര്‍ട്ട് വരെ, എല്ലാം നിങ്ങളുടെ ബ്രൗസറില്‍ സുരക്ഷിതമായി സംഭവിക്കുന്നു."
+  },
+  "welcome_step1Title": {
+    "message": "എക്സ്റ്റന്‍ഷനെ പിന്നിട്ട് വയ്ക്കുക"
+  },
+  "welcome_step1Desc": {
+    "message": "നിങ്ങളുടെ ബ്രൗസര്‍ ടൂള്‍ബാറിലെ പസില്‍ ഐകണ്‍ 🧩 ക്ലിക്ക് ചെയ്ത് ഈ എക്സ്റ്റന്‍ഷനെ വേഗത്തിലുള്ള ആക്‌സസിനായി പിന്നിട്ട് വയ്ക്കുക"
+  },
+  "welcome_step2Title": {
+    "message": "നിങ്ങളുടെ ടാര്‍ജറ്റ് തിരഞ്ഞെടുക്കുക"
+  },
+  "welcome_step2Desc": {
+    "message": "എന്താണ് റെക്കോഡ് ചെയ്യാനുള്ളത് തിരഞ്ഞെടുക്കുക: നിലവിലെ ടാബ്, മുഴുവന്‍ വിന്‍ഡോ, അല്ലെങ്കില്‍ മുഴുവന്‍ സ്ക്രീന്‍—നിങ്ങളുടെ ആവശ്യത്തിന് ഏറ്റവും അനുയോജ്യമായ"
+  },
+  "welcome_step3Title": {
+    "message": "വേഗത്തിലുള്ള എഡിറ്റിംഗ്"
+  },
+  "welcome_step3Desc": {
+    "message": "\"$BTN$\" ക്ലിക്ക് ചെയ്ത് തയ്യാറാകുക - $SECONDS$ സെക്കന്‍ഡിലെ കൗണ്ട്ഡൗണ്‍ നിങ്ങള്‍ക്ക് തയ്യാറാകാന്‍ സമയം കൊടുക്കും!",
+    "placeholders": {
+      "btn": {
+        "content": "$1"
+      },
+      "seconds": {
+        "content": "$2"
+      }
+    }
+  },
+  "welcome_trustNoWatermark": {
+    "message": "വാട്ടര്‍മാര്‍ക്ക് ഇല്ല"
+  },
+  "welcome_trustHD": {
+    "message": "HD ക്വാലിറ്റി"
+  },
+  "welcome_trustLocal": {
+    "message": "സ്വകാര്യവും ലോക്കലും"
+  },
+  "welcome_trustQuickEditing": {
+    "message": "വേഗത്തിലുള്ള എഡിറ്റിംഗ്"
+  },
+  "welcome_footerHelp": {
+    "message": "കൂടുതല്‍ നിയന്ത്രണം വേണമോ? എക്സ്റ്റന്‍ഷന്‍ ഐകണ്‍ ക്ലിക്ക് ചെയ്ത് അഡ്വാന്‍സ്ഡ് റെക്കോഡിംഗ് ഒപ്പം എക്സ്പോര്‍ട്ട് സെറ്റിംഗ്സിലേക്ക് പ്രവേശിക്കുക."
+  },
+  "welcome_footerMeta": {
+    "message": "Screen Recorder Studio • പ്രൊഫഷണല്‍മാര്‍ക്കായി നിര്‍മ്മിച്ചത്"
+  },
+  "annotation_tool_cursor": {
+    "message": "കര്‍സര്‍ (ഇന്ററാക്റ്റ്)"
+  },
+  "annotation_tool_effect": {
+    "message": "കര്‍സര്‍ ഇഫക്റ്റ്"
+  },
+  "annotation_tool_arrow": {
+    "message": "അറവ്"
+  },
+  "annotation_tool_rectangle": {
+    "message": "ചതുരാകൃതി"
+  },
+  "annotation_tool_circle": {
+    "message": "വൃത്തം"
+  },
+  "annotation_tool_freehand": {
+    "message": "പെന്‍"
+  },
+  "annotation_tool_text": {
+    "message": "ടെക്സ്റ്റ്"
+  },
+  "annotation_tool_highlight": {
+    "message": "ഹൈലൈറ്റ്"
+  },
+  "annotation_tool_blur": {
+    "message": "ബ്ലര്‍"
+  },
+  "annotation_tool_undo": {
+    "message": "അണ്‍ഡു"
+  },
+  "annotation_tool_clear": {
+    "message": "എല്ലാം മായ്ക്കുക"
+  },
+  "annotation_tool_close": {
+    "message": "അടയ്ക്കുക"
+  },
+  "webRecord_pageTitle": {
+    "message": "വെബ് സ്ക്രീന്‍ റെക്കോഡര്‍"
+  },
+  "webRecord_headerTitle": {
+    "message": "സ്ക്രീന്‍ റെക്കോഡര്‍"
+  },
+  "webRecord_openDriveTooltip": {
+    "message": "റെക്കോഡിംഗ് ഫയല്‍ മാനേജര്‍ തുറക്കുക"
+  },
+  "webRecord_driveBtn": {
+    "message": "റെക്കോഡിംഗ്സ്"
+  },
+  "webRecord_errorTitle": {
+    "message": "പിശക്"
+  },
+  "webRecord_errorInsecure": {
+    "message": "സ്ക്രീന്‍ റെക്കോഡിംഗിന് സുരക്ഷിതമായ കോണ്‍ടെക്സ്റ്റ് (HTTPS) ആവശ്യമാണ്. ദയവായി HTTPS വഴി ഈ പേജിലേക്ക് പ്രവേശിക്കുക."
+  },
+  "webRecord_errorNoDisplayMedia": {
+    "message": "നിങ്ങളുടെ ബ്രൗസര്‍ സ്ക്രീന്‍ റെക്കോഡിംഗിനെ പിന്തുണയ്ക്കുന്നില്ല (getDisplayMedia API)."
+  },
+  "webRecord_errorNoWebCodecs": {
+    "message": "നിങ്ങളുടെ ബ്രൗസര്‍ WebCodecs API അന്റെ പിന്തുണയ്ക്കുന്നില്ല. ദയവായി Chrome 94+ പോലെയുള്ള ആധുനിക ബ്രൗസര്‍ ഉപയോഗിക്കുക."
+  },
+  "webRecord_errorNoTrackProcessor": {
+    "message": "നിങ്ങളുടെ ബ്രൗസര്‍ MediaStreamTrackProcessor അന്റെ പിന്തുണയ്ക്കുന്നില്ല. ദയവായി Chrome 94+ ഉപയോഗിക്കുക."
+  },
+  "webRecord_errorNoOPFS": {
+    "message": "നിങ്ങളുടെ ബ്രൗസര്‍ OPFS സംഭരണത്തെ പിന്തുണയ്ക്കുന്നില്ല."
+  },
+  "webRecord_errorGeneric": {
+    "message": "ഒരു പിശക് സംഭവിച്ചു. വീണ്ടും ശ്രമിക്കുക."
+  },
+  "webRecord_errorNoVideoTrack": {
+    "message": "സ്ക്രീന്‍ ക്യാപ്ചറില്‍ നിന്ന് വീഡിയോ ട്രാക്ക് ലഭ്യമല്ല."
+  },
+  "webRecord_errorPermissionDenied": {
+    "message": "സ്ക്രീന്‍ റെക്കോഡിംഗ് അനുമതി നിഷേധിച്ചിരിക്കുന്നു. റെക്കോഡ് ചെയ്യാന്‍ സ്ക്രീന്‍ ഷെയറിംഗിന് അനുമതി നല്‍കുക."
+  },
+  "webRecord_errorEncoding": {
+    "message": "വീഡിയോ എന്‍കോഡിംഗ് പിശക് സംഭവിച്ചു."
+  },
+  "webRecord_statusRecording": {
+    "message": "റെക്കോഡിംഗ്"
+  },
+  "webRecord_statusPreparing": {
+    "message": "തയ്യാറാക്കുന്നു..."
+  },
+  "webRecord_statusStopping": {
+    "message": "നിര്‍ത്തുന്നു..."
+  },
+  "webRecord_statusIdle": {
+    "message": "റെക്കോഡ് ചെയ്യാന്‍ തയ്യാറാണ്"
+  },
+  "webRecord_btnStart": {
+    "message": "റെക്കോഡിംഗ് ആരംഭിക്കുക"
+  },
+  "webRecord_btnStop": {
+    "message": "റെക്കോഡിംഗ് നിര്‍ത്തുക"
+  },
+  "webRecord_btnPreparing": {
+    "message": "തയ്യാറാക്കുന്നു..."
+  },
+  "webRecord_btnStopping": {
+    "message": "നിര്‍ത്തുന്നു..."
+  },
+  "webRecord_tipsTitle": {
+    "message": "ടിപ്പുകള്‍:"
+  },
+  "webRecord_tip1": {
+    "message": "റെക്കോഡ് ചെയ്യാന്‍ സ്ക്രീന്‍, വിന്‍ഡോ, അല്ലെങ്കില്‍ ടാബ് തിരഞ്ഞെടുക്കാന്‍ ആരംഭിക്കുക ക്ലിക്ക് ചെയ്യുക."
+  },
+  "webRecord_tip2": {
+    "message": "റെക്കോഡിംഗ്സ് നിങ്ങളുടെ ബ്രൗസര്‍ സംഭരണത്തില്‍ ലോക്കലായി സംരക്ഷിക്കപ്പെടും."
+  },
+  "webRecord_tip3": {
+    "message": "റെക്കോഡിംഗ്സ് കാണാന്‍, എഡിറ്റ് ചെയ്യാന്‍, ഒപ്പം എക്സ്പോര്‍ട്ട് ചെയ്യാന്‍ റെക്കോഡിംഗ്സ് ക്ലിക്ക് ചെയ്യുക."
+  },
+  "drive_drawerDelete": {
+    "message": "ഇല്ലാതാക്കുക"
+  },
+  "drive_drawerEmpty": {
+    "message": "ഇതുവരെ റെക്കോഡിംഗ്സ് ഒന്നുമില്ല"
+  },
+  "drive_drawerJustNow": {
+    "message": "ഇപ്പോള്‍"
+  },
+  "drive_drawerOpenFull": {
+    "message": "പൂര്‍ണ്ണമായ ഡ്രൈവ് തുറക്കുക"
+  },
+  "drive_drawerTitle": {
+    "message": "സമീപകാല റെക്കോഡിംഗ്സ്"
+  },
+  "launcher_drive": {
+    "message": "ഡ്രൈവ്"
+  },
+  "launcher_driveDesc": {
+    "message": "റെക്കോഡിംഗ്സ് കാണുക ഒപ്പം മാനേജ് ചെയ്യുക"
+  },
+  "launcher_pageTitle": {
+    "message": "Screen Recorder Studio"
+  },
+  "launcher_record": {
+    "message": "റെക്കോഡ്"
+  },
+  "launcher_recordDesc": {
+    "message": "പുതിയ സ്ക്രീന്‍ റെക്കോഡിംഗ് ആരംഭിക്കുക"
+  },
+  "launcher_studio": {
+    "message": "സ്റ്റുഡിയോ"
+  },
+  "launcher_studioDesc": {
+    "message": "നിങ്ങളുടെ ഏറ്റവും പുതിയ റെക്കോഡിംഗ് എഡിറ്റ് ചെയ്യുക"
+  },
+  "launcher_subtitle": {
+    "message": "റെക്കോഡ്, മാനേജ്, ഒപ്പം എക്സ്പോര്‍ട്ട്"
+  },
+  "launcher_title": {
+    "message": "Screen Recorder Studio"
+  },
+  "studio_emptyDesc": {
+    "message": "റെക്കോഡിംഗിന് ശേഷം, നിങ്ങളുടെ വീഡിയോ ഇവിടെ സ്വയംചാലിതമായി കാണപ്പെടും. നിങ്ങള്‍ക്ക് സ്റ്റുഡിയോയില്‍ പ്രിവ്യൂ, ട്രിം, സ്റ്റൈല്‍, ഒപ്പം എക്സ്പോര്‍ട്ട് ചെയ്യാം."
+  },
+  "studio_emptyFeatureExport": {
+    "message": "എക്സ്പോര്‍ട്ട്"
+  },
+  "studio_emptyFeaturePreview": {
+    "message": "പ്രിവ്യൂ"
+  },
+  "studio_emptyFeatureTrim": {
+    "message": "ട്രിം & സ്റ്റൈല്‍"
+  },
+  "studio_emptyOpenDrive": {
+    "message": "ഡ്രൈവ് തുറക്കുക"
+  },
+  "studio_emptyReasonInvalid": {
+    "message": "സമീപകാല റെക്കോഡിംഗ്സ് ലോഡ് ചെയ്യാനായില്ല."
+  },
+  "studio_emptyReasonLoadFailed": {
+    "message": "വ്യക്തമായ റെക്കോഡിംഗ് ലോഡ് ചെയ്യാനായില്ല."
+  },
+  "studio_emptyReasonOpfs": {
+    "message": "ഈ ബ്രൗസറില്‍ സംഭരണം ലഭ്യമല്ല."
+  },
+  "studio_emptyStartRecording": {
+    "message": "റെക്കോഡിംഗ് ആരംഭിക്കുക"
+  },
+  "studio_emptyTitle": {
+    "message": "ഇതുവരെ എഡിറ്റ് ചെയ്യാന്‍ വീഡിയോ ഒന്നുമില്ല"
+  },
+  "studio_loading": {
+    "message": "ലോഡ് ചെയ്യുന്നു..."
+  },
+  "studio_recentRecordings": {
+    "message": "റെക്കോഡിംഗ്സ്"
+  }
+}
