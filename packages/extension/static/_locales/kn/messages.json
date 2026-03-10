@@ -1,1323 +1,401 @@
 {
-  "appName": {
-    "message": "Screen Recorder Studio - ಅಮಿತ, ಜೂಮ್, GIF"
-  },
-  "appDesc": {
-    "message": "ಸಮಯ ಮಿತಿಯಿಲ್ಲದ ಸ್ಥಿರ ತೆರೆ ರೆಕಾರ್ಡಿಂಗ್. ಅಂತರ್ನಿರ್ಮಿತ ಎಡಿಟರ್‌ನಿಂದ ಜೂಮ್, ಟ್ರಿಮ್ ಮಾಡಿ HD MP4 ಅಥವಾ GIF ಆಗಿ ಎಕ್ಸ್‌ಪೋರ್ಟ್ ಮಾಡಿ."
-  },
-  "common_close": {
-    "message": "ಮುಚ್ಚು"
-  },
-  "action_defaultTitle": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ಪ್ಯಾನಲ್ ತೆರೆಯಿರಿ"
-  },
-  "control_headerTitle": {
-    "message": "ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡರ್"
-  },
-  "control_headerDesc": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ಮೋಡ್ ಆಯ್ಕೆಮಾಡಿ ಪ್ರಾರಂಭಿಸಿ"
-  },
-  "control_openDriveTooltip": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ಫೈಲ್ ಮ್ಯಾನೇಜರ್ ತೆರೆಯಿರಿ"
-  },
-  "control_closePanelTooltip": {
-    "message": "ಕಂಟ್ರೋಲ್ ಪ್ಯಾನಲ್ ಮುಚ್ಚಿ"
-  },
-  "control_recordingMode": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ಮೋಡ್"
-  },
-  "control_modeTab": {
-    "message": "ಟ್ಯಾಬ್"
-  },
-  "control_modeTabDesc": {
-    "message": "ಪ್ರಸಕ್ತ ಟ್ಯಾಬ್ ರೆಕಾರ್ಡ್ ಮಾಡಿ"
-  },
-  "control_modeWindow": {
-    "message": "ವಿಂಡೋ"
-  },
-  "control_modeWindowDesc": {
-    "message": "ಸಂಪೂರ್ಣ ವಿಂಡೋ ರೆಕಾರ್ಡ್ ಮಾಡಿ"
-  },
-  "control_modeScreen": {
-    "message": "ಸ್ಕ್ರೀನ್"
-  },
-  "control_modeScreenDesc": {
-    "message": "ಸಂಪೂರ್ಣ ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡ್ ಮಾಡಿ"
-  },
-  "control_statusRecording": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್"
-  },
-  "control_statusPaused": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ವಿರಾಮ"
-  },
-  "control_statusPreparing": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ತಯಾರಾಗುತ್ತಿದೆ..."
-  },
-  "control_btnStart": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಾರಂಭಿಸಿ"
-  },
-  "control_btnStop": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ನಿಲ್ಲಿಸಿ"
-  },
-  "control_btnPause": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ವಿರಾಮ ಮಾಡಿ"
-  },
-  "control_btnResume": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ಮುಂದುವರಿಸಿ"
-  },
-  "control_btnPreparing": {
-    "message": "ತಯಾರಾಗುತ್ತಿದೆ..."
-  },
-  "control_btnStarting": {
-    "message": "$SECONDS$ ಸೆಕೆಂಡ್‌ಗಳಲ್ಲಿ ಪ್ರಾರಂಭವಾಗುತ್ತದೆ...",
-    "placeholders": {
-      "seconds": {
-        "content": "$1"
-      }
-    }
-  },
-  "control_countdownLabel": {
-    "message": "ಕೌಂಟ್‌ಡೌನ್"
-  },
-  "control_tipsTitle": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ಸಲಹೆಗಳು:"
-  },
-  "control_tipsSelectMode": {
-    "message": "$MODE$ ಮೋಡ್ ಆಯ್ಕೆಯಾಗಿದೆ, ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಾರಂಭಿಸಲು ಕ್ಲಿಕ್ ಮಾಡಿ.",
-    "placeholders": {
-      "mode": {
-        "content": "$1"
-      }
-    }
-  },
-  "control_tipsPreparing": {
-    "message": "ಸ್ಕ್ರೀನ್ ಆಯ್ಕೆಗಾಗಿ ನಿರೀಕ್ಷಿಸುತ್ತಿದೆ..."
-  },
-  "control_tipsCountdown": {
-    "message": "ಸಿದ್ಧರಾಗಿ! $SECONDS$ ಸೆಕೆಂಡ್‌ಗಳಲ್ಲಿ ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಾರಂಭವಾಗುತ್ತದೆ.",
-    "placeholders": {
-      "seconds": {
-        "content": "$1"
-      }
-    }
-  },
-  "control_tipsPaused": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ವಿರಾಮದಲ್ಲಿದೆ, ಮುಂದುವರಿಸಲು ಮುಂದುವರಿಸಿ ಕ್ಲಿಕ್ ಮಾಡಿ."
-  },
-  "control_tipsRecording": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ನಡೆಯುತ್ತಿದೆ, ವಿರಾಮ ಮಾಡಲು ಪಾಸ್ ಕ್ಲಿಕ್ ಮಾಡಿ."
-  },
-  "control_overlayRecordingStarts": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ಶೀಘ್ರದಲ್ಲಿ ಪ್ರಾರಂಭವಾಗುತ್ತದೆ..."
-  },
-  "control_errorTimeout": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ತಯಾರಿ ಸಮಯ ಮುಗಿದಿದೆ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."
-  },
-  "control_errorStartFailed": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಾರಂಭಿಸಲು ವಿಫಲವಾಗಿದೆ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."
-  },
-  "control_errorRecordingFailed": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್‌ನಲ್ಲಿ ದೋಷ ಸಂಭವಿಸಿದೆ ಮತ್ತು ನಿಲ್ಲಿಸಲಾಗಿದೆ."
-  },
-  "control_errorStorageLow": {
-    "message": "ಸಂಗ್ರಹಣೆ ಕಡಿಮೆಯಾಗುತ್ತಿದೆ. ರೆಕಾರ್ಡಿಂಗ್ ವಿಫಲವಾಗಬಹುದು."
-  },
-  "control_statusSaving": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ಉಳಿಸುತ್ತಿದೆ..."
-  },
-  "control_btnSaving": {
-    "message": "ಉಳಿಸುತ್ತಿದೆ..."
-  },
-  "drive_pageTitle": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್‌ಗಳು - ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡರ್ ವಿಸ್ತರಣೆ"
-  },
-  "drive_headerTitle": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ಮ್ಯಾನೇಜರ್"
-  },
-  "drive_errorSupport": {
-    "message": "ನಿಮ್ಮ ಬ್ರೌಸರ್ OPFS ಸಂಗ್ರಹಣೆಯನ್ನು ಬೆಂಬಲಿಸುವುದಿಲ್ಲ"
-  },
-  "drive_errorMetaNotFound": {
-    "message": "meta.json ಕಂಡುಬರುತ್ತಿಲ್ಲ"
-  },
-  "drive_errorEmpty": {
-    "message": "ಖಾಲಿ ರೆಕಾರ್ಡಿಂಗ್ ಫೈಲ್"
-  },
-  "drive_errorMetadata": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ಮೆಟಾಡೇಟಾವನ್ನು ಓದಲು ಸಾಧ್ಯವಿಲ್ಲ"
-  },
-  "drive_errorDataSize": {
-    "message": "ಡೇಟಾ ಫೈಲ್ ಗಾತ್ರವನ್ನು ಪಡೆಯಲು ಸಾಧ್ಯವಿಲ್ಲ"
-  },
-  "drive_recordingNamePrefix": {
-    "message": "ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡಿಂಗ್"
-  },
-  "drive_logDeleted": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ $ID$ ಅಳಿಸಲಾಗಿದೆ",
-    "placeholders": {
-      "id": {
-        "content": "$1"
-      }
-    }
-  },
-  "drive_errorDelete": {
-    "message": "ಅಳಿಸಲು ವಿಫಲ: $ERROR$",
-    "placeholders": {
-      "error": {
-        "content": "$1"
-      }
-    }
-  },
-  "drive_logBatchDelete": {
-    "message": "$COUNT$ ರೆಕಾರ್ಡಿಂಗ್‌ಗಳನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಅಳಿಸಲಾಗಿದೆ",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "drive_errorLoad": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡುವಾಗ ದೋಷ ಸಂಭವಿಸಿದೆ"
-  },
-  "drive_errorLoadPrefix": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ವಿಫಲ:"
-  },
-  "studio_pageTitle": {
-    "message": "ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡಿಂಗ್ ಸ್ಟುಡಿಯೋ"
-  },
-  "studio_headerTitle": {
-    "message": "ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡರ್ ಸ್ಟುಡಿಯೋ"
-  },
-  "studio_githubTooltip": {
-    "message": "GitHub ನಲ್ಲಿ ಮೂಲವನ್ನು ವೀಕ್ಷಿಸಿ"
-  },
-  "studio_githubText": {
-    "message": "GitHub"
-  },
-  "studio_feedbackTooltip": {
-    "message": "ದೋಷಗಳನ್ನು ವರದಿ ಮಾಡಿ ಅಥವಾ ವೈಶಿಷ್ಟ್ಯಗಳನ್ನು ಸೂಚಿಸಿ"
-  },
-  "studio_feedbackText": {
-    "message": "ಪ್ರತಿಕ್ರಿಯೆ"
-  },
-  "studio_helpTooltip": {
-    "message": "ಸಹಾಯ ಮತ್ತು ದಾಖಲಾವಣೆ"
-  },
-  "studio_helpText": {
-    "message": "ಸಹಾಯ"
-  },
-  "studio_driveTooltip": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ಫೈಲ್ ಮ್ಯಾನೇಜರ್ ತೆರೆಯಿರಿ"
-  },
-  "studio_driveText": {
-    "message": "ಡ್ರೈವ್"
-  },
-  "studio_fullscreenEnterTooltip": {
-    "message": "ಪೂರ್ಣ ಪರದೆಗೆ ಪ್ರವೇಶಿಸಿ"
-  },
-  "studio_fullscreenExitTooltip": {
-    "message": "ಪೂರ್ಣ ಪರದೆಯಿಂದ ಹೊರಬನ್ನಿ"
-  },
-  "studio_fullscreenEnterText": {
-    "message": "ಪೂರ್ಣ ಪರದೆ"
-  },
-  "studio_fullscreenExitText": {
-    "message": "ಹೊರಬನ್ನಿ"
-  },
-  "bg_title": {
-    "message": "ಹಿನ್ನೆಲೆ"
-  },
-  "bg_tab_wallpaper": {
-    "message": "ವಾಲ್‌ಪೇಪರ್"
-  },
-  "bg_tab_gradient": {
-    "message": "ಗ್ರೇಡಿಯೆಂಟ್"
-  },
-  "bg_tab_solid": {
-    "message": "ಘನ"
-  },
-  "bg_tab_image": {
-    "message": "ಚಿತ್ರ"
-  },
-  "radius_title": {
-    "message": "ವೀಡಿಯೋ ಬಾರ್ಡರ್ ರೇಡಿಯಸ್"
-  },
-  "radius_none": {
-    "message": "ಯಾವುದೇ ರೇಡಿಯಸ್ ಇಲ್ಲ"
-  },
-  "radius_small": {
-    "message": "ಚಿಕ್ಕ ರೇಡಿಯಸ್"
-  },
-  "radius_medium": {
-    "message": "ಮಧ್ಯಮ ರೇಡಿಯಸ್"
-  },
-  "radius_large": {
-    "message": "ದೊಡ್ಡ ರೇಡಿಯಸ್"
-  },
-  "radius_xl": {
-    "message": "ಹೆಚ್ಚು ದೊಡ್ಡ ರೇಡಿಯಸ್"
-  },
-  "padding_title": {
-    "message": "ವೀಡಿಯೋ ಪ್ಯಾಡಿಂಗ್"
-  },
-  "padding_none": {
-    "message": "ಯಾವುದೇ ಪ್ಯಾಡಿಂಗ್ ಇಲ್ಲ"
-  },
-  "padding_small": {
-    "message": "ಚಿಕ್ಕ ಪ್ಯಾಡಿಂಗ್"
-  },
-  "padding_medium": {
-    "message": "ಮಧ್ಯಮ ಪ್ಯಾಡಿಂಗ್"
-  },
-  "padding_large": {
-    "message": "ದೊಡ್ಡ ಪ್ಯಾಡಿಂಗ್"
-  },
-  "padding_xl": {
-    "message": "ಹೆಚ್ಚು ದೊಡ್ಡ ಪ್ಯಾಡಿಂಗ್"
-  },
-  "ratio_yt": {
-    "message": "YouTube ಲ್ಯಾಂಡ್‌ಸ್ಕೇಪ್"
-  },
-  "ratio_yt_desc": {
-    "message": "YouTube, Bilibili, iQiyi ಇತ್ಯಾದಿ."
-  },
-  "ratio_sq": {
-    "message": "Instagram ಚೌಕ"
-  },
-  "ratio_sq_desc": {
-    "message": "Instagram ಪೋಸ್ಟ್‌ಗಳು, WeChat ಮೊಮೆಂಟ್‌ಗಳು"
-  },
-  "ratio_tiktok": {
-    "message": "TikTok ಪೋರ್‌ಟ್ರೇಟ್"
-  },
-  "ratio_tiktok_desc": {
-    "message": "TikTok, Douyin, Kuaishou"
-  },
-  "ratio_story": {
-    "message": "Instagram ಸ್ಟೋರಿ"
-  },
-  "ratio_story_desc": {
-    "message": "Instagram ಸ್ಟೋರಿಗಳು, Xiaohongshu"
-  },
-  "shadow_title": {
-    "message": "ವೀಡಿಯೋ ನೆರಳು"
-  },
-  "shadow_preset_title": {
-    "message": "ಪ್ರಿಸೆಟ್ ಪರಿಣಾಮಗಳು"
-  },
-  "shadow_custom_title": {
-    "message": "ಕಸ್ಟಮ್ ನಿಯತಾಂಶಗಳು"
-  },
-  "shadow_light": {
-    "message": "ಹಗುರವಾದ ನೆರಳು"
-  },
-  "shadow_standard": {
-    "message": "ಪ್ರಮಾಣಿತ ನೆರಳು"
-  },
-  "shadow_deep": {
-    "message": "ಆಳವಾದ ನೆರಳು"
-  },
-  "shadow_distant": {
-    "message": "ದೂರದ ನೆರಳು"
-  },
-  "shadow_offset_x": {
-    "message": "X ಆಫ್‌ಸೆಟ್"
-  },
-  "shadow_offset_y": {
-    "message": "Y ಆಫ್‌ಸೆಟ್"
-  },
-  "shadow_blur": {
-    "message": "ಮಸಕಾದ"
-  },
-  "shadow_color": {
-    "message": "ಬಣ್ಣ"
-  },
-  "shadow_opacity": {
-    "message": "ಅಪಾರದರ್ಶಕತೆ"
-  },
-  "shadow_empty_state": {
-    "message": "ನೆರಳು ಪರಿಣಾಮಗಳನ್ನು ಕಾನ್ಫಿಗರ್ ಮಾಡಲು ನೆರಳು ಸ್ವಿಚ್ ಆನ್ ಮಾಡಿ"
-  },
-  "color_tab_basic": {
-    "message": "ಮೂಲ"
-  },
-  "color_tab_light": {
-    "message": "ಬೆಳಕು"
-  },
-  "color_tab_business": {
-    "message": "ವ್ಯಾಪಾರ"
-  },
-  "color_tab_creative": {
-    "message": "ಸೃಜನಾತ್ಮಕ"
-  },
-  "color_custom": {
-    "message": "ಕಸ್ಟಮ್:"
-  },
-  "gradient_tab_linear": {
-    "message": "ರೇಖಾತ್ಮಕ"
-  },
-  "gradient_tab_radial": {
-    "message": "ರೇಡಿಯಲ್"
-  },
-  "gradient_tab_conic": {
-    "message": "ಕೋನಿಕ್"
-  },
-  "gradient_tab_multi": {
-    "message": "ಮಲ್ಟಿ"
-  },
-  "gradient_current": {
-    "message": "ಪ್ರಸಕ್ತ:"
-  },
-  "gradient_select_hint": {
-    "message": "ಗ್ರೇಡಿಯೆಂಟ್ ಆಯ್ಕೆಮಾಡಿ"
-  },
-  "gradient_colors_suffix": {
-    "message": "ಬಣ್ಣಗಳು"
-  },
-  "wallpaper_tab_abstract": {
-    "message": "ಅಮೂರ್ತ"
-  },
-  "wallpaper_tab_minimal": {
-    "message": "ಮಿನಿಮಲ್"
-  },
-  "wallpaper_tab_nature": {
-    "message": "ಪ್ರಕೃತಿ"
-  },
-  "wallpaper_tab_business": {
-    "message": "ವ್ಯಾಪಾರ"
-  },
-  "wallpaper_tab_tech": {
-    "message": "ತಂತ್ರಜ್ಞಾನ"
-  },
-  "wallpaper_error": {
-    "message": "ವಾಲ್‌ಪೇಪರ್ ಲೋಡ್ ಮಾಡಲು ವಿಫಲ"
-  },
-  "wallpaper_stats": {
-    "message": "ಈ ವರ್ಗದಲ್ಲಿ $COUNT$ ವಾಲ್‌ಪೇಪರ್‌ಗಳು",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "wallpaper_total": {
-    "message": "$TOTAL$ ಒಟ್ಟು",
-    "placeholders": {
-      "total": {
-        "content": "$1"
-      }
-    }
-  },
-  "upload_processing": {
-    "message": "ಸಂಸ್ಕರಿಸುತ್ತಿದೆ..."
-  },
-  "upload_drop_hint": {
-    "message": "ಇಲ್ಲಿ ಚಿತ್ರವನ್ನು ಕ್ಲಿಕ್ ಮಾಡಿ ಅಥವಾ ಎಳೆಯಿರಿ"
-  },
-  "upload_format_hint": {
-    "message": "JPEG, PNG, WebP, GIF · ಗರಿಷ್ಟ 5MB"
-  },
-  "upload_error_select": {
-    "message": "ದಯವಿಟ್ಟು ಚಿತ್ರ ಫೈಲ್ ಆಯ್ಕೆಮಾಡಿ"
-  },
-  "upload_error_failed": {
-    "message": "ಅಪ್‌ಲೋಡ್ ವಿಫಲ"
-  },
-  "drive_delete_selected_btn": {
-    "message": "ಆಯ್ಕೆಮಾಡಿದವುಗಳನ್ನು ಅಳಿಸಿ ($COUNT$)",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "drive_clear_selection": {
-    "message": "ಆಯ್ಕೆಯನ್ನು ತೆರವುಗೊಳಿಸಿ"
-  },
-  "drive_refresh": {
-    "message": "ರಿಫ್ರೆಶ್"
-  },
-  "drive_error_title": {
-    "message": "ದೋಷ"
-  },
-  "drive_close_error": {
-    "message": "ಮುಚ್ಚಿ"
-  },
-  "drive_loading": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡುತ್ತಿದೆ..."
-  },
-  "drive_empty_title": {
-    "message": "ಇನ್ನೂ ರೆಕಾರ್ಡಿಂಗ್‌ಗಳಿಲ್ಲ"
-  },
-  "drive_empty_desc1": {
-    "message": "ನಿಮ್ಮಲ್ಲಿ ಯಾವುದೇ ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡಿಂಗ್‌ಗಳಿಲ್ಲ."
-  },
-  "drive_empty_desc2": {
-    "message": "ನಿಮ್ಮ ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಾರಂಭಿಸಿ ಮತ್ತು ನಿಮ್ಮ ರೆಕಾರ್ಡಿಂಗ್‌ಗಳು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ."
-  },
-  "drive_start_recording_btn": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಾರಂಭಿಸಿ"
-  },
-  "drive_select_all": {
-    "message": "ಎಲ್ಲಾ ಆಯ್ಕೆಮಾಡಿ ($COUNT$ ರೆಕಾರ್ಡಿಂಗ್‌ಗಳು)",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "drive_sort_hint": {
-    "message": "ಸಮಯದ ಮೇಲೆ ವರ್ಗೀಕರಿಸಲಾಗಿದೆ (ಹೊಸದು ಮೊದಲು)"
-  },
-  "drive_confirm_delete_title": {
-    "message": "ಅಳಿಸುವುದನ್ನು ಖಚಿತಪಡಿಸಿ"
-  },
-  "drive_confirm_delete_selected": {
-    "message": "ಆಯ್ಕೆಮಾಡಿದ $COUNT$ ರೆಕಾರ್ಡಿಂಗ್‌ಗಳನ್ನು ಅಳಿಸಲು ಬಯಸುವಿರಾ?",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "drive_confirm_delete_single": {
-    "message": "ಈ ರೆಕಾರ್ಡಿಂಗ್ ಅಳಿಸಲು ಬಯಸುವಿರಾ?"
-  },
-  "drive_action_undone": {
-    "message": "ಈ ಕಾರ್ಯವನ್ನು ಹಿಂದಕ್ಕೆ ತೆಗೆದುಕೊಳ್ಳಲಾಗುವುದಿಲ್ಲ."
-  },
-  "drive_cancel": {
-    "message": "ರದ್ದುಮಾಡಿ"
-  },
-  "drive_delete": {
-    "message": "ಅಳಿಸಿ"
-  },
-  "card_status_completed": {
-    "message": "ಪೂರ್ಣಗೊಂಡಿತು"
-  },
-  "card_status_incomplete": {
-    "message": "ಅಪೂರ್ಣ"
-  },
-  "card_label_created": {
-    "message": "ರಚಿಸಲಾಯಿತು:"
-  },
-  "card_label_status": {
-    "message": "ಸ್ಥಿತಿ:"
-  },
-  "card_label_codec": {
-    "message": "ಕೋಡೆಕ್:"
-  },
-  "card_label_resolution": {
-    "message": "ರೆಸಲ್ಯೂಶನ್:"
-  },
-  "card_label_fps": {
-    "message": "FPS:"
-  },
-  "card_label_size": {
-    "message": "ಫೈಲ್ ಗಾತ್ರ:"
-  },
-  "card_label_frames": {
-    "message": "ಒಟ್ಟು ಫ್ರೇಮ್‌ಗಳು:"
-  },
-  "card_incomplete_title": {
-    "message": "ಅಪೂರ್ಣ ರೆಕಾರ್ಡಿಂಗ್"
-  },
-  "card_incomplete_desc": {
-    "message": "ವೀಡಿಯೋ ಡೇಟಾ ಇಲ್ಲ"
-  },
-  "card_preview_error": {
-    "message": "ಪ್ರಿವ್ಯೂ ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಿಲ್ಲ"
-  },
-  "card_preview_loading": {
-    "message": "ಪ್ರಿವ್ಯೂ ರಚಿಸುತ್ತಿದೆ..."
-  },
-  "card_btn_edit": {
-    "message": "ಸಂಪಾದಿಸಿ"
-  },
-  "card_btn_delete": {
-    "message": "ಅಳಿಸಿ"
-  },
-  "card_edit_disabled_tooltip": {
-    "message": "ಅಪೂರ್ಣ ರೆಕಾರ್ಡಿಂಗ್ ಸಂಪಾದಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ"
-  },
-  "card_edit_tooltip": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ಸಂಪಾದಿಸಿ"
-  },
-  "card_preview_load_error": {
-    "message": "ಪ್ರಿವ್ಯೂ ಡೇಟಾ ಲೋಡ್ ಮಾಡಲು ವಿಫಲ: $ERROR$",
-    "placeholders": {
-      "error": {
-        "content": "$1"
-      }
-    }
-  },
-  "card_date_today": {
-    "message": "ಇಂದು $TIME$",
-    "placeholders": {
-      "time": {
-        "content": "$1"
-      }
-    }
-  },
-  "card_date_yesterday": {
-    "message": "ನಿನ್ನೆ $TIME$",
-    "placeholders": {
-      "time": {
-        "content": "$1"
-      }
-    }
-  },
-  "card_date_days_ago": {
-    "message": "$DAYS$ ದಿನಗಳ ಹಿಂದೆ",
-    "placeholders": {
-      "days": {
-        "content": "$1"
-      }
-    }
-  },
-  "export_panel_tier_free": {
-    "message": "ಉಚಿತ"
-  },
-  "export_panel_tier_pro": {
-    "message": "ಪ್ರೊ"
-  },
-  "export_panel_tier_trial": {
-    "message": "ಪ್ರೊ ಟ್ರಯಲ್"
-  },
-  "export_panel_btn": {
-    "message": "ಎಕ್ಸ್‌ಪೋರ್ಟ್"
-  },
-  "export_panel_tooltip_incomplete": {
-    "message": "ಎಕ್ಸ್‌ಪೋರ್ಟ್ ಮಾಡಲು ರೆಕಾರ್ಡಿಂಗ್ ಪೂರ್ಣಗೊಳಿಸಿ"
-  },
-  "export_panel_tooltip_no_data": {
-    "message": "ಯಾವುದೇ ವೀಡಿಯೋ ಡೇಟಾ ಇಲ್ಲ"
-  },
-  "export_panel_btn_exporting": {
-    "message": "ಎಕ್ಸ್‌ಪೋರ್ಟ್ ಮಾಡುತ್ತಿದೆ..."
-  },
-  "export_error_gif_failed": {
-    "message": "GIF ಎಕ್ಸ್‌ಪೋರ್ಟ್ ವಿಫಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."
-  },
-  "export_error_webm_failed": {
-    "message": "WebM ಎಕ್ಸ್‌ಪೋರ್ಟ್ ವಿಫಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."
-  },
-  "export_error_mp4_failed": {
-    "message": "MP4 ಎಕ್ಸ್‌ಪೋರ್ಟ್ ವಿಫಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."
-  },
-  "export_error_retry_hint": {
-    "message": "ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ ಅಥವಾ ವಿಭಿನ್ನ ಫಾರ್ಮ್ಯಾಟ್ ಬಳಸಿ."
-  },
-  "export_error_opfs_download_failed": {
-    "message": "ಫೈಲ್ ಡ್ರೈವ್‌ಗೆ ಉಳಿಸಲಾಯಿತು ಆದರೆ ಡೌನ್‌ಲೋಡ್ ವಿಫಲ. ನಿಮ್ಮ ಫೈಲ್ ಪಡೆಯಲು ಡ್ರೈವ್ ತೆರೆಯಿರಿ."
-  },
-  "export_dialog_title": {
-    "message": "ವೀಡಿಯೋ ಎಕ್ಸ್‌ಪೋರ್ಟ್"
-  },
-  "export_source_res": {
-    "message": "ರೆಸಲ್ಯೂಶನ್"
-  },
-  "export_source_codec": {
-    "message": "ಕೋಡೆಕ್"
-  },
-  "export_source_duration": {
-    "message": "ಅವಧಿ"
-  },
-  "export_source_frames": {
-    "message": "ಫ್ರೇಮ್‌ಗಳು"
-  },
-  "export_badge_bg": {
-    "message": "ಹಿನ್ನೆಲೆ"
-  },
-  "export_badge_trim": {
-    "message": "ಟ್ರಿಮ್ ಮಾಡಲಾಗಿದೆ"
-  },
-  "export_format_mp4": {
-    "message": "MP4"
-  },
-  "export_format_webm": {
-    "message": "WebM"
-  },
-  "export_format_gif": {
-    "message": "GIF"
-  },
-  "export_quality_title": {
-    "message": "ಗುಣಮಟ್ಟ ಪ್ರಿಸೆಟ್"
-  },
-  "export_quality_draft": {
-    "message": "ಡ್ರಾಫ್ಟ್"
-  },
-  "export_quality_draft_desc": {
-    "message": "ವೇಗದ ಎಕ್ಸ್‌ಪೋರ್ಟ್, ಕಡಿಮೆ ಗುಣಮಟ್ಟ"
-  },
-  "export_quality_balanced": {
-    "message": "ಸಮತೋಲಿತ"
-  },
-  "export_quality_balanced_desc": {
-    "message": "ಒಳ್ಳೆಯ ಗುಣಮಟ್ಟ, ಸಮಂಜಸವಾದ ವೇಗ"
-  },
-  "export_quality_high": {
-    "message": "high"
-  },
-  "export_quality_high_desc": {
-    "message": "ಹೆಚ್ಚಿನ ಗುಣಮಟ್ಟ, ನಿಧಾನ"
-  },
-  "export_quality_best": {
-    "message": "ಅತ್ಯುತ್ತಮ"
-  },
-  "export_quality_best_desc": {
-    "message": "ಗರಿಷ್ಟ ಗುಣಮಟ್ಟ, ಅತ್ಯಂತ ನಿಧಾನ"
-  },
-  "export_label_resolution": {
-    "message": "ರೆಸಲ್ಯೂಶನ್"
-  },
-  "export_res_source": {
-    "message": "ಮೂಲಕ್ಕೆ ಹೊಂದಿಸಿ ($WIDTH$×$HEIGHT$)",
-    "placeholders": {
-      "width": {
-        "content": "$1"
-      },
-      "height": {
-        "content": "$2"
-      }
-    }
-  },
-  "export_label_framerate": {
-    "message": "ಫ್ರೇಮ್ ದರ"
-  },
-  "export_fps_source": {
-    "message": "$FPS$ fps (ಮೂಲ)",
-    "placeholders": {
-      "fps": {
-        "content": "$1"
-      }
-    }
-  },
-  "export_label_bitrate": {
-    "message": "ಬಿಟ್‌ರೇಟ್"
-  },
-  "export_bitrate_auto": {
-    "message": "ಸ್ವಯಂಚಾಲಿತ"
-  },
-  "export_bitrate_manual": {
-    "message": "ಮ್ಯಾನುವಲ್"
-  },
-  "export_bitrate_auto_hint": {
-    "message": "ಸ್ವಯಂಚಾಲಿತ: $RATE$ Mbps (ರೆಸಲ್ಯೂಶನ್ ಮತ್ತು ಗುಣಮಟ್ಟದ ಆಧಾರದ ಮೇಲೆ)",
-    "placeholders": {
-      "rate": {
-        "content": "$1"
-      }
-    }
-  },
-  "export_label_speed": {
-    "message": "ಎನ್‌ಕೋಡಿಂಗ್ ವೇಗ"
-  },
-  "export_speed_fastest": {
-    "message": "ಅತ್ಯಂತ ವೇಗದ"
-  },
-  "export_speed_fast": {
-    "message": "ವೇಗವಾದ"
-  },
-  "export_speed_balanced": {
-    "message": "ಸಮತೋಲಿತ"
-  },
-  "export_speed_slow": {
-    "message": "ನಿಧಾನ"
-  },
-  "export_speed_slowest": {
-    "message": "ಅತ್ಯಂತ ನಿಧಾನ"
-  },
-  "export_est_output": {
-    "message": "ಅಂದಾಜು ಔಟ್‌ಪುಟ್"
-  },
-  "export_est_size": {
-    "message": "ಅಂದಾಜು ಗಾತ್ರ"
-  },
-  "export_label_gif_quality": {
-    "message": "ಗುಣಮಟ್ಟ"
-  },
-  "export_gif_best": {
-    "message": "ಅತ್ಯುತ್ತಮ (ಅತ್ಯಂತ ನಿಧಾನ)"
-  },
-  "export_gif_high": {
-    "message": "high"
-  },
-  "export_gif_good": {
-    "message": "ಒಳ್ಳೆಯ (ಡಿಫಾಲ್ಟ್)"
-  },
-  "export_gif_fast": {
-    "message": "ವೇಗವಾದ"
-  },
-  "export_gif_fastest": {
-    "message": "ಅತ್ಯಂತ ವೇಗದ"
-  },
-  "export_label_scale": {
-    "message": "ಸ್ಕೇಲ್"
-  },
-  "export_scale_original": {
-    "message": "100% (ಮೂಲ)"
-  },
-  "export_label_workers": {
-    "message": "ವರ್ಕರ್‌ಗಳು"
-  },
-  "export_worker_singular": {
-    "message": "$COUNT$ ವರ್ಕರ್",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "export_worker_plural": {
-    "message": "$COUNT$ ವರ್ಕರ್‌ಗಳು",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "export_label_dither": {
-    "message": "ಡಿಥರಿಂಗ್"
-  },
-  "export_dither_none": {
-    "message": "ಯಾವುದೂ ಇಲ್ಲ"
-  },
-  "export_btn_cancel": {
-    "message": "ರದ್ದುಮಾಡಿ"
-  },
-  "export_btn_export_mp4": {
-    "message": "MP4 ಎಕ್ಸ್‌ಪೋರ್ಟ್"
-  },
-  "export_btn_export_webm": {
-    "message": "WebM ಎಕ್ಸ್‌ಪೋರ್ಟ್"
-  },
-  "export_btn_export_gif": {
-    "message": "GIF ಎಕ್ಸ್‌ಪೋರ್ಟ್"
-  },
-  "export_progress_preparing": {
-    "message": "ತಯಾರಾಗುತ್ತಿದೆ..."
-  },
-  "export_progress_encoding": {
-    "message": "ಫ್ರೇಮ್‌ಗಳನ್ನು ಎನ್‌ಕೋಡ್ ಮಾಡುತ್ತಿದೆ..."
-  },
-  "export_progress_muxing": {
-    "message": "ಮಕ್ಸಿಂಗ್..."
-  },
-  "export_progress_finalizing": {
-    "message": "ಫೈನಲೈಜಿಂಗ್..."
-  },
-  "export_progress_frame": {
-    "message": "ಫ್ರೇಮ್ $CURRENT$ / $TOTAL$",
-    "placeholders": {
-      "current": {
-        "content": "$1"
-      },
-      "total": {
-        "content": "$2"
-      }
-    }
-  },
-  "export_progress_time": {
-    "message": "~$SECONDS$s ಉಳಿದಿದೆ",
-    "placeholders": {
-      "seconds": {
-        "content": "$1"
-      }
-    }
-  },
-  "export_progress_hint": {
-    "message": "ನಿಮ್ಮ ವೀಡಿಯೋ ಎಕ್ಸ್‌ಪೋರ್ಟ್ ಆಗುತ್ತಿರುವಾಗ ದಯವಿಟ್ಟು ನಿರೀಕ್ಷಿಸಿ..."
-  },
-  "wallpaper_cat_abstract_name": {
-    "message": "ಅಮೂರ್ತ ಕಲೆ"
-  },
-  "wallpaper_cat_abstract_desc": {
-    "message": "ಅಮೂರ್ತ ಮಾದರಿಗಳು, ಕಲಾತ್ಮಕ ಸೃಷ್ಟಿಗಳು ಮತ್ತು ಆಧುನಿಕ ವಿನ್ಯಾಸಗಳು"
-  },
-  "wallpaper_cat_minimal_name": {
-    "message": "ಮಿನಿಮಲ್ ಶೈಲಿ"
-  },
-  "wallpaper_cat_minimal_desc": {
-    "message": "ಸ್ವಚ್ಛವಾದ ಜ್ಯಾಮಿತಿ, ಮಿನಿಮಲಿಸ್ಟ್ ವಿನ್ಯಾಸ ಮತ್ತು ಶುದ್ಧ ಸೌಂದರ್ಯ"
-  },
-  "wallpaper_cat_nature_name": {
-    "message": "ಪ್ರಕೃತಿ ದೃಶ್ಯ"
-  },
-  "wallpaper_cat_nature_desc": {
-    "message": "ನೈಸರ್ಗಿಕ ಭೂದೃಶ್ಯಗಳು, ಸಸ್ಯ ಟೆಕ್ಸ್‌ಚರ್‌ಗಳು ಮತ್ತು ಜೈವಿಕ ರೂಪಗಳು"
-  },
-  "wallpaper_cat_business_name": {
-    "message": "ವ್ಯಾಪಾರ ವೃತ್ತಿಪರ"
-  },
-  "wallpaper_cat_business_desc": {
-    "message": "ವ್ಯಾಪಾರ ದೃಶ್ಯಗಳು, ವೃತ್ತಿಪರ ವಾತಾವರಣ ಮತ್ತು ಕಾರ್ಪೊರೇಟ್ ಶೈಲಿ"
-  },
-  "wallpaper_cat_tech_name": {
-    "message": "ತಂತ್ರಜ್ಞಾನ ಭವಿಷ್ಯ"
-  },
-  "wallpaper_cat_tech_desc": {
-    "message": "ತಂತ್ರಜ್ಞಾನ ಅಂಶಗಳು, ಭವಿಷ್ಯತ್ಮಕ ಭಾವನೆ ಮತ್ತು ಡಿಜಿಟಲ್ ಕಲೆ"
-  },
-  "wallpaper_gradient_abstract_1_name": {
-    "message": "ಅಮೂರ್ತ ಗ್ರೇಡಿಯೆಂಟ್"
-  },
-  "wallpaper_gradient_abstract_1_desc": {
-    "message": "ಆಧುನಿಕ ಅಮೂರ್ತ ಗ್ರೇಡಿಯೆಂಟ್ ಹಿನ್ನೆಲೆ, ತಂತ್ರಜ್ಞಾನ ಮತ್ತು ಸೃಜನಾತ್ಮಕ ವಿಷಯಕ್ಕೆ ಸೂಕ್ತವಾದ"
-  },
-  "wallpaper_geometric_pattern_1_name": {
-    "message": "ಜ್ಯಾಮಿತಿ ಮಾದರಿ"
-  },
-  "wallpaper_geometric_pattern_1_desc": {
-    "message": "ಸ್ವಚ್ಛವಾದ ಜ್ಯಾಮಿತಿ ಮಾದರಿ ಹಿನ್ನೆಲೆ, ವ್ಯಾಪಾರ ಮತ್ತು ವೃತ್ತಿಪರ ವಿಷಯಕ್ಕೆ ಸೂಕ್ತವಾದ"
-  },
-  "wallpaper_abstract_2425706_name": {
-    "message": "ಅಮೂರ್ತ ಬಣ್ಣಗಳು"
-  },
-  "wallpaper_abstract_2425706_desc": {
-    "message": "ಬಲವಾದ ದೃಶ್ಯ ಪ್ರಭಾವದೊಂದಿಗೆ ಪ್ರಾಣವತ್ತಾದ ಅಮೂರ್ತ ಬಣ್ಣ ಟೆಕ್ಸ್‌ಚರ್"
-  },
-  "wallpaper_abstract_2512412_name": {
-    "message": "ಅಮೂರ್ತ ಬಣ್ಣಗಳು"
-  },
-  "wallpaper_abstract_2512412_desc": {
-    "message": "ಹರಿಯುವ ಅಮೂರ್ತ ಬಣ್ಣ ಹಿನ್ನೆಲೆ, ಸೃಜನಾತ್ಮಕ ವಿಷಯಕ್ಕೆ ಪರಿಪೂರ್ಣವಾದ"
-  },
-  "wallpaper_abstract_6297317_name": {
-    "message": "ಅಮೂರ್ತ ರೂಪಗಳು"
-  },
-  "wallpaper_abstract_6297317_desc": {
-    "message": "ಬಣ್ಣ ಬ್ಲಾಕ್ ಸಂಯೋಜನೆಯೊಂದಿಗೆ ಅಮೂರ್ತ ಜ್ಯಾಮಿತಿ ರೂಪಗಳು"
-  },
-  "wallpaper_ai_generated_9083808_name": {
-    "message": "AI ರಚಿಸಿದ ಕಲೆ"
-  },
-  "wallpaper_ai_generated_9083808_desc": {
-    "message": "AI-ರಚಿಸಿದ ಭವಿಷ್ಯತ್ಮಕ ಕಲೆ ಹಿನ್ನೆಲೆ"
-  },
-  "wallpaper_beach_4938036_name": {
-    "message": "ಕಡಲ ತೀರ"
-  },
-  "wallpaper_beach_4938036_desc": {
-    "message": "ಮರಳು ಮತ್ತು ಅಲೆಗಳೊಂದಿಗೆ ನೈಸರ್ಗಿಕ ಕಡಲ ತೀರ ದೃಶ್ಯ, ತಾಜಾ ಮತ್ತು ಆರಾಮದಾಯಕ"
-  },
-  "wallpaper_bulb_5665770_name": {
-    "message": "ಸೃಜನಾತ್ಮಕ ಬಲ್ಬ್"
-  },
-  "wallpaper_bulb_5665770_desc": {
-    "message": "ಸೃಜನಶೀಲತೆ ಮತ್ತು ಸ್ಫೂರ್ತಿಯನ್ನು ಪ್ರತೀಕಿಸುವ ಬಲ್ಬ್ ಥೀಮ್"
-  },
-  "wallpaper_cpu_8892400_name": {
-    "message": "CPU ಸರ್ಕಿಟ್"
-  },
-  "wallpaper_cpu_8892400_desc": {
-    "message": "ಹೆಚ್ಚಿನ-ತಂತ್ರಜ್ಞಾನ ಆಕರ್ಷಣೆಯೊಂದಿಗೆ CPU ಚಿಪ್ ಮತ್ತು ಸರ್ಕಿಟ್ ಬೋರ್ಡ್"
-  },
-  "wallpaper_feather_5488401_name": {
-    "message": "ಹೊರಗಿನ ಪುಕ್ಕ"
-  },
-  "wallpaper_feather_5488401_desc": {
-    "message": "ಸಮೃದ್ಧ ವಿವರಗಳೊಂದಿಗೆ ಮೃದುವಾದ ಪುಕ್ಕ ಟೆಕ್ಸ್‌ಚರ್"
-  },
-  "wallpaper_fractal_8902060_name": {
-    "message": "ಫ್ರ್ಯಾಕ್ಟಲ್ ಕಲೆ"
-  },
-  "wallpaper_fractal_8902060_desc": {
-    "message": "ಅಮೂರ್ತ ಕಲಾ ಶೈಲಿಯಲ್ಲಿ ಪ್ರಕಾಶಮಾನವಾದ ಫ್ರ್ಯಾಕ್ಟಲ್ ಮಾದರಿಗಳು"
-  },
-  "wallpaper_orange_3036097_name": {
-    "message": "ಕಿತ್ತಳೆ ತುಂಡು"
-  },
-  "wallpaper_orange_3036097_desc": {
-    "message": "ಪ್ರಕಾಶಮಾನವಾದ ಬಣ್ಣಗಳೊಂದಿಗೆ ಪ್ರಾಣವತ್ತಾದ ಕಿತ್ತಳೆ ತುಂಡುಗಳು"
-  },
-  "wallpaper_orange_6508617_name": {
-    "message": "ಕಿತ್ತಳೆ ಹಿನ್ನೆಲೆ"
-  },
-  "wallpaper_orange_6508617_desc": {
-    "message": "ಶಕ್ತಿಯಿಂದ ತುಂಬಿದ ಪ್ರಕಾಶಮಾನವಾದ ಕಿತ್ತಳೆ ಥೀಮ್ಡ್ ಹಿನ್ನೆಲೆ"
-  },
-  "wallpaper_polar_lights_5858656_name": {
-    "message": "ಅರೋರಾ"
-  },
-  "wallpaper_polar_lights_5858656_desc": {
-    "message": "ಉತ್ತರ ಬೆಳಕಿನ ರಾತ್ರಿ ಆಕಾಶ, ಕನಸಿನಂತಹ ನೈಸರ್ಗಿಕ ವಿದ್ಯಮಾನ"
-  },
-  "wallpaper_spiral_3112405_name": {
-    "message": "ಸುರುಳಿ ಮಾದರಿ"
-  },
-  "wallpaper_spiral_3112405_desc": {
-    "message": "ಚಲನಾತ್ಮಕ ಪದರಗಳೊಂದಿಗೆ ಅಮೂರ್ತ ಸುರುಳಿ ಟೆಕ್ಸ್‌ಚರ್"
-  },
-  "wallpaper_steelwool_458842_name": {
-    "message": "ಸ್ಟೀಲ್‌ವೂಲ್ ಬೆಳಕು ಚಿತ್ರ"
-  },
-  "wallpaper_steelwool_458842_desc": {
-    "message": " long ಎಕ್ಸ್‌ಪೋಸರ್ ಬೆಳಕು ಚಿತ್ರ ಪರಿಣಾಮ, ಅಮೂರ್ತ ಮತ್ತು ಚಲನಾತ್ಮಕ"
-  },
-  "wallpaper_swimming_pool_8306716_name": {
-    "message": "ಬೌಲ್ ಅಲೆಗಳು"
-  },
-  "wallpaper_swimming_pool_8306716_desc": {
-    "message": "ತಂಪಾದ ಬೇಸಿಗೆ ವಾತಾವರಣದೊಂದಿಗೆ ಈಜು ಬೌಲಿನ ನೀರಿನ ಅಲೆಗಳು"
-  },
-  "wallpaper_abstract_2426502_name": {
-    "message": "ಅಮೂರ್ತ ಬಣ್ಣಗಳು"
-  },
-  "wallpaper_abstract_2426502_desc": {
-    "message": "ಅಮೂರ್ತ ಬಣ್ಣಗಳು ಮತ್ತು ಆಕಾರಗಳೊಂದಿಗೆ ಆಧುನಿಕ ವಿನ್ಯಾಸ"
-  },
-  "wallpaper_camera_1248682_name": {
-    "message": "ಕ್ಯಾಮರಾ ಹತ್ತಿರದ ನೋಟ"
-  },
-  "wallpaper_camera_1248682_desc": {
-    "message": "ಟೆಕ್ಸ್‌ಚರ್ಡ್ ತಂತ್ರಜ್ಞಾನ ಶೈಲಿಯೊಂದಿಗೆ ಕ್ಯಾಮರಾ ಮತ್ತು ಲೆನ್ಸ್ ಹತ್ತಿರದ ನೋಟ"
-  },
-  "wallpaper_circle_5090539_name": {
-    "message": "ವರ್ತುಲ ಜ್ಯಾಮಿತಿ"
-  },
-  "wallpaper_circle_5090539_desc": {
-    "message": "ಸ್ವಚ್ಛವಾದ ವರ್ತುಲ ಜ್ಯಾಮಿತಿ ಮಾದರಿ, ದೃಶ್ಯವಾಗಿ ಏಕೀಕೃತ ಲೇಔಟ್‌ಗೆ ಸೂಕ್ತವಾದ"
-  },
-  "wallpaper_feather_7009025_name": {
-    "message": "ಪುಕ್ಕ ಟೆಕ್ಸ್‌ಚರ್"
-  },
-  "wallpaper_feather_7009025_desc": {
-    "message": "ಸೂಕ್ಷ್ಮವಾದ ನೈಸರ್ಗಿಕ ಮಾದರಿಗಳೊಂದಿಗೆ ಮೃದುವಾದ ಪುಕ್ಕ ಟೆಕ್ಸ್‌ಚರ್"
-  },
-  "wallpaper_fiber_4814456_name": {
-    "message": "ಫೈಬರ್ ಸಾಲುಗಳು"
-  },
-  "wallpaper_fiber_4814456_desc": {
-    "message": "ಫೈಬರ್ ಆಪ್ಟಿಕ್ಸ್ ಮತ್ತು ಸಾಲುಗಳೊಂದಿಗೆ ಅಮೂರ್ತ ತಂತ್ರಜ್ಞಾನ ಭಾವನೆ"
-  },
-  "wallpaper_frost_6702335_name": {
-    "message": "ಚಳಿ ಟೆಕ್ಸ್‌ಚರ್"
-  },
-  "wallpaper_frost_6702335_desc": {
-    "message": "ತಂಪಾದ ಟೆಕ್ಸ್‌ಚರ್ಡ್ ಚಳಿ ಮಾದರಿ ಹಿನ್ನೆಲೆ"
-  },
-  "wallpaper_leaves_4291098_name": {
-    "message": "ಹಸಿರು ಎಲೆಗಳು"
-  },
-  "wallpaper_leaves_4291098_desc": {
-    "message": "ಹಸಿರು ಎಲೆಗಳ ನೈಸರ್ಗಿಕ ಟೆಕ್ಸ್‌ಚರ್, ತಾಜಾ ಮತ್ತು ಗುಣಪಡಿಸುವ"
-  },
-  "wallpaper_light_1834289_name": {
-    "message": "ಬೆಳಕು ಬೋಕೆ"
-  },
-  "wallpaper_light_1834289_desc": {
-    "message": "ಬೆಳಕು ಮತ್ತು ನೆರಳು ಬೋಕೆ ಪರಿಣಾಮ, ವಾತಾವರಣದ ಅಮೂರ್ತ ಹಿನ್ನೆಲೆ"
-  },
-  "wallpaper_light_942231_name": {
-    "message": "ಬೆಳಕಿನ ಸಾಲುಗಳು"
-  },
-  "wallpaper_light_942231_desc": {
-    "message": "ಹರಿಯುವ ಬೆಳಕಿನ ಸಾಲುಗಳು, ಚಲನಾತ್ಮಕ ಅಮೂರ್ತ ಹಿನ್ನೆಲೆ"
-  },
-  "wallpaper_luck_4397584_name": {
-    "message": "ನಾಲ್ಕು-ಎಲೆ ಕ್ಲೋವರ್"
-  },
-  "wallpaper_luck_4397584_desc": {
-    "message": "ತಾಜಾ ನೈಸರ್ಗಿಕ ಹಸಿರು ಛಾಯೆಗಳೊಂದಿಗೆ ಅದೃಷ್ಟವಾದ ನಾಲ್ಕು-ಎಲೆ ಕ್ಲೋವರ್"
-  },
-  "wallpaper_waterdrop_2256201_name": {
-    "message": "ನೀರಿನ ಹನಿ ಹತ್ತಿರದ ನೋಟ"
-  },
-  "wallpaper_waterdrop_2256201_desc": {
-    "message": "ನೀರಿನ ಹನಿ ಮತ್ತು ಮೇಲ್ಮೈ ಬಿಗಿತ ಮ್ಯಾಕ್ರೋ ಟೆಕ್ಸ್‌ಚರ್"
-  },
-  "welcome_pageTitle": {
-    "message": "Screen Recorder Studio ಗೆ ಸ್ವಾಗತ"
-  },
-  "welcome_headerSubtitle": {
-    "message": "ವೃತ್ತಿಪರ ಬ್ರೌಸರ್ ರೆಕಾರ್ಡಿಂಗ್ ಸಾಧನ"
-  },
-  "welcome_installSuccess": {
-    "message": "ಸ್ಥಾಪನೆ ಯಶಸ್ವಿಯಾಗಿದೆ"
-  },
-  "welcome_headline": {
-    "message": "ರೆಕಾರ್ಡ್, ಸಂಪಾದಿಸಿ ಮತ್ತು ಸೆಕೆಂಡುಗಳಲ್ಲಿ ಎಕ್ಸ್‌ಪೋರ್ಟ್ ಮಾಡಿ. 🎉"
-  },
-  "welcome_subheadline": {
-    "message": "ಗಂಟೆಗಳ ಫೂಟೇಜ್ ಅನ್ನು ಮೃದುವಾಗಿ ಕ್ಯಾಪ್ಚರ್ ಮಾಡಿ, ನಂತರ ಸಂಪಾದಿಸಿ ಮತ್ತು ಹೈ-ಕ್ವಾಲಿಟಿ ವೀಡಿಯೋಗಳಾಗಿ ಅಥವಾ GIF ಆಗಿ ಎಕ್ಸ್‌ಪೋರ್ಟ್ ಮಾಡಿ—ಎಲ್ಲವೂ ನಿಮ್ಮ ಬ್ರೌಸರ್‌ನಲ್ಲಿ ಸುರಕ್ಷಿತವಾಗಿ ಪ್ರಕ್ರಿಯೆಗೊಳ್ಳುತ್ತದೆ."
-  },
-  "welcome_tryTitle": {
-    "message": "ನಿಮ್ಮ ಮೊದಲ ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಾರಂಭಿಸಿ 🚀"
-  },
-  "welcome_trySubtitle": {
-    "message": "ಏನನ್ನು ಕ್ಯಾಪ್ಚರ್ ಮಾಡಬೇಕು ಎಂದು ಆಯ್ಕೆಮಾಡಿ ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಾರಂಭಿಸಿ—ನೀವು ನಿಲ್ಲಿಸಿದಾಗ ಸ್ಟುಡಿಯೋ ತೆರೆಯುತ್ತದೆ."
-  },
-  "welcome_modeTabDetail": {
-    "message": "ವೆಬ್ ಡೆಮೋಗಳು ಮತ್ತು ಟ್ಯುಟೋರಿಯಲ್‌ಗಳಿಗೆ ಸೂಕ್ತವಾದ"
-  },
-  "welcome_modeWindowDetail": {
-    "message": "ವಿಳಾಸ ಬಾರ್ ಮತ್ತು ಟೂಲ್‌ಬಾರ್ ಸೇರಿದೆ"
-  },
-  "welcome_modeScreenDetail": {
-    "message": "ಕ್ರಾಸ್-ಅಪ್ಲಿಕೇಶನ್ ವರ್ಕ್‌ಫ್ಲೋಗಳಿಗೆ ಅತ್ಯುತ್ತಮ"
-  },
-  "welcome_statusRecording": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ನಡೆಯುತ್ತಿದೆ"
-  },
-  "welcome_modeLabel": {
-    "message": "ಮೋಡ್"
-  },
-  "welcome_proTrialActive": {
-    "message": "ಪ್ರೊ ಟ್ರಯಲ್ ಸಕ್ರಿಯ"
-  },
-  "welcome_feat1Title": {
-    "message": "ಖಾಸಗಿ ಮತ್ತು ಲೋಕಲ್"
-  },
-  "welcome_feat2Title": {
-    "message": "ವಾಟರ್‌ಮಾರ್ಕ್ ಇಲ್ಲ"
-  },
-  "welcome_feat3Title": {
-    "message": "ತ್ವರಿತ ಸಂಪಾದನೆ"
-  },
-  "welcome_feat4Title": {
-    "message": "ವೀಡಿಯೋ ಮತ್ತು GIF ಎಕ್ಸ್‌ಪೋರ್ಟ್"
-  },
-  "welcome_howTitle": {
-    "message": "ನಿಮ್ಮ ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಯಾಣ"
-  },
-  "welcome_howDesc": {
-    "message": "ಕ್ಯಾಪ್ಚರ್‌ನಿಂದ ಎಕ್ಸ್‌ಪೋರ್ಟ್‌ವರೆಗೆ, ಎಲ್ಲವೂ ನಿಮ್ಮ ಬ್ರೌಸರ್‌ನಲ್ಲಿ ಸುರಕ್ಷಿತವಾಗಿ ನಡೆಯುತ್ತದೆ."
-  },
-  "welcome_step1Title": {
-    "message": "ವಿಸ್ತರಣೆಯನ್ನು ಪಿನ್ ಮಾಡಿ"
-  },
-  "welcome_step1Desc": {
-    "message": "ನಿಮ್ಮ ಬ್ರೌಸರ್ ಟೂಲ್‌ಬಾರ್‌ನಲ್ಲಿ ಪಜಲ್ ಐಕಾನ್ 🧩 ಕ್ಲಿಕ್ ಮಾಡಿ ಮತ್ತು ತ್ವರಿತ ಪ್ರವೇಶಕ್ಕಾಗಿ ಈ ವಿಸ್ತರಣೆಯನ್ನು ಪಿನ್ ಮಾಡಿ"
-  },
-  "welcome_step2Title": {
-    "message": "ನಿಮ್ಮ ಗುರಿಯನ್ನು ಆಯ್ಕೆಮಾಡಿ"
-  },
-  "welcome_step2Desc": {
-    "message": "ಏನನ್ನು ರೆಕಾರ್ಡ್ ಮಾಡಬೇಕು ಎಂದು ಆಯ್ಕೆಮಾಡಿ: ಪ್ರಸಕ್ತ ಟ್ಯಾಬ್, ಸಂಪೂರ್ಣ ವಿಂಡೋ, ಅಥವಾ ಪೂರ್ಣ ಸ್ಕ್ರೀನ್—ನಿಮ್ಮ ಅಗತ್ಯಗಳಿಗೆ ಯಾವುದು ಸೂಕ್ತವೋ ಅದು"
-  },
-  "welcome_step3Title": {
-    "message": "ತ್ವರಿತ ಸಂಪಾದನೆ"
-  },
-  "welcome_step3Desc": {
-    "message": "\"$BTN$\" ಕ್ಲಿಕ್ ಮಾಡಿ ಮತ್ತು ಸಿದ್ಧರಾಗಿ - $SECONDS$ ಸೆಕೆಂಡ್‌ಗಳ ಕೌಂಟ್‌ಡೌನ್ ನಿಮಗೆ ಸಿದ್ಧಪಡಲು ಸಮಯ ಕೊಡುತ್ತದೆ!",
-    "placeholders": {
-      "btn": {
-        "content": "$1"
-      },
-      "seconds": {
-        "content": "$2"
-      }
-    }
-  },
-  "welcome_trustNoWatermark": {
-    "message": "ಯಾವುದೇ ವಾಟರ್‌ಮಾರ್ಕ್ ಇಲ್ಲ"
-  },
-  "welcome_trustHD": {
-    "message": "HD ಗುಣಮಟ್ಟ"
-  },
-  "welcome_trustLocal": {
-    "message": "ಖಾಸಗಿ ಮತ್ತು ಲೋಕಲ್"
-  },
-  "welcome_trustQuickEditing": {
-    "message": "ತ್ವರಿತ ಸಂಪಾದನೆ"
-  },
-  "welcome_footerHelp": {
-    "message": "ಹೆಚ್ಚಿನ ನಿಯಂತ್ರಣ ಬೇಕಾ? ವಿಸ್ತರಣೆ ಐಕಾನ್ ಕ್ಲಿಕ್ ಮಾಡಿ ಸುಧಾರಿತ ರೆಕಾರ್ಡಿಂಗ್ ಮತ್ತು ಎಕ್ಸ್‌ಪೋರ್ಟ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಪ್ರವೇಶಿಸಿ."
-  },
-  "welcome_footerMeta": {
-    "message": "Screen Recorder Studio • ವೃತ್ತಿಪರರಿಗಾಗಿ ಮಾಡಲಾಗಿದೆ"
-  },
-  "annotation_tool_cursor": {
-    "message": "ಕರ್ಸರ್ (ಸಂವಹನ)"
-  },
-  "annotation_tool_effect": {
-    "message": "ಕರ್ಸರ್ ಪರಿಣಾಮ"
-  },
-  "annotation_tool_arrow": {
-    "message": "ಬಾಣ"
-  },
-  "annotation_tool_rectangle": {
-    "message": "ಆಯತ"
-  },
-  "annotation_tool_circle": {
-    "message": "ವೃತ್ತ"
-  },
-  "annotation_tool_freehand": {
-    "message": "ಪೆನ್"
-  },
-  "annotation_tool_text": {
-    "message": "ಪಠ್ಯ"
-  },
-  "annotation_tool_highlight": {
-    "message": "ಹೈಲাঈಟ್"
-  },
-  "annotation_tool_blur": {
-    "message": "ಮಸಕಾದ"
-  },
-  "annotation_tool_undo": {
-    "message": "ರದ್ದುಮಾಡಿ"
-  },
-  "annotation_tool_clear": {
-    "message": "ಎಲ್ಲಾ ತೆರವುಗೊಳಿಸಿ"
-  },
-  "annotation_tool_close": {
-    "message": "ಮುಚ್ಚಿ"
-  },
-  "webRecord_pageTitle": {
-    "message": "ವೆಬ್ ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡರ್"
-  },
-  "webRecord_headerTitle": {
-    "message": "ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡರ್"
-  },
-  "webRecord_openDriveTooltip": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ಫೈಲ್ ಮ್ಯಾನೇಜರ್ ತೆರೆಯಿರಿ"
-  },
-  "webRecord_driveBtn": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್‌ಗಳು"
-  },
-  "webRecord_errorTitle": {
-    "message": "ದೋಷ"
-  },
-  "webRecord_errorInsecure": {
-    "message": "ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡಿಂಗ್‌ಗೆ ಸುರಕ್ಷಿತ ಸಂದರ್ಭ (HTTPS) ಬೇಕಾಗುತ್ತದೆ. ದಯವಿಟ್ಟು ಈ ಪುಟವನ್ನು HTTPS ಮೂಲಕ ಪ್ರವೇಶಿಸಿ."
-  },
-  "webRecord_errorNoDisplayMedia": {
-    "message": "ನಿಮ್ಮ ಬ್ರೌಸರ್ ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡಿಂಗ್ ಅನ್ನು ಬೆಂಬಲಿಸುವುದಿಲ್ಲ (getDisplayMedia API)."
-  },
-  "webRecord_errorNoWebCodecs": {
-    "message": "ನಿಮ್ಮ ಬ್ರೌಸರ್ WebCodecs API ಅನ್ನು ಬೆಂಬಲಿಸುವುದಿಲ್ಲ. ದಯವಿಟ್ಟು Chrome 94+ ನಂತಹ ಆಧುನಿಕ ಬ್ರೌಸರ್ ಬಳಸಿ."
-  },
-  "webRecord_errorNoTrackProcessor": {
-    "message": "ನಿಮ್ಮ ಬ್ರೌಸರ್ MediaStreamTrackProcessor ಅನ್ನು ಬೆಂಬಲಿಸುವುದಿಲ್ಲ. ದಯವಿಟ್ಟು Chrome 94+ ಬಳಸಿ."
-  },
-  "webRecord_errorNoOPFS": {
-    "message": "ನಿಮ್ಮ ಬ್ರೌಸರ್ OPFS ಸಂಗ್ರಹಣೆಯನ್ನು ಬೆಂಬಲಿಸುವುದಿಲ್ಲ."
-  },
-  "webRecord_errorGeneric": {
-    "message": "ದೋಷ ಸಂಭವಿಸಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."
-  },
-  "webRecord_errorNoVideoTrack": {
-    "message": "ಸ್ಕ್ರೀನ್ ಕ್ಯಾಪ್ಚರ್‌ನಿಂದ ಯಾವುದೇ ವೀಡಿಯೋ ಟ್ರ್ಯಾಕ್ ಲಭ್ಯವಿಲ್ಲ."
-  },
-  "webRecord_errorPermissionDenied": {
-    "message": "ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡಿಂಗ್ ಅನುಮತಿ ನಿರಾಕರಿಸಲಾಗಿದೆ. ರೆಕಾರ್ಡ್ ಮಾಡಲು ಸ್ಕ್ರೀನ್ ಹಂಚಿಕೆಗೆ ಅನುಮತಿ ನೀಡಿ."
-  },
-  "webRecord_errorEncoding": {
-    "message": "ವೀಡಿಯೋ ಎನ್‌ಕೋಡಿಂಗ್ ದೋಷ ಸಂಭವಿಸಿದೆ."
-  },
-  "webRecord_statusRecording": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್"
-  },
-  "webRecord_statusPreparing": {
-    "message": "ತಯಾರಾಗುತ್ತಿದೆ..."
-  },
-  "webRecord_statusStopping": {
-    "message": "ನಿಲ್ಲಿಸುತ್ತಿದೆ..."
-  },
-  "webRecord_statusIdle": {
-    "message": "ರೆಕಾರ್ಡ್ ಮಾಡಲು ಸಿದ್ಧ"
-  },
-  "webRecord_btnStart": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಾರಂಭಿಸಿ"
-  },
-  "webRecord_btnStop": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ನಿಲ್ಲಿಸಿ"
-  },
-  "webRecord_btnPreparing": {
-    "message": "ತಯಾರಾಗುತ್ತಿದೆ..."
-  },
-  "webRecord_btnStopping": {
-    "message": "ನಿಲ್ಲಿಸುತ್ತಿದೆ..."
-  },
-  "webRecord_tipsTitle": {
-    "message": "ಸಲಹೆಗಳು:"
-  },
-  "webRecord_tip1": {
-    "message": "ರೆಕಾರ್ಡ್ ಮಾಡಲು ಸ್ಕ್ರೀನ್, ವಿಂಡೋ ಅಥವಾ ಟ್ಯಾಬ್ ಆಯ್ಕೆಮಾಡಲು ಪ್ರಾರಂಭಿಸಿ ಕ್ಲಿಕ್ ಮಾಡಿ."
-  },
-  "webRecord_tip2": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್‌ಗಳು ನಿಮ್ಮ ಬ್ರೌಸರ್ ಸಂಗ್ರಹಣೆಯಲ್ಲಿ ಸ್ಥಳೀಯವಾಗಿ ಉಳಿಸಲಾಗುತ್ತದೆ."
-  },
-  "webRecord_tip3": {
-    "message": "ನಿಮ್ಮ ರೆಕಾರ್ಡಿಂಗ್‌ಗಳನ್ನು ವೀಕ್ಷಿಸಲು, ಸಂಪಾದಿಸಲು ಮತ್ತು ಎಕ್ಸ್‌ಪೋರ್ಟ್ ಮಾಡಲು ರೆಕಾರ್ಡಿಂಗ್‌ಗಳ ಕ್ಲಿಕ್ ಮಾಡಿ."
-  },
-  "drive_drawerDelete": {
-    "message": "ಅಳಿಸಿ"
-  },
-  "drive_drawerEmpty": {
-    "message": "ಇನ್ನೂ ರೆಕಾರ್ಡಿಂಗ್‌ಗಳಿಲ್ಲ"
-  },
-  "drive_drawerJustNow": {
-    "message": "ಈಗ"
-  },
-  "drive_drawerOpenFull": {
-    "message": "ಪೂರ್ಣ ಡ್ರೈವ್ ತೆರೆಯಿರಿ"
-  },
-  "drive_drawerTitle": {
-    "message": "ಇತ್ತೀಚಿನ ರೆಕಾರ್ಡಿಂಗ್‌ಗಳು"
-  },
-  "launcher_drive": {
-    "message": "ಡ್ರೈವ್"
-  },
-  "launcher_driveDesc": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್‌ಗಳನ್ನು ವೀಕ್ಷಿಸಿ ಮತ್ತು ನಿರ್ವಹಿಸಿ"
-  },
-  "launcher_pageTitle": {
-    "message": "Screen Recorder Studio"
-  },
-  "launcher_record": {
-    "message": "ರೆಕಾರ್ಡ್"
-  },
-  "launcher_recordDesc": {
-    "message": "ಹೊಸ ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಾರಂಭಿಸಿ"
-  },
-  "launcher_studio": {
-    "message": "ಸ್ಟುಡಿಯೋ"
-  },
-  "launcher_studioDesc": {
-    "message": "ನಿಮ್ಮ ಇತ್ತೀಚಿನ ರೆಕಾರ್ಡಿಂಗ್ ಸಂಪಾದಿಸಿ"
-  },
-  "launcher_subtitle": {
-    "message": "ರೆಕಾರ್ಡ್, ನಿರ್ವಹಿಸಿ ಮತ್ತು ಎಕ್ಸ್‌ಪೋರ್ಟ್"
-  },
-  "launcher_title": {
-    "message": "Screen Recorder Studio"
-  },
-  "studio_emptyDesc": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ನಂತರ, ನಿಮ್ಮ ವೀಡಿಯೋ ಇಲ್ಲಿ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಕಾಣಿಸುತ್ತದೆ. ನೀವು ಸ್ಟುಡಿಯೋದಲ್ಲಿ ಪ್ರಿವ್ಯೂ, ಟ್ರಿಮ್, ಸ್ಟೈಲ್ ಮತ್ತು ಎಕ್ಸ್‌ಪೋರ್ಟ್ ಮಾಡಬಹುದು."
-  },
-  "studio_emptyFeatureExport": {
-    "message": "ಎಕ್ಸ್‌ಪೋರ್ಟ್"
-  },
-  "studio_emptyFeaturePreview": {
-    "message": "ಪ್ರಿವ್ಯೂ"
-  },
-  "studio_emptyFeatureTrim": {
-    "message": "ಟ್ರಿಮ್ ಮತ್ತು ಸ್ಟೈಲ್"
-  },
-  "studio_emptyOpenDrive": {
-    "message": "ಡ್ರೈವ್ ತೆರೆಯಿರಿ"
-  },
-  "studio_emptyReasonInvalid": {
-    "message": "ಇತ್ತೀಚಿನ ರೆಕಾರ್ಡಿಂಗ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ."
-  },
-  "studio_emptyReasonLoadFailed": {
-    "message": "ನಿರ್ದಿಷ್ಟ ರೆಕಾರ್ಡಿಂಗ್ ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ."
-  },
-  "studio_emptyReasonOpfs": {
-    "message": "ಈ ಬ್ರೌಸರ್‌ನಲ್ಲಿ ಸಂಗ್ರಹಣೆ ಲಭ್ಯವಿಲ್ಲ."
-  },
-  "studio_emptyStartRecording": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಾರಂಭಿಸಿ"
-  },
-  "studio_emptyTitle": {
-    "message": "ಇನ್ನೂ ಸಂಪಾದಿಸಲು ಯಾವುದೇ ವೀಡಿಯೋ ಇಲ್ಲ"
-  },
-  "studio_loading": {
-    "message": "ಲೋಡ್ ಆಗುತ್ತಿದೆ..."
-  },
-  "studio_recentRecordings": {
-    "message": "ರೆಕಾರ್ಡಿಂಗ್‌ಗಳು"
-  }
+  "appName": { "message": "Screen Recorder Studio - ಅಮಿತ, ಜೂಮ್, GIF" },
+  "appDesc": { "message": "ಸಮಯ ಮಿತಿಯಿಲ್ಲದ ಸ್ಥಿರ ತೆರೆ ರೆಕಾರ್ಡಿಂಗ್. ಅಂತರ್ನಿರ್ಮಿತ ಎಡಿಟರ್‌ನಿಂದ ಜೂಮ್, ಟ್ರಿಮ್ ಮಾಡಿ HD MP4 ಅಥವಾ GIF ಆಗಿ ಎಕ್ಸ್‌ಪೋರ್ಟ್ ಮಾಡಿ." },
+  "common_close": { "message": "ಮುಚ್ಚು" },
+  "action_defaultTitle": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ಪ್ಯಾನಲ್ ತೆರೆಯಿರಿ" },
+  "control_headerTitle": { "message": "ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡರ್" },
+  "control_headerDesc": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ಮೋಡ್ ಆಯ್ಕೆಮಾಡಿ ಪ್ರಾರಂಭಿಸಿ" },
+  "control_openDriveTooltip": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ಫೈಲ್ ಮ್ಯಾನೇಜರ್ ತೆರೆಯಿರಿ" },
+  "control_closePanelTooltip": { "message": "ಕಂಟ್ರೋಲ್ ಪ್ಯಾನಲ್ ಮುಚ್ಚಿ" },
+  "control_recordingMode": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ಮೋಡ್" },
+  "control_modeTab": { "message": "ಟ್ಯಾಬ್" },
+  "control_modeTabDesc": { "message": "ಪ್ರಸಕ್ತ ಟ್ಯಾಬ್ ರೆಕಾರ್ಡ್ ಮಾಡಿ" },
+  "control_modeWindow": { "message": "ವಿಂಡೋ" },
+  "control_modeWindowDesc": { "message": "ಸಂಪೂರ್ಣ ವಿಂಡೋ ರೆಕಾರ್ಡ್ ಮಾಡಿ" },
+  "control_modeScreen": { "message": "ಸ್ಕ್ರೀನ್" },
+  "control_modeScreenDesc": { "message": "ಸಂಪೂರ್ಣ ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡ್ ಮಾಡಿ" },
+  "control_statusRecording": { "message": "ರೆಕಾರ್ಡಿಂಗ್" },
+  "control_statusPaused": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ವಿರಾಮ" },
+  "control_statusPreparing": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ತಯಾರಾಗುತ್ತಿದೆ..." },
+  "control_btnStart": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಾರಂಭಿಸಿ" },
+  "control_btnStop": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ನಿಲ್ಲಿಸಿ" },
+  "control_btnPause": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ವಿರಾಮ ಮಾಡಿ" },
+  "control_btnResume": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ಮುಂದುವರಿಸಿ" },
+  "control_btnPreparing": { "message": "ತಯಾರಾಗುತ್ತಿದೆ..." },
+  "control_btnStarting": { "message": "$SECONDS$ ಸೆಕೆಂಡ್‌ಗಳಲ್ಲಿ ಪ್ರಾರಂಭವಾಗುತ್ತದೆ..." },
+  "control_countdownLabel": { "message": "ಕೌಂಟ್‌ಡೌನ್" },
+  "control_tipsTitle": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ಸಲಹೆಗಳು:" },
+  "control_tipsSelectMode": { "message": "$MODE$ ಮೋಡ್ ಆಯ್ಕೆಯಾಗಿದೆ, ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಾರಂಭಿಸಲು ಕ್ಲಿಕ್ ಮಾಡಿ." },
+  "control_tipsPreparing": { "message": "ಸ್ಕ್ರೀನ್ ಆಯ್ಕೆಗಾಗಿ ನಿರೀಕ್ಷಿಸುತ್ತಿದೆ..." },
+  "control_tipsCountdown": { "message": "ಸಿದ್ಧರಾಗಿ! $SECONDS$ ಸೆಕೆಂಡ್‌ಗಳಲ್ಲಿ ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಾರಂಭವಾಗುತ್ತದೆ." },
+  "control_tipsPaused": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ವಿರಾಮದಲ್ಲಿದೆ, ಮುಂದುವರಿಸಲು ಮುಂದುವರಿಸಿ ಕ್ಲಿಕ್ ಮಾಡಿ." },
+  "control_tipsRecording": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ನಡೆಯುತ್ತಿದೆ, ವಿರಾಮ ಮಾಡಲು ಪಾಸ್ ಕ್ಲಿಕ್ ಮಾಡಿ." },
+  "control_overlayRecordingStarts": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ಶೀಘ್ರದಲ್ಲಿ ಪ್ರಾರಂಭವಾಗುತ್ತದೆ..." },
+  "control_errorTimeout": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ತಯಾರಿ ಸಮಯ ಮುಗಿದಿದೆ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ." },
+  "control_errorStartFailed": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಾರಂಭಿಸಲು ವಿಫಲವಾಗಿದೆ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ." },
+  "control_errorRecordingFailed": { "message": "ರೆಕಾರ್ಡಿಂಗ್‌ನಲ್ಲಿ ದೋಷ ಸಂಭವಿಸಿದೆ ಮತ್ತು ನಿಲ್ಲಿಸಲಾಗಿದೆ." },
+  "control_errorStorageLow": { "message": "ಸಂಗ್ರಹಣೆ ಕಡಿಮೆಯಾಗುತ್ತಿದೆ. ರೆಕಾರ್ಡಿಂಗ್ ವಿಫಲವಾಗಬಹುದು." },
+  "control_statusSaving": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ಉಳಿಸುತ್ತಿದೆ..." },
+  "control_btnSaving": { "message": "ಉಳಿಸುತ್ತಿದೆ..." },
+  "drive_pageTitle": { "message": "ರೆಕಾರ್ಡಿಂಗ್‌ಗಳು - ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡರ್ ವಿಸ್ತರಣೆ" },
+  "drive_headerTitle": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ಮ್ಯಾನೇಜರ್" },
+  "drive_errorSupport": { "message": "ನಿಮ್ಮ ಬ್ರೌಸರ್ OPFS ಸಂಗ್ರಹಣೆಯನ್ನು ಬೆಂಬಲಿಸುವುದಿಲ್ಲ" },
+  "drive_errorMetaNotFound": { "message": "meta.json ಕಂಡುಬರುತ್ತಿಲ್ಲ" },
+  "drive_errorEmpty": { "message": "ಖಾಲಿ ರೆಕಾರ್ಡಿಂಗ್ ಫೈಲ್" },
+  "drive_errorMetadata": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ಮೆಟಾಡೇಟಾವನ್ನು ಓದಲು ಸಾಧ್ಯವಿಲ್ಲ" },
+  "drive_errorDataSize": { "message": "ಡೇಟಾ ಫೈಲ್ ಗಾತ್ರವನ್ನು ಪಡೆಯಲು ಸಾಧ್ಯವಿಲ್ಲ" },
+  "drive_recordingNamePrefix": { "message": "ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡಿಂಗ್" },
+  "drive_logDeleted": { "message": "ರೆಕಾರ್ಡಿಂಗ್ $ID$ ಅಳಿಸಲಾಗಿದೆ" },
+  "drive_errorDelete": { "message": "ಅಳಿಸಲು ವಿಫಲ: $ERROR$" },
+  "drive_logBatchDelete": { "message": "$COUNT$ ರೆಕಾರ್ಡಿಂಗ್‌ಗಳನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಅಳಿಸಲಾಗಿದೆ" },
+  "drive_errorLoad": { "message": "ರೆಕಾರ್ಡಿಂಗ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡುವಾಗ ದೋಷ ಸಂಭವಿಸಿದೆ" },
+  "drive_errorLoadPrefix": { "message": "ರೆಕಾರ್ಡಿಂಗ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ವಿಫಲ:" },
+  "studio_pageTitle": { "message": "ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡಿಂಗ್ ಸ್ಟುಡಿಯೋ" },
+  "studio_headerTitle": { "message": "ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡರ್ ಸ್ಟುಡಿಯೋ" },
+  "studio_githubTooltip": { "message": "GitHub ನಲ್ಲಿ ಮೂಲವನ್ನು ವೀಕ್ಷಿಸಿ" },
+  "studio_githubText": { "message": "GitHub" },
+  "studio_feedbackTooltip": { "message": "ದೋಷಗಳನ್ನು ವರದಿ ಮಾಡಿ ಅಥವಾ ವೈಶಿಷ್ಟ್ಯಗಳನ್ನು ಸೂಚಿಸಿ" },
+  "studio_feedbackText": { "message": "ಪ್ರತಿಕ್ರಿಯೆ" },
+  "studio_helpTooltip": { "message": "ಸಹಾಯ ಮತ್ತು ದಾಖಲಾವಣೆ" },
+  "studio_helpText": { "message": "ಸಹಾಯ" },
+  "studio_driveTooltip": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ಫೈಲ್ ಮ್ಯಾನೇಜರ್ ತೆರೆಯಿರಿ" },
+  "studio_driveText": { "message": "ಡ್ರೈವ್" },
+  "studio_fullscreenEnterTooltip": { "message": "ಪೂರ್ಣ ಪರದೆಗೆ ಪ್ರವೇಶಿಸಿ" },
+  "studio_fullscreenExitTooltip": { "message": "ಪೂರ್ಣ ಪರದೆಯಿಂದ ಹೊರಬನ್ನಿ" },
+  "studio_fullscreenEnterText": { "message": "ಪೂರ್ಣ ಪರದೆ" },
+  "studio_fullscreenExitText": { "message": "ಹೊರಬನ್ನಿ" },
+  "bg_title": { "message": "ಹಿನ್ನೆಲೆ" },
+  "bg_tab_wallpaper": { "message": "ವಾಲ್‌ಪೇಪರ್" },
+  "bg_tab_gradient": { "message": "ಗ್ರೇಡಿಯೆಂಟ್" },
+  "bg_tab_solid": { "message": "ಘನ" },
+  "bg_tab_image": { "message": "ಚಿತ್ರ" },
+  "radius_title": { "message": "ವೀಡಿಯೋ ಬಾರ್ಡರ್ ರೇಡಿಯಸ್" },
+  "radius_none": { "message": "ಯಾವುದೇ ರೇಡಿಯಸ್ ಇಲ್ಲ" },
+  "radius_small": { "message": "ಚಿಕ್ಕ ರೇಡಿಯಸ್" },
+  "radius_medium": { "message": "ಮಧ್ಯಮ ರೇಡಿಯಸ್" },
+  "radius_large": { "message": "ದೊಡ್ಡ ರೇಡಿಯಸ್" },
+  "radius_xl": { "message": "ಹೆಚ್ಚು ದೊಡ್ಡ ರೇಡಿಯಸ್" },
+  "padding_title": { "message": "ವೀಡಿಯೋ ಪ್ಯಾಡಿಂಗ್" },
+  "padding_none": { "message": "ಯಾವುದೇ ಪ್ಯಾಡಿಂಗ್ ಇಲ್ಲ" },
+  "padding_small": { "message": "ಚಿಕ್ಕ ಪ್ಯಾಡಿಂಗ್" },
+  "padding_medium": { "message": "ಮಧ್ಯಮ ಪ್ಯಾಡಿಂಗ್" },
+  "padding_large": { "message": "ದೊಡ್ಡ ಪ್ಯಾಡಿಂಗ್" },
+  "padding_xl": { "message": "ಹೆಚ್ಚು ದೊಡ್ಡ ಪ್ಯಾಡಿಂಗ್" },
+  "ratio_yt": { "message": "YouTube ಲ್ಯಾಂಡ್‌ಸ್ಕೇಪ್" },
+  "ratio_yt_desc": { "message": "YouTube, Bilibili, iQiyi ಇತ್ಯಾದಿ." },
+  "ratio_sq": { "message": "Instagram ಚೌಕ" },
+  "ratio_sq_desc": { "message": "Instagram ಪೋಸ್ಟ್‌ಗಳು, WeChat ಮೊಮೆಂಟ್‌ಗಳು" },
+  "ratio_tiktok": { "message": "TikTok ಪೋರ್‌ಟ್ರೇಟ್" },
+  "ratio_tiktok_desc": { "message": "TikTok, Douyin, Kuaishou" },
+  "ratio_story": { "message": "Instagram ಸ್ಟೋರಿ" },
+  "ratio_story_desc": { "message": "Instagram ಸ್ಟೋರಿಗಳು, Xiaohongshu" },
+  "shadow_title": { "message": "ವೀಡಿಯೋ ನೆರಳು" },
+  "shadow_preset_title": { "message": "ಪ್ರಿಸೆಟ್ ಪರಿಣಾಮಗಳು" },
+  "shadow_custom_title": { "message": "ಕಸ್ಟಮ್ ನಿಯತಾಂಶಗಳು" },
+  "shadow_light": { "message": "ಹಗುರವಾದ ನೆರಳು" },
+  "shadow_standard": { "message": "ಪ್ರಮಾಣಿತ ನೆರಳು" },
+  "shadow_deep": { "message": "ಆಳವಾದ ನೆರಳು" },
+  "shadow_distant": { "message": "ದೂರದ ನೆರಳು" },
+  "shadow_offset_x": { "message": "X ಆಫ್‌ಸೆಟ್" },
+  "shadow_offset_y": { "message": "Y ಆಫ್‌ಸೆಟ್" },
+  "shadow_blur": { "message": "ಮಸಕಾದ" },
+  "shadow_color": { "message": "ಬಣ್ಣ" },
+  "shadow_opacity": { "message": "ಅಪಾರದರ್ಶಕತೆ" },
+  "shadow_empty_state": { "message": "ನೆರಳು ಪರಿಣಾಮಗಳನ್ನು ಕಾನ್ಫಿಗರ್ ಮಾಡಲು ನೆರಳು ಸ್ವಿಚ್ ಆನ್ ಮಾಡಿ" },
+  "color_tab_basic": { "message": "ಮೂಲ" },
+  "color_tab_light": { "message": "ಬೆಳಕು" },
+  "color_tab_business": { "message": "ವ್ಯಾಪಾರ" },
+  "color_tab_creative": { "message": "ಸೃಜನಾತ್ಮಕ" },
+  "color_custom": { "message": "ಕಸ್ಟಮ್:" },
+  "gradient_tab_linear": { "message": "ರೇಖಾತ್ಮಕ" },
+  "gradient_tab_radial": { "message": "ರೇಡಿಯಲ್" },
+  "gradient_tab_conic": { "message": "ಕೋನಿಕ್" },
+  "gradient_tab_multi": { "message": "ಮಲ್ಟಿ" },
+  "gradient_current": { "message": "ಪ್ರಸಕ್ತ:" },
+  "gradient_select_hint": { "message": "ಗ್ರೇಡಿಯೆಂಟ್ ಆಯ್ಕೆಮಾಡಿ" },
+  "gradient_colors_suffix": { "message": "ಬಣ್ಣಗಳು" },
+  "wallpaper_tab_abstract": { "message": "ಅಮೂರ್ತ" },
+  "wallpaper_tab_minimal": { "message": "ಮಿನಿಮಲ್" },
+  "wallpaper_tab_nature": { "message": "ಪ್ರಕೃತಿ" },
+  "wallpaper_tab_business": { "message": "ವ್ಯಾಪಾರ" },
+  "wallpaper_tab_tech": { "message": "ತಂತ್ರಜ್ಞಾನ" },
+  "wallpaper_error": { "message": "ವಾಲ್‌ಪೇಪರ್ ಲೋಡ್ ಮಾಡಲು ವಿಫಲ" },
+  "wallpaper_stats": { "message": "ಈ ವರ್ಗದಲ್ಲಿ $COUNT$ ವಾಲ್‌ಪೇಪರ್‌ಗಳು" },
+  "wallpaper_total": { "message": "$TOTAL$ ಒಟ್ಟು" },
+  "upload_processing": { "message": "ಸಂಸ್ಕರಿಸುತ್ತಿದೆ..." },
+  "upload_drop_hint": { "message": "ಇಲ್ಲಿ ಚಿತ್ರವನ್ನು ಕ್ಲಿಕ್ ಮಾಡಿ ಅಥವಾ ಎಳೆಯಿರಿ" },
+  "upload_format_hint": { "message": "JPEG, PNG, WebP, GIF · ಗರಿಷ್ಟ 5MB" },
+  "upload_error_select": { "message": "ದಯವಿಟ್ಟು ಚಿತ್ರ ಫೈಲ್ ಆಯ್ಕೆಮಾಡಿ" },
+  "upload_error_failed": { "message": "ಅಪ್‌ಲೋಡ್ ವಿಫಲ" },
+  "drive_delete_selected_btn": { "message": "ಆಯ್ಕೆಮಾಡಿದವುಗಳನ್ನು ಅಳಿಸಿ ($COUNT$)" },
+  "drive_clear_selection": { "message": "ಆಯ್ಕೆಯನ್ನು ತೆರವುಗೊಳಿಸಿ" },
+  "drive_refresh": { "message": "ರಿಫ್ರೆಶ್" },
+  "drive_error_title": { "message": "ದೋಷ" },
+  "drive_close_error": { "message": "ಮುಚ್ಚಿ" },
+  "drive_loading": { "message": "ರೆಕಾರ್ಡಿಂಗ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡುತ್ತಿದೆ..." },
+  "drive_empty_title": { "message": "ಇನ್ನೂ ರೆಕಾರ್ಡಿಂಗ್‌ಗಳಿಲ್ಲ" },
+  "drive_empty_desc1": { "message": "ನಿಮ್ಮಲ್ಲಿ ಯಾವುದೇ ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡಿಂಗ್‌ಗಳಿಲ್ಲ." },
+  "drive_empty_desc2": { "message": "ನಿಮ್ಮ ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಾರಂಭಿಸಿ ಮತ್ತು ನಿಮ್ಮ ರೆಕಾರ್ಡಿಂಗ್‌ಗಳು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ." },
+  "drive_start_recording_btn": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಾರಂಭಿಸಿ" },
+  "drive_select_all": { "message": "ಎಲ್ಲಾ ಆಯ್ಕೆಮಾಡಿ ($COUNT$ ರೆಕಾರ್ಡಿಂಗ್‌ಗಳು)" },
+  "drive_sort_hint": { "message": "ಸಮಯದ ಮೇಲೆ ವರ್ಗೀಕರಿಸಲಾಗಿದೆ (ಹೊಸದು ಮೊದಲು)" },
+  "drive_confirm_delete_title": { "message": "ಅಳಿಸುವುದನ್ನು ಖಚಿತಪಡಿಸಿ" },
+  "drive_confirm_delete_selected": { "message": "ಆಯ್ಕೆಮಾಡಿದ $COUNT$ ರೆಕಾರ್ಡಿಂಗ್‌ಗಳನ್ನು ಅಳಿಸಲು ಬಯಸುವಿರಾ?" },
+  "drive_confirm_delete_single": { "message": "ಈ ರೆಕಾರ್ಡಿಂಗ್ ಅಳಿಸಲು ಬಯಸುವಿರಾ?" },
+  "drive_action_undone": { "message": "ಈ ಕಾರ್ಯವನ್ನು ಹಿಂದಕ್ಕೆ ತೆಗೆದುಕೊಳ್ಳಲಾಗುವುದಿಲ್ಲ." },
+  "drive_cancel": { "message": "ರದ್ದುಮಾಡಿ" },
+  "drive_delete": { "message": "ಅಳಿಸಿ" },
+  "card_status_completed": { "message": "ಪೂರ್ಣಗೊಂಡಿತು" },
+  "card_status_incomplete": { "message": "ಅಪೂರ್ಣ" },
+  "card_label_created": { "message": "ರಚಿಸಲಾಯಿತು:" },
+  "card_label_status": { "message": "ಸ್ಥಿತಿ:" },
+  "card_label_codec": { "message": "ಕೋಡೆಕ್:" },
+  "card_label_resolution": { "message": "ರೆಸಲ್ಯೂಶನ್:" },
+  "card_label_fps": { "message": "FPS:" },
+  "card_label_size": { "message": "ಫೈಲ್ ಗಾತ್ರ:" },
+  "card_label_frames": { "message": "ಒಟ್ಟು ಫ್ರೇಮ್‌ಗಳು:" },
+  "card_incomplete_title": { "message": "ಅಪೂರ್ಣ ರೆಕಾರ್ಡಿಂಗ್" },
+  "card_incomplete_desc": { "message": "ವೀಡಿಯೋ ಡೇಟಾ ಇಲ್ಲ" },
+  "card_preview_error": { "message": "ಪ್ರಿವ್ಯೂ ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಿಲ್ಲ" },
+  "card_preview_loading": { "message": "ಪ್ರಿವ್ಯೂ ರಚಿಸುತ್ತಿದೆ..." },
+  "card_btn_edit": { "message": "ಸಂಪಾದಿಸಿ" },
+  "card_btn_delete": { "message": "ಅಳಿಸಿ" },
+  "card_edit_disabled_tooltip": { "message": "ಅಪೂರ್ಣ ರೆಕಾರ್ಡಿಂಗ್ ಸಂಪಾದಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ" },
+  "card_edit_tooltip": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ಸಂಪಾದಿಸಿ" },
+  "card_preview_load_error": { "message": "ಪ್ರಿವ್ಯೂ ಡೇಟಾ ಲೋಡ್ ಮಾಡಲು ವಿಫಲ: $ERROR$" },
+  "card_date_today": { "message": "ಇಂದು $TIME$" },
+  "card_date_yesterday": { "message": "ನಿನ್ನೆ $TIME$" },
+  "card_date_days_ago": { "message": "$DAYS$ ದಿನಗಳ ಹಿಂದೆ" },
+  "export_panel_tier_free": { "message": "ಉಚಿತ" },
+  "export_panel_tier_pro": { "message": "ಪ್ರೊ" },
+  "export_panel_tier_trial": { "message": "ಪ್ರೊ ಟ್ರಯಲ್" },
+  "export_panel_btn": { "message": "ಎಕ್ಸ್‌ಪೋರ್ಟ್" },
+  "export_panel_tooltip_incomplete": { "message": "ಎಕ್ಸ್‌ಪೋರ್ಟ್ ಮಾಡಲು ರೆಕಾರ್ಡಿಂಗ್ ಪೂರ್ಣಗೊಳಿಸಿ" },
+  "export_panel_tooltip_no_data": { "message": "ಯಾವುದೇ ವೀಡಿಯೋ ಡೇಟಾ ಇಲ್ಲ" },
+  "export_panel_btn_exporting": { "message": "ಎಕ್ಸ್‌ಪೋರ್ಟ್ ಮಾಡುತ್ತಿದೆ..." },
+  "export_error_gif_failed": { "message": "GIF ಎಕ್ಸ್‌ಪೋರ್ಟ್ ವಿಫಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ." },
+  "export_error_webm_failed": { "message": "WebM ಎಕ್ಸ್‌ಪೋರ್ಟ್ ವಿಫಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ." },
+  "export_error_mp4_failed": { "message": "MP4 ಎಕ್ಸ್‌ಪೋರ್ಟ್ ವಿಫಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ." },
+  "export_error_retry_hint": { "message": "ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ ಅಥವಾ ವಿಭಿನ್ನ ಫಾರ್ಮ್ಯಾಟ್ ಬಳಸಿ." },
+  "export_error_opfs_download_failed": { "message": "ಫೈಲ್ ಡ್ರೈವ್‌ಗೆ ಉಳಿಸಲಾಯಿತು ಆದರೆ ಡೌನ್‌ಲೋಡ್ ವಿಫಲ. ನಿಮ್ಮ ಫೈಲ್ ಪಡೆಯಲು ಡ್ರೈವ್ ತೆರೆಯಿರಿ." },
+  "export_dialog_title": { "message": "ವೀಡಿಯೋ ಎಕ್ಸ್‌ಪೋರ್ಟ್" },
+  "export_source_res": { "message": "ರೆಸಲ್ಯೂಶನ್" },
+  "export_source_codec": { "message": "ಕೋಡೆಕ್" },
+  "export_source_duration": { "message": "ಅವಧಿ" },
+  "export_source_frames": { "message": "ಫ್ರೇಮ್‌ಗಳು" },
+  "export_badge_bg": { "message": "ಹಿನ್ನೆಲೆ" },
+  "export_badge_trim": { "message": "ಟ್ರಿಮ್ ಮಾಡಲಾಗಿದೆ" },
+  "export_format_mp4": { "message": "MP4" },
+  "export_format_webm": { "message": "WebM" },
+  "export_format_gif": { "message": "GIF" },
+  "export_quality_title": { "message": "ಗುಣಮಟ್ಟ ಪ್ರಿಸೆಟ್" },
+  "export_quality_draft": { "message": "ಡ್ರಾಫ್ಟ್" },
+  "export_quality_draft_desc": { "message": "ವೇಗದ ಎಕ್ಸ್‌ಪೋರ್ಟ್, ಕಡಿಮೆ ಗುಣಮಟ್ಟ" },
+  "export_quality_balanced": { "message": "ಸಮತೋಲಿತ" },
+  "export_quality_balanced_desc": { "message": "ಒಳ್ಳೆಯ ಗುಣಮಟ್ಟ, ಸಮಂಜಸವಾದ ವೇಗ" },
+  "export_quality_high": { "message": "high" },
+  "export_quality_high_desc": { "message": "ಹೆಚ್ಚಿನ ಗುಣಮಟ್ಟ, ನಿಧಾನ" },
+  "export_quality_best": { "message": "ಅತ್ಯುತ್ತಮ" },
+  "export_quality_best_desc": { "message": "ಗರಿಷ್ಟ ಗುಣಮಟ್ಟ, ಅತ್ಯಂತ ನಿಧಾನ" },
+  "export_label_resolution": { "message": "ರೆಸಲ್ಯೂಶನ್" },
+  "export_res_source": { "message": "ಮೂಲಕ್ಕೆ ಹೊಂದಿಸಿ ($WIDTH$×$HEIGHT$)" },
+  "export_label_framerate": { "message": "ಫ್ರೇಮ್ ದರ" },
+  "export_fps_source": { "message": "$FPS$ fps (ಮೂಲ)" },
+  "export_label_bitrate": { "message": "ಬಿಟ್‌ರೇಟ್" },
+  "export_bitrate_auto": { "message": "ಸ್ವಯಂಚಾಲಿತ" },
+  "export_bitrate_manual": { "message": "ಮ್ಯಾನುವಲ್" },
+  "export_bitrate_auto_hint": { "message": "ಸ್ವಯಂಚಾಲಿತ: $RATE$ Mbps (ರೆಸಲ್ಯೂಶನ್ ಮತ್ತು ಗುಣಮಟ್ಟದ ಆಧಾರದ ಮೇಲೆ)" },
+  "export_label_speed": { "message": "ಎನ್‌ಕೋಡಿಂಗ್ ವೇಗ" },
+  "export_speed_fastest": { "message": "ಅತ್ಯಂತ ವೇಗದ" },
+  "export_speed_fast": { "message": "ವೇಗವಾದ" },
+  "export_speed_balanced": { "message": "ಸಮತೋಲಿತ" },
+  "export_speed_slow": { "message": "ನಿಧಾನ" },
+  "export_speed_slowest": { "message": "ಅತ್ಯಂತ ನಿಧಾನ" },
+  "export_est_output": { "message": "ಅಂದಾಜು ಔಟ್‌ಪುಟ್" },
+  "export_est_size": { "message": "ಅಂದಾಜು ಗಾತ್ರ" },
+  "export_label_gif_quality": { "message": "ಗುಣಮಟ್ಟ" },
+  "export_gif_best": { "message": "ಅತ್ಯುತ್ತಮ (ಅತ್ಯಂತ ನಿಧಾನ)" },
+  "export_gif_high": { "message": "high" },
+  "export_gif_good": { "message": "ಒಳ್ಳೆಯ (ಡಿಫಾಲ್ಟ್)" },
+  "export_gif_fast": { "message": "ವೇಗವಾದ" },
+  "export_gif_fastest": { "message": "ಅತ್ಯಂತ ವೇಗದ" },
+  "export_label_scale": { "message": "ಸ್ಕೇಲ್" },
+  "export_scale_original": { "message": "100% (ಮೂಲ)" },
+  "export_label_workers": { "message": "ವರ್ಕರ್‌ಗಳು" },
+  "export_worker_singular": { "message": "$COUNT$ ವರ್ಕರ್" },
+  "export_worker_plural": { "message": "$COUNT$ ವರ್ಕರ್‌ಗಳು" },
+  "export_label_dither": { "message": "ಡಿಥರಿಂಗ್" },
+  "export_dither_none": { "message": "ಯಾವುದೂ ಇಲ್ಲ" },
+  "export_btn_cancel": { "message": "ರದ್ದುಮಾಡಿ" },
+  "export_btn_export_mp4": { "message": "MP4 ಎಕ್ಸ್‌ಪೋರ್ಟ್" },
+  "export_btn_export_webm": { "message": "WebM ಎಕ್ಸ್‌ಪೋರ್ಟ್" },
+  "export_btn_export_gif": { "message": "GIF ಎಕ್ಸ್‌ಪೋರ್ಟ್" },
+  "export_progress_preparing": { "message": "ತಯಾರಾಗುತ್ತಿದೆ..." },
+  "export_progress_encoding": { "message": "ಫ್ರೇಮ್‌ಗಳನ್ನು ಎನ್‌ಕೋಡ್ ಮಾಡುತ್ತಿದೆ..." },
+  "export_progress_muxing": { "message": "ಮಕ್ಸಿಂಗ್..." },
+  "export_progress_finalizing": { "message": "ಫೈನಲೈಜಿಂಗ್..." },
+  "export_progress_frame": { "message": "ಫ್ರೇಮ್ $CURRENT$ / $TOTAL$" },
+  "export_progress_time": { "message": "~$SECONDS$s ಉಳಿದಿದೆ" },
+  "export_progress_hint": { "message": "ನಿಮ್ಮ ವೀಡಿಯೋ ಎಕ್ಸ್‌ಪೋರ್ಟ್ ಆಗುತ್ತಿರುವಾಗ ದಯವಿಟ್ಟು ನಿರೀಕ್ಷಿಸಿ..." },
+  "wallpaper_cat_abstract_name": { "message": "ಅಮೂರ್ತ ಕಲೆ" },
+  "wallpaper_cat_abstract_desc": { "message": "ಅಮೂರ್ತ ಮಾದರಿಗಳು, ಕಲಾತ್ಮಕ ಸೃಷ್ಟಿಗಳು ಮತ್ತು ಆಧುನಿಕ ವಿನ್ಯಾಸಗಳು" },
+  "wallpaper_cat_minimal_name": { "message": "ಮಿನಿಮಲ್ ಶೈಲಿ" },
+  "wallpaper_cat_minimal_desc": { "message": "ಸ್ವಚ್ಛವಾದ ಜ್ಯಾಮಿತಿ, ಮಿನಿಮಲಿಸ್ಟ್ ವಿನ್ಯಾಸ ಮತ್ತು ಶುದ್ಧ ಸೌಂದರ್ಯ" },
+  "wallpaper_cat_nature_name": { "message": "ಪ್ರಕೃತಿ ದೃಶ್ಯ" },
+  "wallpaper_cat_nature_desc": { "message": "ನೈಸರ್ಗಿಕ ಭೂದೃಶ್ಯಗಳು, ಸಸ್ಯ ಟೆಕ್ಸ್‌ಚರ್‌ಗಳು ಮತ್ತು ಜೈವಿಕ ರೂಪಗಳು" },
+  "wallpaper_cat_business_name": { "message": "ವ್ಯಾಪಾರ ವೃತ್ತಿಪರ" },
+  "wallpaper_cat_business_desc": { "message": "ವ್ಯಾಪಾರ ದೃಶ್ಯಗಳು, ವೃತ್ತಿಪರ ವಾತಾವರಣ ಮತ್ತು ಕಾರ್ಪೊರೇಟ್ ಶೈಲಿ" },
+  "wallpaper_cat_tech_name": { "message": "ತಂತ್ರಜ್ಞಾನ ಭವಿಷ್ಯ" },
+  "wallpaper_cat_tech_desc": { "message": "ತಂತ್ರಜ್ಞಾನ ಅಂಶಗಳು, ಭವಿಷ್ಯತ್ಮಕ ಭಾವನೆ ಮತ್ತು ಡಿಜಿಟಲ್ ಕಲೆ" },
+  "wallpaper_gradient_abstract_1_name": { "message": "ಅಮೂರ್ತ ಗ್ರೇಡಿಯೆಂಟ್" },
+  "wallpaper_gradient_abstract_1_desc": { "message": "ಆಧುನಿಕ ಅಮೂರ್ತ ಗ್ರೇಡಿಯೆಂಟ್ ಹಿನ್ನೆಲೆ, ತಂತ್ರಜ್ಞಾನ ಮತ್ತು ಸೃಜನಾತ್ಮಕ ವಿಷಯಕ್ಕೆ ಸೂಕ್ತವಾದ" },
+  "wallpaper_geometric_pattern_1_name": { "message": "ಜ್ಯಾಮಿತಿ ಮಾದರಿ" },
+  "wallpaper_geometric_pattern_1_desc": { "message": "ಸ್ವಚ್ಛವಾದ ಜ್ಯಾಮಿತಿ ಮಾದರಿ ಹಿನ್ನೆಲೆ, ವ್ಯಾಪಾರ ಮತ್ತು ವೃತ್ತಿಪರ ವಿಷಯಕ್ಕೆ ಸೂಕ್ತವಾದ" },
+  "wallpaper_abstract_2425706_name": { "message": "ಅಮೂರ್ತ ಬಣ್ಣಗಳು" },
+  "wallpaper_abstract_2425706_desc": { "message": "ಬಲವಾದ ದೃಶ್ಯ ಪ್ರಭಾವದೊಂದಿಗೆ ಪ್ರಾಣವತ್ತಾದ ಅಮೂರ್ತ ಬಣ್ಣ ಟೆಕ್ಸ್‌ಚರ್" },
+  "wallpaper_abstract_2512412_name": { "message": "ಅಮೂರ್ತ ಬಣ್ಣಗಳು" },
+  "wallpaper_abstract_2512412_desc": { "message": "ಹರಿಯುವ ಅಮೂರ್ತ ಬಣ್ಣ ಹಿನ್ನೆಲೆ, ಸೃಜನಾತ್ಮಕ ವಿಷಯಕ್ಕೆ ಪರಿಪೂರ್ಣವಾದ" },
+  "wallpaper_abstract_6297317_name": { "message": "ಅಮೂರ್ತ ರೂಪಗಳು" },
+  "wallpaper_abstract_6297317_desc": { "message": "ಬಣ್ಣ ಬ್ಲಾಕ್ ಸಂಯೋಜನೆಯೊಂದಿಗೆ ಅಮೂರ್ತ ಜ್ಯಾಮಿತಿ ರೂಪಗಳು" },
+  "wallpaper_ai_generated_9083808_name": { "message": "AI ರಚಿಸಿದ ಕಲೆ" },
+  "wallpaper_ai_generated_9083808_desc": { "message": "AI-ರಚಿಸಿದ ಭವಿಷ್ಯತ್ಮಕ ಕಲೆ ಹಿನ್ನೆಲೆ" },
+  "wallpaper_beach_4938036_name": { "message": "ಕಡಲ ತೀರ" },
+  "wallpaper_beach_4938036_desc": { "message": "ಮರಳು ಮತ್ತು ಅಲೆಗಳೊಂದಿಗೆ ನೈಸರ್ಗಿಕ ಕಡಲ ತೀರ ದೃಶ್ಯ, ತಾಜಾ ಮತ್ತು ಆರಾಮದಾಯಕ" },
+  "wallpaper_bulb_5665770_name": { "message": "ಸೃಜನಾತ್ಮಕ ಬಲ್ಬ್" },
+  "wallpaper_bulb_5665770_desc": { "message": "ಸೃಜನಶೀಲತೆ ಮತ್ತು ಸ್ಫೂರ್ತಿಯನ್ನು ಪ್ರತೀಕಿಸುವ ಬಲ್ಬ್ ಥೀಮ್" },
+  "wallpaper_cpu_8892400_name": { "message": "CPU ಸರ್ಕಿಟ್" },
+  "wallpaper_cpu_8892400_desc": { "message": "ಹೆಚ್ಚಿನ-ತಂತ್ರಜ್ಞಾನ ಆಕರ್ಷಣೆಯೊಂದಿಗೆ CPU ಚಿಪ್ ಮತ್ತು ಸರ್ಕಿಟ್ ಬೋರ್ಡ್" },
+  "wallpaper_feather_5488401_name": { "message": "ಹೊರಗಿನ ಪುಕ್ಕ" },
+  "wallpaper_feather_5488401_desc": { "message": "ಸಮೃದ್ಧ ವಿವರಗಳೊಂದಿಗೆ ಮೃದುವಾದ ಪುಕ್ಕ ಟೆಕ್ಸ್‌ಚರ್" },
+  "wallpaper_fractal_8902060_name": { "message": "ಫ್ರ್ಯಾಕ್ಟಲ್ ಕಲೆ" },
+  "wallpaper_fractal_8902060_desc": { "message": "ಅಮೂರ್ತ ಕಲಾ ಶೈಲಿಯಲ್ಲಿ ಪ್ರಕಾಶಮಾನವಾದ ಫ್ರ್ಯಾಕ್ಟಲ್ ಮಾದರಿಗಳು" },
+  "wallpaper_orange_3036097_name": { "message": "ಕಿತ್ತಳೆ ತುಂಡು" },
+  "wallpaper_orange_3036097_desc": { "message": "ಪ್ರಕಾಶಮಾನವಾದ ಬಣ್ಣಗಳೊಂದಿಗೆ ಪ್ರಾಣವತ್ತಾದ ಕಿತ್ತಳೆ ತುಂಡುಗಳು" },
+  "wallpaper_orange_6508617_name": { "message": "ಕಿತ್ತಳೆ ಹಿನ್ನೆಲೆ" },
+  "wallpaper_orange_6508617_desc": { "message": "ಶಕ್ತಿಯಿಂದ ತುಂಬಿದ ಪ್ರಕಾಶಮಾನವಾದ ಕಿತ್ತಳೆ ಥೀಮ್ಡ್ ಹಿನ್ನೆಲೆ" },
+  "wallpaper_polar_lights_5858656_name": { "message": "ಅರೋರಾ" },
+  "wallpaper_polar_lights_5858656_desc": { "message": "ಉತ್ತರ ಬೆಳಕಿನ ರಾತ್ರಿ ಆಕಾಶ, ಕನಸಿನಂತಹ ನೈಸರ್ಗಿಕ ವಿದ್ಯಮಾನ" },
+  "wallpaper_spiral_3112405_name": { "message": "ಸುರುಳಿ ಮಾದರಿ" },
+  "wallpaper_spiral_3112405_desc": { "message": "ಚಲನಾತ್ಮಕ ಪದರಗಳೊಂದಿಗೆ ಅಮೂರ್ತ ಸುರುಳಿ ಟೆಕ್ಸ್‌ಚರ್" },
+  "wallpaper_steelwool_458842_name": { "message": "ಸ್ಟೀಲ್‌ವೂಲ್ ಬೆಳಕು ಚಿತ್ರ" },
+  "wallpaper_steelwool_458842_desc": { "message": " long ಎಕ್ಸ್‌ಪೋಸರ್ ಬೆಳಕು ಚಿತ್ರ ಪರಿಣಾಮ, ಅಮೂರ್ತ ಮತ್ತು ಚಲನಾತ್ಮಕ" },
+  "wallpaper_swimming_pool_8306716_name": { "message": "ಬೌಲ್ ಅಲೆಗಳು" },
+  "wallpaper_swimming_pool_8306716_desc": { "message": "ತಂಪಾದ ಬೇಸಿಗೆ ವಾತಾವರಣದೊಂದಿಗೆ ಈಜು ಬೌಲಿನ ನೀರಿನ ಅಲೆಗಳು" },
+  "wallpaper_abstract_2426502_name": { "message": "ಅಮೂರ್ತ ಬಣ್ಣಗಳು" },
+  "wallpaper_abstract_2426502_desc": { "message": "ಅಮೂರ್ತ ಬಣ್ಣಗಳು ಮತ್ತು ಆಕಾರಗಳೊಂದಿಗೆ ಆಧುನಿಕ ವಿನ್ಯಾಸ" },
+  "wallpaper_camera_1248682_name": { "message": "ಕ್ಯಾಮರಾ ಹತ್ತಿರದ ನೋಟ" },
+  "wallpaper_camera_1248682_desc": { "message": "ಟೆಕ್ಸ್‌ಚರ್ಡ್ ತಂತ್ರಜ್ಞಾನ ಶೈಲಿಯೊಂದಿಗೆ ಕ್ಯಾಮರಾ ಮತ್ತು ಲೆನ್ಸ್ ಹತ್ತಿರದ ನೋಟ" },
+  "wallpaper_circle_5090539_name": { "message": "ವರ್ತುಲ ಜ್ಯಾಮಿತಿ" },
+  "wallpaper_circle_5090539_desc": { "message": "ಸ್ವಚ್ಛವಾದ ವರ್ತುಲ ಜ್ಯಾಮಿತಿ ಮಾದರಿ, ದೃಶ್ಯವಾಗಿ ಏಕೀಕೃತ ಲೇಔಟ್‌ಗೆ ಸೂಕ್ತವಾದ" },
+  "wallpaper_feather_7009025_name": { "message": "ಪುಕ್ಕ ಟೆಕ್ಸ್‌ಚರ್" },
+  "wallpaper_feather_7009025_desc": { "message": "ಸೂಕ್ಷ್ಮವಾದ ನೈಸರ್ಗಿಕ ಮಾದರಿಗಳೊಂದಿಗೆ ಮೃದುವಾದ ಪುಕ್ಕ ಟೆಕ್ಸ್‌ಚರ್" },
+  "wallpaper_fiber_4814456_name": { "message": "ಫೈಬರ್ ಸಾಲುಗಳು" },
+  "wallpaper_fiber_4814456_desc": { "message": "ಫೈಬರ್ ಆಪ್ಟಿಕ್ಸ್ ಮತ್ತು ಸಾಲುಗಳೊಂದಿಗೆ ಅಮೂರ್ತ ತಂತ್ರಜ್ಞಾನ ಭಾವನೆ" },
+  "wallpaper_frost_6702335_name": { "message": "ಚಳಿ ಟೆಕ್ಸ್‌ಚರ್" },
+  "wallpaper_frost_6702335_desc": { "message": "ತಂಪಾದ ಟೆಕ್ಸ್‌ಚರ್ಡ್ ಚಳಿ ಮಾದರಿ ಹಿನ್ನೆಲೆ" },
+  "wallpaper_leaves_4291098_name": { "message": "ಹಸಿರು ಎಲೆಗಳು" },
+  "wallpaper_leaves_4291098_desc": { "message": "ಹಸಿರು ಎಲೆಗಳ ನೈಸರ್ಗಿಕ ಟೆಕ್ಸ್‌ಚರ್, ತಾಜಾ ಮತ್ತು ಗುಣಪಡಿಸುವ" },
+  "wallpaper_light_1834289_name": { "message": "ಬೆಳಕು ಬೋಕೆ" },
+  "wallpaper_light_1834289_desc": { "message": "ಬೆಳಕು ಮತ್ತು ನೆರಳು ಬೋಕೆ ಪರಿಣಾಮ, ವಾತಾವರಣದ ಅಮೂರ್ತ ಹಿನ್ನೆಲೆ" },
+  "wallpaper_light_942231_name": { "message": "ಬೆಳಕಿನ ಸಾಲುಗಳು" },
+  "wallpaper_light_942231_desc": { "message": "ಹರಿಯುವ ಬೆಳಕಿನ ಸಾಲುಗಳು, ಚಲನಾತ್ಮಕ ಅಮೂರ್ತ ಹಿನ್ನೆಲೆ" },
+  "wallpaper_luck_4397584_name": { "message": "ನಾಲ್ಕು-ಎಲೆ ಕ್ಲೋವರ್" },
+  "wallpaper_luck_4397584_desc": { "message": "ತಾಜಾ ನೈಸರ್ಗಿಕ ಹಸಿರು ಛಾಯೆಗಳೊಂದಿಗೆ ಅದೃಷ್ಟವಾದ ನಾಲ್ಕು-ಎಲೆ ಕ್ಲೋವರ್" },
+  "wallpaper_waterdrop_2256201_name": { "message": "ನೀರಿನ ಹನಿ ಹತ್ತಿರದ ನೋಟ" },
+  "wallpaper_waterdrop_2256201_desc": { "message": "ನೀರಿನ ಹನಿ ಮತ್ತು ಮೇಲ್ಮೈ ಬಿಗಿತ ಮ್ಯಾಕ್ರೋ ಟೆಕ್ಸ್‌ಚರ್" },
+  "welcome_pageTitle": { "message": "Screen Recorder Studio ಗೆ ಸ್ವಾಗತ" },
+  "welcome_headerSubtitle": { "message": "ವೃತ್ತಿಪರ ಬ್ರೌಸರ್ ರೆಕಾರ್ಡಿಂಗ್ ಸಾಧನ" },
+  "welcome_installSuccess": { "message": "ಸ್ಥಾಪನೆ ಯಶಸ್ವಿಯಾಗಿದೆ" },
+  "welcome_headline": { "message": "ರೆಕಾರ್ಡ್, ಸಂಪಾದಿಸಿ ಮತ್ತು ಸೆಕೆಂಡುಗಳಲ್ಲಿ ಎಕ್ಸ್‌ಪೋರ್ಟ್ ಮಾಡಿ. 🎉" },
+  "welcome_subheadline": { "message": "ಗಂಟೆಗಳ ಫೂಟೇಜ್ ಅನ್ನು ಮೃದುವಾಗಿ ಕ್ಯಾಪ್ಚರ್ ಮಾಡಿ, ನಂತರ ಸಂಪಾದಿಸಿ ಮತ್ತು ಹೈ-ಕ್ವಾಲಿಟಿ ವೀಡಿಯೋಗಳಾಗಿ ಅಥವಾ GIF ಆಗಿ ಎಕ್ಸ್‌ಪೋರ್ಟ್ ಮಾಡಿ—ಎಲ್ಲವೂ ನಿಮ್ಮ ಬ್ರೌಸರ್‌ನಲ್ಲಿ ಸುರಕ್ಷಿತವಾಗಿ ಪ್ರಕ್ರಿಯೆಗೊಳ್ಳುತ್ತದೆ." },
+  "welcome_tryTitle": { "message": "ನಿಮ್ಮ ಮೊದಲ ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಾರಂಭಿಸಿ 🚀" },
+  "welcome_trySubtitle": { "message": "ಏನನ್ನು ಕ್ಯಾಪ್ಚರ್ ಮಾಡಬೇಕು ಎಂದು ಆಯ್ಕೆಮಾಡಿ ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಾರಂಭಿಸಿ—ನೀವು ನಿಲ್ಲಿಸಿದಾಗ ಸ್ಟುಡಿಯೋ ತೆರೆಯುತ್ತದೆ." },
+  "welcome_modeTabDetail": { "message": "ವೆಬ್ ಡೆಮೋಗಳು ಮತ್ತು ಟ್ಯುಟೋರಿಯಲ್‌ಗಳಿಗೆ ಸೂಕ್ತವಾದ" },
+  "welcome_modeWindowDetail": { "message": "ವಿಳಾಸ ಬಾರ್ ಮತ್ತು ಟೂಲ್‌ಬಾರ್ ಸೇರಿದೆ" },
+  "welcome_modeScreenDetail": { "message": "ಕ್ರಾಸ್-ಅಪ್ಲಿಕೇಶನ್ ವರ್ಕ್‌ಫ್ಲೋಗಳಿಗೆ ಅತ್ಯುತ್ತಮ" },
+  "welcome_statusRecording": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ನಡೆಯುತ್ತಿದೆ" },
+  "welcome_modeLabel": { "message": "ಮೋಡ್" },
+  "welcome_proTrialActive": { "message": "ಪ್ರೊ ಟ್ರಯಲ್ ಸಕ್ರಿಯ" },
+  "welcome_feat1Title": { "message": "ಖಾಸಗಿ ಮತ್ತು ಲೋಕಲ್" },
+  "welcome_feat2Title": { "message": "ವಾಟರ್‌ಮಾರ್ಕ್ ಇಲ್ಲ" },
+  "welcome_feat3Title": { "message": "ತ್ವರಿತ ಸಂಪಾದನೆ" },
+  "welcome_feat4Title": { "message": "ವೀಡಿಯೋ ಮತ್ತು GIF ಎಕ್ಸ್‌ಪೋರ್ಟ್" },
+  "welcome_howTitle": { "message": "ನಿಮ್ಮ ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಯಾಣ" },
+  "welcome_howDesc": { "message": "ಕ್ಯಾಪ್ಚರ್‌ನಿಂದ ಎಕ್ಸ್‌ಪೋರ್ಟ್‌ವರೆಗೆ, ಎಲ್ಲವೂ ನಿಮ್ಮ ಬ್ರೌಸರ್‌ನಲ್ಲಿ ಸುರಕ್ಷಿತವಾಗಿ ನಡೆಯುತ್ತದೆ." },
+  "welcome_step1Title": { "message": "ವಿಸ್ತರಣೆಯನ್ನು ಪಿನ್ ಮಾಡಿ" },
+  "welcome_step1Desc": { "message": "ನಿಮ್ಮ ಬ್ರೌಸರ್ ಟೂಲ್‌ಬಾರ್‌ನಲ್ಲಿ ಪಜಲ್ ಐಕಾನ್ 🧩 ಕ್ಲಿಕ್ ಮಾಡಿ ಮತ್ತು ತ್ವರಿತ ಪ್ರವೇಶಕ್ಕಾಗಿ ಈ ವಿಸ್ತರಣೆಯನ್ನು ಪಿನ್ ಮಾಡಿ" },
+  "welcome_step2Title": { "message": "ನಿಮ್ಮ ಗುರಿಯನ್ನು ಆಯ್ಕೆಮಾಡಿ" },
+  "welcome_step2Desc": { "message": "ಏನನ್ನು ರೆಕಾರ್ಡ್ ಮಾಡಬೇಕು ಎಂದು ಆಯ್ಕೆಮಾಡಿ: ಪ್ರಸಕ್ತ ಟ್ಯಾಬ್, ಸಂಪೂರ್ಣ ವಿಂಡೋ, ಅಥವಾ ಪೂರ್ಣ ಸ್ಕ್ರೀನ್—ನಿಮ್ಮ ಅಗತ್ಯಗಳಿಗೆ ಯಾವುದು ಸೂಕ್ತವೋ ಅದು" },
+  "welcome_step3Title": { "message": "ತ್ವರಿತ ಸಂಪಾದನೆ" },
+  "welcome_step3Desc": { "message": "\"$BTN$\" ಕ್ಲಿಕ್ ಮಾಡಿ ಮತ್ತು ಸಿದ್ಧರಾಗಿ - $SECONDS$ ಸೆಕೆಂಡ್‌ಗಳ ಕೌಂಟ್‌ಡೌನ್ ನಿಮಗೆ ಸಿದ್ಧಪಡಲು ಸಮಯ ಕೊಡುತ್ತದೆ!" },
+  "welcome_trustNoWatermark": { "message": "ಯಾವುದೇ ವಾಟರ್‌ಮಾರ್ಕ್ ಇಲ್ಲ" },
+  "welcome_trustHD": { "message": "HD ಗುಣಮಟ್ಟ" },
+  "welcome_trustLocal": { "message": "ಖಾಸಗಿ ಮತ್ತು ಲೋಕಲ್" },
+  "welcome_trustQuickEditing": { "message": "ತ್ವರಿತ ಸಂಪಾದನೆ" },
+  "welcome_footerHelp": { "message": "ಹೆಚ್ಚಿನ ನಿಯಂತ್ರಣ ಬೇಕಾ? ವಿಸ್ತರಣೆ ಐಕಾನ್ ಕ್ಲಿಕ್ ಮಾಡಿ ಸುಧಾರಿತ ರೆಕಾರ್ಡಿಂಗ್ ಮತ್ತು ಎಕ್ಸ್‌ಪೋರ್ಟ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಪ್ರವೇಶಿಸಿ." },
+  "welcome_footerMeta": { "message": "Screen Recorder Studio • ವೃತ್ತಿಪರರಿಗಾಗಿ ಮಾಡಲಾಗಿದೆ" },
+  "annotation_tool_cursor": { "message": "ಕರ್ಸರ್ (ಸಂವಹನ)" },
+  "annotation_tool_effect": { "message": "ಕರ್ಸರ್ ಪರಿಣಾಮ" },
+  "annotation_tool_arrow": { "message": "ಬಾಣ" },
+  "annotation_tool_rectangle": { "message": "ಆಯತ" },
+  "annotation_tool_circle": { "message": "ವೃತ್ತ" },
+  "annotation_tool_freehand": { "message": "ಪೆನ್" },
+  "annotation_tool_text": { "message": "ಪಠ್ಯ" },
+  "annotation_tool_highlight": { "message": "ಹೈಲাঈಟ್" },
+  "annotation_tool_blur": { "message": "ಮಸಕಾದ" },
+  "annotation_tool_undo": { "message": "ರದ್ದುಮಾಡಿ" },
+  "annotation_tool_clear": { "message": "ಎಲ್ಲಾ ತೆರವುಗೊಳಿಸಿ" },
+  "annotation_tool_close": { "message": "ಮುಚ್ಚಿ" },
+  "webRecord_pageTitle": { "message": "ವೆಬ್ ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡರ್" },
+  "webRecord_headerTitle": { "message": "ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡರ್" },
+  "webRecord_openDriveTooltip": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ಫೈಲ್ ಮ್ಯಾನೇಜರ್ ತೆರೆಯಿರಿ" },
+  "webRecord_driveBtn": { "message": "ರೆಕಾರ್ಡಿಂಗ್‌ಗಳು" },
+  "webRecord_errorTitle": { "message": "ದೋಷ" },
+  "webRecord_errorInsecure": { "message": "ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡಿಂಗ್‌ಗೆ ಸುರಕ್ಷಿತ ಸಂದರ್ಭ (HTTPS) ಬೇಕಾಗುತ್ತದೆ. ದಯವಿಟ್ಟು ಈ ಪುಟವನ್ನು HTTPS ಮೂಲಕ ಪ್ರವೇಶಿಸಿ." },
+  "webRecord_errorNoDisplayMedia": { "message": "ನಿಮ್ಮ ಬ್ರೌಸರ್ ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡಿಂಗ್ ಅನ್ನು ಬೆಂಬಲಿಸುವುದಿಲ್ಲ (getDisplayMedia API)." },
+  "webRecord_errorNoWebCodecs": { "message": "ನಿಮ್ಮ ಬ್ರೌಸರ್ WebCodecs API ಅನ್ನು ಬೆಂಬಲಿಸುವುದಿಲ್ಲ. ದಯವಿಟ್ಟು Chrome 94+ ನಂತಹ ಆಧುನಿಕ ಬ್ರೌಸರ್ ಬಳಸಿ." },
+  "webRecord_errorNoTrackProcessor": { "message": "ನಿಮ್ಮ ಬ್ರೌಸರ್ MediaStreamTrackProcessor ಅನ್ನು ಬೆಂಬಲಿಸುವುದಿಲ್ಲ. ದಯವಿಟ್ಟು Chrome 94+ ಬಳಸಿ." },
+  "webRecord_errorNoOPFS": { "message": "ನಿಮ್ಮ ಬ್ರೌಸರ್ OPFS ಸಂಗ್ರಹಣೆಯನ್ನು ಬೆಂಬಲಿಸುವುದಿಲ್ಲ." },
+  "webRecord_errorGeneric": { "message": "ದೋಷ ಸಂಭವಿಸಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ." },
+  "webRecord_errorNoVideoTrack": { "message": "ಸ್ಕ್ರೀನ್ ಕ್ಯಾಪ್ಚರ್‌ನಿಂದ ಯಾವುದೇ ವೀಡಿಯೋ ಟ್ರ್ಯಾಕ್ ಲಭ್ಯವಿಲ್ಲ." },
+  "webRecord_errorPermissionDenied": { "message": "ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡಿಂಗ್ ಅನುಮತಿ ನಿರಾಕರಿಸಲಾಗಿದೆ. ರೆಕಾರ್ಡ್ ಮಾಡಲು ಸ್ಕ್ರೀನ್ ಹಂಚಿಕೆಗೆ ಅನುಮತಿ ನೀಡಿ." },
+  "webRecord_errorEncoding": { "message": "ವೀಡಿಯೋ ಎನ್‌ಕೋಡಿಂಗ್ ದೋಷ ಸಂಭವಿಸಿದೆ." },
+  "webRecord_statusRecording": { "message": "ರೆಕಾರ್ಡಿಂಗ್" },
+  "webRecord_statusPreparing": { "message": "ತಯಾರಾಗುತ್ತಿದೆ..." },
+  "webRecord_statusStopping": { "message": "ನಿಲ್ಲಿಸುತ್ತಿದೆ..." },
+  "webRecord_statusIdle": { "message": "ರೆಕಾರ್ಡ್ ಮಾಡಲು ಸಿದ್ಧ" },
+  "webRecord_btnStart": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಾರಂಭಿಸಿ" },
+  "webRecord_btnStop": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ನಿಲ್ಲಿಸಿ" },
+  "webRecord_btnPreparing": { "message": "ತಯಾರಾಗುತ್ತಿದೆ..." },
+  "webRecord_btnStopping": { "message": "ನಿಲ್ಲಿಸುತ್ತಿದೆ..." },
+  "webRecord_tipsTitle": { "message": "ಸಲಹೆಗಳು:" },
+  "webRecord_tip1": { "message": "ರೆಕಾರ್ಡ್ ಮಾಡಲು ಸ್ಕ್ರೀನ್, ವಿಂಡೋ ಅಥವಾ ಟ್ಯಾಬ್ ಆಯ್ಕೆಮಾಡಲು ಪ್ರಾರಂಭಿಸಿ ಕ್ಲಿಕ್ ಮಾಡಿ." },
+  "webRecord_tip2": { "message": "ರೆಕಾರ್ಡಿಂಗ್‌ಗಳು ನಿಮ್ಮ ಬ್ರೌಸರ್ ಸಂಗ್ರಹಣೆಯಲ್ಲಿ ಸ್ಥಳೀಯವಾಗಿ ಉಳಿಸಲಾಗುತ್ತದೆ." },
+  "webRecord_tip3": { "message": "ನಿಮ್ಮ ರೆಕಾರ್ಡಿಂಗ್‌ಗಳನ್ನು ವೀಕ್ಷಿಸಲು, ಸಂಪಾದಿಸಲು ಮತ್ತು ಎಕ್ಸ್‌ಪೋರ್ಟ್ ಮಾಡಲು ರೆಕಾರ್ಡಿಂಗ್‌ಗಳ ಕ್ಲಿಕ್ ಮಾಡಿ." },
+  "drive_drawerDelete": { "message": "ಅಳಿಸಿ" },
+  "drive_drawerEmpty": { "message": "ಇನ್ನೂ ರೆಕಾರ್ಡಿಂಗ್‌ಗಳಿಲ್ಲ" },
+  "drive_drawerJustNow": { "message": "ಈಗ" },
+  "drive_drawerOpenFull": { "message": "ಪೂರ್ಣ ಡ್ರೈವ್ ತೆರೆಯಿರಿ" },
+  "drive_drawerTitle": { "message": "ಇತ್ತೀಚಿನ ರೆಕಾರ್ಡಿಂಗ್‌ಗಳು" },
+  "launcher_drive": { "message": "ಡ್ರೈವ್" },
+  "launcher_driveDesc": { "message": "ರೆಕಾರ್ಡಿಂಗ್‌ಗಳನ್ನು ವೀಕ್ಷಿಸಿ ಮತ್ತು ನಿರ್ವಹಿಸಿ" },
+  "launcher_pageTitle": { "message": "Screen Recorder Studio" },
+  "launcher_record": { "message": "ರೆಕಾರ್ಡ್" },
+  "launcher_recordDesc": { "message": "ಹೊಸ ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಾರಂಭಿಸಿ" },
+  "launcher_studio": { "message": "ಸ್ಟುಡಿಯೋ" },
+  "launcher_studioDesc": { "message": "ನಿಮ್ಮ ಇತ್ತೀಚಿನ ರೆಕಾರ್ಡಿಂಗ್ ಸಂಪಾದಿಸಿ" },
+  "launcher_subtitle": { "message": "ರೆಕಾರ್ಡ್, ನಿರ್ವಹಿಸಿ ಮತ್ತು ಎಕ್ಸ್‌ಪೋರ್ಟ್" },
+  "launcher_title": { "message": "Screen Recorder Studio" },
+  "studio_emptyDesc": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ನಂತರ, ನಿಮ್ಮ ವೀಡಿಯೋ ಇಲ್ಲಿ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಕಾಣಿಸುತ್ತದೆ. ನೀವು ಸ್ಟುಡಿಯೋದಲ್ಲಿ ಪ್ರಿವ್ಯೂ, ಟ್ರಿಮ್, ಸ್ಟೈಲ್ ಮತ್ತು ಎಕ್ಸ್‌ಪೋರ್ಟ್ ಮಾಡಬಹುದು." },
+  "studio_emptyFeatureExport": { "message": "ಎಕ್ಸ್‌ಪೋರ್ಟ್" },
+  "studio_emptyFeaturePreview": { "message": "ಪ್ರಿವ್ಯೂ" },
+  "studio_emptyFeatureTrim": { "message": "ಟ್ರಿಮ್ ಮತ್ತು ಸ್ಟೈಲ್" },
+  "studio_emptyOpenDrive": { "message": "ಡ್ರೈವ್ ತೆರೆಯಿರಿ" },
+  "studio_emptyReasonInvalid": { "message": "ಇತ್ತೀಚಿನ ರೆಕಾರ್ಡಿಂಗ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ." },
+  "studio_emptyReasonLoadFailed": { "message": "ನಿರ್ದಿಷ್ಟ ರೆಕಾರ್ಡಿಂಗ್ ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ." },
+  "studio_emptyReasonOpfs": { "message": "ಈ ಬ್ರೌಸರ್‌ನಲ್ಲಿ ಸಂಗ್ರಹಣೆ ಲಭ್ಯವಿಲ್ಲ." },
+  "studio_emptyStartRecording": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ಪ್ರಾರಂಭಿಸಿ" },
+  "studio_emptyTitle": { "message": "ಇನ್ನೂ ಸಂಪಾದಿಸಲು ಯಾವುದೇ ವೀಡಿಯೋ ಇಲ್ಲ" },
+  "studio_loading": { "message": "ಲೋಡ್ ಆಗುತ್ತಿದೆ..." },
+  "studio_recentRecordings": { "message": "ರೆಕಾರ್ಡಿಂಗ್‌ಗಳು" }
 }
