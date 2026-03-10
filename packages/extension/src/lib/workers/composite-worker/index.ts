@@ -1105,7 +1105,12 @@ function startStreamingDecode(chunks: any[]) {
                 if (bitmap) {
                   self.postMessage({
                     type: 'frame',
-                    data: { bitmap, frameIndex: pendingSeekIndex, timestamp: f.timestamp }
+                    data: {
+                      bitmap,
+                      frameIndex: pendingSeekIndex,
+                      timestamp: f.timestamp,
+                      windowStartFrameIndex
+                    }
                   }, { transfer: [bitmap] });
                   currentFrameIndex = pendingSeekIndex;
                 } else {
@@ -1339,7 +1344,8 @@ function startPlayback() {
             data: {
               bitmap,
               frameIndex: currentFrameIndex,
-              timestamp: frame.timestamp
+              timestamp: frame.timestamp,
+              windowStartFrameIndex
             }
           }, { transfer: [bitmap] }); // 转移 ImageBitmap 所有权
         }
@@ -1540,7 +1546,8 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
             data: {
               totalFrames: windowBoundaryFrames,
               outputSize: { width: outputWidth, height: outputHeight },
-              videoLayout: fixedVideoLayout
+              videoLayout: fixedVideoLayout,
+              windowStartFrameIndex
             }
           });
           break;
@@ -1577,7 +1584,8 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
           data: {
             totalFrames: data.chunks.length,
             outputSize: { width: outputWidth, height: outputHeight },
-            videoLayout: fixedVideoLayout
+            videoLayout: fixedVideoLayout,
+            windowStartFrameIndex
           }
         });
         break;
@@ -1625,7 +1633,12 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
               if (bitmap) {
                 self.postMessage({
                   type: 'frame',
-                  data: { bitmap, frameIndex: currentFrameIndex, timestamp: frame.timestamp }
+                  data: {
+                    bitmap,
+                    frameIndex: currentFrameIndex,
+                    timestamp: frame.timestamp,
+                    windowStartFrameIndex
+                  }
                 }, { transfer: [bitmap] });
               } else {
                 console.error('❌ [COMPOSITE-WORKER] renderCompositeFrame returned null');
@@ -1650,7 +1663,12 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
               if (bitmap) {
                 self.postMessage({
                   type: 'frame',
-                  data: { bitmap, frameIndex: last, timestamp: frame.timestamp }
+                  data: {
+                    bitmap,
+                    frameIndex: last,
+                    timestamp: frame.timestamp,
+                    windowStartFrameIndex
+                  }
                 }, { transfer: [bitmap] });
               }
             }
@@ -1805,7 +1823,8 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
                 data: {
                   bitmap,
                   frameIndex: currentFrameIndex,
-                  timestamp: frame.timestamp
+                  timestamp: frame.timestamp,
+                  windowStartFrameIndex
                 }
               }, { transfer: [bitmap] });
             } else {

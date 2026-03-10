@@ -428,10 +428,8 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
 
 
       // 一次性读取整个窗口的数据
-      const batchReadStart = performance.now()
       const totalSlice = file.slice(startOffset, endOffset)
       const totalBuf = await totalSlice.arrayBuffer()
-      const batchReadTime = performance.now() - batchReadStart
 
 
       // 切分为单个 chunks
@@ -452,8 +450,6 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
         chunks.push(wire)
         transfer.push(buf)
       }
-
-
       ;(self as any).postMessage({ type: 'range', start, count: end - start, chunks }, transfer)
       return
     }

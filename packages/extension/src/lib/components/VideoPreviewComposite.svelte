@@ -78,11 +78,9 @@
   // Latest worker reported buffer level status
   let lastBufferLevel: 'healthy' | 'low' | 'critical' | null = null
 
-  // Observation: prefetch hit statistics and window switching time
   let prefetchHits = 0
   let prefetchMisses = 0
-  let cutoverTimerLabel: string | null = null
-  let cutoverPlannedNext: number | null = null
+  let cutoverDisplayGateTargetGlobalFrame: number | null = null
 
 
 
@@ -309,11 +307,6 @@
           canvas.height = outputHeight
 
           isProcessing = false
-          // Observation: cutover time endpoint
-          if (cutoverTimerLabel) {
-            try { console.timeEnd(cutoverTimerLabel) } catch {}
-            cutoverTimerLabel = null
-          }
 
           // 🔧 检查是否在预览模式
           if (isPreviewMode && previewTimeMs > 0) {
@@ -368,8 +361,10 @@
           if (shouldContinuePlayback) {
             const targetWindowFrame = continueFromGlobalFrame - windowStartIndex
             const startFrame = Math.max(0, Math.min(targetWindowFrame, data.totalFrames - 1))
+            const resumeGlobalFrame = windowStartIndex + startFrame
 
             shouldContinuePlayback = false
+            cutoverDisplayGateTargetGlobalFrame = resumeGlobalFrame
 
             lastFrameWindowStartIndex = windowStartIndex
             currentFrameIndex = startFrame
@@ -407,6 +402,24 @@
 
           // 🔧 关键修复：只在非裁剪模式下显示帧
           if (!isCropMode) {
+            const frameWindowStartIndex = data.windowStartFrameIndex ?? windowStartIndex
+            const displayedGlobalFrame = frameWindowStartIndex + data.frameIndex
+            const shouldSuppressForCutover = cutoverDisplayGateTargetGlobalFrame != null
+              && displayedGlobalFrame < cutoverDisplayGateTargetGlobalFrame
+
+            if (shouldSuppressForCutover) {
+              try {
+                data.bitmap.close()
+              } catch (e) {
+                console.warn('⚠️ [VideoPreview] Failed to close suppressed bitmap:', e)
+              }
+              break
+            }
+
+            if (cutoverDisplayGateTargetGlobalFrame != null) {
+              cutoverDisplayGateTargetGlobalFrame = null
+            }
+
             displayFrame(data.bitmap, data.frameIndex, data.timestamp)
             pendingPreviewWindowSwitch = false
           } else {
@@ -1167,27 +1180,6 @@
     return lastFrameWindowStartIndex + currentFrameIndex + 1
   })
 
-  // ===== Debug logging for timer and frame jumps =====
-  // Print timer under progress bar and detect frame skips
-  let lastLoggedGlobalFrame: number = -1
-  $effect(() => {
-    const globalFrame = lastFrameWindowStartIndex + currentFrameIndex
-    const totalSec = uiDurationSec
-    // Only log when frame changes to avoid excessive spam on unrelated updates
-    if (globalFrame !== lastLoggedGlobalFrame) {
-      if (lastLoggedGlobalFrame >= 0) {
-        const delta = globalFrame - lastLoggedGlobalFrame
-        if (Math.abs(delta) !== 1) {
-          console.warn(`[video-timer] frame jump ${lastLoggedGlobalFrame} -> ${globalFrame} (Δ=${delta})`)
-        }
-      }
-      lastLoggedGlobalFrame = globalFrame
-      console.log(`[video-timer] ${formatTimeSec(globalFrame / frameRate)} / ${formatTimeSec(totalSec)}`)
-    }
-  })
-
-
-
   // Update background configuration
   async function updateBackgroundConfig(newConfig: typeof backgroundConfig) {
     if (!compositeWorker) return
@@ -1481,11 +1473,6 @@
         remainingFrames: totalFramesAll - plannedNext,
         usePrefetchCache
       })
-
-      // Observation: cutover time start point
-      cutoverPlannedNext = plannedNext
-      cutoverTimerLabel = `[cutover] to ${plannedNext}`
-      try { console.time(cutoverTimerLabel) } catch {}
 
       // 🔧 #4 修复：始终从 nextGlobalFrame 继续
       shouldContinuePlayback = true

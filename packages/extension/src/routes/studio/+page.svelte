@@ -64,7 +64,6 @@
   // 全局帧数与窗口起始全局索引
   let globalTotalFrames = $state(0);
   let windowStartIndex = $state(0);
-
   // Derived source FPS based on global total frames and duration
   const sourceFps = $derived(
     globalTotalFrames > 0 && durationMs > 0
