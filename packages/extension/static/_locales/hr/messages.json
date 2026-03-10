@@ -251,7 +251,7 @@
   "export_progress_muxing": { "message": "Multipleksiranje..." },
   "export_progress_finalizing": { "message": "Dovršavanje..." },
   "export_progress_frame": { "message": "Sličica $CURRENT$ / $TOTAL$", "placeholders": { "current": { "content": "$1" }, "total": { "content": "$2" } } },
-  "export_progress_time": { "message": "~${SECONDS}s preostalo", "placeholders": { "seconds": { "content": "$1" } } },
+  "export_progress_time": { "message": "~$SECONDS$s preostalo", "placeholders": { "seconds": { "content": "$1" } } },
   "export_progress_hint": { "message": "Molimo pričekajte dok se vaš video izvozi..." },
 
   "wallpaper_cat_abstract_name": { "message": "Apstraktna umjetnost" },

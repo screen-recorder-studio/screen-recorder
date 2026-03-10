@@ -251,7 +251,7 @@
   "export_progress_muxing": { "message": "Multiplexovanie..." },
   "export_progress_finalizing": { "message": "Dokončovanie..." },
   "export_progress_frame": { "message": "Snímka $CURRENT$ / $TOTAL$", "placeholders": { "current": { "content": "$1" }, "total": { "content": "$2" } } },
-  "export_progress_time": { "message": "~${SECONDS}s zostáva", "placeholders": { "seconds": { "content": "$1" } } },
+  "export_progress_time": { "message": "~$SECONDS$s zostáva", "placeholders": { "seconds": { "content": "$1" } } },
   "export_progress_hint": { "message": "Počkajte, kým sa video exportuje..." },
 
   "wallpaper_cat_abstract_name": { "message": "Abstraktné umenie" },

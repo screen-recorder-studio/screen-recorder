@@ -819,7 +819,7 @@
     }
   },
   "export_progress_time": {
-    "message": "~${SECONDS}s restant",
+    "message": "~$SECONDS$s restant",
     "placeholders": {
       "seconds": {
         "content": "$1"

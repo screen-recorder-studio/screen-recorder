@@ -251,7 +251,7 @@
   "export_progress_muxing": { "message": "ترکیب..." },
   "export_progress_finalizing": { "message": "تکمیل..." },
   "export_progress_frame": { "message": "فریم $CURRENT$ / $TOTAL$", "placeholders": { "current": { "content": "$1" }, "total": { "content": "$2" } } },
-  "export_progress_time": { "message": "~${SECONDS}$ ثانیه باقی مانده", "placeholders": { "seconds": { "content": "$1" } } },
+  "export_progress_time": { "message": "~$SECONDS$ ثانیه باقی مانده", "placeholders": { "seconds": { "content": "$1" } } },
   "export_progress_hint": { "message": "لطفاً صبر کنید تا ویدیوی شما صادر شود..." },
 
   "wallpaper_cat_abstract_name": { "message": "هنر انتزاعی" },

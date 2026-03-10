@@ -132,7 +132,7 @@
     "message": "Optagelser - Skærmoptager Udvidelse"
   },
   "drive_headerTitle": {
-    "message": "Optagelseshaandtering"
+    "message": "Optagelseshåndtering"
   },
   "drive_errorSupport": {
     "message": "Din browser understotter ikke OPFS-lager"
@@ -1261,7 +1261,7 @@
     "message": "Drev"
   },
   "launcher_driveDesc": {
-    "message": "Se og haandter optagelser"
+    "message": "Se og håndter optagelser"
   },
   "launcher_pageTitle": {
     "message": "Screen Recorder Studio"
@@ -1279,19 +1279,19 @@
     "message": "Rediger din seneste optagelse"
   },
   "launcher_subtitle": {
-    "message": "Optag, haandter og eksporter"
+    "message": "Optag, håndter og eksporter"
   },
   "launcher_title": {
     "message": "Screen Recorder Studio"
   },
   "studio_emptyDesc": {
-    "message": "Efter optagelse vises din video her automatisk. Du kan forhaandsvise, beskaere, style og eksportere den i Studio."
+    "message": "Efter optagelse vises din video her automatisk. Du kan forhåndsvise, beskære, style og eksportere den i Studio."
   },
   "studio_emptyFeatureExport": {
     "message": "Eksporter"
   },
   "studio_emptyFeaturePreview": {
-    "message": "Forhaandsvis"
+    "message": "Forhåndsvis"
   },
   "studio_emptyFeatureTrim": {
     "message": "Beskaer & Style"

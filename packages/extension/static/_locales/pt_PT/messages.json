@@ -251,7 +251,7 @@
   "export_progress_muxing": { "message": "A multiplexar..." },
   "export_progress_finalizing": { "message": "A finalizar..." },
   "export_progress_frame": { "message": "Fotograma $CURRENT$ / $TOTAL$", "placeholders": { "current": { "content": "$1" }, "total": { "content": "$2" } } },
-  "export_progress_time": { "message": "~${SECONDS}s restante", "placeholders": { "seconds": { "content": "$1" } } },
+  "export_progress_time": { "message": "~$SECONDS$s restante", "placeholders": { "seconds": { "content": "$1" } } },
   "export_progress_hint": { "message": "Por favor, aguarde enquanto o seu vídeo está a ser exportado..." },
 
   "wallpaper_cat_abstract_name": { "message": "Arte Abstrata" },
