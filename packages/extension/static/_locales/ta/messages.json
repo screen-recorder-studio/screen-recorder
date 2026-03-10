@@ -1,1323 +1,401 @@
 {
-  "appName": {
-    "message": "திரை பதிவு ஸ்டுடியோ - அலைமதி, ஜூம், GIF"
-  },
-  "appDesc": {
-    "message": "நேர வரம்பு இல்லாத திரை பதிவு. உள்ளமைக்கப்பட்ட எடிட்டரில் ஜூம், டிரிம செய்து HD MP4 அல்லது GIF ஆக ஏற்றுமதி."
-  },
-  "common_close": {
-    "message": "மூடு"
-  },
-  "action_defaultTitle": {
-    "message": "பதிவு ப্যானலைத் திறக்கவும்"
-  },
-  "control_headerTitle": {
-    "message": "திரை பதிவி"
-  },
-  "control_headerDesc": {
-    "message": "பதிவு முறையைத் தேர்ந்தெடுத்து தொடங்கவும்"
-  },
-  "control_openDriveTooltip": {
-    "message": "பதிவு கோப்பு மேலாளரைத் திறக்கவும்"
-  },
-  "control_closePanelTooltip": {
-    "message": "கட்டுப்பாடு ப্যானலை மூடவும்"
-  },
-  "control_recordingMode": {
-    "message": "பதிவு முறை"
-  },
-  "control_modeTab": {
-    "message": "தாவல்"
-  },
-  "control_modeTabDesc": {
-    "message": "தற்போதைய தாவலைப் பதிவுசெய்யவும்"
-  },
-  "control_modeWindow": {
-    "message": "சாளரம்"
-  },
-  "control_modeWindowDesc": {
-    "message": "முழு சாளரத்தையும் பதிவுசெய்யவும்"
-  },
-  "control_modeScreen": {
-    "message": "திரை"
-  },
-  "control_modeScreenDesc": {
-    "message": "முழு திரையையும் பதிவுசெய்யவும்"
-  },
-  "control_statusRecording": {
-    "message": "பதிவுச் செல்கிறது"
-  },
-  "control_statusPaused": {
-    "message": "பதிவு நிறுத்தப்பட்டுள்ளது"
-  },
-  "control_statusPreparing": {
-    "message": "பதிவுக்கு தயாராகிறது..."
-  },
-  "control_btnStart": {
-    "message": "பதிவைத் தொடங்கு"
-  },
-  "control_btnStop": {
-    "message": "பதிவை நிறுத்து"
-  },
-  "control_btnPause": {
-    "message": "பதிவை இடைநிறுத்து"
-  },
-  "control_btnResume": {
-    "message": "பதிவைத் தொடர்வு"
-  },
-  "control_btnPreparing": {
-    "message": "தயாராகிறது..."
-  },
-  "control_btnStarting": {
-    "message": "$SECONDS$ வினாடிகளில் தொடங்கும்...",
-    "placeholders": {
-      "seconds": {
-        "content": "$1"
-      }
-    }
-  },
-  "control_countdownLabel": {
-    "message": "கவுண்ட்டவுன்"
-  },
-  "control_tipsTitle": {
-    "message": "பதிவு குறிப்புகள்:"
-  },
-  "control_tipsSelectMode": {
-    "message": "$MODE$ முறை தேர்வுச் செய்யப்பட்டது, பதிவைத் தொடங்க கிளிக் செய்யவும்.",
-    "placeholders": {
-      "mode": {
-        "content": "$1"
-      }
-    }
-  },
-  "control_tipsPreparing": {
-    "message": "திரைத் தேர்வுக்காகக் காத்திருக்கிறது..."
-  },
-  "control_tipsCountdown": {
-    "message": "தயாராங்கள்! $SECONDS$ வினாடிகளில் பதிவு தொடங்கும்.",
-    "placeholders": {
-      "seconds": {
-        "content": "$1"
-      }
-    }
-  },
-  "control_tipsPaused": {
-    "message": "பதிவு நிறுத்தப்பட்டுள்ளது, தொடர கிளிக் செய்யவும்."
-  },
-  "control_tipsRecording": {
-    "message": "பதிவு நடக்கிறது, இடைநிறுத்த கிளிக் செய்யவும்."
-  },
-  "control_overlayRecordingStarts": {
-    "message": "பதிவு விரைவில் தொடங்கும்..."
-  },
-  "control_errorTimeout": {
-    "message": "பதிவு தயாரிப்பு நேரம் முடிந்தது. மீண்டும் முயற்சிக்கவும்."
-  },
-  "control_errorStartFailed": {
-    "message": "பதிவைத் தொடங்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்."
-  },
-  "control_errorRecordingFailed": {
-    "message": "பதிவில் பிழை ஏற்பட்டு நிறுத்தப்பட்டது."
-  },
-  "control_errorStorageLow": {
-    "message": "சேமிப்பு இடைவு குறைகிறது. பதிவு தோல்வியடையக்கூடும்."
-  },
-  "control_statusSaving": {
-    "message": "பதிவைச் சேமிக்கிறது..."
-  },
-  "control_btnSaving": {
-    "message": "சேமிக்கிறது..."
-  },
-  "drive_pageTitle": {
-    "message": "பதிவுகள் - திரை பதிவி நீட்சி"
-  },
-  "drive_headerTitle": {
-    "message": "பதிவு மேலாளர்"
-  },
-  "drive_errorSupport": {
-    "message": "உங்கள் உலாவி OPFS சேமிப்பை ஆதரிக்காது"
-  },
-  "drive_errorMetaNotFound": {
-    "message": "meta.json கிடைக்கவில்லை"
-  },
-  "drive_errorEmpty": {
-    "message": "காலியான பதிவு கோப்பு"
-  },
-  "drive_errorMetadata": {
-    "message": "பதிவு மெட்டாடேட்டாவைப் படிக்க முடியவில்லை"
-  },
-  "drive_errorDataSize": {
-    "message": "தரவு கோப்பு அளவைப் பெற முடியவில்லை"
-  },
-  "drive_recordingNamePrefix": {
-    "message": "திரை பதிவு"
-  },
-  "drive_logDeleted": {
-    "message": "பதிவு $ID$ நீக்கப்பட்டது",
-    "placeholders": {
-      "id": {
-        "content": "$1"
-      }
-    }
-  },
-  "drive_errorDelete": {
-    "message": "நீக்கத் தோல்வி: $ERROR$",
-    "placeholders": {
-      "error": {
-        "content": "$1"
-      }
-    }
-  },
-  "drive_logBatchDelete": {
-    "message": "$COUNT$ பதிவுகள் வெற்றியாக நீக்கப்பட்டன",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "drive_errorLoad": {
-    "message": "பதிவுகளை ஏற்றுவதில் பிழை"
-  },
-  "drive_errorLoadPrefix": {
-    "message": "பதிவுகளை ஏற்றத் தோல்வி:"
-  },
-  "studio_pageTitle": {
-    "message": "திரை பதிவு ஸ்டுடியோ"
-  },
-  "studio_headerTitle": {
-    "message": "திரை பதிவி ஸ்டுடியோ"
-  },
-  "studio_githubTooltip": {
-    "message": "GitHub-ல் மூலத்தைக் காண்க"
-  },
-  "studio_githubText": {
-    "message": "GitHub"
-  },
-  "studio_feedbackTooltip": {
-    "message": "பிழைகளைப் புகாரளிக்கவும் அல்லது அம்சங்களைப் பரிந்துரைக்கவும்"
-  },
-  "studio_feedbackText": {
-    "message": "பின்னூல்"
-  },
-  "studio_helpTooltip": {
-    "message": "உதவி & ஆவணப்படுத்தல்"
-  },
-  "studio_helpText": {
-    "message": "உதவி"
-  },
-  "studio_driveTooltip": {
-    "message": "பதிவு கோப்பு மேலாளரைத் திறக்கவும்"
-  },
-  "studio_driveText": {
-    "message": "டிரைவ்"
-  },
-  "studio_fullscreenEnterTooltip": {
-    "message": "முழுத் திரைக்குச் செல்லவும்"
-  },
-  "studio_fullscreenExitTooltip": {
-    "message": "முழுத் திரையை விடுப்பதற்கு"
-  },
-  "studio_fullscreenEnterText": {
-    "message": "முழுத் திரை"
-  },
-  "studio_fullscreenExitText": {
-    "message": "வெளியேறு"
-  },
-  "bg_title": {
-    "message": "பின்புலம்"
-  },
-  "bg_tab_wallpaper": {
-    "message": "வால்பேப்பர்"
-  },
-  "bg_tab_gradient": {
-    "message": "கிரேடியண்ட்"
-  },
-  "bg_tab_solid": {
-    "message": "திட"
-  },
-  "bg_tab_image": {
-    "message": "படம்"
-  },
-  "radius_title": {
-    "message": "வீடியோ ரேடியஸ்"
-  },
-  "radius_none": {
-    "message": "ரேடியஸ் இல்லை"
-  },
-  "radius_small": {
-    "message": "சிறிய ரேடியஸ்"
-  },
-  "radius_medium": {
-    "message": "நடுத்தர ரேடியஸ்"
-  },
-  "radius_large": {
-    "message": "பெரிய ரேடியஸ்"
-  },
-  "radius_xl": {
-    "message": "மிகப்பெரிய ரேடியஸ்"
-  },
-  "padding_title": {
-    "message": "வீடியோ பேடிங்"
-  },
-  "padding_none": {
-    "message": "பேடிங் இல்லை"
-  },
-  "padding_small": {
-    "message": "சிறிய பேடிங்"
-  },
-  "padding_medium": {
-    "message": "நடுத்தர பேடிங்"
-  },
-  "padding_large": {
-    "message": "பெரிய பேடிங்"
-  },
-  "padding_xl": {
-    "message": "மிகப்பெரிய பேடிங்"
-  },
-  "ratio_yt": {
-    "message": "YouTube மல்டிபஸ்"
-  },
-  "ratio_yt_desc": {
-    "message": "YouTube, Bilibili, iQiyi மற்றவை."
-  },
-  "ratio_sq": {
-    "message": "Instagram சதுரம்"
-  },
-  "ratio_sq_desc": {
-    "message": "Instagram பதிவுகள், WeChat மோமென்ட்ஸ்"
-  },
-  "ratio_tiktok": {
-    "message": "TikTok போர்ட்ரேட்"
-  },
-  "ratio_tiktok_desc": {
-    "message": "TikTok, Douyin, Kuaishou"
-  },
-  "ratio_story": {
-    "message": "Instagram கதை"
-  },
-  "ratio_story_desc": {
-    "message": "Instagram கதைகள், Xiaohongshu"
-  },
-  "shadow_title": {
-    "message": "வீடியோ நிழல்"
-  },
-  "shadow_preset_title": {
-    "message": "முன் தீர்மானித்த விளைவுகள்"
-  },
-  "shadow_custom_title": {
-    "message": "தனிப்பயன் அளவுருகள்"
-  },
-  "shadow_light": {
-    "message": "இலகு நிழல்"
-  },
-  "shadow_standard": {
-    "message": "நியம நிழல்"
-  },
-  "shadow_deep": {
-    "message": "ஆழமான நிழல்"
-  },
-  "shadow_distant": {
-    "message": "தூர நிழல்"
-  },
-  "shadow_offset_x": {
-    "message": "X ஆஃப்செட்"
-  },
-  "shadow_offset_y": {
-    "message": "Y ஆஃப்செட்"
-  },
-  "shadow_blur": {
-    "message": "மங்கல்"
-  },
-  "shadow_color": {
-    "message": "நிறம்"
-  },
-  "shadow_opacity": {
-    "message": "ஒளிபுகா தன்மை"
-  },
-  "shadow_empty_state": {
-    "message": "நிழல் விளைவுகளைக் கட்டமைக்க நிழல் சுவிட்சை இயக்கவும்"
-  },
-  "color_tab_basic": {
-    "message": "அடிப்படை"
-  },
-  "color_tab_light": {
-    "message": "வெளிச்சம்"
-  },
-  "color_tab_business": {
-    "message": "வணிக"
-  },
-  "color_tab_creative": {
-    "message": "படைப்பு"
-  },
-  "color_custom": {
-    "message": "தனிப்பயன்:"
-  },
-  "gradient_tab_linear": {
-    "message": "நேர்கோடு"
-  },
-  "gradient_tab_radial": {
-    "message": "ரேடியல்"
-  },
-  "gradient_tab_conic": {
-    "message": "கோனிக்"
-  },
-  "gradient_tab_multi": {
-    "message": "மல்டி"
-  },
-  "gradient_current": {
-    "message": "தற்போதைய:"
-  },
-  "gradient_select_hint": {
-    "message": "கிரேடியண்டைத் தேர்வுச் செய்யவும்"
-  },
-  "gradient_colors_suffix": {
-    "message": "நிறங்கள்"
-  },
-  "wallpaper_tab_abstract": {
-    "message": "சுருக்கம்"
-  },
-  "wallpaper_tab_minimal": {
-    "message": "மினிமல்"
-  },
-  "wallpaper_tab_nature": {
-    "message": "இயற்கை"
-  },
-  "wallpaper_tab_business": {
-    "message": "வணிக"
-  },
-  "wallpaper_tab_tech": {
-    "message": "தொழில்"
-  },
-  "wallpaper_error": {
-    "message": "வால்பேப்பரை ஏற்றத் தோல்வி"
-  },
-  "wallpaper_stats": {
-    "message": "இந்த வகையில் $COUNT$ வால்பேப்பர்கள்",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "wallpaper_total": {
-    "message": "மொத்தம் $TOTAL$",
-    "placeholders": {
-      "total": {
-        "content": "$1"
-      }
-    }
-  },
-  "upload_processing": {
-    "message": "செயலாக்குகிறது..."
-  },
-  "upload_drop_hint": {
-    "message": "இங்கே படத்தைக் கிளிக் செய்யவோ இழுக்கவோ செய்யவும்"
-  },
-  "upload_format_hint": {
-    "message": "JPEG, PNG, WebP, GIF · அதிகபட்சம் 5MB"
-  },
-  "upload_error_select": {
-    "message": "ஒரு படக் கோப்பைத் தேர்வுச் செய்யவும்"
-  },
-  "upload_error_failed": {
-    "message": "பதிவேற்றத் தோல்வி"
-  },
-  "drive_delete_selected_btn": {
-    "message": "தேர்வுச் செய்ததை நீக்கு ($COUNT$)",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "drive_clear_selection": {
-    "message": "தேர்வைத் தெளிவுபடுத்து"
-  },
-  "drive_refresh": {
-    "message": "புதுப்பி"
-  },
-  "drive_error_title": {
-    "message": "பிழை"
-  },
-  "drive_close_error": {
-    "message": "மூடு"
-  },
-  "drive_loading": {
-    "message": "பதிவுகளை ஏற்றுகிறது..."
-  },
-  "drive_empty_title": {
-    "message": "இன்னும் பதிவுகள் இல்லை"
-  },
-  "drive_empty_desc1": {
-    "message": "உங்களிடம் எந்தத் திரைப் பதிவுகளும் இல்லை."
-  },
-  "drive_empty_desc2": {
-    "message": "உங்கள் திரையைப் பதிவுச் செய்தால் உங்கள் பதிவுகள் இங்கேத் தோன்றும்."
-  },
-  "drive_start_recording_btn": {
-    "message": "பதிவைத் தொடங்கு"
-  },
-  "drive_select_all": {
-    "message": "அனைத்தையும் தேர்வுச் செய் ($COUNT$ பதிவுகள்)",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "drive_sort_hint": {
-    "message": "நேரத்தின் படி வரிசைப்படுத்தப்பட்டுள்ளது (புதியது முதல்)"
-  },
-  "drive_confirm_delete_title": {
-    "message": "நீக்குதலை உறுதிப்படுத்து"
-  },
-  "drive_confirm_delete_selected": {
-    "message": "தேர்வுச் செய்த $COUNT$ பதிவுகளை நீக்க விரும்புகிறீர்களா?",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "drive_confirm_delete_single": {
-    "message": "இந்தப் பதிவை நீக்க விரும்புகிறீர்களா?"
-  },
-  "drive_action_undone": {
-    "message": "இந்தச் செயலைத் திரும்பப் பெற முடியாது."
-  },
-  "drive_cancel": {
-    "message": "ரத்து"
-  },
-  "drive_delete": {
-    "message": "நீக்கு"
-  },
-  "card_status_completed": {
-    "message": "முடிவுற்றது"
-  },
-  "card_status_incomplete": {
-    "message": "முழுமையற்ற"
-  },
-  "card_label_created": {
-    "message": "உருவாக்கப்பட்டது:"
-  },
-  "card_label_status": {
-    "message": "நிலை:"
-  },
-  "card_label_codec": {
-    "message": "கோடெக்:"
-  },
-  "card_label_resolution": {
-    "message": "தீர்மானம்:"
-  },
-  "card_label_fps": {
-    "message": "FPS:"
-  },
-  "card_label_size": {
-    "message": "கோப்பு அளவு:"
-  },
-  "card_label_frames": {
-    "message": "மொத்த சட்டங்கள்:"
-  },
-  "card_incomplete_title": {
-    "message": "முழுமையற்ற பதிவு"
-  },
-  "card_incomplete_desc": {
-    "message": "வீடியோ தரவு இல்லை"
-  },
-  "card_preview_error": {
-    "message": "முன்பதிவை ஏற்க முடியாது"
-  },
-  "card_preview_loading": {
-    "message": "முன்பதிவை உருவாக்குகிறது..."
-  },
-  "card_btn_edit": {
-    "message": "திருத்து"
-  },
-  "card_btn_delete": {
-    "message": "நீக்கு"
-  },
-  "card_edit_disabled_tooltip": {
-    "message": "முழுமையற்ற பதிவைத் திருத்த முடியாது"
-  },
-  "card_edit_tooltip": {
-    "message": "பதிவைத் திருத்து"
-  },
-  "card_preview_load_error": {
-    "message": "முன்பதிவு தரவை ஏற்கத் தோல்வி: $ERROR$",
-    "placeholders": {
-      "error": {
-        "content": "$1"
-      }
-    }
-  },
-  "card_date_today": {
-    "message": "இன்று $TIME$",
-    "placeholders": {
-      "time": {
-        "content": "$1"
-      }
-    }
-  },
-  "card_date_yesterday": {
-    "message": "நேற்று $TIME$",
-    "placeholders": {
-      "time": {
-        "content": "$1"
-      }
-    }
-  },
-  "card_date_days_ago": {
-    "message": "$DAYS$ நாட்களுக்கு முன்",
-    "placeholders": {
-      "days": {
-        "content": "$1"
-      }
-    }
-  },
-  "export_panel_tier_free": {
-    "message": "இலவச"
-  },
-  "export_panel_tier_pro": {
-    "message": "புரோ"
-  },
-  "export_panel_tier_trial": {
-    "message": "புரோ சோதனை"
-  },
-  "export_panel_btn": {
-    "message": "ஏற்று"
-  },
-  "export_panel_tooltip_incomplete": {
-    "message": "ஏற்றுவதற்கு பதிவை முழுமைப்படுத்தவும்"
-  },
-  "export_panel_tooltip_no_data": {
-    "message": "வீடியோ தரவு இல்லை"
-  },
-  "export_panel_btn_exporting": {
-    "message": "ஏற்றுகிறது..."
-  },
-  "export_error_gif_failed": {
-    "message": "GIF ஏற்றத் தோல்வி. மீண்டும் முயற்சிக்கவும்."
-  },
-  "export_error_webm_failed": {
-    "message": "WebM ஏற்றத் தோல்வி. மீண்டும் முயற்சிக்கவும்."
-  },
-  "export_error_mp4_failed": {
-    "message": "MP4 ஏற்றத் தோல்வி. மீண்டும் முயற்சிக்கவும்."
-  },
-  "export_error_retry_hint": {
-    "message": "மீண்டும் முயற்சிக்கவும் அல்லது வேறு வடிவத்தைப் பயன்படுத்தவும்."
-  },
-  "export_error_opfs_download_failed": {
-    "message": "கோப்பு டிரைவில் சேமிக்கப்பட்டது ஆனால் பதிவிறக்கத் தோல்வி. உங்கள் கோப்பைப் பெற டிரைவைத் திறக்கவும்."
-  },
-  "export_dialog_title": {
-    "message": "வீடியோவை ஏற்று"
-  },
-  "export_source_res": {
-    "message": "தீர்மானம்"
-  },
-  "export_source_codec": {
-    "message": "கோடெக்"
-  },
-  "export_source_duration": {
-    "message": "காலம்"
-  },
-  "export_source_frames": {
-    "message": "சட்டங்கள்"
-  },
-  "export_badge_bg": {
-    "message": "பின்புலம்"
-  },
-  "export_badge_trim": {
-    "message": "வெட்டப்பட்டது"
-  },
-  "export_format_mp4": {
-    "message": "MP4"
-  },
-  "export_format_webm": {
-    "message": "WebM"
-  },
-  "export_format_gif": {
-    "message": "GIF"
-  },
-  "export_quality_title": {
-    "message": "தர அமைப்பு"
-  },
-  "export_quality_draft": {
-    "message": "வரைபடம்"
-  },
-  "export_quality_draft_desc": {
-    "message": "வேகமான ஏற்றல், குறைந்த தரம்"
-  },
-  "export_quality_balanced": {
-    "message": "சமநிலை"
-  },
-  "export_quality_balanced_desc": {
-    "message": "நல்ல தரம், மிதமான வேகம்"
-  },
-  "export_quality_high": {
-    "message": "உயர்"
-  },
-  "export_quality_high_desc": {
-    "message": "உயர்தரம், மெதுவான"
-  },
-  "export_quality_best": {
-    "message": "சிறந்த"
-  },
-  "export_quality_best_desc": {
-    "message": "மிக உயர்தரம், மிக மெதுவான"
-  },
-  "export_label_resolution": {
-    "message": "தீர்மானம்"
-  },
-  "export_res_source": {
-    "message": "மூலத்துடன் பொருத்து ($WIDTH$×$HEIGHT$)",
-    "placeholders": {
-      "width": {
-        "content": "$1"
-      },
-      "height": {
-        "content": "$2"
-      }
-    }
-  },
-  "export_label_framerate": {
-    "message": "பிரேம் ரேட்"
-  },
-  "export_fps_source": {
-    "message": "$FPS$ fps (மூல)",
-    "placeholders": {
-      "fps": {
-        "content": "$1"
-      }
-    }
-  },
-  "export_label_bitrate": {
-    "message": "பிட்ரேட்"
-  },
-  "export_bitrate_auto": {
-    "message": "தானியங்கி"
-  },
-  "export_bitrate_manual": {
-    "message": "கைமுறை"
-  },
-  "export_bitrate_auto_hint": {
-    "message": "தானியங்கி: $RATE$ Mbps (தீர்மானம் மற்றும் தரத்தைப் பொறுத்து)",
-    "placeholders": {
-      "rate": {
-        "content": "$1"
-      }
-    }
-  },
-  "export_label_speed": {
-    "message": "குறியாக்க வேகம்"
-  },
-  "export_speed_fastest": {
-    "message": "வேகமான"
-  },
-  "export_speed_fast": {
-    "message": "விரைவு"
-  },
-  "export_speed_balanced": {
-    "message": "சமநிலை"
-  },
-  "export_speed_slow": {
-    "message": "மெதுவு"
-  },
-  "export_speed_slowest": {
-    "message": "மிக மெதுவு"
-  },
-  "export_est_output": {
-    "message": "மதிப்பிடப்பட்ட வெளியீடு"
-  },
-  "export_est_size": {
-    "message": "மதிப்பிடப்பட்ட அளவு"
-  },
-  "export_label_gif_quality": {
-    "message": "தரம்"
-  },
-  "export_gif_best": {
-    "message": "சிறந்த (மிக மெதுவான)"
-  },
-  "export_gif_high": {
-    "message": "உயர்"
-  },
-  "export_gif_good": {
-    "message": "நல்ல (இயல்புநிலை)"
-  },
-  "export_gif_fast": {
-    "message": "விரைவு"
-  },
-  "export_gif_fastest": {
-    "message": "வேகமான"
-  },
-  "export_label_scale": {
-    "message": "அளவு"
-  },
-  "export_scale_original": {
-    "message": "100% (அசல்)"
-  },
-  "export_label_workers": {
-    "message": "பணியாளர்கள்"
-  },
-  "export_worker_singular": {
-    "message": "$COUNT$ பணியாளர்",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "export_worker_plural": {
-    "message": "$COUNT$ பணியாளர்கள்",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "export_label_dither": {
-    "message": "டித்தரிங்"
-  },
-  "export_dither_none": {
-    "message": "இல்லை"
-  },
-  "export_btn_cancel": {
-    "message": "ரத்து"
-  },
-  "export_btn_export_mp4": {
-    "message": "MP4 ஏற்று"
-  },
-  "export_btn_export_webm": {
-    "message": "WebM ஏற்று"
-  },
-  "export_btn_export_gif": {
-    "message": "GIF ஏற்று"
-  },
-  "export_progress_preparing": {
-    "message": "தயாராகிறது..."
-  },
-  "export_progress_encoding": {
-    "message": "சட்டங்களைக் குறியாக்குகிறது..."
-  },
-  "export_progress_muxing": {
-    "message": "மக்ஸிங்..."
-  },
-  "export_progress_finalizing": {
-    "message": "முடிப்பதற்கு..."
-  },
-  "export_progress_frame": {
-    "message": "சட்டம் $CURRENT$ / $TOTAL$",
-    "placeholders": {
-      "current": {
-        "content": "$1"
-      },
-      "total": {
-        "content": "$2"
-      }
-    }
-  },
-  "export_progress_time": {
-    "message": "~$SECONDS$s மீதம்",
-    "placeholders": {
-      "seconds": {
-        "content": "$1"
-      }
-    }
-  },
-  "export_progress_hint": {
-    "message": "உங்கள் வீடியோ ஏற்றப்படும்போது காத்திருக்கவும்..."
-  },
-  "wallpaper_cat_abstract_name": {
-    "message": "சுருக்கக் கலை"
-  },
-  "wallpaper_cat_abstract_desc": {
-    "message": "சுருக்கமான முறைகள், கலைஞரான உருவாக்கங்கள் மற்றும் நவீன வடிவமைப்புகள்"
-  },
-  "wallpaper_cat_minimal_name": {
-    "message": "மினிமல் பாணி"
-  },
-  "wallpaper_cat_minimal_desc": {
-    "message": "தூய வடிவியல், மினிமலிஸ்ட் வடிவமைப்பு மற்றும் தூநலம்"
-  },
-  "wallpaper_cat_nature_name": {
-    "message": "இயற்கைக் காட்சி"
-  },
-  "wallpaper_cat_nature_desc": {
-    "message": "இயற்கை நிலப்பரப்புகள், தாவர அமைப்புகள் மற்றும் கரிய அமைப்புகள்"
-  },
-  "wallpaper_cat_business_name": {
-    "message": "வணிக நிபுணர்"
-  },
-  "wallpaper_cat_business_desc": {
-    "message": "வணிகக் காட்சிகள், தொழில் நிறுவன சூழல் மற்று"
-  },
-  "wallpaper_cat_tech_name": {
-    "message": "தொழில் புனிதம்"
-  },
-  "wallpaper_cat_tech_desc": {
-    "message": "தொழில் நுட்ப உணர்வு, மிகவும் நவீன மற்று"
-  },
-  "wallpaper_gradient_abstract_1_name": {
-    "message": "சுருக்க கிரேடியண்ட்"
-  },
-  "wallpaper_gradient_abstract_1_desc": {
-    "message": "நவீன சுருக்க கிரேடியண்ட் பின்புலம், தொழில் மற்று"
-  },
-  "wallpaper_geometric_pattern_1_name": {
-    "message": "வடிவியல் முறை"
-  },
-  "wallpaper_geometric_pattern_1_desc": {
-    "message": "தூய வடிவியல் முறை பின்புலம், வணிகத்திற்கு ஏற்றது"
-  },
-  "wallpaper_abstract_2425706_name": {
-    "message": "சுருக்க நிறங்கள்"
-  },
-  "wallpaper_abstract_2425706_desc": {
-    "message": "வண்ணமயமான சுருக்க நிற தோல், வலுவான பார்வை விளைவு"
-  },
-  "wallpaper_abstract_2512412_name": {
-    "message": "சுருக்க நிறங்கள்"
-  },
-  "wallpaper_abstract_2512412_desc": {
-    "message": "ஓடும் சுருக்க நிற பின்புலம், படைப்பு உள்ளடக்கத்திற்கு ஏற்றது"
-  },
-  "wallpaper_abstract_6297317_name": {
-    "message": "சுருக்க வடிவங்கள்"
-  },
-  "wallpaper_abstract_6297317_desc": {
-    "message": "நிற தடுப்பு அமைப்புடன் கூடிய சுருக்க வடிவியல் வடிவங்கள்"
-  },
-  "wallpaper_ai_generated_9083808_name": {
-    "message": "AI உருவாக்கிய கலை"
-  },
-  "wallpaper_ai_generated_9083808_desc": {
-    "message": "AI உருவாக்கிய மிகவும் நவீன கலை பின்புலம்"
-  },
-  "wallpaper_beach_4938036_name": {
-    "message": "கடற்கரை"
-  },
-  "wallpaper_beach_4938036_desc": {
-    "message": "மணல் மற்று"
-  },
-  "wallpaper_bulb_5665770_name": {
-    "message": "படைப்பு விளக்கு"
-  },
-  "wallpaper_bulb_5665770_desc": {
-    "message": "படைப்பு மற்று"
-  },
-  "wallpaper_cpu_8892400_name": {
-    "message": "CPU சுற்று"
-  },
-  "wallpaper_cpu_8892400_desc": {
-    "message": "CPU chip மற்று"
-  },
-  "wallpaper_feather_5488401_name": {
-    "message": "இறகு முடிவுரு"
-  },
-  "wallpaper_feather_5488401_desc": {
-    "message": "மென்மையான இ�கு текстура,丰富的细节"
-  },
-  "wallpaper_fractal_8902060_name": {
-    "message": "பிராக்டல் கலை"
-  },
-  "wallpaper_fractal_8902060_desc": {
-    "message": "சுருக்க கலை பாணியில் சிறந்த பிராக்டல் முறைகள்"
-  },
-  "wallpaper_orange_3036097_name": {
-    "message": "ஆரஞ்சு துண்டு"
-  },
-  "wallpaper_orange_3036097_desc": {
-    "message": "வண்ணமயமான ஆரஞ்சு துண்டுகள், மலர்ந்த நிறங்கள்"
-  },
-  "wallpaper_orange_6508617_name": {
-    "message": "ஆரஞ்சு பின்புலம்"
-  },
-  "wallpaper_orange_6508617_desc": {
-    "message": "ஆற்றல் நிறைந்த ஆரஞ்சு themed பின்புலம்"
-  },
-  "wallpaper_polar_lights_5858656_name": {
-    "message": "அரோரா"
-  },
-  "wallpaper_polar_lights_5858656_desc": {
-    "message": "வட துருவ விளக்குகள் இரவு வானம், கனவான இயற்கை நிகழ்வு"
-  },
-  "wallpaper_spiral_3112405_name": {
-    "message": "சுருள் முறை"
-  },
-  "wallpaper_spiral_3112405_desc": {
-    "message": "மாறும் அடுக்குகளுடன் சுருக்க சுருள் текстура"
-  },
-  "wallpaper_steelwool_458842_name": {
-    "message": "ஸ்டீல் ஊல் லைட் பெயிண்டிங்"
-  },
-  "wallpaper_steelwool_458842_desc": {
-    "message": "நீண்ட வெளிப்படை லைட் பெயிண்டிங் விளைவு, சுருக்கமான மற்று"
-  },
-  "wallpaper_swimming_pool_8306716_name": {
-    "message": "தடுப்பு அலைகள்"
-  },
-  "wallpaper_swimming_pool_8306716_desc": {
-    "message": "சுடரான கோடை வளிமண்டலத்துடன் ஸ்விம்மிங் பூல் நீர் அலைகள்"
-  },
-  "wallpaper_abstract_2426502_name": {
-    "message": "சுருக்க நிறங்கள்"
-  },
-  "wallpaper_abstract_2426502_desc": {
-    "message": "சுருக்க நிறங்கள் மற்று"
-  },
-  "wallpaper_camera_1248682_name": {
-    "message": "கேமரா முடிவுரு"
-  },
-  "wallpaper_camera_1248682_desc": {
-    "message": "текстуர்ட் தொழில் பாணியுடன் கேமரா மற்று"
-  },
-  "wallpaper_circle_5090539_name": {
-    "message": "வட்ட வடிவியல்"
-  },
-  "wallpaper_circle_5090539_desc": {
-    "message": "தூய வட்ட வடிவியல் முறை, visualunity layouts"
-  },
-  "wallpaper_feather_7009025_name": {
-    "message": "இறகு текстура"
-  },
-  "wallpaper_feather_7009025_desc": {
-    "message": "மென்மையான இறகு текстура, மென்மையான இயற்கை முறைகள்"
-  },
-  "wallpaper_fiber_4814456_name": {
-    "message": "நார் வரிகள்"
-  },
-  "wallpaper_fiber_4814456_desc": {
-    "message": "நார் optics மற்று"
-  },
-  "wallpaper_frost_6702335_name": {
-    "message": "உறைந்த текстура"
-  },
-  "wallpaper_frost_6702335_desc": {
-    "message": "குளிர் textured உறைந்த முறை பின்புலம்"
-  },
-  "wallpaper_leaves_4291098_name": {
-    "message": "பச்சை இலைகள்"
-  },
-  "wallpaper_leaves_4291098_desc": {
-    "message": "பச்சை இலைகளின் இயற்கை текстура, fresh and healing"
-  },
-  "wallpaper_light_1834289_name": {
-    "message": "Light Bokeh"
-  },
-  "wallpaper_light_1834289_desc": {
-    "message": "Light and shadow bokeh effect, atmospheric abstract background"
-  },
-  "wallpaper_light_942231_name": {
-    "message": "Light Streaks"
-  },
-  "wallpaper_light_942231_desc": {
-    "message": "Flowing light streaks, dynamic abstract background"
-  },
-  "wallpaper_luck_4397584_name": {
-    "message": "நான்கு இலைத் துத்தை"
-  },
-  "wallpaper_luck_4397584_desc": {
-    "message": "Lucky four-leaf clover with fresh natural green tones"
-  },
-  "wallpaper_waterdrop_2256201_name": {
-    "message": "Water Drop Close-up"
-  },
-  "wallpaper_waterdrop_2256201_desc": {
-    "message": "Water drop and surface tension macro texture"
-  },
-  "welcome_pageTitle": {
-    "message": "Screen Recorder Studio-க்கு வரவேற்கிறோம்"
-  },
-  "welcome_headerSubtitle": {
-    "message": "தொழில் நிபுணர் உலாவி பதிவு கருவி"
-  },
-  "welcome_installSuccess": {
-    "message": "நிறுவல் வெற்றியடைந்தது"
-  },
-  "welcome_headline": {
-    "message": "பதிவு, திருத்து மற்று"
-  },
-  "welcome_subheadline": {
-    "message": "மணிக்கணக்கான footage-ஐ மெதுவாகப் பிடித்து, பின்னர் திருத்தி உயர்தர வீடியோகளாகவோ GIF-ஆகவோ ஏற்றவும்—அனைத்தும் உங்கள் உலாவியில் பாதுகாப்பாகச் செயலாக்கப்படும்."
-  },
-  "welcome_tryTitle": {
-    "message": "உங்கள் முதல் பதிவைத் தொடங்குங்கள்"
-  },
-  "welcome_trySubtitle": {
-    "message": "ஏதைப் பதிவு செய்ய வேண்டுமோ அதைத் தேர்வு செய்து பதிவைத் தொடங்குங்கள்—நீங்கள் நிறுத்தும்போது ஸ்டுடியோ திறக்கும்."
-  },
-  "welcome_modeTabDetail": {
-    "message": "வலை டெமோகள் மற்று"
-  },
-  "welcome_modeWindowDetail": {
-    "message": "முகவரி பட்டியையும் டூல்பாரையும் உள்ளடக்கிய"
-  },
-  "welcome_modeScreenDetail": {
-    "message": "பல-பயன்பாடு வேலைக்கு"
-  },
-  "welcome_statusRecording": {
-    "message": "பதிவு செல்கிறது"
-  },
-  "welcome_modeLabel": {
-    "message": "முறை"
-  },
-  "welcome_proTrialActive": {
-    "message": "Pro Trial"
-  },
-  "welcome_feat1Title": {
-    "message": "தனிப்பட்ட & உள்ளூர்"
-  },
-  "welcome_feat2Title": {
-    "message": "வாட்டர்மார்க்"
-  },
-  "welcome_feat3Title": {
-    "message": "விரைவு"
-  },
-  "welcome_feat4Title": {
-    "message": "வீடியோ & GIF"
-  },
-  "welcome_howTitle": {
-    "message": "உங்கள் பதிவு"
-  },
-  "welcome_howDesc": {
-    "message": "பிடித்தல் முதல் ஏற்றுதல்"
-  },
-  "welcome_step1Title": {
-    "message": "நீட்சியை"
-  },
-  "welcome_step1Desc": {
-    "message": "உலாவி டூல்பாரில்"
-  },
-  "welcome_step2Title": {
-    "message": "உங்கள்"
-  },
-  "welcome_step2Desc": {
-    "message": "எதைப்"
-  },
-  "welcome_step3Title": {
-    "message": "விரைவு"
-  },
-  "welcome_step3Desc": {
-    "message": "\"$BTN$\" என்பதைக் கிளிக் செய்து தயாராகுங்கள் - $SECONDS$ வினாடி கவுண்ட்டவுன் உங்களுக்கு தயாரிக்க நேரம் தரும்!",
-    "placeholders": {
-      "btn": {
-        "content": "$1"
-      },
-      "seconds": {
-        "content": "$2"
-      }
-    }
-  },
-  "welcome_trustNoWatermark": {
-    "message": "வாட்டர்மார்க்"
-  },
-  "welcome_trustHD": {
-    "message": "HD"
-  },
-  "welcome_trustLocal": {
-    "message": "தனிப்பட்ட"
-  },
-  "welcome_trustQuickEditing": {
-    "message": "விரைவு"
-  },
-  "welcome_footerHelp": {
-    "message": "மேலதிக கட்டுப்பாடு வேணுமா? பதிவு மற்றும் ஏற்றுமதி அமைப்புகளுக்கு நீட்சி ஐகானைக் கிளிக் செய்யவும்."
-  },
-  "welcome_footerMeta": {
-    "message": "திரை பதிவி ஸ்டுடியோ • தொழில் நிபுணர்களுக்காக உருவாக்கப்பட்டது"
-  },
-  "annotation_tool_cursor": {
-    "message": "கர்சர் (இடைமுகம்)"
-  },
-  "annotation_tool_effect": {
-    "message": "கர்சர் விளைவு"
-  },
-  "annotation_tool_arrow": {
-    "message": "அம்பு"
-  },
-  "annotation_tool_rectangle": {
-    "message": "சதுரம்"
-  },
-  "annotation_tool_circle": {
-    "message": "வட்டம்"
-  },
-  "annotation_tool_freehand": {
-    "message": "பேன்"
-  },
-  "annotation_tool_text": {
-    "message": "உரை"
-  },
-  "annotation_tool_highlight": {
-    "message": "ஹைலைட்"
-  },
-  "annotation_tool_blur": {
-    "message": "மங்கல்"
-  },
-  "annotation_tool_undo": {
-    "message": "மீட்டமை"
-  },
-  "annotation_tool_clear": {
-    "message": "அனைத்தையும் அழி"
-  },
-  "annotation_tool_close": {
-    "message": "மூடு"
-  },
-  "webRecord_pageTitle": {
-    "message": "இணைய திரை பதிவி"
-  },
-  "webRecord_headerTitle": {
-    "message": "திரை பதிவி"
-  },
-  "webRecord_openDriveTooltip": {
-    "message": "பதிவு கோப்பு மேலாளரைத் திறக்கவும்"
-  },
-  "webRecord_driveBtn": {
-    "message": "பதிவுகள்"
-  },
-  "webRecord_errorTitle": {
-    "message": "பிழை"
-  },
-  "webRecord_errorInsecure": {
-    "message": "திரை பதிவுக்கு பாதுகாப்பான சூழல் (HTTPS) தேவை. இந்தப் பக்கத்தை HTTPS மூலம் அணுகவும்."
-  },
-  "webRecord_errorNoDisplayMedia": {
-    "message": "உங்கள் உலாவி திரை பதிவை ஆதரிக்காது (getDisplayMedia API)."
-  },
-  "webRecord_errorNoWebCodecs": {
-    "message": "உங்கள் உலாவி WebCodecs API ஐ ஆதரிக்காது. Chrome 94+ போன்ற நவீன உலாவியைப் பயன்படுத்தவும்."
-  },
-  "webRecord_errorNoTrackProcessor": {
-    "message": "உங்கள் உலாவி MediaStreamTrackProcessor ஐ ஆதரிக்காது. Chrome 94+ ஐப் பயன்படுத்தவும்."
-  },
-  "webRecord_errorNoOPFS": {
-    "message": "உங்கள் உலாவி OPFS சேமிப்பை ஆதரிக்காது."
-  },
-  "webRecord_errorGeneric": {
-    "message": "பிழை ஏற்பட்டது. மீண்டும் முயற்சிக்கவும்."
-  },
-  "webRecord_errorNoVideoTrack": {
-    "message": "திரை பிடிப்பில் வீடியோ டிராக் இல்லை."
-  },
-  "webRecord_errorPermissionDenied": {
-    "message": "திரை பதிவு அனுமதி மறுக்கப்பட்டது. பதிவு செய்ய திரைப் பகிர்வுக்கு அனுமதி அளிக்கவும்."
-  },
-  "webRecord_errorEncoding": {
-    "message": "வீடியோ குறியாக்க பிழை ஏற்பட்டது."
-  },
-  "webRecord_statusRecording": {
-    "message": "பதிவுச் செல்கிறது"
-  },
-  "webRecord_statusPreparing": {
-    "message": "தயாராகிறது..."
-  },
-  "webRecord_statusStopping": {
-    "message": "நிறுத்துகிறது..."
-  },
-  "webRecord_statusIdle": {
-    "message": "பதிவுக்கு தயார்"
-  },
-  "webRecord_btnStart": {
-    "message": "பதிவைத் தொடங்கு"
-  },
-  "webRecord_btnStop": {
-    "message": "பதிவை நிறுத்து"
-  },
-  "webRecord_btnPreparing": {
-    "message": "தயாராகிறது..."
-  },
-  "webRecord_btnStopping": {
-    "message": "நிறுத்துகிறது..."
-  },
-  "webRecord_tipsTitle": {
-    "message": "குறிப்புகள்:"
-  },
-  "webRecord_tip1": {
-    "message": "தொடங்கு என்பதைக் கிளிக் செய்து பதிவு செய்ய திரை, சாளரம் அல்லது தாவலைத் தேர்வு செய்யவும்."
-  },
-  "webRecord_tip2": {
-    "message": "பதிவுகள் உங்கள் உலாவி சேமிப்பில் உள்ளூராகச் சேமிக்கப்படும்."
-  },
-  "webRecord_tip3": {
-    "message": "உங்கள் பதிவுகளைக் காண, திருத்த மற்றும் ஏற்றுமதி செய்ய பதிவுகள் என்பதைக் கிளிக் செய்யவும்."
-  },
-  "drive_drawerDelete": {
-    "message": "நீக்கு"
-  },
-  "drive_drawerEmpty": {
-    "message": "இன்னும் பதிவுகள் இல்லை"
-  },
-  "drive_drawerJustNow": {
-    "message": "இப்போதுதான்"
-  },
-  "drive_drawerOpenFull": {
-    "message": "முழு டிரைவைத் திறக்கவும்"
-  },
-  "drive_drawerTitle": {
-    "message": "சமீபத்திய பதிவுகள்"
-  },
-  "launcher_drive": {
-    "message": "டிரைவ்"
-  },
-  "launcher_driveDesc": {
-    "message": "பதிவுகளைக் காண மற்றும் மேலாளவும்"
-  },
-  "launcher_pageTitle": {
-    "message": "திரை பதிவி ஸ்டுடியோ"
-  },
-  "launcher_record": {
-    "message": "பதிவு"
-  },
-  "launcher_recordDesc": {
-    "message": "புதிய திரை பதிவைத் தொடங்கவும்"
-  },
-  "launcher_studio": {
-    "message": "ஸ்டுடியோ"
-  },
-  "launcher_studioDesc": {
-    "message": "உங்கள் சமீபத்திய பதிவைத் திருத்தவும்"
-  },
-  "launcher_subtitle": {
-    "message": "பதிவு, மேலாள் மற்று"
-  },
-  "launcher_title": {
-    "message": "திரை பதிவி ஸ்டுடியோ"
-  },
-  "studio_emptyDesc": {
-    "message": "பதிவுக்குப் பிறகு, உங்கள் வீடியோ இங்கே தானாகத் தோன்றும். ஸ்டுடியோவில் முன்பதிவு செய்ய, டிரிம் செய்ய, ஸ்டைல் செய்ய மற்றும் ஏற்றுமதி செய்யலாம்."
-  },
-  "studio_emptyFeatureExport": {
-    "message": "ஏற்றுமதி"
-  },
-  "studio_emptyFeaturePreview": {
-    "message": "முன்பதிவு"
-  },
-  "studio_emptyFeatureTrim": {
-    "message": "டிரிம் & ஸ்டைல்"
-  },
-  "studio_emptyOpenDrive": {
-    "message": "டிரைவைத் திறக்கவும்"
-  },
-  "studio_emptyReasonInvalid": {
-    "message": "சமீபத்திய பதிவுகளை ஏற்ற முடியவில்லை."
-  },
-  "studio_emptyReasonLoadFailed": {
-    "message": "குறிப்பிட்ட பதிவை ஏற்றத் தோல்வி."
-  },
-  "studio_emptyReasonOpfs": {
-    "message": "இந்த உலாவியில் சேமிப்பு கிடைக்கவில்லை."
-  },
-  "studio_emptyStartRecording": {
-    "message": "பதிவைத் தொடங்கு"
-  },
-  "studio_emptyTitle": {
-    "message": "திருத்த ஒரு வீடியோ இன்னும் இல்லை"
-  },
-  "studio_loading": {
-    "message": "ஏற்றுகிறது..."
-  },
-  "studio_recentRecordings": {
-    "message": "பதிவுகள்"
-  }
+  "appName": { "message": "திரை பதிவு ஸ்டுடியோ - அலைமதி, ஜூம், GIF" },
+  "appDesc": { "message": "நேர வரம்பு இல்லாத திரை பதிவு. உள்ளமைக்கப்பட்ட எடிட்டரில் ஜூம், டிரிம செய்து HD MP4 அல்லது GIF ஆக ஏற்றுமதி." },
+  "common_close": { "message": "மூடு" },
+  "action_defaultTitle": { "message": "பதிவு ப্যானலைத் திறக்கவும்" },
+  "control_headerTitle": { "message": "திரை பதிவி" },
+  "control_headerDesc": { "message": "பதிவு முறையைத் தேர்ந்தெடுத்து தொடங்கவும்" },
+  "control_openDriveTooltip": { "message": "பதிவு கோப்பு மேலாளரைத் திறக்கவும்" },
+  "control_closePanelTooltip": { "message": "கட்டுப்பாடு ப্যானலை மூடவும்" },
+  "control_recordingMode": { "message": "பதிவு முறை" },
+  "control_modeTab": { "message": "தாவல்" },
+  "control_modeTabDesc": { "message": "தற்போதைய தாவலைப் பதிவுசெய்யவும்" },
+  "control_modeWindow": { "message": "சாளரம்" },
+  "control_modeWindowDesc": { "message": "முழு சாளரத்தையும் பதிவுசெய்யவும்" },
+  "control_modeScreen": { "message": "திரை" },
+  "control_modeScreenDesc": { "message": "முழு திரையையும் பதிவுசெய்யவும்" },
+  "control_statusRecording": { "message": "பதிவுச் செல்கிறது" },
+  "control_statusPaused": { "message": "பதிவு நிறுத்தப்பட்டுள்ளது" },
+  "control_statusPreparing": { "message": "பதிவுக்கு தயாராகிறது..." },
+  "control_btnStart": { "message": "பதிவைத் தொடங்கு" },
+  "control_btnStop": { "message": "பதிவை நிறுத்து" },
+  "control_btnPause": { "message": "பதிவை இடைநிறுத்து" },
+  "control_btnResume": { "message": "பதிவைத் தொடர்வு" },
+  "control_btnPreparing": { "message": "தயாராகிறது..." },
+  "control_btnStarting": { "message": "$SECONDS$ வினாடிகளில் தொடங்கும்..." },
+  "control_countdownLabel": { "message": "கவுண்ட்டவுன்" },
+  "control_tipsTitle": { "message": "பதிவு குறிப்புகள்:" },
+  "control_tipsSelectMode": { "message": "$MODE$ முறை தேர்வுச் செய்யப்பட்டது, பதிவைத் தொடங்க கிளிக் செய்யவும்." },
+  "control_tipsPreparing": { "message": "திரைத் தேர்வுக்காகக் காத்திருக்கிறது..." },
+  "control_tipsCountdown": { "message": "தயாராங்கள்! $SECONDS$ வினாடிகளில் பதிவு தொடங்கும்." },
+  "control_tipsPaused": { "message": "பதிவு நிறுத்தப்பட்டுள்ளது, தொடர கிளிக் செய்யவும்." },
+  "control_tipsRecording": { "message": "பதிவு நடக்கிறது, இடைநிறுத்த கிளிக் செய்யவும்." },
+  "control_overlayRecordingStarts": { "message": "பதிவு விரைவில் தொடங்கும்..." },
+  "control_errorTimeout": { "message": "பதிவு தயாரிப்பு நேரம் முடிந்தது. மீண்டும் முயற்சிக்கவும்." },
+  "control_errorStartFailed": { "message": "பதிவைத் தொடங்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்." },
+  "control_errorRecordingFailed": { "message": "பதிவில் பிழை ஏற்பட்டு நிறுத்தப்பட்டது." },
+  "control_errorStorageLow": { "message": "சேமிப்பு இடைவு குறைகிறது. பதிவு தோல்வியடையக்கூடும்." },
+  "control_statusSaving": { "message": "பதிவைச் சேமிக்கிறது..." },
+  "control_btnSaving": { "message": "சேமிக்கிறது..." },
+  "drive_pageTitle": { "message": "பதிவுகள் - திரை பதிவி நீட்சி" },
+  "drive_headerTitle": { "message": "பதிவு மேலாளர்" },
+  "drive_errorSupport": { "message": "உங்கள் உலாவி OPFS சேமிப்பை ஆதரிக்காது" },
+  "drive_errorMetaNotFound": { "message": "meta.json கிடைக்கவில்லை" },
+  "drive_errorEmpty": { "message": "காலியான பதிவு கோப்பு" },
+  "drive_errorMetadata": { "message": "பதிவு மெட்டாடேட்டாவைப் படிக்க முடியவில்லை" },
+  "drive_errorDataSize": { "message": "தரவு கோப்பு அளவைப் பெற முடியவில்லை" },
+  "drive_recordingNamePrefix": { "message": "திரை பதிவு" },
+  "drive_logDeleted": { "message": "பதிவு $ID$ நீக்கப்பட்டது" },
+  "drive_errorDelete": { "message": "நீக்கத் தோல்வி: $ERROR$" },
+  "drive_logBatchDelete": { "message": "$COUNT$ பதிவுகள் வெற்றியாக நீக்கப்பட்டன" },
+  "drive_errorLoad": { "message": "பதிவுகளை ஏற்றுவதில் பிழை" },
+  "drive_errorLoadPrefix": { "message": "பதிவுகளை ஏற்றத் தோல்வி:" },
+  "studio_pageTitle": { "message": "திரை பதிவு ஸ்டுடியோ" },
+  "studio_headerTitle": { "message": "திரை பதிவி ஸ்டுடியோ" },
+  "studio_githubTooltip": { "message": "GitHub-ல் மூலத்தைக் காண்க" },
+  "studio_githubText": { "message": "GitHub" },
+  "studio_feedbackTooltip": { "message": "பிழைகளைப் புகாரளிக்கவும் அல்லது அம்சங்களைப் பரிந்துரைக்கவும்" },
+  "studio_feedbackText": { "message": "பின்னூல்" },
+  "studio_helpTooltip": { "message": "உதவி & ஆவணப்படுத்தல்" },
+  "studio_helpText": { "message": "உதவி" },
+  "studio_driveTooltip": { "message": "பதிவு கோப்பு மேலாளரைத் திறக்கவும்" },
+  "studio_driveText": { "message": "டிரைவ்" },
+  "studio_fullscreenEnterTooltip": { "message": "முழுத் திரைக்குச் செல்லவும்" },
+  "studio_fullscreenExitTooltip": { "message": "முழுத் திரையை விடுப்பதற்கு" },
+  "studio_fullscreenEnterText": { "message": "முழுத் திரை" },
+  "studio_fullscreenExitText": { "message": "வெளியேறு" },
+  "bg_title": { "message": "பின்புலம்" },
+  "bg_tab_wallpaper": { "message": "வால்பேப்பர்" },
+  "bg_tab_gradient": { "message": "கிரேடியண்ட்" },
+  "bg_tab_solid": { "message": "திட" },
+  "bg_tab_image": { "message": "படம்" },
+  "radius_title": { "message": "வீடியோ ரேடியஸ்" },
+  "radius_none": { "message": "ரேடியஸ் இல்லை" },
+  "radius_small": { "message": "சிறிய ரேடியஸ்" },
+  "radius_medium": { "message": "நடுத்தர ரேடியஸ்" },
+  "radius_large": { "message": "பெரிய ரேடியஸ்" },
+  "radius_xl": { "message": "மிகப்பெரிய ரேடியஸ்" },
+  "padding_title": { "message": "வீடியோ பேடிங்" },
+  "padding_none": { "message": "பேடிங் இல்லை" },
+  "padding_small": { "message": "சிறிய பேடிங்" },
+  "padding_medium": { "message": "நடுத்தர பேடிங்" },
+  "padding_large": { "message": "பெரிய பேடிங்" },
+  "padding_xl": { "message": "மிகப்பெரிய பேடிங்" },
+  "ratio_yt": { "message": "YouTube மல்டிபஸ்" },
+  "ratio_yt_desc": { "message": "YouTube, Bilibili, iQiyi மற்றவை." },
+  "ratio_sq": { "message": "Instagram சதுரம்" },
+  "ratio_sq_desc": { "message": "Instagram பதிவுகள், WeChat மோமென்ட்ஸ்" },
+  "ratio_tiktok": { "message": "TikTok போர்ட்ரேட்" },
+  "ratio_tiktok_desc": { "message": "TikTok, Reels, ஷார்ட்ஸ்" },
+  "ratio_story": { "message": "Instagram கதை" },
+  "ratio_story_desc": { "message": "Instagram கதைகள், Xiaohongshu" },
+  "shadow_title": { "message": "வீடியோ நிழல்" },
+  "shadow_preset_title": { "message": "முன் தீர்மானித்த விளைவுகள்" },
+  "shadow_custom_title": { "message": "தனிப்பயன் அளவுருகள்" },
+  "shadow_light": { "message": "இலகு நிழல்" },
+  "shadow_standard": { "message": "நியம நிழல்" },
+  "shadow_deep": { "message": "ஆழமான நிழல்" },
+  "shadow_distant": { "message": "தூர நிழல்" },
+  "shadow_offset_x": { "message": "X ஆஃப்செட்" },
+  "shadow_offset_y": { "message": "Y ஆஃப்செட்" },
+  "shadow_blur": { "message": "மங்கல்" },
+  "shadow_color": { "message": "நிறம்" },
+  "shadow_opacity": { "message": "ஒளிபுகா தன்மை" },
+  "shadow_empty_state": { "message": "நிழல் விளைவுகளைக் கட்டமைக்க நிழல் சுவிட்சை இயக்கவும்" },
+  "color_tab_basic": { "message": "அடிப்படை" },
+  "color_tab_light": { "message": "வெளிச்சம்" },
+  "color_tab_business": { "message": "வணிக" },
+  "color_tab_creative": { "message": "படைப்பு" },
+  "color_custom": { "message": "தனிப்பயன்:" },
+  "gradient_tab_linear": { "message": "நேர்கோடு" },
+  "gradient_tab_radial": { "message": "ரேடியல்" },
+  "gradient_tab_conic": { "message": "கோனிக்" },
+  "gradient_tab_multi": { "message": "மல்டி" },
+  "gradient_current": { "message": "தற்போதைய:" },
+  "gradient_select_hint": { "message": "கிரேடியண்டைத் தேர்வுச் செய்யவும்" },
+  "gradient_colors_suffix": { "message": "நிறங்கள்" },
+  "wallpaper_tab_abstract": { "message": "சுருக்கம்" },
+  "wallpaper_tab_minimal": { "message": "மினிமல்" },
+  "wallpaper_tab_nature": { "message": "இயற்கை" },
+  "wallpaper_tab_business": { "message": "வணிக" },
+  "wallpaper_tab_tech": { "message": "தொழில்" },
+  "wallpaper_error": { "message": "வால்பேப்பரை ஏற்றத் தோல்வி" },
+  "wallpaper_stats": { "message": "இந்த வகையில் $COUNT$ வால்பேப்பர்கள்" },
+  "wallpaper_total": { "message": "மொத்தம் $TOTAL$" },
+  "upload_processing": { "message": "செயலாக்குகிறது..." },
+  "upload_drop_hint": { "message": "இங்கே படத்தைக் கிளிக் செய்யவோ இழுக்கவோ செய்யவும்" },
+  "upload_format_hint": { "message": "JPEG, PNG, WebP, GIF · அதிகபட்சம் 5MB" },
+  "upload_error_select": { "message": "ஒரு படக் கோப்பைத் தேர்வுச் செய்யவும்" },
+  "upload_error_failed": { "message": "பதிவேற்றத் தோல்வி" },
+  "drive_delete_selected_btn": { "message": "தேர்வுச் செய்ததை நீக்கு ($COUNT$)" },
+  "drive_clear_selection": { "message": "தேர்வைத் தெளிவுபடுத்து" },
+  "drive_refresh": { "message": "புதுப்பி" },
+  "drive_error_title": { "message": "பிழை" },
+  "drive_close_error": { "message": "மூடு" },
+  "drive_loading": { "message": "பதிவுகளை ஏற்றுகிறது..." },
+  "drive_empty_title": { "message": "இன்னும் பதிவுகள் இல்லை" },
+  "drive_empty_desc1": { "message": "உங்களிடம் எந்தத் திரைப் பதிவுகளும் இல்லை." },
+  "drive_empty_desc2": { "message": "உங்கள் திரையைப் பதிவுச் செய்தால் உங்கள் பதிவுகள் இங்கேத் தோன்றும்." },
+  "drive_start_recording_btn": { "message": "பதிவைத் தொடங்கு" },
+  "drive_select_all": { "message": "அனைத்தையும் தேர்வுச் செய் ($COUNT$ பதிவுகள்)" },
+  "drive_sort_hint": { "message": "நேரத்தின் படி வரிசைப்படுத்தப்பட்டுள்ளது (புதியது முதல்)" },
+  "drive_confirm_delete_title": { "message": "நீக்குதலை உறுதிப்படுத்து" },
+  "drive_confirm_delete_selected": { "message": "தேர்வுச் செய்த $COUNT$ பதிவுகளை நீக்க விரும்புகிறீர்களா?" },
+  "drive_confirm_delete_single": { "message": "இந்தப் பதிவை நீக்க விரும்புகிறீர்களா?" },
+  "drive_action_undone": { "message": "இந்தச் செயலைத் திரும்பப் பெற முடியாது." },
+  "drive_cancel": { "message": "ரத்து" },
+  "drive_delete": { "message": "நீக்கு" },
+  "card_status_completed": { "message": "முடிவுற்றது" },
+  "card_status_incomplete": { "message": "முழுமையற்ற" },
+  "card_label_created": { "message": "உருவாக்கப்பட்டது:" },
+  "card_label_status": { "message": "நிலை:" },
+  "card_label_codec": { "message": "கோடெக்:" },
+  "card_label_resolution": { "message": "தீர்மானம்:" },
+  "card_label_fps": { "message": "FPS:" },
+  "card_label_size": { "message": "கோப்பு அளவு:" },
+  "card_label_frames": { "message": "மொத்த சட்டங்கள்:" },
+  "card_incomplete_title": { "message": "முழுமையற்ற பதிவு" },
+  "card_incomplete_desc": { "message": "வீடியோ தரவு இல்லை" },
+  "card_preview_error": { "message": "முன்பதிவை ஏற்க முடியாது" },
+  "card_preview_loading": { "message": "முன்பதிவை உருவாக்குகிறது..." },
+  "card_btn_edit": { "message": "திருத்து" },
+  "card_btn_delete": { "message": "நீக்கு" },
+  "card_edit_disabled_tooltip": { "message": "முழுமையற்ற பதிவைத் திருத்த முடியாது" },
+  "card_edit_tooltip": { "message": "பதிவைத் திருத்து" },
+  "card_preview_load_error": { "message": "முன்பதிவு தரவை ஏற்கத் தோல்வி: $ERROR$" },
+  "card_date_today": { "message": "இன்று $TIME$" },
+  "card_date_yesterday": { "message": "நேற்று $TIME$" },
+  "card_date_days_ago": { "message": "$DAYS$ நாட்களுக்கு முன்" },
+  "export_panel_tier_free": { "message": "இலவச" },
+  "export_panel_tier_pro": { "message": "புரோ" },
+  "export_panel_tier_trial": { "message": "புரோ சோதனை" },
+  "export_panel_btn": { "message": "ஏற்று" },
+  "export_panel_tooltip_incomplete": { "message": "ஏற்றுவதற்கு பதிவை முழுமைப்படுத்தவும்" },
+  "export_panel_tooltip_no_data": { "message": "வீடியோ தரவு இல்லை" },
+  "export_panel_btn_exporting": { "message": "ஏற்றுகிறது..." },
+  "export_error_gif_failed": { "message": "GIF ஏற்றத் தோல்வி. மீண்டும் முயற்சிக்கவும்." },
+  "export_error_webm_failed": { "message": "WebM ஏற்றத் தோல்வி. மீண்டும் முயற்சிக்கவும்." },
+  "export_error_mp4_failed": { "message": "MP4 ஏற்றத் தோல்வி. மீண்டும் முயற்சிக்கவும்." },
+  "export_error_retry_hint": { "message": "மீண்டும் முயற்சிக்கவும் அல்லது வேறு வடிவத்தைப் பயன்படுத்தவும்." },
+  "export_error_opfs_download_failed": { "message": "கோப்பு டிரைவில் சேமிக்கப்பட்டது ஆனால் பதிவிறக்கத் தோல்வி. உங்கள் கோப்பைப் பெற டிரைவைத் திறக்கவும்." },
+  "export_dialog_title": { "message": "வீடியோவை ஏற்று" },
+  "export_source_res": { "message": "தீர்மானம்" },
+  "export_source_codec": { "message": "கோடெக்" },
+  "export_source_duration": { "message": "காலம்" },
+  "export_source_frames": { "message": "சட்டங்கள்" },
+  "export_badge_bg": { "message": "பின்புலம்" },
+  "export_badge_trim": { "message": "வெட்டப்பட்டது" },
+  "export_format_mp4": { "message": "MP4" },
+  "export_format_webm": { "message": "WebM" },
+  "export_format_gif": { "message": "GIF" },
+  "export_quality_title": { "message": "தர அமைப்பு" },
+  "export_quality_draft": { "message": "வரைபடம்" },
+  "export_quality_draft_desc": { "message": "வேகமான ஏற்றல், குறைந்த தரம்" },
+  "export_quality_balanced": { "message": "சமநிலை" },
+  "export_quality_balanced_desc": { "message": "நல்ல தரம், மிதமான வேகம்" },
+  "export_quality_high": { "message": "உயர்" },
+  "export_quality_high_desc": { "message": "உயர்தரம், மெதுவான" },
+  "export_quality_best": { "message": "சிறந்த" },
+  "export_quality_best_desc": { "message": "மிக உயர்தரம், மிக மெதுவான" },
+  "export_label_resolution": { "message": "தீர்மானம்" },
+  "export_res_source": { "message": "மூலத்துடன் பொருத்து ($WIDTH$×$HEIGHT$)" },
+  "export_label_framerate": { "message": "பிரேம் ரேட்" },
+  "export_fps_source": { "message": "$FPS$ fps (மூல)" },
+  "export_label_bitrate": { "message": "பிட்ரேட்" },
+  "export_bitrate_auto": { "message": "தானியங்கி" },
+  "export_bitrate_manual": { "message": "கைமுறை" },
+  "export_bitrate_auto_hint": { "message": "தானியங்கி: $RATE$ Mbps (தீர்மானம் மற்றும் தரத்தைப் பொறுத்து)" },
+  "export_label_speed": { "message": "குறியாக்க வேகம்" },
+  "export_speed_fastest": { "message": "வேகமான" },
+  "export_speed_fast": { "message": "விரைவு" },
+  "export_speed_balanced": { "message": "சமநிலை" },
+  "export_speed_slow": { "message": "மெதுவு" },
+  "export_speed_slowest": { "message": "மிக மெதுவு" },
+  "export_est_output": { "message": "மதிப்பிடப்பட்ட வெளியீடு" },
+  "export_est_size": { "message": "மதிப்பிடப்பட்ட அளவு" },
+  "export_label_gif_quality": { "message": "தரம்" },
+  "export_gif_best": { "message": "சிறந்த (மிக மெதுவான)" },
+  "export_gif_high": { "message": "உயர்" },
+  "export_gif_good": { "message": "நல்ல (இயல்புநிலை)" },
+  "export_gif_fast": { "message": "விரைவு" },
+  "export_gif_fastest": { "message": "வேகமான" },
+  "export_label_scale": { "message": "அளவு" },
+  "export_scale_original": { "message": "100% (அசல்)" },
+  "export_label_workers": { "message": "பணியாளர்கள்" },
+  "export_worker_singular": { "message": "$COUNT$ பணியாளர்" },
+  "export_worker_plural": { "message": "$COUNT$ பணியாளர்கள்" },
+  "export_label_dither": { "message": "டித்தரிங்" },
+  "export_dither_none": { "message": "இல்லை" },
+  "export_btn_cancel": { "message": "ரத்து" },
+  "export_btn_export_mp4": { "message": "MP4 ஏற்று" },
+  "export_btn_export_webm": { "message": "WebM ஏற்று" },
+  "export_btn_export_gif": { "message": "GIF ஏற்று" },
+  "export_progress_preparing": { "message": "தயாராகிறது..." },
+  "export_progress_encoding": { "message": "சட்டங்களைக் குறியாக்குகிறது..." },
+  "export_progress_muxing": { "message": "மக்ஸிங்..." },
+  "export_progress_finalizing": { "message": "முடிப்பதற்கு..." },
+  "export_progress_frame": { "message": "சட்டம் $CURRENT$ / $TOTAL$" },
+  "export_progress_time": { "message": "~$SECONDS$s மீதம்" },
+  "export_progress_hint": { "message": "உங்கள் வீடியோ ஏற்றப்படும்போது காத்திருக்கவும்..." },
+  "wallpaper_cat_abstract_name": { "message": "சுருக்கக் கலை" },
+  "wallpaper_cat_abstract_desc": { "message": "சுருக்கமான முறைகள், கலைஞரான உருவாக்கங்கள் மற்றும் நவீன வடிவமைப்புகள்" },
+  "wallpaper_cat_minimal_name": { "message": "மினிமல் பாணி" },
+  "wallpaper_cat_minimal_desc": { "message": "தூய வடிவியல், மினிமலிஸ்ட் வடிவமைப்பு மற்றும் தூநலம்" },
+  "wallpaper_cat_nature_name": { "message": "இயற்கைக் காட்சி" },
+  "wallpaper_cat_nature_desc": { "message": "இயற்கை நிலப்பரப்புகள், தாவர அமைப்புகள் மற்றும் கரிய அமைப்புகள்" },
+  "wallpaper_cat_business_name": { "message": "வணிக நிபுணர்" },
+  "wallpaper_cat_business_desc": { "message": "வணிகக் காட்சிகள், தொழில் நிறுவன சூழல் மற்று" },
+  "wallpaper_cat_tech_name": { "message": "தொழில் புனிதம்" },
+  "wallpaper_cat_tech_desc": { "message": "தொழில் நுட்ப உணர்வு, மிகவும் நவீன மற்று" },
+  "wallpaper_gradient_abstract_1_name": { "message": "சுருக்க கிரேடியண்ட்" },
+  "wallpaper_gradient_abstract_1_desc": { "message": "நவீன சுருக்க கிரேடியண்ட் பின்புலம், தொழில் மற்று" },
+  "wallpaper_geometric_pattern_1_name": { "message": "வடிவியல் முறை" },
+  "wallpaper_geometric_pattern_1_desc": { "message": "தூய வடிவியல் முறை பின்புலம், வணிகத்திற்கு ஏற்றது" },
+  "wallpaper_abstract_2425706_name": { "message": "சுருக்க நிறங்கள்" },
+  "wallpaper_abstract_2425706_desc": { "message": "வண்ணமயமான சுருக்க நிற தோல், வலுவான பார்வை விளைவு" },
+  "wallpaper_abstract_2512412_name": { "message": "சுருக்க நிறங்கள்" },
+  "wallpaper_abstract_2512412_desc": { "message": "ஓடும் சுருக்க நிற பின்புலம், படைப்பு உள்ளடக்கத்திற்கு ஏற்றது" },
+  "wallpaper_abstract_6297317_name": { "message": "சுருக்க வடிவங்கள்" },
+  "wallpaper_abstract_6297317_desc": { "message": "நிற தடுப்பு அமைப்புடன் கூடிய சுருக்க வடிவியல் வடிவங்கள்" },
+  "wallpaper_ai_generated_9083808_name": { "message": "AI உருவாக்கிய கலை" },
+  "wallpaper_ai_generated_9083808_desc": { "message": "AI உருவாக்கிய மிகவும் நவீன கலை பின்புலம்" },
+  "wallpaper_beach_4938036_name": { "message": "கடற்கரை" },
+  "wallpaper_beach_4938036_desc": { "message": "மணல் மற்று" },
+  "wallpaper_bulb_5665770_name": { "message": "படைப்பு விளக்கு" },
+  "wallpaper_bulb_5665770_desc": { "message": "படைப்பு மற்று" },
+  "wallpaper_cpu_8892400_name": { "message": "CPU சுற்று" },
+  "wallpaper_cpu_8892400_desc": { "message": "CPU chip மற்று" },
+  "wallpaper_feather_5488401_name": { "message": "இறகு முடிவுரு" },
+  "wallpaper_feather_5488401_desc": { "message": "செழுமையான விவரங்களுடன் மென்மையான இறகு அமைப்பு" },
+  "wallpaper_fractal_8902060_name": { "message": "பிராக்டல் கலை" },
+  "wallpaper_fractal_8902060_desc": { "message": "சுருக்க கலை பாணியில் சிறந்த பிராக்டல் முறைகள்" },
+  "wallpaper_orange_3036097_name": { "message": "ஆரஞ்சு துண்டு" },
+  "wallpaper_orange_3036097_desc": { "message": "வண்ணமயமான ஆரஞ்சு துண்டுகள், மலர்ந்த நிறங்கள்" },
+  "wallpaper_orange_6508617_name": { "message": "ஆரஞ்சு பின்புலம்" },
+  "wallpaper_orange_6508617_desc": { "message": "ஆற்றல் நிறைந்த ஆரஞ்சு themed பின்புலம்" },
+  "wallpaper_polar_lights_5858656_name": { "message": "அரோரா" },
+  "wallpaper_polar_lights_5858656_desc": { "message": "வட துருவ விளக்குகள் இரவு வானம், கனவான இயற்கை நிகழ்வு" },
+  "wallpaper_spiral_3112405_name": { "message": "சுருள் முறை" },
+  "wallpaper_spiral_3112405_desc": { "message": "இயக்கமான அடுக்குகளுடன் அமூர்த்த சுருள் அமைப்பு" },
+  "wallpaper_steelwool_458842_name": { "message": "ஸ்டீல் ஊல் லைட் பெயிண்டிங்" },
+  "wallpaper_steelwool_458842_desc": { "message": "நீண்ட வெளிப்படை லைட் பெயிண்டிங் விளைவு, சுருக்கமான மற்று" },
+  "wallpaper_swimming_pool_8306716_name": { "message": "தடுப்பு அலைகள்" },
+  "wallpaper_swimming_pool_8306716_desc": { "message": "சுடரான கோடை வளிமண்டலத்துடன் ஸ்விம்மிங் பூல் நீர் அலைகள்" },
+  "wallpaper_abstract_2426502_name": { "message": "சுருக்க நிறங்கள்" },
+  "wallpaper_abstract_2426502_desc": { "message": "சுருக்க நிறங்கள் மற்று" },
+  "wallpaper_camera_1248682_name": { "message": "கேமரா முடிவுரு" },
+  "wallpaper_camera_1248682_desc": { "message": "அமைப்புடன் கூடிய தொழில்நுட்ப பாணியில் கேமரா மற்றும் லென்ஸ் க்ளோஸ்-அப்" },
+  "wallpaper_circle_5090539_name": { "message": "வட்ட வடிவியல்" },
+  "wallpaper_circle_5090539_desc": { "message": "தூய வட்ட வடிவியல் முறை, visualunity layouts" },
+  "wallpaper_feather_7009025_name": { "message": "இறகு அமைப்பு" },
+  "wallpaper_feather_7009025_desc": { "message": "நுட்பமான இயற்கை முறைகளுடன் மென்மையான இறகு அமைப்பு" },
+  "wallpaper_fiber_4814456_name": { "message": "நார் வரிகள்" },
+  "wallpaper_fiber_4814456_desc": { "message": "நார் optics மற்று" },
+  "wallpaper_frost_6702335_name": { "message": "உறைபனி அமைப்பு" },
+  "wallpaper_frost_6702335_desc": { "message": "குளிர் textured உறைந்த முறை பின்புலம்" },
+  "wallpaper_leaves_4291098_name": { "message": "பச்சை இலைகள்" },
+  "wallpaper_leaves_4291098_desc": { "message": "பச்சை இலைகளின் இயற்கை அமைப்பு, புத்துணர்ச்சியான மற்றும் ஆறுதலான" },
+  "wallpaper_light_1834289_name": { "message": "லைட் போக்கே" },
+  "wallpaper_light_1834289_desc": { "message": "ஒளி மற்றும் நிழல் போக்கே விளைவு, வளிமண்டல அமூர்த்த பின்னணி" },
+  "wallpaper_light_942231_name": { "message": "ஒளிக் கோடுகள்" },
+  "wallpaper_light_942231_desc": { "message": "ஓடும் ஒளிக் கோடுகள், இயக்கமான அமூர்த்த பின்னணி" },
+  "wallpaper_luck_4397584_name": { "message": "நான்கு இலைத் துத்தை" },
+  "wallpaper_luck_4397584_desc": { "message": "புத்துணர்ச்சியான இயற்கை பச்சை நிறத்துடன் அதிர்ஷ்ட நான்கு இலை க்ளோவர்" },
+  "wallpaper_waterdrop_2256201_name": { "message": "நீர்த்துளி க்ளோஸ்-அப்" },
+  "wallpaper_waterdrop_2256201_desc": { "message": "நீர்த்துளி மற்றும் மேற்பரப்பு பதற்றம் மேக்ரோ அமைப்பு" },
+  "welcome_pageTitle": { "message": "Screen Recorder Studio-க்கு வரவேற்கிறோம்" },
+  "welcome_headerSubtitle": { "message": "தொழில் நிபுணர் உலாவி பதிவு கருவி" },
+  "welcome_installSuccess": { "message": "நிறுவல் வெற்றியடைந்தது" },
+  "welcome_headline": { "message": "பதிவு, திருத்து மற்று" },
+  "welcome_subheadline": { "message": "மணிக்கணக்கான footage-ஐ மெதுவாகப் பிடித்து, பின்னர் திருத்தி உயர்தர வீடியோகளாகவோ GIF-ஆகவோ ஏற்றவும்—அனைத்தும் உங்கள் உலாவியில் பாதுகாப்பாகச் செயலாக்கப்படும்." },
+  "welcome_tryTitle": { "message": "உங்கள் முதல் பதிவைத் தொடங்குங்கள்" },
+  "welcome_trySubtitle": { "message": "ஏதைப் பதிவு செய்ய வேண்டுமோ அதைத் தேர்வு செய்து பதிவைத் தொடங்குங்கள்—நீங்கள் நிறுத்தும்போது ஸ்டுடியோ திறக்கும்." },
+  "welcome_modeTabDetail": { "message": "வலை டெமோகள் மற்று" },
+  "welcome_modeWindowDetail": { "message": "முகவரி பட்டியையும் டூல்பாரையும் உள்ளடக்கிய" },
+  "welcome_modeScreenDetail": { "message": "பல-பயன்பாடு வேலைக்கு" },
+  "welcome_statusRecording": { "message": "பதிவு செல்கிறது" },
+  "welcome_modeLabel": { "message": "முறை" },
+  "welcome_proTrialActive": { "message": "Pro Trial" },
+  "welcome_feat1Title": { "message": "தனிப்பட்ட & உள்ளூர்" },
+  "welcome_feat2Title": { "message": "வாட்டர்மார்க்" },
+  "welcome_feat3Title": { "message": "விரைவு" },
+  "welcome_feat4Title": { "message": "வீடியோ & GIF" },
+  "welcome_howTitle": { "message": "உங்கள் பதிவு" },
+  "welcome_howDesc": { "message": "பிடித்தல் முதல் ஏற்றுதல்" },
+  "welcome_step1Title": { "message": "நீட்சியை" },
+  "welcome_step1Desc": { "message": "உலாவி டூல்பாரில்" },
+  "welcome_step2Title": { "message": "உங்கள்" },
+  "welcome_step2Desc": { "message": "எதைப்" },
+  "welcome_step3Title": { "message": "விரைவு" },
+  "welcome_step3Desc": { "message": "\"$BTN$\" என்பதைக் கிளிக் செய்து தயாராகுங்கள் - $SECONDS$ வினாடி கவுண்ட்டவுன் உங்களுக்கு தயாரிக்க நேரம் தரும்!" },
+  "welcome_trustNoWatermark": { "message": "வாட்டர்மார்க்" },
+  "welcome_trustHD": { "message": "HD" },
+  "welcome_trustLocal": { "message": "தனிப்பட்ட" },
+  "welcome_trustQuickEditing": { "message": "விரைவு" },
+  "welcome_footerHelp": { "message": "மேலதிக கட்டுப்பாடு வேணுமா? பதிவு மற்றும் ஏற்றுமதி அமைப்புகளுக்கு நீட்சி ஐகானைக் கிளிக் செய்யவும்." },
+  "welcome_footerMeta": { "message": "திரை பதிவி ஸ்டுடியோ • தொழில் நிபுணர்களுக்காக உருவாக்கப்பட்டது" },
+  "annotation_tool_cursor": { "message": "கர்சர் (இடைமுகம்)" },
+  "annotation_tool_effect": { "message": "கர்சர் விளைவு" },
+  "annotation_tool_arrow": { "message": "அம்பு" },
+  "annotation_tool_rectangle": { "message": "சதுரம்" },
+  "annotation_tool_circle": { "message": "வட்டம்" },
+  "annotation_tool_freehand": { "message": "பேன்" },
+  "annotation_tool_text": { "message": "உரை" },
+  "annotation_tool_highlight": { "message": "ஹைலைட்" },
+  "annotation_tool_blur": { "message": "மங்கல்" },
+  "annotation_tool_undo": { "message": "மீட்டமை" },
+  "annotation_tool_clear": { "message": "அனைத்தையும் அழி" },
+  "annotation_tool_close": { "message": "மூடு" },
+  "webRecord_pageTitle": { "message": "இணைய திரை பதிவி" },
+  "webRecord_headerTitle": { "message": "திரை பதிவி" },
+  "webRecord_openDriveTooltip": { "message": "பதிவு கோப்பு மேலாளரைத் திறக்கவும்" },
+  "webRecord_driveBtn": { "message": "பதிவுகள்" },
+  "webRecord_errorTitle": { "message": "பிழை" },
+  "webRecord_errorInsecure": { "message": "திரை பதிவுக்கு பாதுகாப்பான சூழல் (HTTPS) தேவை. இந்தப் பக்கத்தை HTTPS மூலம் அணுகவும்." },
+  "webRecord_errorNoDisplayMedia": { "message": "உங்கள் உலாவி திரை பதிவை ஆதரிக்காது (getDisplayMedia API)." },
+  "webRecord_errorNoWebCodecs": { "message": "உங்கள் உலாவி WebCodecs API ஐ ஆதரிக்காது. Chrome 94+ போன்ற நவீன உலாவியைப் பயன்படுத்தவும்." },
+  "webRecord_errorNoTrackProcessor": { "message": "உங்கள் உலாவி MediaStreamTrackProcessor ஐ ஆதரிக்காது. Chrome 94+ ஐப் பயன்படுத்தவும்." },
+  "webRecord_errorNoOPFS": { "message": "உங்கள் உலாவி OPFS சேமிப்பை ஆதரிக்காது." },
+  "webRecord_errorGeneric": { "message": "பிழை ஏற்பட்டது. மீண்டும் முயற்சிக்கவும்." },
+  "webRecord_errorNoVideoTrack": { "message": "திரை பிடிப்பில் வீடியோ டிராக் இல்லை." },
+  "webRecord_errorPermissionDenied": { "message": "திரை பதிவு அனுமதி மறுக்கப்பட்டது. பதிவு செய்ய திரைப் பகிர்வுக்கு அனுமதி அளிக்கவும்." },
+  "webRecord_errorEncoding": { "message": "வீடியோ குறியாக்க பிழை ஏற்பட்டது." },
+  "webRecord_statusRecording": { "message": "பதிவுச் செல்கிறது" },
+  "webRecord_statusPreparing": { "message": "தயாராகிறது..." },
+  "webRecord_statusStopping": { "message": "நிறுத்துகிறது..." },
+  "webRecord_statusIdle": { "message": "பதிவுக்கு தயார்" },
+  "webRecord_btnStart": { "message": "பதிவைத் தொடங்கு" },
+  "webRecord_btnStop": { "message": "பதிவை நிறுத்து" },
+  "webRecord_btnPreparing": { "message": "தயாராகிறது..." },
+  "webRecord_btnStopping": { "message": "நிறுத்துகிறது..." },
+  "webRecord_tipsTitle": { "message": "குறிப்புகள்:" },
+  "webRecord_tip1": { "message": "தொடங்கு என்பதைக் கிளிக் செய்து பதிவு செய்ய திரை, சாளரம் அல்லது தாவலைத் தேர்வு செய்யவும்." },
+  "webRecord_tip2": { "message": "பதிவுகள் உங்கள் உலாவி சேமிப்பில் உள்ளூராகச் சேமிக்கப்படும்." },
+  "webRecord_tip3": { "message": "உங்கள் பதிவுகளைக் காண, திருத்த மற்றும் ஏற்றுமதி செய்ய பதிவுகள் என்பதைக் கிளிக் செய்யவும்." },
+  "drive_drawerDelete": { "message": "நீக்கு" },
+  "drive_drawerEmpty": { "message": "இன்னும் பதிவுகள் இல்லை" },
+  "drive_drawerJustNow": { "message": "இப்போதுதான்" },
+  "drive_drawerOpenFull": { "message": "முழு டிரைவைத் திறக்கவும்" },
+  "drive_drawerTitle": { "message": "சமீபத்திய பதிவுகள்" },
+  "launcher_drive": { "message": "டிரைவ்" },
+  "launcher_driveDesc": { "message": "பதிவுகளைக் காண மற்றும் மேலாளவும்" },
+  "launcher_pageTitle": { "message": "திரை பதிவி ஸ்டுடியோ" },
+  "launcher_record": { "message": "பதிவு" },
+  "launcher_recordDesc": { "message": "புதிய திரை பதிவைத் தொடங்கவும்" },
+  "launcher_studio": { "message": "ஸ்டுடியோ" },
+  "launcher_studioDesc": { "message": "உங்கள் சமீபத்திய பதிவைத் திருத்தவும்" },
+  "launcher_subtitle": { "message": "பதிவு, மேலாள் மற்று" },
+  "launcher_title": { "message": "திரை பதிவி ஸ்டுடியோ" },
+  "studio_emptyDesc": { "message": "பதிவுக்குப் பிறகு, உங்கள் வீடியோ இங்கே தானாகத் தோன்றும். ஸ்டுடியோவில் முன்பதிவு செய்ய, டிரிம் செய்ய, ஸ்டைல் செய்ய மற்றும் ஏற்றுமதி செய்யலாம்." },
+  "studio_emptyFeatureExport": { "message": "ஏற்றுமதி" },
+  "studio_emptyFeaturePreview": { "message": "முன்பதிவு" },
+  "studio_emptyFeatureTrim": { "message": "டிரிம் & ஸ்டைல்" },
+  "studio_emptyOpenDrive": { "message": "டிரைவைத் திறக்கவும்" },
+  "studio_emptyReasonInvalid": { "message": "சமீபத்திய பதிவுகளை ஏற்ற முடியவில்லை." },
+  "studio_emptyReasonLoadFailed": { "message": "குறிப்பிட்ட பதிவை ஏற்றத் தோல்வி." },
+  "studio_emptyReasonOpfs": { "message": "இந்த உலாவியில் சேமிப்பு கிடைக்கவில்லை." },
+  "studio_emptyStartRecording": { "message": "பதிவைத் தொடங்கு" },
+  "studio_emptyTitle": { "message": "திருத்த ஒரு வீடியோ இன்னும் இல்லை" },
+  "studio_loading": { "message": "ஏற்றுகிறது..." },
+  "studio_recentRecordings": { "message": "பதிவுகள்" }
 }

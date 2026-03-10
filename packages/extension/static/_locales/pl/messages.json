@@ -93,9 +93,9 @@
   "ratio_sq": { "message": "Instagram Kwadrat" },
   "ratio_sq_desc": { "message": "Posty Instagram, WeChat Moments" },
   "ratio_tiktok": { "message": "TikTok Pionowy" },
-  "ratio_tiktok_desc": { "message": "TikTok, Douyin, Kuaishou" },
-  "ratio_story": { "message": "Instagram Story" },
-  "ratio_story_desc": { "message": "Instagram Stories, Xiaohongshu" },
+  "ratio_tiktok_desc": { "message": "TikTok, Reels itp." },
+  "ratio_story": { "message": "Relacja Instagram" },
+  "ratio_story_desc": { "message": "Instagram Stories, Snapchat" },
 
   "shadow_title": { "message": "Cien video" },
   "shadow_preset_title": { "message": "Ustawienia wstepne efektow" },
