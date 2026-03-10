@@ -413,10 +413,10 @@
           const windowEndTimestamp =
             chunks[chunks.length - 1]?.timestamp || 0;
 
-          windowStartMs = Math.floor(
+          windowStartMs = Math.round(
             (windowStartTimestamp - firstGlobalTimestamp) / 1000,
           );
-          windowEndMs = Math.floor(
+          windowEndMs = Math.round(
             (windowEndTimestamp - firstGlobalTimestamp) / 1000,
           );
 

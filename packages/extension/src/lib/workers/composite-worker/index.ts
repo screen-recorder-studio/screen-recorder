@@ -1300,12 +1300,18 @@ function startPlayback() {
   // Use the actual videoFrameRate for scheduling to avoid time drift/jumps in zoom intervals
   const fps = Math.max(1, Math.floor(videoFrameRate || 30));
   const frameInterval = 1000 / fps;
-  let lastFrameTime = 0;
+  let lastFrameTime = 0; // 0 signals "not yet initialized"
 
   function playFrame() {
     if (!isPlaying) return;
 
     const now = performance.now();
+
+    // 首帧初始化：以当前时间为基准，避免首帧因 lastFrameTime=0 导致立即渲染
+    if (lastFrameTime === 0) {
+      lastFrameTime = now;
+    }
+
     if (now - lastFrameTime >= frameInterval) {
       const boundary = windowBoundaryFrames ?? decodedFrames.length;
       // 若已到达窗口边界，则立即宣告窗口完成（不受追加解码影响）
@@ -1339,7 +1345,13 @@ function startPlayback() {
         }
 
         currentFrameIndex++;
-        lastFrameTime = now;
+        // 🔧 修复：使用累积递增而非 now，避免帧时间漂移导致跳帧
+        lastFrameTime += frameInterval;
+        // 安全阀：如果累积偏差过大（>2帧间隔），重新同步
+        // 防止因标签页后台挂起或长时间暂停后恢复导致一次性快进大量帧
+        if (now - lastFrameTime > frameInterval * 2) {
+          lastFrameTime = now;
+        }
 
         // 水位检测与提示（相对当前窗口边界）
         const boundaryForWatermark = windowBoundaryFrames ?? decodedFrames.length;

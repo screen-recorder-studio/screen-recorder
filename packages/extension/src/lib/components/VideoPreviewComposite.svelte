@@ -374,11 +374,11 @@
             lastFrameWindowStartIndex = windowStartIndex
             currentFrameIndex = startFrame
 
+            // 🔧 修复：合并双重 rAF 为单次，减少 16ms 窗口切换延迟
+            // Worker 消息队列是 FIFO 的，同一回调中发送的 seek/play 按顺序处理
             requestAnimationFrame(() => {
               seekToFrame(startFrame)
-              requestAnimationFrame(() => {
-                play()
-              })
+              play()
             })
           }
           break

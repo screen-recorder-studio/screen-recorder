@@ -44,7 +44,7 @@ let openedDirId: string | null = null
 function timestampToMs(timestamp: number): number {
   // 根据opfs-writer-worker.ts，时间戳以微秒存储
   // 需要转换为毫秒用于UI显示和计算
-  return Math.floor(timestamp / 1000)
+  return Math.round(timestamp / 1000)
 }
 
 // 🔧 计算相对时间戳（从第一帧开始）
