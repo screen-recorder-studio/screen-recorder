@@ -55,7 +55,7 @@
 
   "studio_pageTitle": { "message": "استودیو ضبط صفحه" },
   "studio_headerTitle": { "message": "استودیو ضبط‌کننده صفحه" },
-  "studio_githubTooltip": { "message": "مشاهده源码 در GitHub" },
+  "studio_githubTooltip": { "message": "مشاهده کد منبع در GitHub" },
   "studio_githubText": { "message": "GitHub" },
   "studio_feedbackTooltip": { "message": "گزارش باگ یا پیشنهاد ویژگی" },
   "studio_feedbackText": { "message": "بازخورد" },

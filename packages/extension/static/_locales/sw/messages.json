@@ -69,7 +69,7 @@
   "studio_fullscreenExitText": { "message": "Toka" },
 
   "bg_title": { "message": "Mandharinyuma" },
-  "bg_tab_wallpaper": { "message": "Pap衔 wallpaper" },
+  "bg_tab_wallpaper": { "message": "Picha ya ukuta" },
   "bg_tab_gradient": { "message": "Mteremko" },
   "bg_tab_solid": { "message": "Imara" },
   "bg_tab_image": { "message": "Picha" },
@@ -81,7 +81,7 @@
   "radius_large": { "message": "Kizio Kikubwa" },
   "radius_xl": { "message": "Kizio Kikubwa Sana" },
 
-  "padding_title": { "message": "P遗留 ya Video" },
+  "padding_title": { "message": "Nafasi ya Video" },
   "padding_none": { "message": "Hakuna Padding" },
   "padding_small": { "message": "Padding Ndogo" },
   "padding_medium": { "message": "Padding Ya Kati" },
@@ -93,7 +93,7 @@
   "ratio_sq": { "message": "Mraba wa Instagram" },
   "ratio_sq_desc": { "message": "Machapisho ya Instagram, Moments za WeChat" },
   "ratio_tiktok": { "message": "Muundo wa TikTok" },
-  "ratio_tiktok_desc": { "message": "TikTok, Douyin, Kuaishou" },
+  "ratio_tiktok_desc": { "message": "TikTok, Reels, video wima" },
   "ratio_story": { "message": "Story ya Instagram" },
   "ratio_story_desc": { "message": "Story za Instagram, Xiaohongshu" },
 
@@ -130,8 +130,8 @@
   "wallpaper_tab_nature": { "message": "Asili" },
   "wallpaper_tab_business": { "message": "Biashara" },
   "wallpaper_tab_tech": { "message": "Teknolojia" },
-  "wallpaper_error": { "message": "Imeshindwa kupakia pap衔 wallpaper" },
-  "wallpaper_stats": { "message": "$COUNT$ pap衔 wallpaper katika kitengo hiki", "placeholders": { "count": { "content": "$1" } } },
+  "wallpaper_error": { "message": "Imeshindwa kupakia picha ya ukuta" },
+  "wallpaper_stats": { "message": "$COUNT$ picha za ukuta katika kitengo hiki", "placeholders": { "count": { "content": "$1" } } },
   "wallpaper_total": { "message": "$TOTAL$ jumla", "placeholders": { "total": { "content": "$1" } } },
 
   "upload_processing": { "message": "Inachakata..." },
