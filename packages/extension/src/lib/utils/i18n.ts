@@ -1,5 +1,17 @@
+type ChromeI18nPlaceholder = {
+  content?: string
+  example?: string
+}
+
+type ChromeI18nMessage = {
+  message?: string
+  placeholders?: Record<string, ChromeI18nPlaceholder>
+}
+
+type FallbackMessage = string | ChromeI18nMessage
+
 // Global cache for loaded locale messages (web mode)
-let cachedMessages: Record<string, string> = {}
+let cachedMessages: Record<string, ChromeI18nMessage> = {}
 let localeInitialized = false
 let localeInitPromise: Promise<void> | null = null
 
@@ -8,15 +20,125 @@ const LANG_SESSION_KEY = 'screen_recorder_lang'
 
 // All supported locales (matching static/_locales directories)
 const SUPPORTED_LOCALES = [
-  'de', 'en', 'es', 'fr', 'hi', 'id', 'it', 'ja', 'ko', 
-  'pt_BR', 'ru', 'tr', 'vi', 'zh_CN', 'zh_TW'
-]
+  'am', 'ar', 'bg', 'bn', 'ca', 'cs', 'da', 'de', 'el', 'en', 'en_GB', 'es',
+  'es_419', 'et', 'fa', 'fi', 'fil', 'fr', 'gu', 'he', 'hi', 'hr', 'hu', 'id',
+  'it', 'ja', 'kn', 'ko', 'lt', 'lv', 'ml', 'mr', 'ms', 'nl', 'no', 'pl',
+  'pt_BR', 'pt_PT', 'ro', 'ru', 'sk', 'sl', 'sr', 'sv', 'sw', 'ta', 'te', 'th',
+  'tr', 'uk', 'ur', 'vi', 'zh_CN', 'zh_TW'
+] as const
 
-export function applyTemplateSubs(template: string, subs?: string | string[]) {
+const SUPPORTED_LOCALE_SET = new Set<string>(SUPPORTED_LOCALES)
+const LATAM_SPANISH_REGIONS = new Set([
+  '419', 'AR', 'BO', 'CL', 'CO', 'CR', 'DO', 'EC', 'GT', 'HN', 'MX',
+  'NI', 'PA', 'PE', 'PR', 'PY', 'SV', 'UY', 'VE'
+])
+const LOCALE_ALIASES: Record<string, string> = {
+  'in': 'id',
+  'in-id': 'id',
+  'iw': 'he',
+  'iw-il': 'he',
+  'nb': 'no',
+  'nb-no': 'no',
+  'nn': 'no',
+  'nn-no': 'no',
+  'pt': 'pt_BR',
+  'tl': 'fil',
+  'tl-ph': 'fil',
+  'zh': 'zh_CN',
+  'zh-hans': 'zh_CN',
+  'zh-hant': 'zh_TW',
+  'zh-hk': 'zh_TW',
+  'zh-mo': 'zh_TW'
+}
+
+function normalizeLocaleRegion(region?: string): string | null {
+  if (!region) return null
+  return /^[0-9]+$/.test(region) ? region : region.toUpperCase()
+}
+
+function resolveSupportedLocale(locale?: string | null): string | null {
+  if (!locale) return null
+
+  const trimmed = locale.trim()
+  if (!trimmed) return null
+
+  const lower = trimmed.toLowerCase()
+  if (LOCALE_ALIASES[lower]) return LOCALE_ALIASES[lower]
+
+  const parts = trimmed.replace(/_/g, '-').split('-').filter(Boolean)
+  const base = parts[0]?.toLowerCase()
+  const subtags = parts.slice(1)
+  const normalizedSubtags = subtags
+    .map((part) => normalizeLocaleRegion(part) || part.toUpperCase())
+    .filter(Boolean)
+  const region = normalizeLocaleRegion(subtags[subtags.length - 1])
+
+  if (!base) return null
+
+  if (base === 'zh') {
+    if (normalizedSubtags.includes('HANT') || normalizedSubtags.includes('TW') || normalizedSubtags.includes('HK') || normalizedSubtags.includes('MO')) {
+      return 'zh_TW'
+    }
+    if (normalizedSubtags.includes('HANS') || normalizedSubtags.includes('CN') || normalizedSubtags.includes('SG')) {
+      return 'zh_CN'
+    }
+  }
+
+  if (base === 'es' && region && LATAM_SPANISH_REGIONS.has(region)) {
+    return 'es_419'
+  }
+
+  const candidates = [
+    region ? `${base}_${region}` : null,
+    base
+  ].filter(Boolean) as string[]
+
+  for (const candidate of candidates) {
+    if (SUPPORTED_LOCALE_SET.has(candidate)) return candidate
+  }
+
+  return null
+}
+
+export function applyTemplateSubs(
+  template: string,
+  subs?: string | string[],
+  placeholders?: Record<string, ChromeI18nPlaceholder>
+) {
   if (!subs) return template
+
   const values = Array.isArray(subs) ? subs : [subs]
+  const namedValues = new Map<string, string>()
+
+  for (const [name, placeholder] of Object.entries(placeholders || {})) {
+    const indexMatch = placeholder?.content?.match(/^\$(\d+)$/)
+    if (!indexMatch) continue
+
+    const value = values[Number(indexMatch[1]) - 1] ?? ''
+    namedValues.set(name.toUpperCase(), value)
+  }
+
   let index = 0
-  return template.replace(/\$(\d+|[A-Z_]+)\$?/g, () => values[index++] ?? '')
+
+  return template.replace(/\$(\d+|[A-Z0-9_]+)\$?/g, (_, token: string) => {
+    if (/^\d+$/.test(token)) {
+      return values[Number(token) - 1] ?? ''
+    }
+
+    if (namedValues.has(token)) {
+      return namedValues.get(token) ?? ''
+    }
+
+    return values[index++] ?? ''
+  })
+}
+
+function formatFallbackMessage(message: FallbackMessage, subs?: string | string[]) {
+  if (typeof message === 'string') {
+    return applyTemplateSubs(message, subs)
+  }
+
+  return applyTemplateSubs(message.message || '', subs, message.placeholders)
 }
 
 /**
@@ -51,48 +173,7 @@ function getLanguageFromSession(): string | null {
  * Map browser language codes to our locale folder names
  */
 function mapBrowserLanguage(browserLang: string): string {
-  const langMap: Record<string, string> = {
-    // Chinese variants
-    'zh-CN': 'zh_CN',
-    'zh-TW': 'zh_TW',
-    'zh-HK': 'zh_TW',
-    'zh': 'zh_CN',
-    // Portuguese variants
-    'pt-BR': 'pt_BR',
-    'pt': 'pt_BR',
-    // Other languages - map to base locale
-    'de-AT': 'de',
-    'de-CH': 'de',
-    'de-DE': 'de',
-    'en-US': 'en',
-    'en-GB': 'en',
-    'en-AU': 'en',
-    'es-ES': 'es',
-    'es-MX': 'es',
-    'es-AR': 'es',
-    'fr-FR': 'fr',
-    'fr-CA': 'fr',
-    'it-IT': 'it',
-    'ja-JP': 'ja',
-    'ko-KR': 'ko',
-    'ru-RU': 'ru',
-    'tr-TR': 'tr',
-    'vi-VN': 'vi',
-    'hi-IN': 'hi',
-    'id-ID': 'id'
-  }
-  
-  // Try exact match first
-  if (langMap[browserLang]) return langMap[browserLang]
-  
-  // Try base language code
-  const base = browserLang.split('-')[0]
-  if (langMap[base]) return langMap[base]
-  
-  // Check if base language is directly supported
-  if (SUPPORTED_LOCALES.includes(base)) return base
-  
-  return 'en'
+  return resolveSupportedLocale(browserLang) || 'en'
 }
 
 /**
@@ -104,16 +185,16 @@ export function detectLanguage(): string {
   
   // 1. Check URL parameter first (highest priority)
   const params = new URLSearchParams(window.location.search)
-  const urlLang = params.get('l')
-  if (urlLang && SUPPORTED_LOCALES.includes(urlLang)) {
+  const urlLang = resolveSupportedLocale(params.get('l'))
+  if (urlLang) {
     // Save to session for other pages to use
     saveLanguageToSession(urlLang)
     return urlLang
   }
   
   // 2. Check session storage (persisted from previous page)
-  const sessionLang = getLanguageFromSession()
-  if (sessionLang && SUPPORTED_LOCALES.includes(sessionLang)) {
+  const sessionLang = resolveSupportedLocale(getLanguageFromSession())
+  if (sessionLang) {
     return sessionLang
   }
   
@@ -124,37 +205,32 @@ export function detectLanguage(): string {
   return mappedLang
 }
 
-/**
- * Load locale messages from /_locales/{lang}/messages.json
- * Converts Chrome i18n format { "key": { "message": "Text" } } to flat { "key": "Text" }
- */
-async function loadLocaleMessages(lang: string): Promise<Record<string, string>> {
+async function fetchLocaleMessages(lang: string): Promise<Record<string, ChromeI18nMessage> | null> {
   try {
     const response = await fetch(`/_locales/${lang}/messages.json`)
-    if (!response.ok) {
-      // Fallback to English if language not found
-      if (lang !== 'en') {
-        console.warn(`[i18n] Locale ${lang} not found, falling back to English`)
-        return loadLocaleMessages('en')
-      }
-      return {}
-    }
-    const chromeFormat = await response.json()
-    // Convert Chrome i18n format to flat object
-    const flat: Record<string, string> = {}
-    for (const key in chromeFormat) {
-      if (chromeFormat[key]?.message) {
-        flat[key] = chromeFormat[key].message
-      }
-    }
-    return flat
+    if (!response.ok) return null
+    return await response.json()
   } catch (e) {
-    console.error('[i18n] Failed to load locale messages:', e)
+    console.error(`[i18n] Failed to fetch locale ${lang}:`, e)
+    return null
+  }
+}
+
+/**
+ * Load locale messages from /_locales/{lang}/messages.json
+ * Keeps Chrome i18n format so web fallback can preserve placeholders semantics
+ */
+async function loadLocaleMessages(lang: string): Promise<Record<string, ChromeI18nMessage>> {
+  const messages = await fetchLocaleMessages(lang)
+  if (!messages) {
     if (lang !== 'en') {
+      console.warn(`[i18n] Locale ${lang} not found, falling back to English`)
       return loadLocaleMessages('en')
     }
     return {}
   }
+
+  return messages
 }
 
 /**
@@ -204,14 +280,23 @@ export async function waitForI18n(): Promise<void> {
  * Get cached messages (for components that need direct access)
  */
 export function getCachedMessages(): Record<string, string> {
-  return cachedMessages
+  const flat: Record<string, string> = {}
+  for (const [key, value] of Object.entries(cachedMessages)) {
+    if (value?.message) flat[key] = value.message
+  }
+  return flat
 }
 
 /**
  * Set cached messages directly (for manual initialization)
  */
-export function setCachedMessages(messages: Record<string, string>): void {
-  cachedMessages = messages
+export function setCachedMessages(messages: Record<string, string | ChromeI18nMessage>): void {
+  const normalized: Record<string, ChromeI18nMessage> = {}
+  for (const [key, value] of Object.entries(messages)) {
+    normalized[key] = typeof value === 'string' ? { message: value } : value
+  }
+
+  cachedMessages = normalized
   localeInitialized = true
 }
 
@@ -225,7 +310,7 @@ export function isI18nInitialized(): boolean {
 export function _t(
   key: string,
   subs?: string | string[],
-  fallbackMessages?: Record<string, string>
+  fallbackMessages?: Record<string, FallbackMessage>
 ) {
   // Try Chrome extension i18n first
   if (hasChromeI18n()) {
@@ -235,12 +320,12 @@ export function _t(
 
   // Try explicit fallback messages (passed as parameter)
   if (fallbackMessages && key in fallbackMessages) {
-    return applyTemplateSubs(fallbackMessages[key], subs)
+    return formatFallbackMessage(fallbackMessages[key], subs)
   }
 
   // Try cached messages (loaded via initI18n for web mode)
   if (cachedMessages && key in cachedMessages) {
-    return applyTemplateSubs(cachedMessages[key], subs)
+    return formatFallbackMessage(cachedMessages[key], subs)
   }
 
   // Return key as last resort

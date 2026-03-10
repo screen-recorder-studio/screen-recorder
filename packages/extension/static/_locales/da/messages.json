@@ -1,0 +1,1323 @@
+{
+  "appName": {
+    "message": "Screen Recorder Studio - Ubegrænset, Zoom, Video & GIF"
+  },
+  "appDesc": {
+    "message": "Stabil skærmoptagelse uden tidsbegrænsning. Indbygget editor til ubesværet at zoome, beskære og eksportere til MP4 eller GIF."
+  },
+  "common_close": {
+    "message": "Luk"
+  },
+  "action_defaultTitle": {
+    "message": "Åbn optagelsespanel"
+  },
+  "control_headerTitle": {
+    "message": "Skærmoptager"
+  },
+  "control_headerDesc": {
+    "message": "Vælg optagelsestilstand og start"
+  },
+  "control_openDriveTooltip": {
+    "message": "Åbn optagelsesfilhåndtering"
+  },
+  "control_closePanelTooltip": {
+    "message": "Luk kontrolpanel"
+  },
+  "control_recordingMode": {
+    "message": "Optagelsestilstand"
+  },
+  "control_modeTab": {
+    "message": "Faneblad"
+  },
+  "control_modeTabDesc": {
+    "message": "Optag aktuelt faneblad"
+  },
+  "control_modeWindow": {
+    "message": "Vindue"
+  },
+  "control_modeWindowDesc": {
+    "message": "Optag hele vinduet"
+  },
+  "control_modeScreen": {
+    "message": "Skerm"
+  },
+  "control_modeScreenDesc": {
+    "message": "Optag hele skærmen"
+  },
+  "control_statusRecording": {
+    "message": "Optager"
+  },
+  "control_statusPaused": {
+    "message": "Optagelse pauset"
+  },
+  "control_statusPreparing": {
+    "message": "Forbereder optagelse..."
+  },
+  "control_btnStart": {
+    "message": "Start Optagelse"
+  },
+  "control_btnStop": {
+    "message": "Stop Optagelse"
+  },
+  "control_btnPause": {
+    "message": "Pause Optagelse"
+  },
+  "control_btnResume": {
+    "message": "Genoptag Optagelse"
+  },
+  "control_btnPreparing": {
+    "message": "Forbereder..."
+  },
+  "control_btnStarting": {
+    "message": "Starter om $SECONDS$...",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_countdownLabel": {
+    "message": "Nedtælling"
+  },
+  "control_tipsTitle": {
+    "message": "Optagelsestips:"
+  },
+  "control_tipsSelectMode": {
+    "message": "$MODE$ tilstand valgt, klik på Start Optagelse for at begynde.",
+    "placeholders": {
+      "mode": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_tipsPreparing": {
+    "message": "Venter på skærmvalg..."
+  },
+  "control_tipsCountdown": {
+    "message": "Gør dig klar! Optagelse starter om $SECONDS$ sekunder.",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_tipsPaused": {
+    "message": "Optagelse er pauset, klik Genoptag Optagelse for at fortsætte."
+  },
+  "control_tipsRecording": {
+    "message": "Optagelse i gang, klik Pause for at sætte på hold."
+  },
+  "control_overlayRecordingStarts": {
+    "message": "Optagelse starter snart..."
+  },
+  "control_errorTimeout": {
+    "message": "Optagelsesforberedelse udløb. Prøv igen."
+  },
+  "control_errorStartFailed": {
+    "message": "Kunne ikke starte optagelse. Prøv igen."
+  },
+  "control_errorRecordingFailed": {
+    "message": "Der opstod en fejl under optagelsen og den blev stoppet."
+  },
+  "control_errorStorageLow": {
+    "message": "Lagerpladsen er ved at være lav. Optagelse kan mislykkes."
+  },
+  "control_statusSaving": {
+    "message": "Gemmer optagelse..."
+  },
+  "control_btnSaving": {
+    "message": "Gemmer..."
+  },
+  "drive_pageTitle": {
+    "message": "Optagelser - Skærmoptager Udvidelse"
+  },
+  "drive_headerTitle": {
+    "message": "Optagelseshåndtering"
+  },
+  "drive_errorSupport": {
+    "message": "Din browser understotter ikke OPFS-lager"
+  },
+  "drive_errorMetaNotFound": {
+    "message": "meta.json ikke fundet"
+  },
+  "drive_errorEmpty": {
+    "message": "Tom optagelsesfil"
+  },
+  "drive_errorMetadata": {
+    "message": "Kan ikke laese optagelsesmetadata"
+  },
+  "drive_errorDataSize": {
+    "message": "Kan ikke fa databasstorrelse"
+  },
+  "drive_recordingNamePrefix": {
+    "message": "Skermoptagelse"
+  },
+  "drive_logDeleted": {
+    "message": "Optagelse $ID$ slettet",
+    "placeholders": {
+      "id": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_errorDelete": {
+    "message": "Sletning fejlede: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_logBatchDelete": {
+    "message": "$COUNT$ optagelser slettet",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_errorLoad": {
+    "message": "Der opstod en fejl under indlaesning af optagelser"
+  },
+  "drive_errorLoadPrefix": {
+    "message": "Kunne ikke indlæse optagelser:"
+  },
+  "studio_pageTitle": {
+    "message": "Skermoptagelse Studio"
+  },
+  "studio_headerTitle": {
+    "message": "Skærmoptager Studio"
+  },
+  "studio_githubTooltip": {
+    "message": "Se kildekode på GitHub"
+  },
+  "studio_githubText": {
+    "message": "GitHub"
+  },
+  "studio_feedbackTooltip": {
+    "message": "Rapporter fejl eller foresla funktioner"
+  },
+  "studio_feedbackText": {
+    "message": "Feedback"
+  },
+  "studio_helpTooltip": {
+    "message": "Hjaelp & Dokumentation"
+  },
+  "studio_helpText": {
+    "message": "Hjaelp"
+  },
+  "studio_driveTooltip": {
+    "message": "Åbn Optagelsesfilhåndtering"
+  },
+  "studio_driveText": {
+    "message": "Drev"
+  },
+  "studio_fullscreenEnterTooltip": {
+    "message": "Gå til fuld skærm"
+  },
+  "studio_fullscreenExitTooltip": {
+    "message": "Afslut fuld skerm"
+  },
+  "studio_fullscreenEnterText": {
+    "message": "Fuld skerm"
+  },
+  "studio_fullscreenExitText": {
+    "message": "Afslut"
+  },
+  "bg_title": {
+    "message": "Baggrund"
+  },
+  "bg_tab_wallpaper": {
+    "message": "Tapet"
+  },
+  "bg_tab_gradient": {
+    "message": "Gradient"
+  },
+  "bg_tab_solid": {
+    "message": "Solid"
+  },
+  "bg_tab_image": {
+    "message": "Billede"
+  },
+  "radius_title": {
+    "message": "Video Kantradius"
+  },
+  "radius_none": {
+    "message": "Ingen Radius"
+  },
+  "radius_small": {
+    "message": "Lille Radius"
+  },
+  "radius_medium": {
+    "message": "Mellem Radius"
+  },
+  "radius_large": {
+    "message": "Stor Radius"
+  },
+  "radius_xl": {
+    "message": "Ekstra Stor Radius"
+  },
+  "padding_title": {
+    "message": "Videomargen"
+  },
+  "padding_none": {
+    "message": "Ingen Padding"
+  },
+  "padding_small": {
+    "message": "Lille Padding"
+  },
+  "padding_medium": {
+    "message": "Mellem Padding"
+  },
+  "padding_large": {
+    "message": "Stor Padding"
+  },
+  "padding_xl": {
+    "message": "Ekstra Stor Padding"
+  },
+  "ratio_yt": {
+    "message": "YouTube Landskab"
+  },
+  "ratio_yt_desc": {
+    "message": "YouTube, Vimeo, Dailymotion osv."
+  },
+  "ratio_sq": {
+    "message": "Instagram Kvadrat"
+  },
+  "ratio_sq_desc": {
+    "message": "Instagram-opslag, Facebook"
+  },
+  "ratio_tiktok": {
+    "message": "TikTok Portræt"
+  },
+  "ratio_tiktok_desc": {
+    "message": "TikTok, Reels osv."
+  },
+  "ratio_story": {
+    "message": "Instagram-historie"
+  },
+  "ratio_story_desc": {
+    "message": "Instagram Stories, Snapchat"
+  },
+  "shadow_title": {
+    "message": "Video Skygge"
+  },
+  "shadow_preset_title": {
+    "message": "Preset Effekter"
+  },
+  "shadow_custom_title": {
+    "message": "Brugerdefinerede parametre"
+  },
+  "shadow_light": {
+    "message": "Lys Skygge"
+  },
+  "shadow_standard": {
+    "message": "Standard Skygge"
+  },
+  "shadow_deep": {
+    "message": "Dybt Skygge"
+  },
+  "shadow_distant": {
+    "message": "Fjern Skygge"
+  },
+  "shadow_offset_x": {
+    "message": "X-offset"
+  },
+  "shadow_offset_y": {
+    "message": "Y-offset"
+  },
+  "shadow_blur": {
+    "message": "Sloring"
+  },
+  "shadow_color": {
+    "message": "Farve"
+  },
+  "shadow_opacity": {
+    "message": "Dekning"
+  },
+  "shadow_empty_state": {
+    "message": "Slay skyggekontakt for at konfigurere skyggeeffekter"
+  },
+  "color_tab_basic": {
+    "message": "Basis"
+  },
+  "color_tab_light": {
+    "message": "Lys"
+  },
+  "color_tab_business": {
+    "message": "Erhverv"
+  },
+  "color_tab_creative": {
+    "message": "Kreativ"
+  },
+  "color_custom": {
+    "message": "Brugerdefineret:"
+  },
+  "gradient_tab_linear": {
+    "message": "Lineaer"
+  },
+  "gradient_tab_radial": {
+    "message": "Radiel"
+  },
+  "gradient_tab_conic": {
+    "message": "Konisk"
+  },
+  "gradient_tab_multi": {
+    "message": "Multi"
+  },
+  "gradient_current": {
+    "message": "Nuvaerende:"
+  },
+  "gradient_select_hint": {
+    "message": "Vaeg en gradient"
+  },
+  "gradient_colors_suffix": {
+    "message": "farver"
+  },
+  "wallpaper_tab_abstract": {
+    "message": "Abstrakt"
+  },
+  "wallpaper_tab_minimal": {
+    "message": "Minimal"
+  },
+  "wallpaper_tab_nature": {
+    "message": "Natur"
+  },
+  "wallpaper_tab_business": {
+    "message": "Erhverv"
+  },
+  "wallpaper_tab_tech": {
+    "message": "Tech"
+  },
+  "wallpaper_error": {
+    "message": "Kunne ikke indlæse tapet"
+  },
+  "wallpaper_stats": {
+    "message": "$COUNT$ tapeter i denne kategori",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "wallpaper_total": {
+    "message": "$TOTAL$ i alt",
+    "placeholders": {
+      "total": {
+        "content": "$1"
+      }
+    }
+  },
+  "upload_processing": {
+    "message": "Behandler..."
+  },
+  "upload_drop_hint": {
+    "message": "Klik eller trak billede her"
+  },
+  "upload_format_hint": {
+    "message": "JPEG, PNG, WebP, GIF - Max 5MB"
+  },
+  "upload_error_select": {
+    "message": "Vaeg en billedfil"
+  },
+  "upload_error_failed": {
+    "message": "Upload fejlede"
+  },
+  "drive_delete_selected_btn": {
+    "message": "Slet Valgte ($COUNT$)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_clear_selection": {
+    "message": "Ryd Markering"
+  },
+  "drive_refresh": {
+    "message": "Opdater"
+  },
+  "drive_error_title": {
+    "message": "Fejl"
+  },
+  "drive_close_error": {
+    "message": "Luk"
+  },
+  "drive_loading": {
+    "message": "Indlæser optagelser..."
+  },
+  "drive_empty_title": {
+    "message": "Ingen optagelser endnu"
+  },
+  "drive_empty_desc1": {
+    "message": "Du har ingen skærmoptagelser endnu."
+  },
+  "drive_empty_desc2": {
+    "message": "Start med at optage dit skærm, og dine optagelser vises her."
+  },
+  "drive_start_recording_btn": {
+    "message": "Start Optagelse"
+  },
+  "drive_select_all": {
+    "message": "Marker Alle ($COUNT$ optagelser)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_sort_hint": {
+    "message": "Sorteret efter tid (nyeste forst)"
+  },
+  "drive_confirm_delete_title": {
+    "message": "Bekraeft Sletning"
+  },
+  "drive_confirm_delete_selected": {
+    "message": "Er du sikker pa, at du vil slette de valgte $COUNT$ optagelser?",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_confirm_delete_single": {
+    "message": "Er du sikker pa, at du vil slette denne optagelse?"
+  },
+  "drive_action_undone": {
+    "message": "Denne handling kan ikke fortrydes."
+  },
+  "drive_cancel": {
+    "message": "Annuller"
+  },
+  "drive_delete": {
+    "message": "Slet"
+  },
+  "card_status_completed": {
+    "message": "Fuldført"
+  },
+  "card_status_incomplete": {
+    "message": "Ufuldstaendig"
+  },
+  "card_label_created": {
+    "message": "Oprettet:"
+  },
+  "card_label_status": {
+    "message": "Status:"
+  },
+  "card_label_codec": {
+    "message": "Codec:"
+  },
+  "card_label_resolution": {
+    "message": "Opløsning:"
+  },
+  "card_label_fps": {
+    "message": "FPS:"
+  },
+  "card_label_size": {
+    "message": "Filstorrelse:"
+  },
+  "card_label_frames": {
+    "message": "Samlet Frames:"
+  },
+  "card_incomplete_title": {
+    "message": "Ufuldstaendig Optagelse"
+  },
+  "card_incomplete_desc": {
+    "message": "Manglende videodata"
+  },
+  "card_preview_error": {
+    "message": "Kan ikke indlæse preview"
+  },
+  "card_preview_loading": {
+    "message": "Genererer preview..."
+  },
+  "card_btn_edit": {
+    "message": "Rediger"
+  },
+  "card_btn_delete": {
+    "message": "Slet"
+  },
+  "card_edit_disabled_tooltip": {
+    "message": "Kan ikke redigere ufuldstaendig optagelse"
+  },
+  "card_edit_tooltip": {
+    "message": "Rediger optagelse"
+  },
+  "card_preview_load_error": {
+    "message": "Kunne ikke indlæse preview data: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_today": {
+    "message": "I dag $TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_yesterday": {
+    "message": "I går $TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_days_ago": {
+    "message": "$DAYS$ dage siden",
+    "placeholders": {
+      "days": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_panel_tier_free": {
+    "message": "GRATIS"
+  },
+  "export_panel_tier_pro": {
+    "message": "PRO"
+  },
+  "export_panel_tier_trial": {
+    "message": "PRO PROEVER"
+  },
+  "export_panel_btn": {
+    "message": "Eksporter"
+  },
+  "export_panel_tooltip_incomplete": {
+    "message": "Fuldfar optagelse for at eksportere"
+  },
+  "export_panel_tooltip_no_data": {
+    "message": "Ingen videodata"
+  },
+  "export_panel_btn_exporting": {
+    "message": "Eksporterer..."
+  },
+  "export_error_gif_failed": {
+    "message": "GIF-eksport fejlede. Prøv igen."
+  },
+  "export_error_webm_failed": {
+    "message": "WebM-eksport fejlede. Prøv igen."
+  },
+  "export_error_mp4_failed": {
+    "message": "MP4-eksport fejlede. Prøv igen."
+  },
+  "export_error_retry_hint": {
+    "message": "Prøv igen eller brug et andet format."
+  },
+  "export_error_opfs_download_failed": {
+    "message": "Fil gemt på Drev men download fejlede. Åbn Drev for at hente din fil."
+  },
+  "export_dialog_title": {
+    "message": "Eksporter Video"
+  },
+  "export_source_res": {
+    "message": "Opløsning"
+  },
+  "export_source_codec": {
+    "message": "Codec"
+  },
+  "export_source_duration": {
+    "message": "Varighed"
+  },
+  "export_source_frames": {
+    "message": "Frames"
+  },
+  "export_badge_bg": {
+    "message": "Baggrund"
+  },
+  "export_badge_trim": {
+    "message": "Beskaaret"
+  },
+  "export_format_mp4": {
+    "message": "MP4"
+  },
+  "export_format_webm": {
+    "message": "WebM"
+  },
+  "export_format_gif": {
+    "message": "GIF"
+  },
+  "export_quality_title": {
+    "message": "Kvalitetspreset"
+  },
+  "export_quality_draft": {
+    "message": "Kladde"
+  },
+  "export_quality_draft_desc": {
+    "message": "Hurtigste eksport, lavere kvalitet"
+  },
+  "export_quality_balanced": {
+    "message": "Balanceret"
+  },
+  "export_quality_balanced_desc": {
+    "message": "God kvalitet, rimelig hastighed"
+  },
+  "export_quality_high": {
+    "message": "Hoj"
+  },
+  "export_quality_high_desc": {
+    "message": "Hoj kvalitet, langsommere"
+  },
+  "export_quality_best": {
+    "message": "Bedst"
+  },
+  "export_quality_best_desc": {
+    "message": "Maksimal kvalitet, langsomst"
+  },
+  "export_label_resolution": {
+    "message": "Opløsning"
+  },
+  "export_res_source": {
+    "message": "Kilde ($WIDTH$ x $HEIGHT$)",
+    "placeholders": {
+      "width": {
+        "content": "$1"
+      },
+      "height": {
+        "content": "$2"
+      }
+    }
+  },
+  "export_label_framerate": {
+    "message": "Billedhastighed"
+  },
+  "export_fps_source": {
+    "message": "$FPS$ fps (Kilde)",
+    "placeholders": {
+      "fps": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_bitrate": {
+    "message": "Bitrate"
+  },
+  "export_bitrate_auto": {
+    "message": "Auto"
+  },
+  "export_bitrate_manual": {
+    "message": "Manuel"
+  },
+  "export_bitrate_auto_hint": {
+    "message": "Auto: $RATE$ Mbps (baseret på opløsning og kvalitet)",
+    "placeholders": {
+      "rate": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_speed": {
+    "message": "Kodningshastighed"
+  },
+  "export_speed_fastest": {
+    "message": "Hurtigst"
+  },
+  "export_speed_fast": {
+    "message": "Hurtig"
+  },
+  "export_speed_balanced": {
+    "message": "Balanceret"
+  },
+  "export_speed_slow": {
+    "message": "Langsom"
+  },
+  "export_speed_slowest": {
+    "message": "Langsomst"
+  },
+  "export_est_output": {
+    "message": "Estimeret Output"
+  },
+  "export_est_size": {
+    "message": "Est. Storrelse"
+  },
+  "export_label_gif_quality": {
+    "message": "Kvalitet"
+  },
+  "export_gif_best": {
+    "message": "Bedst (Langsomst)"
+  },
+  "export_gif_high": {
+    "message": "Hoj"
+  },
+  "export_gif_good": {
+    "message": "God (Standard)"
+  },
+  "export_gif_fast": {
+    "message": "Hurtig"
+  },
+  "export_gif_fastest": {
+    "message": "Hurtigst"
+  },
+  "export_label_scale": {
+    "message": "Skala"
+  },
+  "export_scale_original": {
+    "message": "100% (Oprindelig)"
+  },
+  "export_label_workers": {
+    "message": "Arbejdere"
+  },
+  "export_worker_singular": {
+    "message": "$COUNT$ arbejder",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_worker_plural": {
+    "message": "$COUNT$ arbejdere",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_dither": {
+    "message": "Dithering"
+  },
+  "export_dither_none": {
+    "message": "Ingen"
+  },
+  "export_btn_cancel": {
+    "message": "Annuller"
+  },
+  "export_btn_export_mp4": {
+    "message": "Eksporter MP4"
+  },
+  "export_btn_export_webm": {
+    "message": "Eksporter WebM"
+  },
+  "export_btn_export_gif": {
+    "message": "Eksporter GIF"
+  },
+  "export_progress_preparing": {
+    "message": "Forbereder..."
+  },
+  "export_progress_encoding": {
+    "message": "Koder frames..."
+  },
+  "export_progress_muxing": {
+    "message": "Muxer..."
+  },
+  "export_progress_finalizing": {
+    "message": "Afslutter..."
+  },
+  "export_progress_frame": {
+    "message": "Billede $CURRENT$ / $TOTAL$",
+    "placeholders": {
+      "current": {
+        "content": "$1"
+      },
+      "total": {
+        "content": "$2"
+      }
+    }
+  },
+  "export_progress_time": {
+    "message": "~$SECONDS$s tilbage",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_progress_hint": {
+    "message": "Vent venligst mens din video eksporteres..."
+  },
+  "wallpaper_cat_abstract_name": {
+    "message": "Abstrakt Kunst"
+  },
+  "wallpaper_cat_abstract_desc": {
+    "message": "Abstrakte monsre, kunstneriske kreationer og moderne designs"
+  },
+  "wallpaper_cat_minimal_name": {
+    "message": "Minimal Stil"
+  },
+  "wallpaper_cat_minimal_desc": {
+    "message": "Ren geometri, minimalistisk design og ren aestetik"
+  },
+  "wallpaper_cat_nature_name": {
+    "message": "Naturlandskab"
+  },
+  "wallpaper_cat_nature_desc": {
+    "message": "Naturlige landskaber, plante teksturer og organiske former"
+  },
+  "wallpaper_cat_business_name": {
+    "message": "Erhverv Professionel"
+  },
+  "wallpaper_cat_business_desc": {
+    "message": "Erhvervssscener, professionel atmosfere og corporate stil"
+  },
+  "wallpaper_cat_tech_name": {
+    "message": "Tech Fremtid"
+  },
+  "wallpaper_cat_tech_desc": {
+    "message": "Teknologielementer, futuristisk foelse og digital kunst"
+  },
+  "wallpaper_gradient_abstract_1_name": {
+    "message": "Abstrakt Gradient"
+  },
+  "wallpaper_gradient_abstract_1_desc": {
+    "message": "Modern abstrakt gradient, perfekt til tech og kreativt indhold"
+  },
+  "wallpaper_geometric_pattern_1_name": {
+    "message": "Geometrisk Monster"
+  },
+  "wallpaper_geometric_pattern_1_desc": {
+    "message": "Rent geometrisk monster, ideelt til erhvervsindhold"
+  },
+  "wallpaper_abstract_2425706_name": {
+    "message": "Abstrakte Farver"
+  },
+  "wallpaper_abstract_2425706_desc": {
+    "message": "Levende abstrakte farver med sterk visuel effekt"
+  },
+  "wallpaper_abstract_2512412_name": {
+    "message": "Abstrakte Farver"
+  },
+  "wallpaper_abstract_2512412_desc": {
+    "message": "Flydende abstrakte farver, perfekt til kreativt indhold"
+  },
+  "wallpaper_abstract_6297317_name": {
+    "message": "Abstrakte Former"
+  },
+  "wallpaper_abstract_6297317_desc": {
+    "message": "Abstrakte geometriske former med farveblocksammensaetning"
+  },
+  "wallpaper_ai_generated_9083808_name": {
+    "message": "AI Genereret Kunst"
+  },
+  "wallpaper_ai_generated_9083808_desc": {
+    "message": "AI-genereret futuristisk kunst baggrund"
+  },
+  "wallpaper_beach_4938036_name": {
+    "message": "Strand"
+  },
+  "wallpaper_beach_4938036_desc": {
+    "message": "Naturligt strandlandskab med sand og bolger"
+  },
+  "wallpaper_bulb_5665770_name": {
+    "message": "Kreativ Paere"
+  },
+  "wallpaper_bulb_5665770_desc": {
+    "message": "Lampetema der symboliserer kreativitet og inspiration"
+  },
+  "wallpaper_cpu_8892400_name": {
+    "message": "CPU Kredsloeb"
+  },
+  "wallpaper_cpu_8892400_desc": {
+    "message": "CPU chip og kredsloeb med high-tech appel"
+  },
+  "wallpaper_feather_5488401_name": {
+    "message": "Fjer Close-up"
+  },
+  "wallpaper_feather_5488401_desc": {
+    "message": "Blod fjer tekstur med rig detalje"
+  },
+  "wallpaper_fractal_8902060_name": {
+    "message": "Fraktal Kunst"
+  },
+  "wallpaper_fractal_8902060_desc": {
+    "message": "Brilliant fraktale monsre i abstrakt kunststil"
+  },
+  "wallpaper_orange_3036097_name": {
+    "message": "Appelsin Skive"
+  },
+  "wallpaper_orange_3036097_desc": {
+    "message": "Levende appelsinskiver med klare farver"
+  },
+  "wallpaper_orange_6508617_name": {
+    "message": "Appelsin Baggrund"
+  },
+  "wallpaper_orange_6508617_desc": {
+    "message": "Klar appelsin tema fuld af energi"
+  },
+  "wallpaper_polar_lights_5858656_name": {
+    "message": "Nordlys"
+  },
+  "wallpaper_polar_lights_5858656_desc": {
+    "message": "Nordlys nachthimlen, drommende naturligt faenomen"
+  },
+  "wallpaper_spiral_3112405_name": {
+    "message": "Spiral Monster"
+  },
+  "wallpaper_spiral_3112405_desc": {
+    "message": "Abstrakt spiral tekstur med dynamiske lag"
+  },
+  "wallpaper_steelwool_458842_name": {
+    "message": "Staaluld Lysmaleri"
+  },
+  "wallpaper_steelwool_458842_desc": {
+    "message": "Lang eksponering lysmaleeffekt, abstrakt og dynamisk"
+  },
+  "wallpaper_swimming_pool_8306716_name": {
+    "message": "Pool Bolger"
+  },
+  "wallpaper_swimming_pool_8306716_desc": {
+    "message": "Svommepool vandbolger med kold sommeratmosfaere"
+  },
+  "wallpaper_abstract_2426502_name": {
+    "message": "Abstrakte Farver"
+  },
+  "wallpaper_abstract_2426502_desc": {
+    "message": "Modern design med abstrakte farver og former"
+  },
+  "wallpaper_camera_1248682_name": {
+    "message": "Kamera Close-up"
+  },
+  "wallpaper_camera_1248682_desc": {
+    "message": "Kamera og linse close-up med tekstureret tech stil"
+  },
+  "wallpaper_circle_5090539_name": {
+    "message": "Cirkulaer Geometri"
+  },
+  "wallpaper_circle_5090539_desc": {
+    "message": "Ren cirkulaer geometrisk monster"
+  },
+  "wallpaper_feather_7009025_name": {
+    "message": "Fjer Tekstur"
+  },
+  "wallpaper_feather_7009025_desc": {
+    "message": "Blod fjer tekstur med delikate naturlige monsre"
+  },
+  "wallpaper_fiber_4814456_name": {
+    "message": "Fiber Linjer"
+  },
+  "wallpaper_fiber_4814456_desc": {
+    "message": "Abstrakt tech foelse med optiske fibre og linjer"
+  },
+  "wallpaper_frost_6702335_name": {
+    "message": "Frost Tekstur"
+  },
+  "wallpaper_frost_6702335_desc": {
+    "message": "Kold tekstureret frost monsre baggrund"
+  },
+  "wallpaper_leaves_4291098_name": {
+    "message": "Gronne Blade"
+  },
+  "wallpaper_leaves_4291098_desc": {
+    "message": "Naturlig tekstur af gronne blade, frisk og helende"
+  },
+  "wallpaper_light_1834289_name": {
+    "message": "Lys Bokeh"
+  },
+  "wallpaper_light_1834289_desc": {
+    "message": "Lys og skygge bokeh effekt, stemningsfuld abstrakt baggrund"
+  },
+  "wallpaper_light_942231_name": {
+    "message": "Lys Streger"
+  },
+  "wallpaper_light_942231_desc": {
+    "message": "Flydende lysstreger, dynamisk abstrakt baggrund"
+  },
+  "wallpaper_luck_4397584_name": {
+    "message": "Klover4"
+  },
+  "wallpaper_luck_4397584_desc": {
+    "message": "Lykkeligt klover4 med friske naturlige gronne tonere"
+  },
+  "wallpaper_waterdrop_2256201_name": {
+    "message": "Vanddrabe Close-up"
+  },
+  "wallpaper_waterdrop_2256201_desc": {
+    "message": "Vanddrabe og overfladespanding makro tekstur"
+  },
+  "welcome_pageTitle": {
+    "message": "Velkommen til Screen Recorder Studio"
+  },
+  "welcome_headerSubtitle": {
+    "message": "Professionel Browser Optagelsesvaerktaj"
+  },
+  "welcome_installSuccess": {
+    "message": "Installation Vellykket"
+  },
+  "welcome_headline": {
+    "message": "Optag, rediger og eksporter på sekunder. 🎉"
+  },
+  "welcome_subheadline": {
+    "message": "Optag timer af materiale problemfrit, rediger og eksporter som højkvalitets videoer eller GIFs - alt behandlet sikkert i din browser."
+  },
+  "welcome_tryTitle": {
+    "message": "Start Din Forste Optagelse"
+  },
+  "welcome_trySubtitle": {
+    "message": "Vaeg hvad du vil optage og start med at optage - Studio abnes nar du stopper."
+  },
+  "welcome_modeTabDetail": {
+    "message": "Perfekt til web demos og tutorials"
+  },
+  "welcome_modeWindowDetail": {
+    "message": "Inkluderer adresselinje og vaerktøjslinje"
+  },
+  "welcome_modeScreenDetail": {
+    "message": "Bedst til tvarsaapplikation workflows"
+  },
+  "welcome_statusRecording": {
+    "message": "Optager"
+  },
+  "welcome_modeLabel": {
+    "message": "Tilstand"
+  },
+  "welcome_proTrialActive": {
+    "message": "PRO Proev Aktiveret"
+  },
+  "welcome_feat1Title": {
+    "message": "Privat & Lokalt"
+  },
+  "welcome_feat2Title": {
+    "message": "Ingen Vandmærker"
+  },
+  "welcome_feat3Title": {
+    "message": "Hurtig Redigering"
+  },
+  "welcome_feat4Title": {
+    "message": "Video- og GIF-eksport"
+  },
+  "welcome_howTitle": {
+    "message": "Din Optagelsesrejse"
+  },
+  "welcome_howDesc": {
+    "message": "Fra optagelse til eksportering sker alt sikkert i din browser."
+  },
+  "welcome_step1Title": {
+    "message": "Fastgor Udvidelse"
+  },
+  "welcome_step1Desc": {
+    "message": "Klik på puslespilsikonet i din browser vaerktøjslinje og fastgor denne udvidelse for hurtig adgang"
+  },
+  "welcome_step2Title": {
+    "message": "Vaeg Dit Maal"
+  },
+  "welcome_step2Desc": {
+    "message": "Vælg hvad du vil optage: aktuelt faneblad, hele vinduet eller hele skærmen"
+  },
+  "welcome_step3Title": {
+    "message": "Hurtig Redigering"
+  },
+  "welcome_step3Desc": {
+    "message": "Klik på \"$BTN$\" og vaer klar - en $SECONDS$-sekunders nedtaelling giver dig tid til at forberede dig!",
+    "placeholders": {
+      "btn": {
+        "content": "$1"
+      },
+      "seconds": {
+        "content": "$2"
+      }
+    }
+  },
+  "welcome_trustNoWatermark": {
+    "message": "Ingen Vandmærker"
+  },
+  "welcome_trustHD": {
+    "message": "HD Kvalitet"
+  },
+  "welcome_trustLocal": {
+    "message": "Privat & Lokalt"
+  },
+  "welcome_trustQuickEditing": {
+    "message": "Hurtig Redigering"
+  },
+  "welcome_footerHelp": {
+    "message": "Har du brug for mere kontrol? Klik på udvidelsesikonet for at fa adgang til avancerede optagelses- og eksportindstillinger."
+  },
+  "welcome_footerMeta": {
+    "message": "Screen Recorder Studio - Lavet til professionelle"
+  },
+  "annotation_tool_cursor": {
+    "message": "Cursor (Interager)"
+  },
+  "annotation_tool_effect": {
+    "message": "Cursor Effekt"
+  },
+  "annotation_tool_arrow": {
+    "message": "Pil"
+  },
+  "annotation_tool_rectangle": {
+    "message": "Rektangel"
+  },
+  "annotation_tool_circle": {
+    "message": "Cirkel"
+  },
+  "annotation_tool_freehand": {
+    "message": "Pen"
+  },
+  "annotation_tool_text": {
+    "message": "Tekst"
+  },
+  "annotation_tool_highlight": {
+    "message": "Fremhaev"
+  },
+  "annotation_tool_blur": {
+    "message": "Slare"
+  },
+  "annotation_tool_undo": {
+    "message": "Fortryd"
+  },
+  "annotation_tool_clear": {
+    "message": "Ryd Alt"
+  },
+  "annotation_tool_close": {
+    "message": "Luk"
+  },
+  "webRecord_pageTitle": {
+    "message": "Web Skærmoptager"
+  },
+  "webRecord_headerTitle": {
+    "message": "Skærmoptager"
+  },
+  "webRecord_openDriveTooltip": {
+    "message": "Åbn optagelsesfilhåndtering"
+  },
+  "webRecord_driveBtn": {
+    "message": "Optagelser"
+  },
+  "webRecord_errorTitle": {
+    "message": "Fejl"
+  },
+  "webRecord_errorInsecure": {
+    "message": "Skærmoptagelse kræver en sikker kontekst (HTTPS). Åbn venligst denne side via HTTPS."
+  },
+  "webRecord_errorNoDisplayMedia": {
+    "message": "Din browser understøtter ikke skærmoptagelse (getDisplayMedia API)."
+  },
+  "webRecord_errorNoWebCodecs": {
+    "message": "Din browser understøtter ikke WebCodecs API. Brug venligst en moderne browser som Chrome 94+."
+  },
+  "webRecord_errorNoTrackProcessor": {
+    "message": "Din browser understøtter ikke MediaStreamTrackProcessor. Brug venligst Chrome 94+."
+  },
+  "webRecord_errorNoOPFS": {
+    "message": "Din browser understøtter ikke OPFS-lager."
+  },
+  "webRecord_errorGeneric": {
+    "message": "Der opstod en fejl. Prøv igen."
+  },
+  "webRecord_errorNoVideoTrack": {
+    "message": "Ingen videospor tilgængelig fra skærmoptagelse."
+  },
+  "webRecord_errorPermissionDenied": {
+    "message": "Skærmoptagelsestilladelse blev nægtet. Tillad venligst skærmdeling for at optage."
+  },
+  "webRecord_errorEncoding": {
+    "message": "Video kodning fejl opstod."
+  },
+  "webRecord_statusRecording": {
+    "message": "Optager"
+  },
+  "webRecord_statusPreparing": {
+    "message": "Forbereder..."
+  },
+  "webRecord_statusStopping": {
+    "message": " stopper..."
+  },
+  "webRecord_statusIdle": {
+    "message": "Klar til at optage"
+  },
+  "webRecord_btnStart": {
+    "message": "Start Optagelse"
+  },
+  "webRecord_btnStop": {
+    "message": "Stop Optagelse"
+  },
+  "webRecord_btnPreparing": {
+    "message": "Forbereder..."
+  },
+  "webRecord_btnStopping": {
+    "message": "Stopper..."
+  },
+  "webRecord_tipsTitle": {
+    "message": "Tips:"
+  },
+  "webRecord_tip1": {
+    "message": "Klik Start for at vælge et skærm, vindue eller faneblad at optage."
+  },
+  "webRecord_tip2": {
+    "message": "Optagelser gemmes lokalt i din browser lager."
+  },
+  "webRecord_tip3": {
+    "message": "Klik på Optagelser for at se, redigere og eksportere dine optagelser."
+  },
+  "drive_drawerDelete": {
+    "message": "Slet"
+  },
+  "drive_drawerEmpty": {
+    "message": "Ingen optagelser endnu"
+  },
+  "drive_drawerJustNow": {
+    "message": "Lige nu"
+  },
+  "drive_drawerOpenFull": {
+    "message": "Åbn fuld Drev"
+  },
+  "drive_drawerTitle": {
+    "message": "Seneste Optagelser"
+  },
+  "launcher_drive": {
+    "message": "Drev"
+  },
+  "launcher_driveDesc": {
+    "message": "Se og håndter optagelser"
+  },
+  "launcher_pageTitle": {
+    "message": "Screen Recorder Studio"
+  },
+  "launcher_record": {
+    "message": "Optag"
+  },
+  "launcher_recordDesc": {
+    "message": "Start en ny skærmoptagelse"
+  },
+  "launcher_studio": {
+    "message": "Studio"
+  },
+  "launcher_studioDesc": {
+    "message": "Rediger din seneste optagelse"
+  },
+  "launcher_subtitle": {
+    "message": "Optag, håndter og eksporter"
+  },
+  "launcher_title": {
+    "message": "Screen Recorder Studio"
+  },
+  "studio_emptyDesc": {
+    "message": "Efter optagelse vises din video her automatisk. Du kan forhåndsvise, beskære, style og eksportere den i Studio."
+  },
+  "studio_emptyFeatureExport": {
+    "message": "Eksporter"
+  },
+  "studio_emptyFeaturePreview": {
+    "message": "Forhåndsvis"
+  },
+  "studio_emptyFeatureTrim": {
+    "message": "Beskaer & Style"
+  },
+  "studio_emptyOpenDrive": {
+    "message": "Åbn Drev"
+  },
+  "studio_emptyReasonInvalid": {
+    "message": "Seneste optagelser kunne ikke indlæses."
+  },
+  "studio_emptyReasonLoadFailed": {
+    "message": "Kunne ikke indlæse den angivne optagelse."
+  },
+  "studio_emptyReasonOpfs": {
+    "message": "Lager er ikke tilgaengeligt i denne browser."
+  },
+  "studio_emptyStartRecording": {
+    "message": "Start Optagelse"
+  },
+  "studio_emptyTitle": {
+    "message": "Endnu ingen video at redigere"
+  },
+  "studio_loading": {
+    "message": "Indlæser..."
+  },
+  "studio_recentRecordings": {
+    "message": "Optagelser"
+  }
+}

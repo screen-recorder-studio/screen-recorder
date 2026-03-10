@@ -1,0 +1,1323 @@
+{
+  "appName": {
+    "message": "Screen Recorder Studio - Zoom, Vídeo i GIF"
+  },
+  "appDesc": {
+    "message": "Gravació de pantalla estable sense límit de temps. Editor integrat per augmentar el zoom, retallar i exportar a MP4 o GIF d'alta qualitat."
+  },
+  "common_close": {
+    "message": "Tancar"
+  },
+  "action_defaultTitle": {
+    "message": "Obrir el Panell de Gravació"
+  },
+  "control_headerTitle": {
+    "message": "Gravador de Pantalla"
+  },
+  "control_headerDesc": {
+    "message": "Selecciona el mode de gravació i comença"
+  },
+  "control_openDriveTooltip": {
+    "message": "Obrir el gestor de fitxers de gravació"
+  },
+  "control_closePanelTooltip": {
+    "message": "Tancar el panell de control"
+  },
+  "control_recordingMode": {
+    "message": "Mode de Gravació"
+  },
+  "control_modeTab": {
+    "message": "Pestanya"
+  },
+  "control_modeTabDesc": {
+    "message": "Grava la pestanya actual"
+  },
+  "control_modeWindow": {
+    "message": "Finestra"
+  },
+  "control_modeWindowDesc": {
+    "message": "Grava tota la finestra"
+  },
+  "control_modeScreen": {
+    "message": "Pantalla"
+  },
+  "control_modeScreenDesc": {
+    "message": "Grava tota la pantalla"
+  },
+  "control_statusRecording": {
+    "message": "Gravant"
+  },
+  "control_statusPaused": {
+    "message": "Gravació Pausada"
+  },
+  "control_statusPreparing": {
+    "message": "Preparant per gravar..."
+  },
+  "control_btnStart": {
+    "message": "Iniciar Gravació"
+  },
+  "control_btnStop": {
+    "message": "Aturar Gravació"
+  },
+  "control_btnPause": {
+    "message": "Pausar Gravació"
+  },
+  "control_btnResume": {
+    "message": "Reprendre Gravació"
+  },
+  "control_btnPreparing": {
+    "message": "Preparant..."
+  },
+  "control_btnStarting": {
+    "message": "Començant en $SECONDS$...",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_countdownLabel": {
+    "message": "Compte enrere"
+  },
+  "control_tipsTitle": {
+    "message": "Consells de Gravació:"
+  },
+  "control_tipsSelectMode": {
+    "message": "Mode $MODE$ seleccionat, fes clic a Iniciar Gravació per començar.",
+    "placeholders": {
+      "mode": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_tipsPreparing": {
+    "message": "Esperant la selecció de pantalla..."
+  },
+  "control_tipsCountdown": {
+    "message": "Preparat! La gravació començarà en $SECONDS$ segons.",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "control_tipsPaused": {
+    "message": "La gravació està pausada, fes clic a Reprendre Gravació per continuar."
+  },
+  "control_tipsRecording": {
+    "message": "Gravació en curs, fes clic a Pausar per pausar la gravació."
+  },
+  "control_overlayRecordingStarts": {
+    "message": "La gravació comença aviat..."
+  },
+  "control_errorTimeout": {
+    "message": "Temps d'espera per a la preparació de gravació esgotat. Si us plau, torna-ho a intentar."
+  },
+  "control_errorStartFailed": {
+    "message": "Error en iniciar la gravació. Si us plau, torna-ho a intentar."
+  },
+  "control_errorRecordingFailed": {
+    "message": "La gravació ha trobat un error i s'ha aturat."
+  },
+  "control_errorStorageLow": {
+    "message": "L'emmagatzematge s'està esgotant. La gravació podria fallar."
+  },
+  "control_statusSaving": {
+    "message": "Guardant gravació..."
+  },
+  "control_btnSaving": {
+    "message": "Guardant..."
+  },
+  "drive_pageTitle": {
+    "message": "Gravacions - Extensió de Gravador de Pantalla"
+  },
+  "drive_headerTitle": {
+    "message": "Gestor de Gravacions"
+  },
+  "drive_errorSupport": {
+    "message": "El teu navegador no suporta l'emmagatzematge OPFS"
+  },
+  "drive_errorMetaNotFound": {
+    "message": "meta.json no trobat"
+  },
+  "drive_errorEmpty": {
+    "message": "Fitxer de gravació buit"
+  },
+  "drive_errorMetadata": {
+    "message": "No es pot llegir les metadades de la gravació"
+  },
+  "drive_errorDataSize": {
+    "message": "No es pot obtenir la mida del fitxer de dades"
+  },
+  "drive_recordingNamePrefix": {
+    "message": "Gravació de Pantalla"
+  },
+  "drive_logDeleted": {
+    "message": "Gravació $ID$ eliminada",
+    "placeholders": {
+      "id": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_errorDelete": {
+    "message": "Error en eliminar: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_logBatchDelete": {
+    "message": "S'han eliminat correctament $COUNT$ gravacions",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_errorLoad": {
+    "message": "S'ha produït un error en carregar les gravacions"
+  },
+  "drive_errorLoadPrefix": {
+    "message": "Error en carregar les gravacions:"
+  },
+  "studio_pageTitle": {
+    "message": "Estudi de Gravació de Pantalla"
+  },
+  "studio_headerTitle": {
+    "message": "Estudi de Gravador de Pantalla"
+  },
+  "studio_githubTooltip": {
+    "message": "Veure el codi font a GitHub"
+  },
+  "studio_githubText": {
+    "message": "GitHub"
+  },
+  "studio_feedbackTooltip": {
+    "message": "Reportar errors o suggerir funcions"
+  },
+  "studio_feedbackText": {
+    "message": "Feedback"
+  },
+  "studio_helpTooltip": {
+    "message": "Ajuda i Documentació"
+  },
+  "studio_helpText": {
+    "message": "Ajuda"
+  },
+  "studio_driveTooltip": {
+    "message": "Obrir el Gestor de Fitxers de Gravació"
+  },
+  "studio_driveText": {
+    "message": "Drive"
+  },
+  "studio_fullscreenEnterTooltip": {
+    "message": "Entrar a Pantalla Complerta"
+  },
+  "studio_fullscreenExitTooltip": {
+    "message": "Sortir de Pantalla Complerta"
+  },
+  "studio_fullscreenEnterText": {
+    "message": "Pantalla Complerta"
+  },
+  "studio_fullscreenExitText": {
+    "message": "Sortir"
+  },
+  "bg_title": {
+    "message": "Fons"
+  },
+  "bg_tab_wallpaper": {
+    "message": "Fons"
+  },
+  "bg_tab_gradient": {
+    "message": "Gradient"
+  },
+  "bg_tab_solid": {
+    "message": "Sòlid"
+  },
+  "bg_tab_image": {
+    "message": "Imatge"
+  },
+  "radius_title": {
+    "message": "Radi de la Vora del Vídeo"
+  },
+  "radius_none": {
+    "message": "Sense Radi"
+  },
+  "radius_small": {
+    "message": "Radi Petit"
+  },
+  "radius_medium": {
+    "message": "Radi Mitjà"
+  },
+  "radius_large": {
+    "message": "Radi Gran"
+  },
+  "radius_xl": {
+    "message": "Radi Extra Gran"
+  },
+  "padding_title": {
+    "message": "Empadinament del Vídeo"
+  },
+  "padding_none": {
+    "message": "Sense Empadinament"
+  },
+  "padding_small": {
+    "message": "Empadinament Petit"
+  },
+  "padding_medium": {
+    "message": "Empadinament Mitjà"
+  },
+  "padding_large": {
+    "message": "Empadinament Gran"
+  },
+  "padding_xl": {
+    "message": "Empadinament Extra Gran"
+  },
+  "ratio_yt": {
+    "message": "YouTube horitzontal"
+  },
+  "ratio_yt_desc": {
+    "message": "YouTube, Vimeo, Dailymotion, etc."
+  },
+  "ratio_sq": {
+    "message": "Instagram quadrat"
+  },
+  "ratio_sq_desc": {
+    "message": "Publicacions d'Instagram, Moments de WeChat"
+  },
+  "ratio_tiktok": {
+    "message": "TikTok vertical"
+  },
+  "ratio_tiktok_desc": {
+    "message": "TikTok, Reels, etc."
+  },
+  "ratio_story": {
+    "message": "Història d'Instagram"
+  },
+  "ratio_story_desc": {
+    "message": "Històries d'Instagram, Xiaohongshu"
+  },
+  "shadow_title": {
+    "message": "Ombra del Vídeo"
+  },
+  "shadow_preset_title": {
+    "message": "Efectes Predeterminats"
+  },
+  "shadow_custom_title": {
+    "message": "Paràmetres Personalitzats"
+  },
+  "shadow_light": {
+    "message": "Ombra Lleugera"
+  },
+  "shadow_standard": {
+    "message": "Ombra Estàndard"
+  },
+  "shadow_deep": {
+    "message": "Ombra Profunda"
+  },
+  "shadow_distant": {
+    "message": "Ombra Distant"
+  },
+  "shadow_offset_x": {
+    "message": "Offset X"
+  },
+  "shadow_offset_y": {
+    "message": "Offset Y"
+  },
+  "shadow_blur": {
+    "message": "Desenfoc"
+  },
+  "shadow_color": {
+    "message": "Color"
+  },
+  "shadow_opacity": {
+    "message": "Opacitat"
+  },
+  "shadow_empty_state": {
+    "message": "Activa el commutador d'ombra per configurar els efectes d'ombra"
+  },
+  "color_tab_basic": {
+    "message": "Bàsic"
+  },
+  "color_tab_light": {
+    "message": "Clar"
+  },
+  "color_tab_business": {
+    "message": "Negoci"
+  },
+  "color_tab_creative": {
+    "message": "Creatiu"
+  },
+  "color_custom": {
+    "message": "Personalitzat:"
+  },
+  "gradient_tab_linear": {
+    "message": "Lineal"
+  },
+  "gradient_tab_radial": {
+    "message": "Radial"
+  },
+  "gradient_tab_conic": {
+    "message": "Cònic"
+  },
+  "gradient_tab_multi": {
+    "message": "Multi"
+  },
+  "gradient_current": {
+    "message": "Actual:"
+  },
+  "gradient_select_hint": {
+    "message": "Selecciona un gradient"
+  },
+  "gradient_colors_suffix": {
+    "message": "colors"
+  },
+  "wallpaper_tab_abstract": {
+    "message": "Abstracte"
+  },
+  "wallpaper_tab_minimal": {
+    "message": "Minimal"
+  },
+  "wallpaper_tab_nature": {
+    "message": "Natura"
+  },
+  "wallpaper_tab_business": {
+    "message": "Negoci"
+  },
+  "wallpaper_tab_tech": {
+    "message": "Tecnologia"
+  },
+  "wallpaper_error": {
+    "message": "Error en carregar el fons de pantalla"
+  },
+  "wallpaper_stats": {
+    "message": "$COUNT$ fons de pantalla en aquesta categoria",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "wallpaper_total": {
+    "message": "$TOTAL$ en total",
+    "placeholders": {
+      "total": {
+        "content": "$1"
+      }
+    }
+  },
+  "upload_processing": {
+    "message": "Processant..."
+  },
+  "upload_drop_hint": {
+    "message": "Fes clic o arrossega la imatge aquí"
+  },
+  "upload_format_hint": {
+    "message": "JPEG, PNG, WebP, GIF · Màx 5MB"
+  },
+  "upload_error_select": {
+    "message": "Si us plau, selecciona un fitxer d'imatge"
+  },
+  "upload_error_failed": {
+    "message": "Error en pujar"
+  },
+  "drive_delete_selected_btn": {
+    "message": "Eliminar Seleccionats ($COUNT$)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_clear_selection": {
+    "message": "Netejar Selecció"
+  },
+  "drive_refresh": {
+    "message": "Actualitzar"
+  },
+  "drive_error_title": {
+    "message": "Error"
+  },
+  "drive_close_error": {
+    "message": "Tancar"
+  },
+  "drive_loading": {
+    "message": "Carregant gravacions..."
+  },
+  "drive_empty_title": {
+    "message": "Encara no hi ha gravacions"
+  },
+  "drive_empty_desc1": {
+    "message": "No tens cap gravació de pantalla encara."
+  },
+  "drive_empty_desc2": {
+    "message": "Comença a gravar la teva pantalla i les teves gravacions apareixeran aquí."
+  },
+  "drive_start_recording_btn": {
+    "message": "Iniciar Gravació"
+  },
+  "drive_select_all": {
+    "message": "Seleccionar Tot ($COUNT$ gravacions)",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_sort_hint": {
+    "message": "Ordenat per data (més recent primer)"
+  },
+  "drive_confirm_delete_title": {
+    "message": "Confirmar Eliminació"
+  },
+  "drive_confirm_delete_selected": {
+    "message": "Segur que vols eliminar les $COUNT$ gravacions seleccionades?",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "drive_confirm_delete_single": {
+    "message": "Segur que vols eliminar aquesta gravació?"
+  },
+  "drive_action_undone": {
+    "message": "Aquesta acció no es pot desfer."
+  },
+  "drive_cancel": {
+    "message": "Cancel·lar"
+  },
+  "drive_delete": {
+    "message": "Eliminar"
+  },
+  "card_status_completed": {
+    "message": "Completat"
+  },
+  "card_status_incomplete": {
+    "message": "Incomplet"
+  },
+  "card_label_created": {
+    "message": "Creat:"
+  },
+  "card_label_status": {
+    "message": "Estat:"
+  },
+  "card_label_codec": {
+    "message": "Còdec:"
+  },
+  "card_label_resolution": {
+    "message": "Resolució:"
+  },
+  "card_label_fps": {
+    "message": "FPS:"
+  },
+  "card_label_size": {
+    "message": "Mida del Fitxer:"
+  },
+  "card_label_frames": {
+    "message": "Total de Frames:"
+  },
+  "card_incomplete_title": {
+    "message": "Gravació Incompleta"
+  },
+  "card_incomplete_desc": {
+    "message": "Falten dades de vídeo"
+  },
+  "card_preview_error": {
+    "message": "No es pot carregar la previsualització"
+  },
+  "card_preview_loading": {
+    "message": "Generant previsualització..."
+  },
+  "card_btn_edit": {
+    "message": "Editar"
+  },
+  "card_btn_delete": {
+    "message": "Eliminar"
+  },
+  "card_edit_disabled_tooltip": {
+    "message": "No es pot editar una gravació incompleta"
+  },
+  "card_edit_tooltip": {
+    "message": "Editar gravació"
+  },
+  "card_preview_load_error": {
+    "message": "Error en carregar les dades de previsualització: $ERROR$",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_today": {
+    "message": "Avui $TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_yesterday": {
+    "message": "Ahir $TIME$",
+    "placeholders": {
+      "time": {
+        "content": "$1"
+      }
+    }
+  },
+  "card_date_days_ago": {
+    "message": "Fa $DAYS$ dies",
+    "placeholders": {
+      "days": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_panel_tier_free": {
+    "message": "GRATUÏT"
+  },
+  "export_panel_tier_pro": {
+    "message": "PRO"
+  },
+  "export_panel_tier_trial": {
+    "message": "PRO PROVA"
+  },
+  "export_panel_btn": {
+    "message": "Exportar"
+  },
+  "export_panel_tooltip_incomplete": {
+    "message": "Completa la gravació per exportar"
+  },
+  "export_panel_tooltip_no_data": {
+    "message": "Sense dades de vídeo"
+  },
+  "export_panel_btn_exporting": {
+    "message": "Exportant..."
+  },
+  "export_error_gif_failed": {
+    "message": "L'exportació a GIF ha fallat. Si us plau, torna-ho a intentar."
+  },
+  "export_error_webm_failed": {
+    "message": "L'exportació a WebM ha fallat. Si us plau, torna-ho a intentar."
+  },
+  "export_error_mp4_failed": {
+    "message": "L'exportació a MP4 ha fallat. Si us plau, torna-ho a intentar."
+  },
+  "export_error_retry_hint": {
+    "message": "Torna-ho a intentar o utilitza un format diferent."
+  },
+  "export_error_opfs_download_failed": {
+    "message": "El fitxer s'ha guardat a Drive però la descàrrega ha fallat. Obre Drive per recuperar el teu fitxer."
+  },
+  "export_dialog_title": {
+    "message": "Exportar Vídeo"
+  },
+  "export_source_res": {
+    "message": "Resolució"
+  },
+  "export_source_codec": {
+    "message": "Còdec"
+  },
+  "export_source_duration": {
+    "message": "Durada"
+  },
+  "export_source_frames": {
+    "message": "Frames"
+  },
+  "export_badge_bg": {
+    "message": "Fons"
+  },
+  "export_badge_trim": {
+    "message": "Retallat"
+  },
+  "export_format_mp4": {
+    "message": "MP4"
+  },
+  "export_format_webm": {
+    "message": "WebM"
+  },
+  "export_format_gif": {
+    "message": "GIF"
+  },
+  "export_quality_title": {
+    "message": "Preset de Qualitat"
+  },
+  "export_quality_draft": {
+    "message": "Esborrany"
+  },
+  "export_quality_draft_desc": {
+    "message": "Exportació més ràpida, menor qualitat"
+  },
+  "export_quality_balanced": {
+    "message": "Equilibrat"
+  },
+  "export_quality_balanced_desc": {
+    "message": "Bona qualitat, velocitat raonable"
+  },
+  "export_quality_high": {
+    "message": "Alt"
+  },
+  "export_quality_high_desc": {
+    "message": "Alta qualitat, més lent"
+  },
+  "export_quality_best": {
+    "message": "Millor"
+  },
+  "export_quality_best_desc": {
+    "message": "Qualitat màxima, més lent"
+  },
+  "export_label_resolution": {
+    "message": "Resolució"
+  },
+  "export_res_source": {
+    "message": "Igual que l'Original ($WIDTH$×$HEIGHT$)",
+    "placeholders": {
+      "width": {
+        "content": "$1"
+      },
+      "height": {
+        "content": "$2"
+      }
+    }
+  },
+  "export_label_framerate": {
+    "message": "Taxa de Frames"
+  },
+  "export_fps_source": {
+    "message": "$FPS$ fps (Original)",
+    "placeholders": {
+      "fps": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_bitrate": {
+    "message": "Taxa de Bits"
+  },
+  "export_bitrate_auto": {
+    "message": "Automàtic"
+  },
+  "export_bitrate_manual": {
+    "message": "Manual"
+  },
+  "export_bitrate_auto_hint": {
+    "message": "Auto: $RATE$ Mbps (basat en resolució i qualitat)",
+    "placeholders": {
+      "rate": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_speed": {
+    "message": "Velocitat de Codificació"
+  },
+  "export_speed_fastest": {
+    "message": "Més Ràpid"
+  },
+  "export_speed_fast": {
+    "message": "Ràpid"
+  },
+  "export_speed_balanced": {
+    "message": "Equilibrat"
+  },
+  "export_speed_slow": {
+    "message": "Lent"
+  },
+  "export_speed_slowest": {
+    "message": "Més Lent"
+  },
+  "export_est_output": {
+    "message": "Sortida Estimada"
+  },
+  "export_est_size": {
+    "message": "Mida Est."
+  },
+  "export_label_gif_quality": {
+    "message": "Qualitat"
+  },
+  "export_gif_best": {
+    "message": "Millor (Més Lent)"
+  },
+  "export_gif_high": {
+    "message": "Alt"
+  },
+  "export_gif_good": {
+    "message": "Bo (Per Defecte)"
+  },
+  "export_gif_fast": {
+    "message": "Ràpid"
+  },
+  "export_gif_fastest": {
+    "message": "Més Ràpid"
+  },
+  "export_label_scale": {
+    "message": "Escala"
+  },
+  "export_scale_original": {
+    "message": "100% (Mida font)"
+  },
+  "export_label_workers": {
+    "message": "Workers"
+  },
+  "export_worker_singular": {
+    "message": "$COUNT$ fil",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_worker_plural": {
+    "message": "$COUNT$ fils",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_label_dither": {
+    "message": "Dithering"
+  },
+  "export_dither_none": {
+    "message": "Cap"
+  },
+  "export_btn_cancel": {
+    "message": "Cancel·lar"
+  },
+  "export_btn_export_mp4": {
+    "message": "Exportar MP4"
+  },
+  "export_btn_export_webm": {
+    "message": "Exportar WebM"
+  },
+  "export_btn_export_gif": {
+    "message": "Exportar GIF"
+  },
+  "export_progress_preparing": {
+    "message": "Preparant..."
+  },
+  "export_progress_encoding": {
+    "message": "Codificant frames..."
+  },
+  "export_progress_muxing": {
+    "message": "Multiplexant..."
+  },
+  "export_progress_finalizing": {
+    "message": "Finalitzant..."
+  },
+  "export_progress_frame": {
+    "message": "Fotograma $CURRENT$ / $TOTAL$",
+    "placeholders": {
+      "current": {
+        "content": "$1"
+      },
+      "total": {
+        "content": "$2"
+      }
+    }
+  },
+  "export_progress_time": {
+    "message": "~$SECONDS$s restant",
+    "placeholders": {
+      "seconds": {
+        "content": "$1"
+      }
+    }
+  },
+  "export_progress_hint": {
+    "message": "Si us plau, espera mentre el teu vídeo s'està exportant..."
+  },
+  "wallpaper_cat_abstract_name": {
+    "message": "Art Abstracte"
+  },
+  "wallpaper_cat_abstract_desc": {
+    "message": "Patrons abstractes, creacions artístiques i dissenys moderns"
+  },
+  "wallpaper_cat_minimal_name": {
+    "message": "Estil Minimalista"
+  },
+  "wallpaper_cat_minimal_desc": {
+    "message": "Geometria neta, disseny minimalista i estètica pura"
+  },
+  "wallpaper_cat_nature_name": {
+    "message": "Paisatge Natural"
+  },
+  "wallpaper_cat_nature_desc": {
+    "message": "Paisatges naturals, textures de plantes i formes orgàniques"
+  },
+  "wallpaper_cat_business_name": {
+    "message": "Professional Empresarial"
+  },
+  "wallpaper_cat_business_desc": {
+    "message": "Escenes de negocis, atmosfera professional i estil corporatiu"
+  },
+  "wallpaper_cat_tech_name": {
+    "message": "Tecnologia i Futur"
+  },
+  "wallpaper_cat_tech_desc": {
+    "message": "Elements tecnològics, sensació futurista i art digital"
+  },
+  "wallpaper_gradient_abstract_1_name": {
+    "message": "Gradient Abstracte"
+  },
+  "wallpaper_gradient_abstract_1_desc": {
+    "message": "Fons de gradient abstracte modern, perfecte per a contingut tecnològic i creatiu"
+  },
+  "wallpaper_geometric_pattern_1_name": {
+    "message": "Patró Geomètric"
+  },
+  "wallpaper_geometric_pattern_1_desc": {
+    "message": "Fons de patró geomètric net, ideal per a contingut empresarial i professional"
+  },
+  "wallpaper_abstract_2425706_name": {
+    "message": "Colors Abstractes"
+  },
+  "wallpaper_abstract_2425706_desc": {
+    "message": "Textura de colors abstractes vibrant amb fort impacte visual"
+  },
+  "wallpaper_abstract_2512412_name": {
+    "message": "Colors Abstractes"
+  },
+  "wallpaper_abstract_2512412_desc": {
+    "message": "Fons de colors abstractes fluid, perfecte per a contingut creatiu"
+  },
+  "wallpaper_abstract_6297317_name": {
+    "message": "Formes Abstractes"
+  },
+  "wallpaper_abstract_6297317_desc": {
+    "message": "Formes geomètriques abstractes amb composició de blocs de color"
+  },
+  "wallpaper_ai_generated_9083808_name": {
+    "message": "Art Generat per IA"
+  },
+  "wallpaper_ai_generated_9083808_desc": {
+    "message": "Fons d'art futurista generat per IA"
+  },
+  "wallpaper_beach_4938036_name": {
+    "message": "Platja"
+  },
+  "wallpaper_beach_4938036_desc": {
+    "message": "Paisatge de platja natural amb sorra i onades, fresc i còmode"
+  },
+  "wallpaper_bulb_5665770_name": {
+    "message": "Bombeta Creativa"
+  },
+  "wallpaper_bulb_5665770_desc": {
+    "message": "Tema de bombeta que simbolitza creativitat i inspiració"
+  },
+  "wallpaper_cpu_8892400_name": {
+    "message": "Circuit de CPU"
+  },
+  "wallpaper_cpu_8892400_desc": {
+    "message": "Xip de CPU i placa de circuits amb atractiu tecnològic"
+  },
+  "wallpaper_feather_5488401_name": {
+    "message": "Ploma Propera"
+  },
+  "wallpaper_feather_5488401_desc": {
+    "message": "Textura de ploma tova amb rics detalls"
+  },
+  "wallpaper_fractal_8902060_name": {
+    "message": "Art Fractal"
+  },
+  "wallpaper_fractal_8902060_desc": {
+    "message": "Brillants patrons fractals en estil d'art abstracte"
+  },
+  "wallpaper_orange_3036097_name": {
+    "message": "Rodanxa de Taronja"
+  },
+  "wallpaper_orange_3036097_desc": {
+    "message": "Rodanxes de taronja vibrants amb colors brillants"
+  },
+  "wallpaper_orange_6508617_name": {
+    "message": "Fons de Taronja"
+  },
+  "wallpaper_orange_6508617_desc": {
+    "message": "Fons temàtic de taronja brillant ple d'energia"
+  },
+  "wallpaper_polar_lights_5858656_name": {
+    "message": "Aurora"
+  },
+  "wallpaper_polar_lights_5858656_desc": {
+    "message": "Cel nocturn d'aurores boreals, fenomen natural màgic"
+  },
+  "wallpaper_spiral_3112405_name": {
+    "message": "Patró Espiral"
+  },
+  "wallpaper_spiral_3112405_desc": {
+    "message": "Textura espiral abstracte amb capes dinàmiques"
+  },
+  "wallpaper_steelwool_458842_name": {
+    "message": "Pintura de Llum de Llana d'Acer"
+  },
+  "wallpaper_steelwool_458842_desc": {
+    "message": "Efecte de pintura de llum d'exposició llarga, abstracte i dinàmic"
+  },
+  "wallpaper_swimming_pool_8306716_name": {
+    "message": "Ones de Piscina"
+  },
+  "wallpaper_swimming_pool_8306716_desc": {
+    "message": "Ones d'aigua de piscina amb atmosfera fresca d'estiu"
+  },
+  "wallpaper_abstract_2426502_name": {
+    "message": "Colors Abstractes"
+  },
+  "wallpaper_abstract_2426502_desc": {
+    "message": "Disseny modern amb colors i formes abstractes"
+  },
+  "wallpaper_camera_1248682_name": {
+    "message": "Càmera Propera"
+  },
+  "wallpaper_camera_1248682_desc": {
+    "message": "Primer pla de càmera i lent amb estil tecnològic textured"
+  },
+  "wallpaper_circle_5090539_name": {
+    "message": "Geometria Circular"
+  },
+  "wallpaper_circle_5090539_desc": {
+    "message": "Patró geomètric circular net, perfecte per a dissenys visuals unificats"
+  },
+  "wallpaper_feather_7009025_name": {
+    "message": "Textura de Ploma"
+  },
+  "wallpaper_feather_7009025_desc": {
+    "message": "Textura de ploma tova amb patrons naturals delicats"
+  },
+  "wallpaper_fiber_4814456_name": {
+    "message": "Línies de Fibra"
+  },
+  "wallpaper_fiber_4814456_desc": {
+    "message": "Sensació tecnològica abstracta amb fibra òptica i línies"
+  },
+  "wallpaper_frost_6702335_name": {
+    "message": "Textura de Gel"
+  },
+  "wallpaper_frost_6702335_desc": {
+    "message": "Fons de patró de gel texturitzat fred"
+  },
+  "wallpaper_leaves_4291098_name": {
+    "message": "Fulles Verdes"
+  },
+  "wallpaper_leaves_4291098_desc": {
+    "message": "Textura natural de fulles verdes, fresca i curativa"
+  },
+  "wallpaper_light_1834289_name": {
+    "message": "Bokeh de Llum"
+  },
+  "wallpaper_light_1834289_desc": {
+    "message": "Efecte bokeh de llum i ombra, fons abstracte atmosfèric"
+  },
+  "wallpaper_light_942231_name": {
+    "message": "Raigs de Llum"
+  },
+  "wallpaper_light_942231_desc": {
+    "message": "Raigs de llum fluents, fons abstracte dinàmic"
+  },
+  "wallpaper_luck_4397584_name": {
+    "message": "Trèvol de Quatre Fulles"
+  },
+  "wallpaper_luck_4397584_desc": {
+    "message": "Trèvol de quatre fulles amb tons naturals verts frescos"
+  },
+  "wallpaper_waterdrop_2256201_name": {
+    "message": "Gota d'Aigua Propera"
+  },
+  "wallpaper_waterdrop_2256201_desc": {
+    "message": "Gota d'aigua i macro textura de tensió superficial"
+  },
+  "welcome_pageTitle": {
+    "message": "Benvingut a Screen Recorder Studio"
+  },
+  "welcome_headerSubtitle": {
+    "message": "Eina Professional de Gravació al Navegador"
+  },
+  "welcome_installSuccess": {
+    "message": "Instal·lació Exitosa"
+  },
+  "welcome_headline": {
+    "message": "Grava, Edita i Exporta en Segons. 🎉"
+  },
+  "welcome_subheadline": {
+    "message": "Captura hores de metatge fluidament, llavors edita i exporta com a Vídeos o GIFs d'alta qualitat—tot processat de manera segura al teu navegador."
+  },
+  "welcome_tryTitle": {
+    "message": "Comença la teva Primera Gravació 🚀"
+  },
+  "welcome_trySubtitle": {
+    "message": "Tria què capturar i comença a gravar—Studio s'obrirà quan aturis."
+  },
+  "welcome_modeTabDetail": {
+    "message": "Perfecte per a demostracions web i tutorials"
+  },
+  "welcome_modeWindowDetail": {
+    "message": "Inclou barra d'adreça i barra d'eines"
+  },
+  "welcome_modeScreenDetail": {
+    "message": "Millor per a fluxos de treball entre aplicacions"
+  },
+  "welcome_statusRecording": {
+    "message": "Gravació en Curs"
+  },
+  "welcome_modeLabel": {
+    "message": "Mode"
+  },
+  "welcome_proTrialActive": {
+    "message": "Prova PRO Activada"
+  },
+  "welcome_feat1Title": {
+    "message": "Privat i Local"
+  },
+  "welcome_feat2Title": {
+    "message": "Sense Marques d'Aigua"
+  },
+  "welcome_feat3Title": {
+    "message": "Edició Ràpida"
+  },
+  "welcome_feat4Title": {
+    "message": "Exportació de Vídeo i GIF"
+  },
+  "welcome_howTitle": {
+    "message": "El teu Recorregut de Gravació"
+  },
+  "welcome_howDesc": {
+    "message": "Des de capturar fins a exportar, tot passa de manera segura al teu navegador."
+  },
+  "welcome_step1Title": {
+    "message": "Fixa l'Extensió"
+  },
+  "welcome_step1Desc": {
+    "message": "Fes clic a la icona de puzzle 🧩 a la barra d'eines del teu navegador i fixa aquesta extensió per accedir ràpidament en qualsevol moment"
+  },
+  "welcome_step2Title": {
+    "message": "Tria el teu Objectiu"
+  },
+  "welcome_step2Desc": {
+    "message": "Selecciona què gravar: pestanya actual, finestra completa, o pantalla completa—el que encaixi amb les teves necessitats"
+  },
+  "welcome_step3Title": {
+    "message": "Edició Ràpida"
+  },
+  "welcome_step3Desc": {
+    "message": "Fes clic a \"$BTN$\" i prepara't—un compte enrere de $SECONDS$ segons et dóna temps per preparar-te!",
+    "placeholders": {
+      "btn": {
+        "content": "$1"
+      },
+      "seconds": {
+        "content": "$2"
+      }
+    }
+  },
+  "welcome_trustNoWatermark": {
+    "message": "Sense Marques d'Aigua"
+  },
+  "welcome_trustHD": {
+    "message": "Qualitat HD"
+  },
+  "welcome_trustLocal": {
+    "message": "Privat i Local"
+  },
+  "welcome_trustQuickEditing": {
+    "message": "Edició Ràpida"
+  },
+  "welcome_footerHelp": {
+    "message": "Necessites més control? Fes clic a la icona de l'extensió per accedir a ajustaments avançats de gravació i exportació."
+  },
+  "welcome_footerMeta": {
+    "message": "Screen Recorder Studio • Fet per a professionals"
+  },
+  "annotation_tool_cursor": {
+    "message": "Cursor (Interaccionar)"
+  },
+  "annotation_tool_effect": {
+    "message": "Efecte de Cursor"
+  },
+  "annotation_tool_arrow": {
+    "message": "Fletxa"
+  },
+  "annotation_tool_rectangle": {
+    "message": "Rectangle"
+  },
+  "annotation_tool_circle": {
+    "message": "Cercle"
+  },
+  "annotation_tool_freehand": {
+    "message": "Llapis"
+  },
+  "annotation_tool_text": {
+    "message": "Text"
+  },
+  "annotation_tool_highlight": {
+    "message": "Ressaltar"
+  },
+  "annotation_tool_blur": {
+    "message": "Desenfocar"
+  },
+  "annotation_tool_undo": {
+    "message": "Desfer"
+  },
+  "annotation_tool_clear": {
+    "message": "Netejar Tot"
+  },
+  "annotation_tool_close": {
+    "message": "Tancar"
+  },
+  "webRecord_pageTitle": {
+    "message": "Gravador de Pantalla Web"
+  },
+  "webRecord_headerTitle": {
+    "message": "Gravador de Pantalla"
+  },
+  "webRecord_openDriveTooltip": {
+    "message": "Obrir el gestor de fitxers de gravació"
+  },
+  "webRecord_driveBtn": {
+    "message": "Gravacions"
+  },
+  "webRecord_errorTitle": {
+    "message": "Error"
+  },
+  "webRecord_errorInsecure": {
+    "message": "La gravació de pantalla requereix un context segur (HTTPS). Si us plau, accedeix a aquesta pàgina via HTTPS."
+  },
+  "webRecord_errorNoDisplayMedia": {
+    "message": "El teu navegador no suporta la gravació de pantalla (API getDisplayMedia)."
+  },
+  "webRecord_errorNoWebCodecs": {
+    "message": "El teu navegador no suporta l'API WebCodecs. Si us plau, utilitza un navegador modern com Chrome 94+."
+  },
+  "webRecord_errorNoTrackProcessor": {
+    "message": "El teu navegador no suporta MediaStreamTrackProcessor. Si us plau, utilitza Chrome 94+."
+  },
+  "webRecord_errorNoOPFS": {
+    "message": "El teu navegador no suporta l'emmagatzematge OPFS."
+  },
+  "webRecord_errorGeneric": {
+    "message": "S'ha produït un error. Si us plau, torna-ho a intentar."
+  },
+  "webRecord_errorNoVideoTrack": {
+    "message": "No hi ha track de vídeo disponible de la captura de pantalla."
+  },
+  "webRecord_errorPermissionDenied": {
+    "message": "El permís de gravació de pantalla ha estat denegat. Si us plau, permet compartir pantalla per gravar."
+  },
+  "webRecord_errorEncoding": {
+    "message": "S'ha produït un error de codificació de vídeo."
+  },
+  "webRecord_statusRecording": {
+    "message": "Gravant"
+  },
+  "webRecord_statusPreparing": {
+    "message": "Preparant..."
+  },
+  "webRecord_statusStopping": {
+    "message": "Aturant..."
+  },
+  "webRecord_statusIdle": {
+    "message": "Llest per Gravar"
+  },
+  "webRecord_btnStart": {
+    "message": "Iniciar Gravació"
+  },
+  "webRecord_btnStop": {
+    "message": "Aturar Gravació"
+  },
+  "webRecord_btnPreparing": {
+    "message": "Preparant..."
+  },
+  "webRecord_btnStopping": {
+    "message": "Aturant..."
+  },
+  "webRecord_tipsTitle": {
+    "message": "Consells:"
+  },
+  "webRecord_tip1": {
+    "message": "Fes clic a Iniciar per seleccionar una pantalla, finestra o pestanya per gravar."
+  },
+  "webRecord_tip2": {
+    "message": "Les gravacions es guarden localment a l'emmagatzematge del teu navegador."
+  },
+  "webRecord_tip3": {
+    "message": "Fes clic a Gravacions per veure, editar i exportar les teves gravacions."
+  },
+  "drive_drawerDelete": {
+    "message": "Eliminar"
+  },
+  "drive_drawerEmpty": {
+    "message": "Encara no hi ha gravacions"
+  },
+  "drive_drawerJustNow": {
+    "message": "Ara mateix"
+  },
+  "drive_drawerOpenFull": {
+    "message": "Obrir Drive complet"
+  },
+  "drive_drawerTitle": {
+    "message": "Gravacions Recents"
+  },
+  "launcher_drive": {
+    "message": "Drive"
+  },
+  "launcher_driveDesc": {
+    "message": "Veure i gestionar gravacions"
+  },
+  "launcher_pageTitle": {
+    "message": "Screen Recorder Studio"
+  },
+  "launcher_record": {
+    "message": "Gravar"
+  },
+  "launcher_recordDesc": {
+    "message": "Iniciar una nova gravació de pantalla"
+  },
+  "launcher_studio": {
+    "message": "Estudi"
+  },
+  "launcher_studioDesc": {
+    "message": "Edita la teva última gravació"
+  },
+  "launcher_subtitle": {
+    "message": "Gravar, gestionar i exportar"
+  },
+  "launcher_title": {
+    "message": "Screen Recorder Studio"
+  },
+  "studio_emptyDesc": {
+    "message": "Després de gravar, el teu vídeo apareixerà aquí automàticament. Pots previsualitzar, retallar, estilitzar i exportar a l'Estudi."
+  },
+  "studio_emptyFeatureExport": {
+    "message": "Exportar"
+  },
+  "studio_emptyFeaturePreview": {
+    "message": "Previsualitzar"
+  },
+  "studio_emptyFeatureTrim": {
+    "message": "Retallar i Estilitzar"
+  },
+  "studio_emptyOpenDrive": {
+    "message": "Obrir Drive"
+  },
+  "studio_emptyReasonInvalid": {
+    "message": "No s'han pogut carregar les gravacions recents."
+  },
+  "studio_emptyReasonLoadFailed": {
+    "message": "Error en carregar la gravació especificada."
+  },
+  "studio_emptyReasonOpfs": {
+    "message": "L'emmagatzematge no està disponible en aquest navegador."
+  },
+  "studio_emptyStartRecording": {
+    "message": "Iniciar Gravació"
+  },
+  "studio_emptyTitle": {
+    "message": "Encara no hi ha vídeo per editar"
+  },
+  "studio_loading": {
+    "message": "Carregant..."
+  },
+  "studio_recentRecordings": {
+    "message": "Gravacions"
+  }
+}
