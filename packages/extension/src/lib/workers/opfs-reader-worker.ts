@@ -44,7 +44,7 @@ let openedDirId: string | null = null
 function timestampToMs(timestamp: number): number {
   // 根据opfs-writer-worker.ts，时间戳以微秒存储
   // 需要转换为毫秒用于UI显示和计算
-  return Math.floor(timestamp / 1000)
+  return Math.round(timestamp / 1000)
 }
 
 // 🔧 计算相对时间戳（从第一帧开始）
@@ -428,10 +428,8 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
 
 
       // 一次性读取整个窗口的数据
-      const batchReadStart = performance.now()
       const totalSlice = file.slice(startOffset, endOffset)
       const totalBuf = await totalSlice.arrayBuffer()
-      const batchReadTime = performance.now() - batchReadStart
 
 
       // 切分为单个 chunks
@@ -452,8 +450,6 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
         chunks.push(wire)
         transfer.push(buf)
       }
-
-
       ;(self as any).postMessage({ type: 'range', start, count: end - start, chunks }, transfer)
       return
     }
