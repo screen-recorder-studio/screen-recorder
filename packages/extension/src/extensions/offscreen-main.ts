@@ -71,6 +71,7 @@
   let opfsSessionId: string | null = null
   let opfsLastMeta: any = null
   const opfsPendingChunks: Array<{ data: any; timestamp?: number; type?: string; codedWidth?: number; codedHeight?: number; codec?: string }> = []
+  const OPFS_PENDING_CHUNKS_MAX = 500
   let opfsEndPending = false
   let opfsInitPromise: Promise<void> | null = null
   let resolveOpfsInit: (() => void) | null = null
@@ -227,7 +228,13 @@
 
   function appendToOpfsChunk(d: { data: any; timestamp?: number; type?: string; isKeyframe?: boolean; codedWidth?: number; codedHeight?: number; codec?: string }) {
     if (!OPFS_WRITER_ENABLED) return
-    if (!opfsWriter || !opfsWriterReady) { opfsPendingChunks.push(d); return }
+    if (!opfsWriter || !opfsWriterReady) {
+      if (opfsPendingChunks.length >= OPFS_PENDING_CHUNKS_MAX) {
+        console.warn(`[Offscreen][OPFS] Pending chunks queue full (${OPFS_PENDING_CHUNKS_MAX}), dropping oldest chunk`)
+        opfsPendingChunks.shift()
+      }
+      opfsPendingChunks.push(d); return
+    }
     try {
       const raw: any = d.data
       let u8: Uint8Array | null = null
