@@ -3,7 +3,6 @@
   "appDesc": { "message": "Kurekodi skrini imara bila vikwazo vya wakati. Editor iliyojengwa ndani kwa zoom la utulivu, kunyoa, na kutoa hadi MP4 au GIF ya ubora wa juu." },
   "common_close": { "message": "Funga" },
   "action_defaultTitle": { "message": "Fungua Kituo cha Kurekodi" },
-
   "control_headerTitle": { "message": "Kurekodi Skrini" },
   "control_headerDesc": { "message": "Chagua hali ya kurekodi na uanze" },
   "control_openDriveTooltip": { "message": "Fungua mwenyeji wa faili za kurekodi" },
@@ -38,7 +37,6 @@
   "control_errorStorageLow": { "message": "Hifadhi inakua ndogo. Kurekodi inaweza kushindwa." },
   "control_statusSaving": { "message": "Inahifadhi kurekodi..." },
   "control_btnSaving": { "message": "Inahifadhi..." },
-
   "drive_pageTitle": { "message": "Virekodi - Kiendelezo cha Kurekodi Skrini" },
   "drive_headerTitle": { "message": "Mwenyeji wa Virekodi" },
   "drive_errorSupport": { "message": "Kivinjari chako hakikungi hifadhi ya OPFS" },
@@ -52,7 +50,6 @@
   "drive_logBatchDelete": { "message": "Virekodi $COUNT$ vimefutwa vizuri", "placeholders": { "count": { "content": "$1" } } },
   "drive_errorLoad": { "message": "Hitilafu imetokea wakati wa kupakia virekodi" },
   "drive_errorLoadPrefix": { "message": "Imeshindwa kupakia virekodi:" },
-
   "studio_pageTitle": { "message": "Studio ya Kurekodi Skrini" },
   "studio_headerTitle": { "message": "Studio ya Kurekodi Skrini" },
   "studio_githubTooltip": { "message": "Tazama chanzo kwenye GitHub" },
@@ -67,27 +64,23 @@
   "studio_fullscreenExitTooltip": { "message": "Toka Kwenye Skrini Nzima" },
   "studio_fullscreenEnterText": { "message": "Skrini Nzima" },
   "studio_fullscreenExitText": { "message": "Toka" },
-
   "bg_title": { "message": "Mandharinyuma" },
   "bg_tab_wallpaper": { "message": "Picha ya ukuta" },
   "bg_tab_gradient": { "message": "Mteremko" },
   "bg_tab_solid": { "message": "Imara" },
   "bg_tab_image": { "message": "Picha" },
-
   "radius_title": { "message": "Kizio cha Ukingo wa Video" },
   "radius_none": { "message": "Hakuna Kizio" },
   "radius_small": { "message": "Kizio Kidogo" },
   "radius_medium": { "message": "Kizio Cha Kati" },
   "radius_large": { "message": "Kizio Kikubwa" },
   "radius_xl": { "message": "Kizio Kikubwa Sana" },
-
   "padding_title": { "message": "Nafasi ya Video" },
   "padding_none": { "message": "Hakuna Padding" },
   "padding_small": { "message": "Padding Ndogo" },
   "padding_medium": { "message": "Padding Ya Kati" },
   "padding_large": { "message": "Padding Kubwa" },
   "padding_xl": { "message": "Padding Kubwa Sana" },
-
   "ratio_yt": { "message": "Mlalo wa YouTube" },
   "ratio_yt_desc": { "message": "YouTube, Bilibili, iQiyi, n.k." },
   "ratio_sq": { "message": "Mraba wa Instagram" },
@@ -96,7 +89,6 @@
   "ratio_tiktok_desc": { "message": "TikTok, Reels, video wima" },
   "ratio_story": { "message": "Story ya Instagram" },
   "ratio_story_desc": { "message": "Story za Instagram, Xiaohongshu" },
-
   "shadow_title": { "message": "Kivuli cha Video" },
   "shadow_preset_title": { "message": "Athari za Kuweka" },
   "shadow_custom_title": { "message": "Vigezo vya Kibinafsi" },
@@ -110,13 +102,11 @@
   "shadow_color": { "message": "Rangi" },
   "shadow_opacity": { "message": "Uangavu" },
   "shadow_empty_state": { "message": "Washa kigeuzi cha kivuli kusanidi athari za kivuli" },
-
   "color_tab_basic": { "message": "Msingi" },
   "color_tab_light": { "message": "Mwangaza" },
   "color_tab_business": { "message": "Biashara" },
   "color_tab_creative": { "message": "Ubunifu" },
   "color_custom": { "message": "Kibinafsi:" },
-
   "gradient_tab_linear": { "message": "Mstari" },
   "gradient_tab_radial": { "message": "Mzunguko" },
   "gradient_tab_conic": { "message": "Pua" },
@@ -124,7 +114,6 @@
   "gradient_current": { "message": "Sasa:" },
   "gradient_select_hint": { "message": "Chagua mteremko" },
   "gradient_colors_suffix": { "message": "rangi" },
-
   "wallpaper_tab_abstract": { "message": "Danganyifu" },
   "wallpaper_tab_minimal": { "message": "Ndogo" },
   "wallpaper_tab_nature": { "message": "Asili" },
@@ -133,13 +122,11 @@
   "wallpaper_error": { "message": "Imeshindwa kupakia picha ya ukuta" },
   "wallpaper_stats": { "message": "$COUNT$ picha za ukuta katika kitengo hiki", "placeholders": { "count": { "content": "$1" } } },
   "wallpaper_total": { "message": "$TOTAL$ jumla", "placeholders": { "total": { "content": "$1" } } },
-
   "upload_processing": { "message": "Inachakata..." },
   "upload_drop_hint": { "message": "Bofya au vuta picha hapa" },
   "upload_format_hint": { "message": "JPEG, PNG, WebP, GIF · Juu 5MB" },
   "upload_error_select": { "message": "Tafadhali chagua faili ya picha" },
   "upload_error_failed": { "message": "Upakiaji umeshindwa" },
-
   "drive_delete_selected_btn": { "message": "Futa Zilizochaguliwa ($COUNT$)", "placeholders": { "count": { "content": "$1" } } },
   "drive_clear_selection": { "message": "Futa Uchaguzi" },
   "drive_refresh": { "message": "Onyesha upya" },
@@ -158,7 +145,6 @@
   "drive_action_undone": { "message": "Kitendo hiki hakikuweza kutenduliwa." },
   "drive_cancel": { "message": "Ghairi" },
   "drive_delete": { "message": "Futa" },
-
   "card_status_completed": { "message": "Imekamilika" },
   "card_status_incomplete": { "message": "Haijakamilika" },
   "card_label_created": { "message": "Iliyoundwa:" },
@@ -179,8 +165,7 @@
   "card_preview_load_error": { "message": "Imeshindwa kupakia data ya hakiki: $ERROR$", "placeholders": { "error": { "content": "$1" } } },
   "card_date_today": { "message": "Leo $TIME$", "placeholders": { "time": { "content": "$1" } } },
   "card_date_yesterday": { "message": "Jana $TIME$", "placeholders": { "time": { "content": "$1" } } },
-  "card_date_days_ago": { "message": "Siku $DA$ zilizopita", "placeholders": { "days": { "content": "$1" } } },
-
+  "card_date_days_ago": { "message": "Siku $DA$ zilizopita", "placeholders": { "da": { "content": "$1" } } },
   "export_panel_tier_free": { "message": "BURE" },
   "export_panel_tier_pro": { "message": "PRO" },
   "export_panel_tier_trial": { "message": "JARIBIO LA PRO" },
@@ -193,7 +178,6 @@
   "export_error_mp4_failed": { "message": "Kutoa MP4 imeshindwa. Tafadhali jaribu tena." },
   "export_error_retry_hint": { "message": "Jaribu tena au tumia muundo tofauti." },
   "export_error_opfs_download_failed": { "message": "Faili imehifadhiwa kwenye Drive lakini kupakua imeshindwa. Fungua Drive kupata faili yako." },
-
   "export_dialog_title": { "message": "Toa Video" },
   "export_source_res": { "message": "Utatibu" },
   "export_source_codec": { "message": "Codec" },
@@ -253,7 +237,6 @@
   "export_progress_frame": { "message": "Kiwango $CURRENT$ / $TOTAL$", "placeholders": { "current": { "content": "$1" }, "total": { "content": "$2" } } },
   "export_progress_time": { "message": "~ sekunde $SECONDS$ zimesalia", "placeholders": { "seconds": { "content": "$1" } } },
   "export_progress_hint": { "message": "Tafadhali subiri wakati video yako inatowa..." },
-
   "wallpaper_cat_abstract_name": { "message": "Usanifu wa Danganyifu" },
   "wallpaper_cat_abstract_desc": { "message": "Miranganyiko ya danganyifu, uvumbuzi wa kisanii na vikao vya kisasa" },
   "wallpaper_cat_minimal_name": { "message": "Mtindo wa Ndogo" },
@@ -264,7 +247,6 @@
   "wallpaper_cat_business_desc": { "message": "Majumba ya biashara, mazingira ya kitaaluma na mtindo wa makorporeti" },
   "wallpaper_cat_tech_name": { "message": "Teknolojia ya Mustakabal" },
   "wallpaper_cat_tech_desc": { "message": "Vipengele vya teknolojia, hisia ya mustakabal na usanifu wa kidijitali" },
-
   "wallpaper_gradient_abstract_1_name": { "message": "Mteremko wa Danganyifu" },
   "wallpaper_gradient_abstract_1_desc": { "message": "Mandharinyuma ya mteremko wa danganyifu wa kisasa, kamili kwa maudhui ya teknolojia na ubunifu" },
   "wallpaper_geometric_pattern_1_name": { "message": "Mbinu ya Kgeometry" },
@@ -352,7 +334,6 @@
   "welcome_trustQuickEditing": { "message": "Hariri Haraka" },
   "welcome_footerHelp": { "message": "Unahitaji kudhibiti zaidi? Bofya ikoni ya extension kufikia mipangilio ya kurekodi na kutoa ya kina." },
   "welcome_footerMeta": { "message": "Studio ya Kurekodi Skrini • Imeundwa kwa wataaluma" },
-
   "annotation_tool_cursor": { "message": "Kielekezi (Shiriki)" },
   "annotation_tool_effect": { "message": "Athari ya Kielekezi" },
   "annotation_tool_arrow": { "message": "Shale" },
@@ -365,7 +346,6 @@
   "annotation_tool_undo": { "message": "Tendua" },
   "annotation_tool_clear": { "message": "Futa Zote" },
   "annotation_tool_close": { "message": "Funga" },
-
   "webRecord_pageTitle": { "message": "Kurekodi Skrini ya Wavuti" },
   "webRecord_headerTitle": { "message": "Kurekodi Skrini" },
   "webRecord_openDriveTooltip": { "message": "Fungua mwenyeji wa faili za kurekodi" },
@@ -392,7 +372,6 @@
   "webRecord_tip1": { "message": "Bofya Anza kuchagua skrini, dirisha, au tabu ya kurekodi." },
   "webRecord_tip2": { "message": "Virekodi vimehifadhiwa mahali kwenye hifadhi ya kivinjari wako." },
   "webRecord_tip3": { "message": "Bofya Virekodi kuangalia, kuhariri, na kutoa virekodi vyako." },
-
   "drive_drawerDelete": { "message": "Futa" },
   "drive_drawerEmpty": { "message": "Hakuna virekodi bado" },
   "drive_drawerJustNow": { "message": "Sasa hivi" },
