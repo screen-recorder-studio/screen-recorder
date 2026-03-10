@@ -1,1155 +1,401 @@
 {
-  "appName": {
-    "message": "Screen Recorder Studio - บันทึกวิดีโอไม่จำกัด"
-  },
-  "appDesc": {
-    "message": "การบันทึกหน้าจอที่เสถียรโดยไม่มีข้อจำกัดด้านเวลา ตัวแก้ไขในตัวเพื่อซูม ตัดแต่ง และส่งออกเป็น MP4 หรือ GIF คุณภาพสูงอย่างราบรื่น."
-  },
-  "common_close": {
-    "message": "ปิด"
-  },
-  "action_defaultTitle": {
-    "message": "เปิดแผงบันทึก"
-  },
-  "control_headerTitle": {
-    "message": "โปรแกรมบันทึกหน้าจอ"
-  },
-  "control_headerDesc": {
-    "message": "เลือกโหมดบันทึกและเริ่มต้น"
-  },
-  "control_openDriveTooltip": {
-    "message": "เปิดตัวจัดการไฟล์บันทึก"
-  },
-  "control_closePanelTooltip": {
-    "message": "ปิดแผงควบคุม"
-  },
-  "control_recordingMode": {
-    "message": "โหมดบันทึก"
-  },
-  "control_modeTab": {
-    "message": "แท็บ"
-  },
-  "control_modeTabDesc": {
-    "message": "บันทึกแท็บปัจจุบัน"
-  },
-  "control_modeWindow": {
-    "message": "หน้าต่าง"
-  },
-  "control_modeWindowDesc": {
-    "message": "บันทึกหน้าต่างทั้งหมด"
-  },
-  "control_modeScreen": {
-    "message": "หน้าจอ"
-  },
-  "control_modeScreenDesc": {
-    "message": "บันทึกหน้าจอทั้งหมด"
-  },
-  "control_statusRecording": {
-    "message": "กำลังบันทึก"
-  },
-  "control_statusPaused": {
-    "message": "หยุดชั่วคราว"
-  },
-  "control_statusPreparing": {
-    "message": "กำลังเตรียมบันทึก..."
-  },
-  "control_btnStart": {
-    "message": "เริ่มบันทึก"
-  },
-  "control_btnStop": {
-    "message": "หยุดบันทึก"
-  },
-  "control_btnPause": {
-    "message": "หยุดชั่วคราว"
-  },
-  "control_btnResume": {
-    "message": "บันทึกต่อ"
-  },
-  "control_btnPreparing": {
-    "message": "กำลังเตรียม..."
-  },
-  "control_btnStarting": {
-    "message": "เริ่มใน $SECONDS$ วินาที...",
-    "placeholders": {
-      "seconds": {
-        "content": "$1"
-      }
-    }
-  },
-  "control_countdownLabel": {
-    "message": "นับถอยหลัง"
-  },
-  "control_tipsTitle": {
-    "message": "เคล็ดลับการบันทึก:"
-  },
-  "control_tipsSelectMode": {
-    "message": "เลือกโหมด $MODE$ แล้ว คลิกเริ่มบันทึกเพื่อเริ่มต้น",
-    "placeholders": {
-      "mode": {
-        "content": "$1"
-      }
-    }
-  },
-  "control_tipsPreparing": {
-    "message": "รอการเลือกหน้าจอ..."
-  },
-  "control_tipsCountdown": {
-    "message": "เตรียมพร้อม! การบันทึกจะเริ่มใน $SECONDS$ วินาที",
-    "placeholders": {
-      "seconds": {
-        "content": "$1"
-      }
-    }
-  },
-  "control_tipsPaused": {
-    "message": "การบันทึกหยุดชั่วคราว คลิกบันทึกต่อเพื่อดำเนินต่อ"
-  },
-  "control_tipsRecording": {
-    "message": "กำลังบันทึก คลิกหยุดชั่วคราวเพื่อหยุดชั่วคราว"
-  },
-  "control_overlayRecordingStarts": {
-    "message": "การบันทึกจะเริ่มเร็วๆ นี้..."
-  },
-  "control_errorTimeout": {
-    "message": "หมดเวลาในการเตรียมบันทึก กรุณาลองอีกครั้ง"
-  },
-  "control_errorStartFailed": {
-    "message": "ไม่สามารถเริ่มบันทึกได้ กรุณาลองอีกครั้ง"
-  },
-  "control_errorRecordingFailed": {
-    "message": "เกิดข้อผิดพลาดในการบันทึกและหยุดลง"
-  },
-  "control_errorStorageLow": {
-    "message": "พื้นที่เก็บข้อมูลกำลังจะหมด การบันทึกอาจล้มเหลว"
-  },
-  "control_statusSaving": {
-    "message": "กำลังบันทึกไฟล์..."
-  },
-  "control_btnSaving": {
-    "message": "กำลังบันทึก..."
-  },
-  "drive_pageTitle": {
-    "message": "การบันทึก - ส่วนขยายโปรแกรมบันทึกหน้าจอ"
-  },
-  "drive_headerTitle": {
-    "message": "ตัวจัดการการบันทึก"
-  },
-  "drive_errorSupport": {
-    "message": "เบราว์เซอร์ของคุณไม่รองรับการจัดเก็บข้อมูล OPFS"
-  },
-  "drive_errorMetaNotFound": {
-    "message": "ไม่พบไฟล์ meta.json"
-  },
-  "drive_errorEmpty": {
-    "message": "ไฟล์บันทึกว่างเปล่า"
-  },
-  "drive_errorMetadata": {
-    "message": "ไม่สามารถอ่านข้อมูลเมตาการบันทึกได้"
-  },
-  "drive_errorDataSize": {
-    "message": "ไม่สามารถรับขนาดไฟล์ข้อมูลได้"
-  },
-  "drive_recordingNamePrefix": {
-    "message": "การบันทึกหน้าจอ"
-  },
-  "drive_logDeleted": {
-    "message": "ลบการบันทึก $ID$ แล้ว",
-    "placeholders": {
-      "id": {
-        "content": "$1"
-      }
-    }
-  },
-  "drive_errorDelete": {
-    "message": "ไม่สามารถลบได้: $ERROR$",
-    "placeholders": {
-      "error": {
-        "content": "$1"
-      }
-    }
-  },
-  "drive_logBatchDelete": {
-    "message": "ลบการบันทึก $COUNT$ รายการสำเร็จแล้ว",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "drive_errorLoad": {
-    "message": "เกิดข้อผิดพลาดในการโหลดการบันทึก"
-  },
-  "drive_errorLoadPrefix": {
-    "message": "ไม่สามารถโหลดการบันทึกได้:"
-  },
-  "studio_pageTitle": {
-    "message": "สตูดิโอบันทึกหน้าจอ"
-  },
-  "studio_headerTitle": {
-    "message": "สตูดิโอโปรแกรมบันทึกหน้าจอ"
-  },
-  "studio_githubTooltip": {
-    "message": "ดูซอร์สโค้ดบน GitHub"
-  },
-  "studio_githubText": {
-    "message": "GitHub"
-  },
-  "studio_feedbackTooltip": {
-    "message": "รายงานข้อผิดพลาดหรือเสนอแนะฟีเจอร์"
-  },
-  "studio_feedbackText": {
-    "message": "ความคิดเห็น"
-  },
-  "studio_helpTooltip": {
-    "message": "ความช่วยเหลือและเอกสาร"
-  },
-  "studio_helpText": {
-    "message": "ความช่วยเหลือ"
-  },
-  "studio_driveTooltip": {
-    "message": "เปิดตัวจัดการไฟล์บันทึก"
-  },
-  "studio_driveText": {
-    "message": "ไดรฟ์"
-  },
-  "studio_fullscreenEnterTooltip": {
-    "message": "เข้าโหมดเต็มหน้าจอ"
-  },
-  "studio_fullscreenExitTooltip": {
-    "message": "ออกจากโหมดเต็มหน้าจอ"
-  },
-  "studio_fullscreenEnterText": {
-    "message": "เต็มหน้าจอ"
-  },
-  "studio_fullscreenExitText": {
-    "message": "ออก"
-  },
-  "bg_title": {
-    "message": "พื้นหลัง"
-  },
-  "bg_tab_wallpaper": {
-    "message": "วอลล์เปเปอร์"
-  },
-  "bg_tab_gradient": {
-    "message": "กราเดียนต์"
-  },
-  "bg_tab_solid": {
-    "message": "สีเดียว"
-  },
-  "bg_tab_image": {
-    "message": "รูปภาพ"
-  },
-  "radius_title": {
-    "message": "รัศมีขอบวิดีโอ"
-  },
-  "radius_none": {
-    "message": "ไม่มีรัศมี"
-  },
-  "radius_small": {
-    "message": "รัศมีเล็ก"
-  },
-  "radius_medium": {
-    "message": "รัศมีกลาง"
-  },
-  "radius_large": {
-    "message": "รัศมีใหญ่"
-  },
-  "radius_xl": {
-    "message": "รัศมีใหญ่มาก"
-  },
-  "padding_title": {
-    "message": "ช่องว่างภายในวิดีโอ"
-  },
-  "padding_none": {
-    "message": "ไม่มีช่องว่าง"
-  },
-  "padding_small": {
-    "message": "ช่องว่างเล็ก"
-  },
-  "padding_medium": {
-    "message": "ช่องว่างกลาง"
-  },
-  "padding_large": {
-    "message": "ช่องว่างใหญ่"
-  },
-  "padding_xl": {
-    "message": "ช่องว่างใหญ่มาก"
-  },
-  "ratio_yt": {
-    "message": "แนวนอน YouTube"
-  },
-  "ratio_yt_desc": {
-    "message": "YouTube, Bilibili, iQiyi และอื่นๆ"
-  },
-  "ratio_sq": {
-    "message": "สี่เหลี่ยมจัตุรัส Instagram"
-  },
-  "ratio_sq_desc": {
-    "message": "โพสต์ Instagram, WeChat Moments"
-  },
-  "ratio_tiktok": {
-    "message": "แนวตั้ง TikTok"
-  },
-  "ratio_tiktok_desc": {
-    "message": "TikTok, Douyin, Kuaishou"
-  },
-  "ratio_story": {
-    "message": "Instagram Story"
-  },
-  "ratio_story_desc": {
-    "message": "Instagram Stories, Xiaohongshu"
-  },
-  "shadow_title": {
-    "message": "เงาวิดีโอ"
-  },
-  "shadow_preset_title": {
-    "message": "เอฟเฟกต์พรีเซ็ต"
-  },
-  "shadow_custom_title": {
-    "message": "พารามิเตอร์ที่กำหนดเอง"
-  },
-  "shadow_light": {
-    "message": "เงาอ่อน"
-  },
-  "shadow_standard": {
-    "message": "เงามาตรฐาน"
-  },
-  "shadow_deep": {
-    "message": "เงาลึก"
-  },
-  "shadow_distant": {
-    "message": "เงาไกล"
-  },
-  "shadow_offset_x": {
-    "message": "การเลื่อนในแนวแกน X"
-  },
-  "shadow_offset_y": {
-    "message": "การเลื่อนในแนวแกน Y"
-  },
-  "shadow_blur": {
-    "message": "เบลอ"
-  },
-  "shadow_color": {
-    "message": "สี"
-  },
-  "shadow_opacity": {
-    "message": "ความทึบ"
-  },
-  "shadow_empty_state": {
-    "message": "เปิดสวิตช์เงาเพื่อกำหนดค่าเอฟเฟกต์เงา"
-  },
-  "color_tab_basic": {
-    "message": "พื้นฐาน"
-  },
-  "color_tab_light": {
-    "message": "สว่าง"
-  },
-  "color_tab_business": {
-    "message": "ธุรกิจ"
-  },
-  "color_tab_creative": {
-    "message": "สร้างสรรค์"
-  },
-  "color_custom": {
-    "message": "กำหนดเอง:"
-  },
-  "gradient_tab_linear": {
-    "message": "เส้นตรง"
-  },
-  "gradient_tab_radial": {
-    "message": "รัศมี"
-  },
-  "gradient_tab_conic": {
-    "message": "กรวย"
-  },
-  "gradient_tab_multi": {
-    "message": "หลายสี"
-  },
-  "gradient_current": {
-    "message": "ปัจจุบัน:"
-  },
-  "gradient_select_hint": {
-    "message": "เลือกกราเดียนต์"
-  },
-  "gradient_colors_suffix": {
-    "message": "สี"
-  },
-  "wallpaper_tab_abstract": {
-    "message": "นามธรรม"
-  },
-  "wallpaper_tab_minimal": {
-    "message": "มินิมอล"
-  },
-  "wallpaper_tab_nature": {
-    "message": "ธรรมชาติ"
-  },
-  "wallpaper_tab_business": {
-    "message": "ธุรกิจ"
-  },
-  "wallpaper_tab_tech": {
-    "message": "เทค"
-  },
-  "wallpaper_error": {
-    "message": "ไม่สามารถโหลดวอลล์เปเปอร์"
-  },
-  "wallpaper_stats": {
-    "message": "$COUNT$ วอลล์เปเปอร์ในหมวดนี้",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "wallpaper_total": {
-    "message": "$TOTAL$ ทั้งหมด",
-    "placeholders": {
-      "total": {
-        "content": "$1"
-      }
-    }
-  },
-  "upload_processing": {
-    "message": "กำลังประมวลผล..."
-  },
-  "upload_drop_hint": {
-    "message": "คลิกหรือลากรูปภาพที่นี่"
-  },
-  "upload_format_hint": {
-    "message": "JPEG, PNG, WebP, GIF · สูงสุด 5MB"
-  },
-  "upload_error_select": {
-    "message": "กรุณาเลือกไฟล์รูปภาพ"
-  },
-  "upload_error_failed": {
-    "message": "การอัปโหลดล้มเหลว"
-  },
-  "drive_delete_selected_btn": {
-    "message": "ลบที่เลือก ($COUNT$)",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "drive_clear_selection": {
-    "message": "ล้างการเลือก"
-  },
-  "drive_refresh": {
-    "message": "รีเฟรช"
-  },
-  "drive_error_title": {
-    "message": "ข้อผิดพลาด"
-  },
-  "drive_close_error": {
-    "message": "ปิด"
-  },
-  "drive_loading": {
-    "message": "กำลังโหลดการบันทึก..."
-  },
-  "drive_empty_title": {
-    "message": "ยังไม่มีการบันทึก"
-  },
-  "drive_empty_desc1": {
-    "message": "คุณยังไม่มีการบันทึกหน้าจอ"
-  },
-  "drive_empty_desc2": {
-    "message": "เริ่มบันทึกหน้าจอของคุณและการบันทึกจะปรากฏที่นี่"
-  },
-  "drive_start_recording_btn": {
-    "message": "เริ่มบันทึก"
-  },
-  "drive_select_all": {
-    "message": "เลือกทั้งหมด ($COUNT$ การบันทึก)",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "drive_sort_hint": {
-    "message": "เรียงตามเวลา (ใหม่ที่สุดก่อน)"
-  },
-  "drive_confirm_delete_title": {
-    "message": "ยืนยันการลบ"
-  },
-  "drive_confirm_delete_selected": {
-    "message": "คุณแน่ใจหรือไม่ที่จะลบการบันทึก $COUNT$ รายการที่เลือก?",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "drive_confirm_delete_single": {
-    "message": "คุณแน่ใจหรือไม่ที่จะลบการบันทึกนี้?"
-  },
-  "drive_action_undone": {
-    "message": "การกระทำนี้ไม่สามารถยกเลิกได้"
-  },
-  "drive_cancel": {
-    "message": "ยกเลิก"
-  },
-  "drive_delete": {
-    "message": "ลบ"
-  },
-  "card_status_completed": {
-    "message": "เสร็จสมบูรณ์"
-  },
-  "card_status_incomplete": {
-    "message": "ไม่สมบูรณ์"
-  },
-  "card_label_created": {
-    "message": "สร้างเมื่อ:"
-  },
-  "card_label_status": {
-    "message": "สถานะ:"
-  },
-  "card_label_codec": {
-    "message": "โค้ดเด็ก:"
-  },
-  "card_label_resolution": {
-    "message": "ความละเอียด:"
-  },
-  "card_label_fps": {
-    "message": "เฟรมเรต:"
-  },
-  "card_label_size": {
-    "message": "ขนาดไฟล์:"
-  },
-  "card_label_frames": {
-    "message": "เฟรมทั้งหมด:"
-  },
-  "card_incomplete_title": {
-    "message": "การบันทึกไม่สมบูรณ์"
-  },
-  "card_incomplete_desc": {
-    "message": "ข้อมูลวิดีโอหายไป"
-  },
-  "card_preview_error": {
-    "message": "ไม่สามารถโหลดตัวอย่าง"
-  },
-  "card_preview_loading": {
-    "message": "กำลังสร้างตัวอย่าง..."
-  },
-  "card_btn_edit": {
-    "message": "แก้ไข"
-  },
-  "card_btn_delete": {
-    "message": "ลบ"
-  },
-  "card_edit_disabled_tooltip": {
-    "message": "ไม่สามารถแก้ไขการบันทึกที่ไม่สมบูรณ์"
-  },
-  "card_edit_tooltip": {
-    "message": "แก้ไขการบันทึก"
-  },
-  "card_preview_load_error": {
-    "message": "ไม่สามารถโหลดข้อมูลตัวอย่าง: $ERROR$",
-    "placeholders": {
-      "error": {
-        "content": "$1"
-      }
-    }
-  },
-  "card_date_today": {
-    "message": "วันนี้ $TIME$",
-    "placeholders": {
-      "time": {
-        "content": "$1"
-      }
-    }
-  },
-  "card_date_yesterday": {
-    "message": "เมื่อวาน $TIME$",
-    "placeholders": {
-      "time": {
-        "content": "$1"
-      }
-    }
-  },
-  "card_date_days_ago": {
-    "message": "$DAYS$ วันที่แล้ว",
-    "placeholders": {
-      "days": {
-        "content": "$1"
-      }
-    }
-  },
-  "export_panel_tier_free": {
-    "message": "ฟรี"
-  },
-  "export_panel_tier_pro": {
-    "message": "โปร"
-  },
-  "export_panel_tier_trial": {
-    "message": "ทดลองใช้โปร"
-  },
-  "export_panel_btn": {
-    "message": "ส่งออก"
-  },
-  "export_panel_tooltip_incomplete": {
-    "message": "ทำให้การบันทึกสมบูรณ์เพื่อส่งออก"
-  },
-  "export_panel_tooltip_no_data": {
-    "message": "ไม่มีข้อมูลวิดีโอ"
-  },
-  "export_panel_btn_exporting": {
-    "message": "กำลังส่งออก..."
-  },
-  "export_error_gif_failed": {
-    "message": "การส่งออก GIF ล้มเหลว กรุณาลองอีกครั้ง"
-  },
-  "export_error_webm_failed": {
-    "message": "การส่งออก WebM ล้มเหลว กรุณาลองอีกครั้ง"
-  },
-  "export_error_mp4_failed": {
-    "message": "การส่งออก MP4 ล้มเหลว กรุณาลองอีกครั้ง"
-  },
-  "export_error_retry_hint": {
-    "message": "ลองอีกครั้งหรือใช้รูปแบบอื่น"
-  },
-  "export_error_opfs_download_failed": {
-    "message": "ไฟล์ถูกบันทึกในไดรฟ์แต่การดาวน์โหลดล้มเหลว เปิดไดรฟ์เพื่อรับไฟล์ของคุณ"
-  },
-  "export_dialog_title": {
-    "message": "ส่งออกวิดีโอ"
-  },
-  "export_source_res": {
-    "message": "ความละเอียด"
-  },
-  "export_source_codec": {
-    "message": "โค้ดเด็ก"
-  },
-  "export_source_duration": {
-    "message": "ระยะเวลา"
-  },
-  "export_source_frames": {
-    "message": "เฟรม"
-  },
-  "export_badge_bg": {
-    "message": "พื้นหลัง"
-  },
-  "export_badge_trim": {
-    "message": "ตัดแล้ว"
-  },
-  "export_format_mp4": {
-    "message": "MP4"
-  },
-  "export_format_webm": {
-    "message": "WebM"
-  },
-  "export_format_gif": {
-    "message": "GIF"
-  },
-  "export_quality_title": {
-    "message": "คุณภาพพรีเซ็ต"
-  },
-  "export_quality_draft": {
-    "message": "ร่าง"
-  },
-  "export_quality_draft_desc": {
-    "message": "ส่งออกเร็วที่สุด คุณภาพต่ำ"
-  },
-  "export_quality_balanced": {
-    "message": "สมดุล"
-  },
-  "export_quality_balanced_desc": {
-    "message": "คุณภาพดี ความเร็วปานกลาง"
-  },
-  "export_quality_high": {
-    "message": "สูง"
-  },
-  "export_quality_high_desc": {
-    "message": "คุณภาพสูง ช้าลง"
-  },
-  "export_quality_best": {
-    "message": "ดีที่สุด"
-  },
-  "export_quality_best_desc": {
-    "message": "คุณภาพสูงสุด ช้าที่สุด"
-  },
-  "export_label_resolution": {
-    "message": "ความละเอียด"
-  },
-  "export_res_source": {
-    "message": "ตรงกับต้นฉบับ ($WIDTH$×$HEIGHT$)",
-    "placeholders": {
-      "width": {
-        "content": "$1"
-      },
-      "height": {
-        "content": "$2"
-      }
-    }
-  },
-  "export_label_framerate": {
-    "message": "อัตราเฟรม"
-  },
-  "export_fps_source": {
-    "message": "$FPS$ fps (ต้นฉบับ)",
-    "placeholders": {
-      "fps": {
-        "content": "$1"
-      }
-    }
-  },
-  "export_label_bitrate": {
-    "message": "บิตเรต"
-  },
-  "export_bitrate_auto": {
-    "message": "อัตโนมัติ"
-  },
-  "export_bitrate_manual": {
-    "message": "ด้วยตนเอง"
-  },
-  "export_bitrate_auto_hint": {
-    "message": "อัตโนมัติ: $RATE$ Mbps (ตามความละเอียดและคุณภาพ)",
-    "placeholders": {
-      "rate": {
-        "content": "$1"
-      }
-    }
-  },
-  "export_label_speed": {
-    "message": "ความเร็วในการเข้ารหัส"
-  },
-  "export_speed_fastest": {
-    "message": "เร็วที่สุด"
-  },
-  "export_speed_fast": {
-    "message": "เร็ว"
-  },
-  "export_speed_balanced": {
-    "message": "สมดุล"
-  },
-  "export_speed_slow": {
-    "message": "ช้า"
-  },
-  "export_speed_slowest": {
-    "message": "ช้าที่สุด"
-  },
-  "export_est_output": {
-    "message": "ผลลัพธ์โดยประมาณ"
-  },
-  "export_est_size": {
-    "message": "ขนาดโดยประมาณ"
-  },
-  "export_label_gif_quality": {
-    "message": "คุณภาพ"
-  },
-  "export_gif_best": {
-    "message": "ดีที่สุด (ช้าที่สุด)"
-  },
-  "export_gif_high": {
-    "message": "สูง"
-  },
-  "export_gif_good": {
-    "message": "ดี (ค่าเริ่มต้น)"
-  },
-  "export_gif_fast": {
-    "message": "เร็ว"
-  },
-  "export_gif_fastest": {
-    "message": "เร็วที่สุด"
-  },
-  "export_label_scale": {
-    "message": "มาตราส่วน"
-  },
-  "export_scale_original": {
-    "message": "100% (ต้นฉบับ)"
-  },
-  "export_label_workers": {
-    "message": "ผู้ปฏิบัติงาน"
-  },
-  "export_worker_singular": {
-    "message": "$COUNT$ ผู้ปฏิบัติงาน",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "export_worker_plural": {
-    "message": "$COUNT$ ผู้ปฏิบัติงาน",
-    "placeholders": {
-      "count": {
-        "content": "$1"
-      }
-    }
-  },
-  "export_label_dither": {
-    "message": "การกระจายสี"
-  },
-  "export_dither_none": {
-    "message": "ไม่มี"
-  },
-  "export_btn_cancel": {
-    "message": "ยกเลิก"
-  },
-  "export_btn_export_mp4": {
-    "message": "ส่งออก MP4"
-  },
-  "export_btn_export_webm": {
-    "message": "ส่งออก WebM"
-  },
-  "export_btn_export_gif": {
-    "message": "ส่งออก GIF"
-  },
-  "export_progress_preparing": {
-    "message": "กำลังเตรียม..."
-  },
-  "export_progress_encoding": {
-    "message": "กำลังเข้ารหัสเฟรม..."
-  },
-  "export_progress_muxing": {
-    "message": "กำลังรวม..."
-  },
-  "export_progress_finalizing": {
-    "message": "กำลังสรุป..."
-  },
-  "export_progress_frame": {
-    "message": "เฟรม $CURRENT$ / $TOTAL$",
-    "placeholders": {
-      "current": {
-        "content": "$1"
-      },
-      "total": {
-        "content": "$2"
-      }
-    }
-  },
-  "export_progress_time": {
-    "message": "เหลือประมาณ $SECONDS$ วินาที",
-    "placeholders": {
-      "seconds": {
-        "content": "$1"
-      }
-    }
-  },
-  "export_progress_hint": {
-    "message": "กรุณารอสักครู่ในขณะที่วิดีโอของคุณกำลังถูกส่งออก..."
-  },
-  "wallpaper_cat_abstract_name": {
-    "message": "ศิลปะนามธรรม"
-  },
-  "wallpaper_cat_abstract_desc": {
-    "message": "ลวดลายนามธรรม การสร้างสรรค์ทางศิลปะ และการออกแบบที่ทันสมัย"
-  },
-  "wallpaper_cat_minimal_name": {
-    "message": "สไตล์มินิมอล"
-  },
-  "wallpaper_cat_minimal_desc": {
-    "message": "เรขาคณิตที่เรียบง่าย การออกแบบมินิมอล และความงามที่บริสุทธิ์"
-  },
-  "wallpaper_cat_nature_name": {
-    "message": "ทัศนียภาพธรรมชาติ"
-  },
-  "wallpaper_cat_nature_desc": {
-    "message": "ภูมิทัศน์ธรรมชาติ พื้นผิวพืช และรูปทรงออร์แกนิก"
-  },
-  "wallpaper_cat_business_name": {
-    "message": "มืออาชีพทางธุรกิจ"
-  },
-  "wallpaper_cat_business_desc": {
-    "message": "ฉากธุรกิจ บรรยากาศมืออาชีพ และสไตล์องค์กร"
-  },
-  "wallpaper_cat_tech_name": {
-    "message": "เทคโนโลยีแห่งอนาคต"
-  },
-  "wallpaper_cat_tech_desc": {
-    "message": "องค์ประกอบเทคโนโลยี ความรู้สึกในอนาคต และศิลปะดิจิทัล"
-  },
-  "welcome_pageTitle": {
-    "message": "ยินดีต้อนรับสู่ Screen Recorder Studio"
-  },
-  "welcome_headerSubtitle": {
-    "message": "เครื่องมือบันทึกหน้าจอสำหรับมืออาชีพ"
-  },
-  "welcome_installSuccess": {
-    "message": "การติดตั้งสำเร็จ"
-  },
-  "welcome_headline": {
-    "message": "บันทึก แก้ไข และส่งออกในไม่กี่วินาที 🎉"
-  },
-  "welcome_subheadline": {
-    "message": "จับภาพวิดีโอได้หลายชั่วโมงอย่างราบรื่น จากนั้นแก้ไขและส่งออกเป็นวิดีโอคุณภาพสูงหรือ GIF — ทุกอย่างถูกประมวลผลอย่างปลอดภัยในเบราว์เซอร์ของคุณ"
-  },
-  "welcome_tryTitle": {
-    "message": "เริ่มต้นการบันทึกครั้งแรกของคุณ 🚀"
-  },
-  "welcome_trySubtitle": {
-    "message": "เลือกสิ่งที่จะบันทึกและเริ่มบันทึก — สตูดิโอจะเปิดขึ้นเมื่อคุณหยุด"
-  },
-  "welcome_modeTabDetail": {
-    "message": "เหมาะสำหรับการสาธิตและบทเรียนออนไลน์"
-  },
-  "welcome_modeWindowDetail": {
-    "message": "รวมที่อยู่แถบและแถบเครื่องมือ"
-  },
-  "welcome_modeScreenDetail": {
-    "message": "เหมาะสำหรับการทำงานข้ามแอปพลิเคชัน"
-  },
-  "welcome_statusRecording": {
-    "message": "กำลังบันทึก"
-  },
-  "welcome_modeLabel": {
-    "message": "โหมด"
-  },
-  "welcome_proTrialActive": {
-    "message": "ทดลองใช้โปรเปิดใช้งาน"
-  },
-  "welcome_feat1Title": {
-    "message": "ส่วนตัวและในเครื่อง"
-  },
-  "welcome_feat2Title": {
-    "message": "ไม่มีลายน้ำ"
-  },
-  "welcome_feat3Title": {
-    "message": "แก้ไขได้รวดเร็ว"
-  },
-  "welcome_feat4Title": {
-    "message": "ส่งออกวิดีโอและ GIF"
-  },
-  "welcome_howTitle": {
-    "message": "การเดินทางในการบันทึกของคุณ"
-  },
-  "welcome_howDesc": {
-    "message": "ตั้งแต่การจับภาพไปจนถึงการส่งออก ทุกอย่างเกิดขึ้นอย่างปลอดภัยในเบราว์เซอร์ของคุณ"
-  },
-  "welcome_step1Title": {
-    "message": "ปักหมุดส่วนขยาย"
-  },
-  "welcome_step1Desc": {
-    "message": "คลิกไอคอนตัวต่อ 🧩 ในแถบเครื่องมือเบราว์เซอร์ของคุณและปักหมุดส่วนขยายนี้เพื่อเข้าถึงได้อย่างรวดเร็ว"
-  },
-  "welcome_step2Title": {
-    "message": "เลือกเป้าหมายของคุณ"
-  },
-  "welcome_step2Desc": {
-    "message": "เลือกสิ่งที่จะบันทึก: แท็บปัจจุบัน หน้าต่างทั้งหมด หรือหน้าจอทั้งหมด — อะไรก็ตามที่เหมาะกับความต้องการของคุณ"
-  },
-  "welcome_step3Title": {
-    "message": "แก้ไขได้รวดเร็ว"
-  },
-  "welcome_step3Desc": {
-    "message": "คลิก \"$BTN$\" และเตรียมพร้อม — การนับถอยหลัง $SECONDS$ วินาทีให้เวลาคุณเตรียมตัว!",
-    "placeholders": {
-      "btn": {
-        "content": "$1"
-      },
-      "seconds": {
-        "content": "$2"
-      }
-    }
-  },
-  "welcome_trustNoWatermark": {
-    "message": "ไม่มีลายน้ำ"
-  },
-  "welcome_trustHD": {
-    "message": "คุณภาพ HD"
-  },
-  "welcome_trustLocal": {
-    "message": "ส่วนตัวและในเครื่อง"
-  },
-  "welcome_trustQuickEditing": {
-    "message": "แก้ไขได้รวดเร็ว"
-  },
-  "welcome_footerHelp": {
-    "message": "ต้องการควบคุมมากขึ้น? คลิกไอคอนส่วนขยายเพื่อเข้าถึงการตั้งค่าการบันทึกและการส่งออกขั้นสูง"
-  },
-  "welcome_footerMeta": {
-    "message": "Screen Recorder Studio • สร้างสำหรับมืออาชีพ"
-  },
-  "annotation_tool_cursor": {
-    "message": "เคอร์เซอร์ (โต้ตอบ)"
-  },
-  "annotation_tool_effect": {
-    "message": "เอฟเฟกต์เคอร์เซอร์"
-  },
-  "annotation_tool_arrow": {
-    "message": "ลูกศร"
-  },
-  "annotation_tool_rectangle": {
-    "message": "สี่เหลี่ยมผืนผ้า"
-  },
-  "annotation_tool_circle": {
-    "message": "วงกลม"
-  },
-  "annotation_tool_freehand": {
-    "message": "ปากกา"
-  },
-  "annotation_tool_text": {
-    "message": "ข้อความ"
-  },
-  "annotation_tool_highlight": {
-    "message": "เน้น"
-  },
-  "annotation_tool_blur": {
-    "message": "เบลอ"
-  },
-  "annotation_tool_undo": {
-    "message": "ย้อนกลับ"
-  },
-  "annotation_tool_clear": {
-    "message": "ล้างทั้งหมด"
-  },
-  "annotation_tool_close": {
-    "message": "ปิด"
-  },
-  "webRecord_pageTitle": {
-    "message": "โปรแกรมบันทึกหน้าจอเว็บ"
-  },
-  "webRecord_headerTitle": {
-    "message": "โปรแกรมบันทึกหน้าจอ"
-  },
-  "webRecord_openDriveTooltip": {
-    "message": "เปิดตัวจัดการไฟล์บันทึก"
-  },
-  "webRecord_driveBtn": {
-    "message": "การบันทึก"
-  },
-  "webRecord_errorTitle": {
-    "message": "ข้อผิดพลาด"
-  },
-  "webRecord_errorInsecure": {
-    "message": "การบันทึกหน้าจอต้องมีบริบทที่ปลอดภัย (HTTPS) กรุณาเข้าถึงหน้านี้ผ่าน HTTPS"
-  },
-  "webRecord_errorNoDisplayMedia": {
-    "message": "เบราว์เซอร์ของคุณไม่รองรับการบันทึกหน้าจอ (getDisplayMedia API)"
-  },
-  "webRecord_errorNoWebCodecs": {
-    "message": "เบราว์เซอร์ของคุณไม่รองรับ WebCodecs API กรุณาใช้เบราว์เซอร์ที่ทันสมัยเช่น Chrome 94+"
-  },
-  "webRecord_errorNoTrackProcessor": {
-    "message": "เบราว์เซอร์ของคุณไม่รองรับ MediaStreamTrackProcessor กรุณาใช้ Chrome 94+"
-  },
-  "webRecord_errorNoOPFS": {
-    "message": "เบราว์เซอร์ของคุณไม่รองรับการจัดเก็บข้อมูล OPFS"
-  },
-  "webRecord_errorGeneric": {
-    "message": "เกิดข้อผิดพลาด กรุณาลองอีกครั้ง"
-  },
-  "webRecord_errorNoVideoTrack": {
-    "message": "ไม่มีเส้นทางวิดีโอจากการจับหน้าจอ"
-  },
-  "webRecord_errorPermissionDenied": {
-    "message": "สิทธิ์การบันทึกหน้าจอถูกปฏิเสธ กรุณาอนุญาตการแชร์หน้าจอเพื่อบันทึก"
-  },
-  "webRecord_errorEncoding": {
-    "message": "เกิดข้อผิดพลาดในการเข้ารหัสวิดีโอ"
-  },
-  "webRecord_statusRecording": {
-    "message": "กำลังบันทึก"
-  },
-  "webRecord_statusPreparing": {
-    "message": "กำลังเตรียม..."
-  },
-  "webRecord_statusStopping": {
-    "message": "กำลังหยุด..."
-  },
-  "webRecord_statusIdle": {
-    "message": "พร้อมบันทึก"
-  },
-  "webRecord_btnStart": {
-    "message": "เริ่มบันทึก"
-  },
-  "webRecord_btnStop": {
-    "message": "หยุดบันทึก"
-  },
-  "webRecord_btnPreparing": {
-    "message": "กำลังเตรียม..."
-  },
-  "webRecord_btnStopping": {
-    "message": "กำลังหยุด..."
-  },
-  "webRecord_tipsTitle": {
-    "message": "เคล็ดลับ:"
-  },
-  "webRecord_tip1": {
-    "message": "คลิกเริ่มเพื่อเลือกหน้าจอ หน้าต่าง หรือแท็บที่จะบันทึก"
-  },
-  "webRecord_tip2": {
-    "message": "การบันทึกจะถูกบันทึกในพื้นที่จัดเก็บข้อมูลในเบราว์เซอร์ของคุณ"
-  },
-  "webRecord_tip3": {
-    "message": "คลิกการบันทึกเพื่อดู แก้ไข และส่งออกการบันทึกของคุณ"
-  },
-  "drive_drawerDelete": {
-    "message": "ลบ"
-  },
-  "drive_drawerEmpty": {
-    "message": "ยังไม่มีการบันทึก"
-  },
-  "drive_drawerJustNow": {
-    "message": "เมื่อสักครู่"
-  },
-  "drive_drawerOpenFull": {
-    "message": "เปิดไดรฟ์เต็มรูปแบบ"
-  },
-  "drive_drawerTitle": {
-    "message": "การบันทึกล่าสุด"
-  },
-  "launcher_drive": {
-    "message": "ไดรฟ์"
-  },
-  "launcher_driveDesc": {
-    "message": "ดูและจัดการการบันทึก"
-  },
-  "launcher_pageTitle": {
-    "message": "Screen Recorder Studio"
-  },
-  "launcher_record": {
-    "message": "บันทึก"
-  },
-  "launcher_recordDesc": {
-    "message": "เริ่มการบันทึกหน้าจอใหม่"
-  },
-  "launcher_studio": {
-    "message": "สตูดิโอ"
-  },
-  "launcher_studioDesc": {
-    "message": "แก้ไขการบันทึกล่าสุดของคุณ"
-  },
-  "launcher_subtitle": {
-    "message": "บันทึก จัดการ และส่งออก"
-  },
-  "launcher_title": {
-    "message": "Screen Recorder Studio"
-  },
-  "studio_emptyDesc": {
-    "message": "หลังจากบันทึก วิดีโอของคุณจะปรากฏที่นี่โดยอัตโนมัติ คุณสามารถดูตัวอย่าง ตัดแต่ง จัดแต่ง และส่งออกในสตูดิโอ"
-  },
-  "studio_emptyFeatureExport": {
-    "message": "ส่งออก"
-  },
-  "studio_emptyFeaturePreview": {
-    "message": "ดูตัวอย่าง"
-  },
-  "studio_emptyFeatureTrim": {
-    "message": "ตัดแต่งและจัดแต่ง"
-  },
-  "studio_emptyOpenDrive": {
-    "message": "เปิดไดรฟ์"
-  },
-  "studio_emptyReasonInvalid": {
-    "message": "ไม่สามารถโหลดการบันทึกล่าสุด"
-  },
-  "studio_emptyReasonLoadFailed": {
-    "message": "ไม่สามารถโหลดการบันทึกที่ระบุ"
-  },
-  "studio_emptyReasonOpfs": {
-    "message": "การจัดเก็บข้อมูลไม่พร้อมใช้งานในเบราว์เซอร์นี้"
-  },
-  "studio_emptyStartRecording": {
-    "message": "เริ่มบันทึก"
-  },
-  "studio_emptyTitle": {
-    "message": "ยังไม่มีวิดีโอที่จะแก้ไข"
-  },
-  "studio_loading": {
-    "message": "กำลังโหลด..."
-  },
-  "studio_recentRecordings": {
-    "message": "การบันทึก"
-  }
+  "appName": { "message": "Screen Recorder Studio - บันทึกวิดีโอไม่จำกัด" },
+  "appDesc": { "message": "การบันทึกหน้าจอที่เสถียรโดยไม่มีข้อจำกัดด้านเวลา ตัวแก้ไขในตัวเพื่อซูม ตัดแต่ง และส่งออกเป็น MP4 หรือ GIF คุณภาพสูงอย่างราบรื่น." },
+  "common_close": { "message": "ปิด" },
+  "action_defaultTitle": { "message": "เปิดแผงบันทึก" },
+  "control_headerTitle": { "message": "โปรแกรมบันทึกหน้าจอ" },
+  "control_headerDesc": { "message": "เลือกโหมดบันทึกและเริ่มต้น" },
+  "control_openDriveTooltip": { "message": "เปิดตัวจัดการไฟล์บันทึก" },
+  "control_closePanelTooltip": { "message": "ปิดแผงควบคุม" },
+  "control_recordingMode": { "message": "โหมดบันทึก" },
+  "control_modeTab": { "message": "แท็บ" },
+  "control_modeTabDesc": { "message": "บันทึกแท็บปัจจุบัน" },
+  "control_modeWindow": { "message": "หน้าต่าง" },
+  "control_modeWindowDesc": { "message": "บันทึกหน้าต่างทั้งหมด" },
+  "control_modeScreen": { "message": "หน้าจอ" },
+  "control_modeScreenDesc": { "message": "บันทึกหน้าจอทั้งหมด" },
+  "control_statusRecording": { "message": "กำลังบันทึก" },
+  "control_statusPaused": { "message": "หยุดชั่วคราว" },
+  "control_statusPreparing": { "message": "กำลังเตรียมบันทึก..." },
+  "control_btnStart": { "message": "เริ่มบันทึก" },
+  "control_btnStop": { "message": "หยุดบันทึก" },
+  "control_btnPause": { "message": "หยุดชั่วคราว" },
+  "control_btnResume": { "message": "บันทึกต่อ" },
+  "control_btnPreparing": { "message": "กำลังเตรียม..." },
+  "control_btnStarting": { "message": "เริ่มใน $SECONDS$ วินาที..." },
+  "control_countdownLabel": { "message": "นับถอยหลัง" },
+  "control_tipsTitle": { "message": "เคล็ดลับการบันทึก:" },
+  "control_tipsSelectMode": { "message": "เลือกโหมด $MODE$ แล้ว คลิกเริ่มบันทึกเพื่อเริ่มต้น" },
+  "control_tipsPreparing": { "message": "รอการเลือกหน้าจอ..." },
+  "control_tipsCountdown": { "message": "เตรียมพร้อม! การบันทึกจะเริ่มใน $SECONDS$ วินาที" },
+  "control_tipsPaused": { "message": "การบันทึกหยุดชั่วคราว คลิกบันทึกต่อเพื่อดำเนินต่อ" },
+  "control_tipsRecording": { "message": "กำลังบันทึก คลิกหยุดชั่วคราวเพื่อหยุดชั่วคราว" },
+  "control_overlayRecordingStarts": { "message": "การบันทึกจะเริ่มเร็วๆ นี้..." },
+  "control_errorTimeout": { "message": "หมดเวลาในการเตรียมบันทึก กรุณาลองอีกครั้ง" },
+  "control_errorStartFailed": { "message": "ไม่สามารถเริ่มบันทึกได้ กรุณาลองอีกครั้ง" },
+  "control_errorRecordingFailed": { "message": "เกิดข้อผิดพลาดในการบันทึกและหยุดลง" },
+  "control_errorStorageLow": { "message": "พื้นที่เก็บข้อมูลกำลังจะหมด การบันทึกอาจล้มเหลว" },
+  "control_statusSaving": { "message": "กำลังบันทึกไฟล์..." },
+  "control_btnSaving": { "message": "กำลังบันทึก..." },
+  "drive_pageTitle": { "message": "การบันทึก - ส่วนขยายโปรแกรมบันทึกหน้าจอ" },
+  "drive_headerTitle": { "message": "ตัวจัดการการบันทึก" },
+  "drive_errorSupport": { "message": "เบราว์เซอร์ของคุณไม่รองรับการจัดเก็บข้อมูล OPFS" },
+  "drive_errorMetaNotFound": { "message": "ไม่พบไฟล์ meta.json" },
+  "drive_errorEmpty": { "message": "ไฟล์บันทึกว่างเปล่า" },
+  "drive_errorMetadata": { "message": "ไม่สามารถอ่านข้อมูลเมตาการบันทึกได้" },
+  "drive_errorDataSize": { "message": "ไม่สามารถรับขนาดไฟล์ข้อมูลได้" },
+  "drive_recordingNamePrefix": { "message": "การบันทึกหน้าจอ" },
+  "drive_logDeleted": { "message": "ลบการบันทึก $ID$ แล้ว" },
+  "drive_errorDelete": { "message": "ไม่สามารถลบได้: $ERROR$" },
+  "drive_logBatchDelete": { "message": "ลบการบันทึก $COUNT$ รายการสำเร็จแล้ว" },
+  "drive_errorLoad": { "message": "เกิดข้อผิดพลาดในการโหลดการบันทึก" },
+  "drive_errorLoadPrefix": { "message": "ไม่สามารถโหลดการบันทึกได้:" },
+  "studio_pageTitle": { "message": "สตูดิโอบันทึกหน้าจอ" },
+  "studio_headerTitle": { "message": "สตูดิโอโปรแกรมบันทึกหน้าจอ" },
+  "studio_githubTooltip": { "message": "ดูซอร์สโค้ดบน GitHub" },
+  "studio_githubText": { "message": "GitHub" },
+  "studio_feedbackTooltip": { "message": "รายงานข้อผิดพลาดหรือเสนอแนะฟีเจอร์" },
+  "studio_feedbackText": { "message": "ความคิดเห็น" },
+  "studio_helpTooltip": { "message": "ความช่วยเหลือและเอกสาร" },
+  "studio_helpText": { "message": "ความช่วยเหลือ" },
+  "studio_driveTooltip": { "message": "เปิดตัวจัดการไฟล์บันทึก" },
+  "studio_driveText": { "message": "ไดรฟ์" },
+  "studio_fullscreenEnterTooltip": { "message": "เข้าโหมดเต็มหน้าจอ" },
+  "studio_fullscreenExitTooltip": { "message": "ออกจากโหมดเต็มหน้าจอ" },
+  "studio_fullscreenEnterText": { "message": "เต็มหน้าจอ" },
+  "studio_fullscreenExitText": { "message": "ออก" },
+  "bg_title": { "message": "พื้นหลัง" },
+  "bg_tab_wallpaper": { "message": "วอลล์เปเปอร์" },
+  "bg_tab_gradient": { "message": "กราเดียนต์" },
+  "bg_tab_solid": { "message": "สีเดียว" },
+  "bg_tab_image": { "message": "รูปภาพ" },
+  "radius_title": { "message": "รัศมีขอบวิดีโอ" },
+  "radius_none": { "message": "ไม่มีรัศมี" },
+  "radius_small": { "message": "รัศมีเล็ก" },
+  "radius_medium": { "message": "รัศมีกลาง" },
+  "radius_large": { "message": "รัศมีใหญ่" },
+  "radius_xl": { "message": "รัศมีใหญ่มาก" },
+  "padding_title": { "message": "ช่องว่างภายในวิดีโอ" },
+  "padding_none": { "message": "ไม่มีช่องว่าง" },
+  "padding_small": { "message": "ช่องว่างเล็ก" },
+  "padding_medium": { "message": "ช่องว่างกลาง" },
+  "padding_large": { "message": "ช่องว่างใหญ่" },
+  "padding_xl": { "message": "ช่องว่างใหญ่มาก" },
+  "ratio_yt": { "message": "แนวนอน YouTube" },
+  "ratio_yt_desc": { "message": "YouTube, Bilibili, iQiyi และอื่นๆ" },
+  "ratio_sq": { "message": "สี่เหลี่ยมจัตุรัส Instagram" },
+  "ratio_sq_desc": { "message": "โพสต์ Instagram, WeChat Moments" },
+  "ratio_tiktok": { "message": "แนวตั้ง TikTok" },
+  "ratio_tiktok_desc": { "message": "TikTok, Reels เป็นต้น" },
+  "ratio_story": { "message": "Instagram สตอรี่" },
+  "ratio_story_desc": { "message": "Instagram Stories, Xiaohongshu" },
+  "shadow_title": { "message": "เงาวิดีโอ" },
+  "shadow_preset_title": { "message": "เอฟเฟกต์พรีเซ็ต" },
+  "shadow_custom_title": { "message": "พารามิเตอร์ที่กำหนดเอง" },
+  "shadow_light": { "message": "เงาอ่อน" },
+  "shadow_standard": { "message": "เงามาตรฐาน" },
+  "shadow_deep": { "message": "เงาลึก" },
+  "shadow_distant": { "message": "เงาไกล" },
+  "shadow_offset_x": { "message": "การเลื่อนในแนวแกน X" },
+  "shadow_offset_y": { "message": "การเลื่อนในแนวแกน Y" },
+  "shadow_blur": { "message": "เบลอ" },
+  "shadow_color": { "message": "สี" },
+  "shadow_opacity": { "message": "ความทึบ" },
+  "shadow_empty_state": { "message": "เปิดสวิตช์เงาเพื่อกำหนดค่าเอฟเฟกต์เงา" },
+  "color_tab_basic": { "message": "พื้นฐาน" },
+  "color_tab_light": { "message": "สว่าง" },
+  "color_tab_business": { "message": "ธุรกิจ" },
+  "color_tab_creative": { "message": "สร้างสรรค์" },
+  "color_custom": { "message": "กำหนดเอง:" },
+  "gradient_tab_linear": { "message": "เส้นตรง" },
+  "gradient_tab_radial": { "message": "รัศมี" },
+  "gradient_tab_conic": { "message": "กรวย" },
+  "gradient_tab_multi": { "message": "หลายสี" },
+  "gradient_current": { "message": "ปัจจุบัน:" },
+  "gradient_select_hint": { "message": "เลือกกราเดียนต์" },
+  "gradient_colors_suffix": { "message": "สี" },
+  "wallpaper_tab_abstract": { "message": "นามธรรม" },
+  "wallpaper_tab_minimal": { "message": "มินิมอล" },
+  "wallpaper_tab_nature": { "message": "ธรรมชาติ" },
+  "wallpaper_tab_business": { "message": "ธุรกิจ" },
+  "wallpaper_tab_tech": { "message": "เทค" },
+  "wallpaper_error": { "message": "ไม่สามารถโหลดวอลล์เปเปอร์" },
+  "wallpaper_stats": { "message": "$COUNT$ วอลล์เปเปอร์ในหมวดนี้" },
+  "wallpaper_total": { "message": "$TOTAL$ ทั้งหมด" },
+  "upload_processing": { "message": "กำลังประมวลผล..." },
+  "upload_drop_hint": { "message": "คลิกหรือลากรูปภาพที่นี่" },
+  "upload_format_hint": { "message": "JPEG, PNG, WebP, GIF · สูงสุด 5MB" },
+  "upload_error_select": { "message": "กรุณาเลือกไฟล์รูปภาพ" },
+  "upload_error_failed": { "message": "การอัปโหลดล้มเหลว" },
+  "drive_delete_selected_btn": { "message": "ลบที่เลือก ($COUNT$)" },
+  "drive_clear_selection": { "message": "ล้างการเลือก" },
+  "drive_refresh": { "message": "รีเฟรช" },
+  "drive_error_title": { "message": "ข้อผิดพลาด" },
+  "drive_close_error": { "message": "ปิด" },
+  "drive_loading": { "message": "กำลังโหลดการบันทึก..." },
+  "drive_empty_title": { "message": "ยังไม่มีการบันทึก" },
+  "drive_empty_desc1": { "message": "คุณยังไม่มีการบันทึกหน้าจอ" },
+  "drive_empty_desc2": { "message": "เริ่มบันทึกหน้าจอของคุณและการบันทึกจะปรากฏที่นี่" },
+  "drive_start_recording_btn": { "message": "เริ่มบันทึก" },
+  "drive_select_all": { "message": "เลือกทั้งหมด ($COUNT$ การบันทึก)" },
+  "drive_sort_hint": { "message": "เรียงตามเวลา (ใหม่ที่สุดก่อน)" },
+  "drive_confirm_delete_title": { "message": "ยืนยันการลบ" },
+  "drive_confirm_delete_selected": { "message": "คุณแน่ใจหรือไม่ที่จะลบการบันทึก $COUNT$ รายการที่เลือก?" },
+  "drive_confirm_delete_single": { "message": "คุณแน่ใจหรือไม่ที่จะลบการบันทึกนี้?" },
+  "drive_action_undone": { "message": "การกระทำนี้ไม่สามารถยกเลิกได้" },
+  "drive_cancel": { "message": "ยกเลิก" },
+  "drive_delete": { "message": "ลบ" },
+  "card_status_completed": { "message": "เสร็จสมบูรณ์" },
+  "card_status_incomplete": { "message": "ไม่สมบูรณ์" },
+  "card_label_created": { "message": "สร้างเมื่อ:" },
+  "card_label_status": { "message": "สถานะ:" },
+  "card_label_codec": { "message": "โค้ดเด็ก:" },
+  "card_label_resolution": { "message": "ความละเอียด:" },
+  "card_label_fps": { "message": "เฟรมเรต:" },
+  "card_label_size": { "message": "ขนาดไฟล์:" },
+  "card_label_frames": { "message": "เฟรมทั้งหมด:" },
+  "card_incomplete_title": { "message": "การบันทึกไม่สมบูรณ์" },
+  "card_incomplete_desc": { "message": "ข้อมูลวิดีโอหายไป" },
+  "card_preview_error": { "message": "ไม่สามารถโหลดตัวอย่าง" },
+  "card_preview_loading": { "message": "กำลังสร้างตัวอย่าง..." },
+  "card_btn_edit": { "message": "แก้ไข" },
+  "card_btn_delete": { "message": "ลบ" },
+  "card_edit_disabled_tooltip": { "message": "ไม่สามารถแก้ไขการบันทึกที่ไม่สมบูรณ์" },
+  "card_edit_tooltip": { "message": "แก้ไขการบันทึก" },
+  "card_preview_load_error": { "message": "ไม่สามารถโหลดข้อมูลตัวอย่าง: $ERROR$" },
+  "card_date_today": { "message": "วันนี้ $TIME$" },
+  "card_date_yesterday": { "message": "เมื่อวาน $TIME$" },
+  "card_date_days_ago": { "message": "$DAYS$ วันที่แล้ว" },
+  "export_panel_tier_free": { "message": "ฟรี" },
+  "export_panel_tier_pro": { "message": "โปร" },
+  "export_panel_tier_trial": { "message": "ทดลองใช้โปร" },
+  "export_panel_btn": { "message": "ส่งออก" },
+  "export_panel_tooltip_incomplete": { "message": "ทำให้การบันทึกสมบูรณ์เพื่อส่งออก" },
+  "export_panel_tooltip_no_data": { "message": "ไม่มีข้อมูลวิดีโอ" },
+  "export_panel_btn_exporting": { "message": "กำลังส่งออก..." },
+  "export_error_gif_failed": { "message": "การส่งออก GIF ล้มเหลว กรุณาลองอีกครั้ง" },
+  "export_error_webm_failed": { "message": "การส่งออก WebM ล้มเหลว กรุณาลองอีกครั้ง" },
+  "export_error_mp4_failed": { "message": "การส่งออก MP4 ล้มเหลว กรุณาลองอีกครั้ง" },
+  "export_error_retry_hint": { "message": "ลองอีกครั้งหรือใช้รูปแบบอื่น" },
+  "export_error_opfs_download_failed": { "message": "ไฟล์ถูกบันทึกในไดรฟ์แต่การดาวน์โหลดล้มเหลว เปิดไดรฟ์เพื่อรับไฟล์ของคุณ" },
+  "export_dialog_title": { "message": "ส่งออกวิดีโอ" },
+  "export_source_res": { "message": "ความละเอียด" },
+  "export_source_codec": { "message": "โค้ดเด็ก" },
+  "export_source_duration": { "message": "ระยะเวลา" },
+  "export_source_frames": { "message": "เฟรม" },
+  "export_badge_bg": { "message": "พื้นหลัง" },
+  "export_badge_trim": { "message": "ตัดแล้ว" },
+  "export_format_mp4": { "message": "MP4" },
+  "export_format_webm": { "message": "WebM" },
+  "export_format_gif": { "message": "GIF" },
+  "export_quality_title": { "message": "คุณภาพพรีเซ็ต" },
+  "export_quality_draft": { "message": "ร่าง" },
+  "export_quality_draft_desc": { "message": "ส่งออกเร็วที่สุด คุณภาพต่ำ" },
+  "export_quality_balanced": { "message": "สมดุล" },
+  "export_quality_balanced_desc": { "message": "คุณภาพดี ความเร็วปานกลาง" },
+  "export_quality_high": { "message": "สูง" },
+  "export_quality_high_desc": { "message": "คุณภาพสูง ช้าลง" },
+  "export_quality_best": { "message": "ดีที่สุด" },
+  "export_quality_best_desc": { "message": "คุณภาพสูงสุด ช้าที่สุด" },
+  "export_label_resolution": { "message": "ความละเอียด" },
+  "export_res_source": { "message": "ตรงกับต้นฉบับ ($WIDTH$×$HEIGHT$)" },
+  "export_label_framerate": { "message": "อัตราเฟรม" },
+  "export_fps_source": { "message": "$FPS$ fps (ต้นฉบับ)" },
+  "export_label_bitrate": { "message": "บิตเรต" },
+  "export_bitrate_auto": { "message": "อัตโนมัติ" },
+  "export_bitrate_manual": { "message": "ด้วยตนเอง" },
+  "export_bitrate_auto_hint": { "message": "อัตโนมัติ: $RATE$ Mbps (ตามความละเอียดและคุณภาพ)" },
+  "export_label_speed": { "message": "ความเร็วในการเข้ารหัส" },
+  "export_speed_fastest": { "message": "เร็วที่สุด" },
+  "export_speed_fast": { "message": "เร็ว" },
+  "export_speed_balanced": { "message": "สมดุล" },
+  "export_speed_slow": { "message": "ช้า" },
+  "export_speed_slowest": { "message": "ช้าที่สุด" },
+  "export_est_output": { "message": "ผลลัพธ์โดยประมาณ" },
+  "export_est_size": { "message": "ขนาดโดยประมาณ" },
+  "export_label_gif_quality": { "message": "คุณภาพ" },
+  "export_gif_best": { "message": "ดีที่สุด (ช้าที่สุด)" },
+  "export_gif_high": { "message": "สูง" },
+  "export_gif_good": { "message": "ดี (ค่าเริ่มต้น)" },
+  "export_gif_fast": { "message": "เร็ว" },
+  "export_gif_fastest": { "message": "เร็วที่สุด" },
+  "export_label_scale": { "message": "มาตราส่วน" },
+  "export_scale_original": { "message": "100% (ต้นฉบับ)" },
+  "export_label_workers": { "message": "ผู้ปฏิบัติงาน" },
+  "export_worker_singular": { "message": "$COUNT$ ผู้ปฏิบัติงาน" },
+  "export_worker_plural": { "message": "$COUNT$ ผู้ปฏิบัติงาน" },
+  "export_label_dither": { "message": "การกระจายสี" },
+  "export_dither_none": { "message": "ไม่มี" },
+  "export_btn_cancel": { "message": "ยกเลิก" },
+  "export_btn_export_mp4": { "message": "ส่งออก MP4" },
+  "export_btn_export_webm": { "message": "ส่งออก WebM" },
+  "export_btn_export_gif": { "message": "ส่งออก GIF" },
+  "export_progress_preparing": { "message": "กำลังเตรียม..." },
+  "export_progress_encoding": { "message": "กำลังเข้ารหัสเฟรม..." },
+  "export_progress_muxing": { "message": "กำลังรวม..." },
+  "export_progress_finalizing": { "message": "กำลังสรุป..." },
+  "export_progress_frame": { "message": "เฟรม $CURRENT$ / $TOTAL$" },
+  "export_progress_time": { "message": "เหลือประมาณ $SECONDS$ วินาที" },
+  "export_progress_hint": { "message": "กรุณารอสักครู่ในขณะที่วิดีโอของคุณกำลังถูกส่งออก..." },
+  "wallpaper_cat_abstract_name": { "message": "ศิลปะนามธรรม" },
+  "wallpaper_cat_abstract_desc": { "message": "ลวดลายนามธรรม การสร้างสรรค์ทางศิลปะ และการออกแบบที่ทันสมัย" },
+  "wallpaper_cat_minimal_name": { "message": "สไตล์มินิมอล" },
+  "wallpaper_cat_minimal_desc": { "message": "เรขาคณิตที่เรียบง่าย การออกแบบมินิมอล และความงามที่บริสุทธิ์" },
+  "wallpaper_cat_nature_name": { "message": "ทัศนียภาพธรรมชาติ" },
+  "wallpaper_cat_nature_desc": { "message": "ภูมิทัศน์ธรรมชาติ พื้นผิวพืช และรูปทรงออร์แกนิก" },
+  "wallpaper_cat_business_name": { "message": "มืออาชีพทางธุรกิจ" },
+  "wallpaper_cat_business_desc": { "message": "ฉากธุรกิจ บรรยากาศมืออาชีพ และสไตล์องค์กร" },
+  "wallpaper_cat_tech_name": { "message": "เทคโนโลยีแห่งอนาคต" },
+  "wallpaper_cat_tech_desc": { "message": "องค์ประกอบเทคโนโลยี ความรู้สึกในอนาคต และศิลปะดิจิทัล" },
+  "wallpaper_gradient_abstract_1_name": { "message": "กราเดียนท์นามธรรม" },
+  "wallpaper_gradient_abstract_1_desc": { "message": "พื้นหลังกราเดียนท์นามธรรมทันสมัย เหมาะสำหรับเนื้อหาเทคโนโลยีและสร้างสรรค์" },
+  "wallpaper_geometric_pattern_1_name": { "message": "ลวดลายเรขาคณิต" },
+  "wallpaper_geometric_pattern_1_desc": { "message": "พื้นหลังลวดลายเรขาคณิตเรียบสะอาด เหมาะสำหรับเนื้อหาธุรกิจและมืออาชีพ" },
+  "wallpaper_abstract_2425706_name": { "message": "สีนามธรรม" },
+  "wallpaper_abstract_2425706_desc": { "message": "พื้นผิวสีนามธรรมสดใสที่มีผลกระทบทางสายตาอย่างแรง" },
+  "wallpaper_abstract_2512412_name": { "message": "สีนามธรรม" },
+  "wallpaper_abstract_2512412_desc": { "message": "พื้นหลังสีนามธรรมที่ลื่นไหล เหมาะสำหรับเนื้อหาสร้างสรรค์" },
+  "wallpaper_abstract_6297317_name": { "message": "รูปทรงนามธรรม" },
+  "wallpaper_abstract_6297317_desc": { "message": "รูปทรงเรขาคณิตนามธรรมพร้อมการจัดองค์ประกอบแบบบล็อกสี" },
+  "wallpaper_ai_generated_9083808_name": { "message": "ศิลปะสร้างโดย AI" },
+  "wallpaper_ai_generated_9083808_desc": { "message": "พื้นหลังศิลปะแนวอนาคตที่สร้างโดย AI" },
+  "wallpaper_beach_4938036_name": { "message": "ชายหาด" },
+  "wallpaper_beach_4938036_desc": { "message": "ทิวทัศน์ชายหาดธรรมชาติพร้อมทรายและคลื่น สดชื่นและผ่อนคลาย" },
+  "wallpaper_bulb_5665770_name": { "message": "หลอดไฟสร้างสรรค์" },
+  "wallpaper_bulb_5665770_desc": { "message": "ธีมหลอดไฟที่สื่อถึงความคิดสร้างสรรค์และแรงบันดาลใจ" },
+  "wallpaper_cpu_8892400_name": { "message": "วงจร CPU" },
+  "wallpaper_cpu_8892400_desc": { "message": "ชิป CPU และแผงวงจรที่เปี่ยมด้วยเสน่ห์ไฮเทค" },
+  "wallpaper_feather_5488401_name": { "message": "ขนนกระยะใกล้" },
+  "wallpaper_feather_5488401_desc": { "message": "พื้นผิวขนนกนุ่มนวลพร้อมรายละเอียดอันสมบูรณ์" },
+  "wallpaper_fractal_8902060_name": { "message": "ศิลปะแฟร็กทัล" },
+  "wallpaper_fractal_8902060_desc": { "message": "ลวดลายแฟร็กทัลอันเจิดจ้าในรูปแบบศิลปะนามธรรม" },
+  "wallpaper_orange_3036097_name": { "message": "ส้มฝาน" },
+  "wallpaper_orange_3036097_desc": { "message": "ชิ้นส้มสดใสพร้อมสีสันสะดุดตา" },
+  "wallpaper_orange_6508617_name": { "message": "พื้นหลังสีส้ม" },
+  "wallpaper_orange_6508617_desc": { "message": "พื้นหลังโทนสีส้มสดใสเปี่ยมไปด้วยพลังงาน" },
+  "wallpaper_polar_lights_5858656_name": { "message": "แสงเหนือ" },
+  "wallpaper_polar_lights_5858656_desc": { "message": "ท้องฟ้ายามค่ำคืนพร้อมแสงเหนือ ปรากฏการณ์ธรรมชาติแสนฝัน" },
+  "wallpaper_spiral_3112405_name": { "message": "ลวดลายก้นหอย" },
+  "wallpaper_spiral_3112405_desc": { "message": "พื้นผิวก้นหอยนามธรรมพร้อมชั้นเลเยอร์ที่มีพลวัต" },
+  "wallpaper_steelwool_458842_name": { "message": "วาดภาพด้วยแสงเหล็กขูด" },
+  "wallpaper_steelwool_458842_desc": { "message": "เอฟเฟกต์วาดภาพด้วยแสงแบบเปิดรับแสงนาน นามธรรมและมีชีวิตชีวา" },
+  "wallpaper_swimming_pool_8306716_name": { "message": "ระลอกน้ำสระว่ายน้ำ" },
+  "wallpaper_swimming_pool_8306716_desc": { "message": "ระลอกน้ำในสระว่ายน้ำ บรรยากาศฤดูร้อนเย็นสบาย" },
+  "wallpaper_abstract_2426502_name": { "message": "สีนามธรรม" },
+  "wallpaper_abstract_2426502_desc": { "message": "การออกแบบทันสมัยด้วยสีสันและรูปทรงนามธรรม" },
+  "wallpaper_camera_1248682_name": { "message": "กล้องระยะใกล้" },
+  "wallpaper_camera_1248682_desc": { "message": "กล้องและเลนส์ระยะใกล้ สไตล์เทคโนโลยีเต็มพื้นผิว" },
+  "wallpaper_circle_5090539_name": { "message": "เรขาคณิตวงกลม" },
+  "wallpaper_circle_5090539_desc": { "message": "ลวดลายเรขาคณิตวงกลมเรียบสะอาด เหมาะสำหรับเลย์เอาต์ที่เป็นเอกภาพ" },
+  "wallpaper_feather_7009025_name": { "message": "พื้นผิวขนนก" },
+  "wallpaper_feather_7009025_desc": { "message": "พื้นผิวขนนกนุ่มนวลพร้อมลวดลายธรรมชาติอันละเอียดอ่อน" },
+  "wallpaper_fiber_4814456_name": { "message": "เส้นใยไฟเบอร์" },
+  "wallpaper_fiber_4814456_desc": { "message": "สัมผัสเทคโนโลยีนามธรรมพร้อมไฟเบอร์ออปติกและเส้นสาย" },
+  "wallpaper_frost_6702335_name": { "message": "พื้นผิวน้ำค้างแข็ง" },
+  "wallpaper_frost_6702335_desc": { "message": "พื้นหลังลวดลายน้ำค้างแข็งพร้อมพื้นผิวเย็นสะท้าน" },
+  "wallpaper_leaves_4291098_name": { "message": "ใบไม้สีเขียว" },
+  "wallpaper_leaves_4291098_desc": { "message": "พื้นผิวธรรมชาติของใบไม้สีเขียว สดชื่นและเยียวยาใจ" },
+  "wallpaper_light_1834289_name": { "message": "โบเก้แสง" },
+  "wallpaper_light_1834289_desc": { "message": "เอฟเฟกต์โบเก้จากแสงและเงา พื้นหลังนามธรรมเปี่ยมบรรยากาศ" },
+  "wallpaper_light_942231_name": { "message": "ลำแสง" },
+  "wallpaper_light_942231_desc": { "message": "ลำแสงที่ลื่นไหล พื้นหลังนามธรรมเต็มไปด้วยพลวัต" },
+  "wallpaper_luck_4397584_name": { "message": "โคลเวอร์สี่แฉก" },
+  "wallpaper_luck_4397584_desc": { "message": "โคลเวอร์สี่แฉกนำโชคพร้อมโทนสีเขียวธรรมชาติสดใส" },
+  "wallpaper_waterdrop_2256201_name": { "message": "หยดน้ำระยะใกล้" },
+  "wallpaper_waterdrop_2256201_desc": { "message": "พื้นผิวมาโครของหยดน้ำและแรงตึงผิว" },
+  "welcome_pageTitle": { "message": "ยินดีต้อนรับสู่ Screen Recorder Studio" },
+  "welcome_headerSubtitle": { "message": "เครื่องมือบันทึกหน้าจอสำหรับมืออาชีพ" },
+  "welcome_installSuccess": { "message": "การติดตั้งสำเร็จ" },
+  "welcome_headline": { "message": "บันทึก แก้ไข และส่งออกในไม่กี่วินาที 🎉" },
+  "welcome_subheadline": { "message": "จับภาพวิดีโอได้หลายชั่วโมงอย่างราบรื่น จากนั้นแก้ไขและส่งออกเป็นวิดีโอคุณภาพสูงหรือ GIF — ทุกอย่างถูกประมวลผลอย่างปลอดภัยในเบราว์เซอร์ของคุณ" },
+  "welcome_tryTitle": { "message": "เริ่มต้นการบันทึกครั้งแรกของคุณ 🚀" },
+  "welcome_trySubtitle": { "message": "เลือกสิ่งที่จะบันทึกและเริ่มบันทึก — สตูดิโอจะเปิดขึ้นเมื่อคุณหยุด" },
+  "welcome_modeTabDetail": { "message": "เหมาะสำหรับการสาธิตและบทเรียนออนไลน์" },
+  "welcome_modeWindowDetail": { "message": "รวมที่อยู่แถบและแถบเครื่องมือ" },
+  "welcome_modeScreenDetail": { "message": "เหมาะสำหรับการทำงานข้ามแอปพลิเคชัน" },
+  "welcome_statusRecording": { "message": "กำลังบันทึก" },
+  "welcome_modeLabel": { "message": "โหมด" },
+  "welcome_proTrialActive": { "message": "ทดลองใช้โปรเปิดใช้งาน" },
+  "welcome_feat1Title": { "message": "ส่วนตัวและในเครื่อง" },
+  "welcome_feat2Title": { "message": "ไม่มีลายน้ำ" },
+  "welcome_feat3Title": { "message": "แก้ไขได้รวดเร็ว" },
+  "welcome_feat4Title": { "message": "ส่งออกวิดีโอและ GIF" },
+  "welcome_howTitle": { "message": "การเดินทางในการบันทึกของคุณ" },
+  "welcome_howDesc": { "message": "ตั้งแต่การจับภาพไปจนถึงการส่งออก ทุกอย่างเกิดขึ้นอย่างปลอดภัยในเบราว์เซอร์ของคุณ" },
+  "welcome_step1Title": { "message": "ปักหมุดส่วนขยาย" },
+  "welcome_step1Desc": { "message": "คลิกไอคอนตัวต่อ 🧩 ในแถบเครื่องมือเบราว์เซอร์ของคุณและปักหมุดส่วนขยายนี้เพื่อเข้าถึงได้อย่างรวดเร็ว" },
+  "welcome_step2Title": { "message": "เลือกเป้าหมายของคุณ" },
+  "welcome_step2Desc": { "message": "เลือกสิ่งที่จะบันทึก: แท็บปัจจุบัน หน้าต่างทั้งหมด หรือหน้าจอทั้งหมด — อะไรก็ตามที่เหมาะกับความต้องการของคุณ" },
+  "welcome_step3Title": { "message": "แก้ไขได้รวดเร็ว" },
+  "welcome_step3Desc": { "message": "คลิก \"$BTN$\" และเตรียมพร้อม — การนับถอยหลัง $SECONDS$ วินาทีให้เวลาคุณเตรียมตัว!" },
+  "welcome_trustNoWatermark": { "message": "ไม่มีลายน้ำ" },
+  "welcome_trustHD": { "message": "คุณภาพ HD" },
+  "welcome_trustLocal": { "message": "ส่วนตัวและในเครื่อง" },
+  "welcome_trustQuickEditing": { "message": "แก้ไขได้รวดเร็ว" },
+  "welcome_footerHelp": { "message": "ต้องการควบคุมมากขึ้น? คลิกไอคอนส่วนขยายเพื่อเข้าถึงการตั้งค่าการบันทึกและการส่งออกขั้นสูง" },
+  "welcome_footerMeta": { "message": "Screen Recorder Studio • สร้างสำหรับมืออาชีพ" },
+  "annotation_tool_cursor": { "message": "เคอร์เซอร์ (โต้ตอบ)" },
+  "annotation_tool_effect": { "message": "เอฟเฟกต์เคอร์เซอร์" },
+  "annotation_tool_arrow": { "message": "ลูกศร" },
+  "annotation_tool_rectangle": { "message": "สี่เหลี่ยมผืนผ้า" },
+  "annotation_tool_circle": { "message": "วงกลม" },
+  "annotation_tool_freehand": { "message": "ปากกา" },
+  "annotation_tool_text": { "message": "ข้อความ" },
+  "annotation_tool_highlight": { "message": "เน้น" },
+  "annotation_tool_blur": { "message": "เบลอ" },
+  "annotation_tool_undo": { "message": "ย้อนกลับ" },
+  "annotation_tool_clear": { "message": "ล้างทั้งหมด" },
+  "annotation_tool_close": { "message": "ปิด" },
+  "webRecord_pageTitle": { "message": "โปรแกรมบันทึกหน้าจอเว็บ" },
+  "webRecord_headerTitle": { "message": "โปรแกรมบันทึกหน้าจอ" },
+  "webRecord_openDriveTooltip": { "message": "เปิดตัวจัดการไฟล์บันทึก" },
+  "webRecord_driveBtn": { "message": "การบันทึก" },
+  "webRecord_errorTitle": { "message": "ข้อผิดพลาด" },
+  "webRecord_errorInsecure": { "message": "การบันทึกหน้าจอต้องมีบริบทที่ปลอดภัย (HTTPS) กรุณาเข้าถึงหน้านี้ผ่าน HTTPS" },
+  "webRecord_errorNoDisplayMedia": { "message": "เบราว์เซอร์ของคุณไม่รองรับการบันทึกหน้าจอ (getDisplayMedia API)" },
+  "webRecord_errorNoWebCodecs": { "message": "เบราว์เซอร์ของคุณไม่รองรับ WebCodecs API กรุณาใช้เบราว์เซอร์ที่ทันสมัยเช่น Chrome 94+" },
+  "webRecord_errorNoTrackProcessor": { "message": "เบราว์เซอร์ของคุณไม่รองรับ MediaStreamTrackProcessor กรุณาใช้ Chrome 94+" },
+  "webRecord_errorNoOPFS": { "message": "เบราว์เซอร์ของคุณไม่รองรับการจัดเก็บข้อมูล OPFS" },
+  "webRecord_errorGeneric": { "message": "เกิดข้อผิดพลาด กรุณาลองอีกครั้ง" },
+  "webRecord_errorNoVideoTrack": { "message": "ไม่มีเส้นทางวิดีโอจากการจับหน้าจอ" },
+  "webRecord_errorPermissionDenied": { "message": "สิทธิ์การบันทึกหน้าจอถูกปฏิเสธ กรุณาอนุญาตการแชร์หน้าจอเพื่อบันทึก" },
+  "webRecord_errorEncoding": { "message": "เกิดข้อผิดพลาดในการเข้ารหัสวิดีโอ" },
+  "webRecord_statusRecording": { "message": "กำลังบันทึก" },
+  "webRecord_statusPreparing": { "message": "กำลังเตรียม..." },
+  "webRecord_statusStopping": { "message": "กำลังหยุด..." },
+  "webRecord_statusIdle": { "message": "พร้อมบันทึก" },
+  "webRecord_btnStart": { "message": "เริ่มบันทึก" },
+  "webRecord_btnStop": { "message": "หยุดบันทึก" },
+  "webRecord_btnPreparing": { "message": "กำลังเตรียม..." },
+  "webRecord_btnStopping": { "message": "กำลังหยุด..." },
+  "webRecord_tipsTitle": { "message": "เคล็ดลับ:" },
+  "webRecord_tip1": { "message": "คลิกเริ่มเพื่อเลือกหน้าจอ หน้าต่าง หรือแท็บที่จะบันทึก" },
+  "webRecord_tip2": { "message": "การบันทึกจะถูกบันทึกในพื้นที่จัดเก็บข้อมูลในเบราว์เซอร์ของคุณ" },
+  "webRecord_tip3": { "message": "คลิกการบันทึกเพื่อดู แก้ไข และส่งออกการบันทึกของคุณ" },
+  "drive_drawerDelete": { "message": "ลบ" },
+  "drive_drawerEmpty": { "message": "ยังไม่มีการบันทึก" },
+  "drive_drawerJustNow": { "message": "เมื่อสักครู่" },
+  "drive_drawerOpenFull": { "message": "เปิดไดรฟ์เต็มรูปแบบ" },
+  "drive_drawerTitle": { "message": "การบันทึกล่าสุด" },
+  "launcher_drive": { "message": "ไดรฟ์" },
+  "launcher_driveDesc": { "message": "ดูและจัดการการบันทึก" },
+  "launcher_pageTitle": { "message": "Screen Recorder Studio" },
+  "launcher_record": { "message": "บันทึก" },
+  "launcher_recordDesc": { "message": "เริ่มการบันทึกหน้าจอใหม่" },
+  "launcher_studio": { "message": "สตูดิโอ" },
+  "launcher_studioDesc": { "message": "แก้ไขการบันทึกล่าสุดของคุณ" },
+  "launcher_subtitle": { "message": "บันทึก จัดการ และส่งออก" },
+  "launcher_title": { "message": "Screen Recorder Studio" },
+  "studio_emptyDesc": { "message": "หลังจากบันทึก วิดีโอของคุณจะปรากฏที่นี่โดยอัตโนมัติ คุณสามารถดูตัวอย่าง ตัดแต่ง จัดแต่ง และส่งออกในสตูดิโอ" },
+  "studio_emptyFeatureExport": { "message": "ส่งออก" },
+  "studio_emptyFeaturePreview": { "message": "ดูตัวอย่าง" },
+  "studio_emptyFeatureTrim": { "message": "ตัดแต่งและจัดแต่ง" },
+  "studio_emptyOpenDrive": { "message": "เปิดไดรฟ์" },
+  "studio_emptyReasonInvalid": { "message": "ไม่สามารถโหลดการบันทึกล่าสุด" },
+  "studio_emptyReasonLoadFailed": { "message": "ไม่สามารถโหลดการบันทึกที่ระบุ" },
+  "studio_emptyReasonOpfs": { "message": "การจัดเก็บข้อมูลไม่พร้อมใช้งานในเบราว์เซอร์นี้" },
+  "studio_emptyStartRecording": { "message": "เริ่มบันทึก" },
+  "studio_emptyTitle": { "message": "ยังไม่มีวิดีโอที่จะแก้ไข" },
+  "studio_loading": { "message": "กำลังโหลด..." },
+  "studio_recentRecordings": { "message": "การบันทึก" }
 }
