@@ -1817,6 +1817,11 @@
               const keyFrame = frameIndex === 0 || (frameIndex % (framerate * 2) === 0);
               state.worker?.postMessage({ type: 'frame', frame, keyFrame, i: frameIndex }, [frame]);
               frameIndex++;
+              // Yield to the main thread every 2 frames to avoid monopolizing the event loop,
+              // which reduces mouse/keyboard lag during recording
+              if (frameIndex % 2 === 0) {
+                await new Promise((r) => setTimeout(r, 0));
+              }
             }
             // 读尽后通知 worker 刷新并结束
             state.worker?.postMessage({ type: 'stop' });

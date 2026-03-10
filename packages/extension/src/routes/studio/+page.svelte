@@ -64,7 +64,6 @@
   // 全局帧数与窗口起始全局索引
   let globalTotalFrames = $state(0);
   let windowStartIndex = $state(0);
-
   // Derived source FPS based on global total frames and duration
   const sourceFps = $derived(
     globalTotalFrames > 0 && durationMs > 0
@@ -413,10 +412,10 @@
           const windowEndTimestamp =
             chunks[chunks.length - 1]?.timestamp || 0;
 
-          windowStartMs = Math.floor(
+          windowStartMs = Math.round(
             (windowStartTimestamp - firstGlobalTimestamp) / 1000,
           );
-          windowEndMs = Math.floor(
+          windowEndMs = Math.round(
             (windowEndTimestamp - firstGlobalTimestamp) / 1000,
           );
 
