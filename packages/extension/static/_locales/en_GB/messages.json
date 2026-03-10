@@ -89,13 +89,13 @@
   "padding_xl": { "message": "Extra Large Padding" },
 
   "ratio_yt": { "message": "YouTube Landscape" },
-  "ratio_yt_desc": { "message": "YouTube, Bilibili, iQiyi, etc." },
+  "ratio_yt_desc": { "message": "YouTube, Vimeo, etc." },
   "ratio_sq": { "message": "Instagram Square" },
-  "ratio_sq_desc": { "message": "Instagram posts, WeChat Moments" },
+  "ratio_sq_desc": { "message": "Instagram posts, Facebook" },
   "ratio_tiktok": { "message": "TikTok Portrait" },
-  "ratio_tiktok_desc": { "message": "TikTok, Douyin, Kuaishou" },
+  "ratio_tiktok_desc": { "message": "TikTok, Reels, Shorts" },
   "ratio_story": { "message": "Instagram Story" },
-  "ratio_story_desc": { "message": "Instagram Stories, Xiaohongshu" },
+  "ratio_story_desc": { "message": "Instagram Stories, Snapchat" },
 
   "shadow_title": { "message": "Video Shadow" },
   "shadow_preset_title": { "message": "Preset Effects" },
