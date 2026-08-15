@@ -17,7 +17,7 @@ export function buildProductionExportMatrix(): Array<{
 }> {
   return [
     { format: 'mp4', state: 'implemented', detail: '真实 export-worker + H.264 BufferTarget' },
-    { format: 'webm', state: 'unverified', detail: '同一入口，VP9 BufferTarget；尚未实跑' },
+    { format: 'webm', state: 'implemented', detail: '真实 export-worker + VP9 BufferTarget，文件回读已验证' },
     { format: 'gif', state: 'bridge-required', detail: '需要主线程 GifEncoder 握手与静态 worker 资产' }
   ]
 }
@@ -29,12 +29,15 @@ export function evaluateProductionExportAcceptance(input: {
   actualHeight: number
   expectedWidth: number
   expectedHeight: number
+  targetFrameRate: number
   checkpointMae: readonly number[]
   durationToleranceSeconds?: number
   pixelMaeLimit?: number
 }) {
+  const durationToleranceSeconds = input.durationToleranceSeconds
+    ?? 1 / (2 * input.targetFrameRate)
   const durationPass = Math.abs(input.actualDurationSeconds - input.expectedDurationSeconds)
-    <= (input.durationToleranceSeconds ?? 0.12)
+    <= durationToleranceSeconds
   const dimensionsPass = input.actualWidth === input.expectedWidth
     && input.actualHeight === input.expectedHeight
   const maxCheckpointMae = input.checkpointMae.length > 0

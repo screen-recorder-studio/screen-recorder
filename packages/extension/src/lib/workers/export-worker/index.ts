@@ -3,6 +3,7 @@
 import type { EncodedChunk, ExportOptions, BackgroundConfig, GradientConfig, ImageBackgroundConfig } from '../../types/background'
 import { Mp4Strategy } from './strategies/mp4'
 import { WebmStrategy } from './strategies/webm'
+import { addVideoTrackWithTiming } from './video-track-metadata'
 import { GifStrategy, type GifFrameData } from './strategies/gif'
 import { ExportCancellationController, type ActiveExportResource } from './export-cancellation-controller'
 import { buildPresentationSchedule, type PresentationScheduleEntry } from '../../recording/recording-timeline'
@@ -1184,8 +1185,10 @@ async function exportToMP4(options: ExportOptions): Promise<any> {
     // 创建 CanvasSource（通过策略）
     videoSource = strategy.createVideoSource(offscreenCanvas, { bitrate: options.bitrate || 8000000 })
 
-    // 添加视频轨道
-    output.addVideoTrack(videoSource)
+    const frameRate = (options as any)?.framerate || videoInfo?.frameRate || 30
+
+    // 声明轨道帧率，确保容器可以恢复最后一个样本的持续时间。
+    addVideoTrackWithTiming(output, videoSource, frameRate)
 
     // 启动输出（交由策略处理）
     await strategy.start(output)
@@ -1203,7 +1206,6 @@ async function exportToMP4(options: ExportOptions): Promise<any> {
     })
 
     // 计算帧参数（OPFS 模式下 videoInfo 可能尚未通过 ready 返回，优先使用 options 或默认值）
-    const frameRate = (options as any)?.framerate || videoInfo?.frameRate || 30
     const totalTargetFrames = isOpfsMode ? totalOpfsFrames : totalFrames
     const duration = totalTargetFrames / frameRate
     const frameDuration = 1 / frameRate
@@ -1774,7 +1776,8 @@ async function exportToWEBMCompat(options: ExportOptions): Promise<any> {
 
   // 创建 CanvasSource（vp9，默认 8Mbps）
   videoSource = strategy.createVideoSource(offscreenCanvas, { bitrate: options.bitrate || 8_000_000 })
-  output.addVideoTrack(videoSource)
+  const frameRate = (options as any)?.framerate || videoInfo.frameRate
+  addVideoTrackWithTiming(output, videoSource, frameRate)
 
   await strategy.start(output)
   if (shouldCancel || exportCancellation.isRequested) {
@@ -1785,7 +1788,6 @@ async function exportToWEBMCompat(options: ExportOptions): Promise<any> {
   // 封装阶段进度
   updateProgress({ stage: 'muxing', progress: 80, currentFrame: 0, totalFrames })
 
-  const frameRate = (options as any)?.framerate || videoInfo.frameRate
   const frameDuration = 1 / frameRate
 
 

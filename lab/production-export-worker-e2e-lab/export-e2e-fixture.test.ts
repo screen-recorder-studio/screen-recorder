@@ -34,7 +34,7 @@ describe('production export worker E2E fixture', () => {
   it('exposes MP4, WebM, and GIF as an explicit production matrix', () => {
     expect(buildProductionExportMatrix()).toEqual([
       { format: 'mp4', state: 'implemented', detail: '真实 export-worker + H.264 BufferTarget' },
-      { format: 'webm', state: 'unverified', detail: '同一入口，VP9 BufferTarget；尚未实跑' },
+      { format: 'webm', state: 'implemented', detail: '真实 export-worker + VP9 BufferTarget，文件回读已验证' },
       { format: 'gif', state: 'bridge-required', detail: '需要主线程 GifEncoder 握手与静态 worker 资产' }
     ])
   })
@@ -47,6 +47,7 @@ describe('production export worker E2E fixture', () => {
       actualHeight: 360,
       expectedWidth: 640,
       expectedHeight: 360,
+      targetFrameRate: 10,
       checkpointMae: [0.4, 1.2, 2.1]
     })).toEqual({
       durationPass: true,
@@ -63,8 +64,22 @@ describe('production export worker E2E fixture', () => {
       actualHeight: 358,
       expectedWidth: 640,
       expectedHeight: 360,
+      targetFrameRate: 10,
       checkpointMae: [0.2, 19]
     }).pass).toBe(false)
+  })
+
+  it('rejects a WebM duration that loses its final target frame', () => {
+    expect(evaluateProductionExportAcceptance({
+      actualDurationSeconds: 2.9,
+      expectedDurationSeconds: 3,
+      actualWidth: 640,
+      actualHeight: 360,
+      expectedWidth: 640,
+      expectedHeight: 360,
+      targetFrameRate: 10,
+      checkpointMae: [0.5]
+    }).durationPass).toBe(false)
   })
 })
 

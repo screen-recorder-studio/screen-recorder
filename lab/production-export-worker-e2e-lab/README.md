@@ -14,7 +14,7 @@
   → Preview 源时间 checkpoint 像素对比
 ```
 
-默认打通 MP4/H.264；WebM 使用相同入口，可从下拉框运行，但在未实际执行前保持 `unverified`。GIF 的 export-worker 分支可达，但还需要 ExportManager 在主线程完成 `gif-init` / `gif-add-frame` / `gif-render` 握手，并正确提供 gif.js 静态 worker 资产，因此矩阵将其显式标为 `bridge-required`，不把 MP4 结论外推到 WebM/GIF。
+MP4/H.264 与 WebM/VP9 均已通过真实 ExportManager → export-worker → composite-worker → Mediabunny 文件回读链路。WebM 在显式声明轨道 `frameRate` 后，30 帧 × 10fps 的回读时长由 2.900s 修正为 3.000s；640×360、7 个 Crop/Zoom checkpoint 全部通过，最大 MAE 0.98。GIF 的 export-worker 分支可达，但还需要 ExportManager 在主线程完成 `gif-init` / `gif-add-frame` / `gif-render` 握手，并正确提供 gif.js 静态 worker 资产，因此矩阵仍标为 `bridge-required`，不把 MP4/WebM 结论外推到 GIF。
 
 ## TDD
 

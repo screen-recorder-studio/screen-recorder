@@ -237,6 +237,7 @@ async function run() {
       actualHeight: metadata.height,
       expectedWidth: OUTPUT_WIDTH,
       expectedHeight: OUTPUT_HEIGHT,
+      targetFrameRate: FPS,
       checkpointMae: expected.map(item => item.mae ?? Infinity)
     })
     renderEvidence(expected, acceptance, {
