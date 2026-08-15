@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Preview Playback Lab</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">VIDEO PREVIEW / WEB CODECS / DISPLAY CLOCK</p>
+        <h1>视频预览调度专项 Lab</h1>
+        <p class="lede">
+          左侧复现“源帧变化才渲染”，右侧验证“显示时钟驱动 + last-frame-hold + 单帧在途”。
+          青色指针是编辑效果，必须在静态源帧期间仍连续旋转。
+        </p>
+      </header>
+
+      <section class="controls" aria-label="Lab controls">
+        <label>
+          场景
+          <select id="scenario">
+            <option value="sparse" selected>动 2s → 静态 4s → 动 2s</option>
+            <option value="regular">连续 30fps / 8s</option>
+            <option value="pressure">连续 30fps + 周期性合成阻塞</option>
+          </select>
+        </label>
+        <label>
+          合成负载
+          <select id="workload">
+            <option value="2" selected>轻量（约 2ms）</option>
+            <option value="6">中等（约 6ms）</option>
+            <option value="10">重型（约 10ms）</option>
+          </select>
+        </label>
+        <button id="prepare" type="button">准备 WebCodecs 素材</button>
+        <button id="run" type="button" disabled>运行 8 秒对比</button>
+        <button id="pause" type="button" disabled>暂停</button>
+        <button id="seek-probe" type="button" disabled>运行精确定位探针</button>
+        <button id="reset" type="button">重置</button>
+      </section>
+
+      <section class="status-strip" aria-live="polite">
+        <span id="status">等待准备</span>
+        <span id="clock">00:00.000 / 00:08.000</span>
+        <span id="environment">检测环境中…</span>
+      </section>
+
+      <section class="comparison">
+        <article class="player-card" data-mode="source">
+          <div class="card-heading">
+            <div>
+              <p class="mode-label">BASELINE</p>
+              <h2>源帧驱动</h2>
+            </div>
+            <span class="badge bad">仅源帧变化时渲染</span>
+          </div>
+          <canvas id="source-canvas" width="960" height="540"></canvas>
+          <dl id="source-metrics" class="metrics"></dl>
+        </article>
+
+        <article class="player-card" data-mode="clock">
+          <div class="card-heading">
+            <div>
+              <p class="mode-label">CANDIDATE</p>
+              <h2>显示时钟驱动</h2>
+            </div>
+            <span class="badge good">最新请求合并</span>
+          </div>
+          <canvas id="clock-canvas" width="960" height="540"></canvas>
+          <dl id="clock-metrics" class="metrics"></dl>
+        </article>
+      </section>
+
+      <section class="acceptance">
+        <h2>验收门槛</h2>
+        <ul id="acceptance-list">
+          <li data-check="webcodecs">等待：WebCodecs 编解码闭环</li>
+          <li data-check="production-worker">等待：生产 Composite Worker 使用显式展示时间</li>
+          <li data-check="held-redraw">等待：静态区编辑效果持续重绘</li>
+          <li data-check="cadence">等待：候选 p95 显示间隔 ≤ 25ms（60Hz 前台页）</li>
+          <li data-check="drift">等待：候选 p95 媒体时钟漂移 ≤ 34ms</li>
+          <li data-check="recovery">等待：过载恢复后不追播过时位图</li>
+          <li data-check="seek">等待：精确定位命中率 100%</li>
+        </ul>
+      </section>
+    </main>
+
+    <script type="module" src="./app.ts"></script>
+  </body>
+</html>

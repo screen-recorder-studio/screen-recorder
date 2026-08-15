@@ -5,9 +5,18 @@
 // - This basic version parses full index.jsonl into memory once
 // - Data slices are read via Blob.slice; upgrade to SyncAccessHandle later
 
+import { resolveRecordingDurationMs } from './recording-meta-duration'
+import { createRecordingTimeline } from '../recording/recording-timeline'
+import { getReaderReplyContext } from './reader-request-context'
+import { planReaderWindowByIndex, planReaderWindowByTime } from './reader-window-plan'
+
 interface OpenMsg { type: 'open'; dirId: string }
-interface GetRangeMsg { type: 'getRange'; start: number; count: number }
-interface GetSingleFrameGOPMsg { type: 'getSingleFrameGOP'; targetFrame: number }
+interface ReaderRequestContext {
+  requestId?: number
+  purpose?: 'main' | 'prefetch' | 'single-frame'
+}
+interface GetRangeMsg extends ReaderRequestContext { type: 'getRange'; start: number; count: number }
+interface GetSingleFrameGOPMsg extends ReaderRequestContext { type: 'getSingleFrameGOP'; targetFrame: number }
 interface CloseMsg { type: 'close' }
 
 type InMsg = OpenMsg | GetRangeMsg | GetSingleFrameGOPMsg | CloseMsg
@@ -111,7 +120,15 @@ function summarize() {
       keyframeCount: 0,
       keyframeIndices: [],
       avgChunkSize: 0,
-      totalBytes: 0
+      totalBytes: 0,
+      timeline: {
+        version: Number(meta?.timelineVersion) === 2 ? 2 : 1,
+        durationMs: 0,
+        nominalFps: meta?.fps || 30,
+        firstTimestampUs: 0,
+        sampleTimestampsMs: [],
+        sampleDurationsMs: []
+      }
     }
   }
 
@@ -144,15 +161,20 @@ function summarize() {
     prevTimestamp = currTimestamp
   })
 
-  // 计算相对时长（最后一帧 - 第一帧）
-  const durationMicroseconds = lastTimestamp - firstTimestamp
-  const durationMs = Math.round(durationMicroseconds / 1000) // 微秒 → 毫秒
+  const nominalFps = Number(meta?.fps) > 0 ? Number(meta.fps) : 30
+  const resolvedDurationMs = resolveRecordingDurationMs(meta, firstTimestamp, lastTimestamp)
+  const timeline = createRecordingTimeline({
+    sourceTimestampsUs: indexEntries.map((entry) => entry.timestamp),
+    canonicalDurationMs: resolvedDurationMs,
+    nominalFps
+  })
+  const durationMs = timeline.durationMs
   const avgChunkSize = totalBytes / totalChunks
 
   const summary = {
     totalChunks,
     durationMs,
-    fps: meta?.fps || 30,
+    fps: nominalFps,
     width: meta?.width || 0,
     height: meta?.height || 0,
     codec: meta?.codec || 'unknown',
@@ -161,7 +183,15 @@ function summarize() {
     keyframeCount: keyframeIndices.length,
     keyframeIndices,
     avgChunkSize: Math.round(avgChunkSize),
-    totalBytes
+    totalBytes,
+    timeline: {
+      version: Number(meta?.timelineVersion) === 2 ? 2 : 1,
+      durationMs: timeline.durationMs,
+      nominalFps: timeline.nominalFps,
+      firstTimestampUs: firstTimestamp,
+      sampleTimestampsMs: timeline.sourceTimestampsMs,
+      sampleDurationsMs: timeline.sourceDurationsMs
+    }
   }
 
   // 🔧 诊断日志：检查数据完整性
@@ -299,7 +329,7 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
       const i = idxByTimeMs(timeMs)
       const k = keyframeBefore(i)
       const t = timestampToMs(indexEntries[k]?.timestamp || 0)
-      self.postMessage({ type: 'nearestKeyframe', index: k, timeMs: t })
+      self.postMessage({ type: 'nearestKeyframe', index: k, timeMs: t, ...getReaderReplyContext(msg) })
       return
     }
 
@@ -312,33 +342,24 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
       const beforeMs = Math.max(0, Math.floor(msg.beforeMs ?? 0))
       const afterMs = Math.max(0, Math.floor((msg.afterMs ?? (((msg.endMs ?? centerMs) - centerMs))) || 0))
 
-      // 使用相对时间进行查找
-      const desiredStartMs = Math.max(0, centerMs - beforeMs)
-      const desiredEndMs = centerMs + afterMs
-
-
-      let startIdx = keyframeBefore(idxByRelativeTimeMs(desiredStartMs))
-
-      // find end index: first index whose relative timeMs > desiredEndMs
-      let endIdx = startIdx
-      const lastIdx = indexEntries.length - 1
       const baseTimestamp = indexEntries[0]?.timestamp ?? 0
-
-      while (endIdx <= lastIdx) {
-        const absoluteTimestamp = indexEntries[endIdx]?.timestamp || 0
-        const relativeMs = (absoluteTimestamp - baseTimestamp) / 1000
-        if (relativeMs > desiredEndMs) break
-        endIdx++
-      }
-      if (endIdx <= startIdx) endIdx = Math.min(startIdx + 1, indexEntries.length)
-
-      // 🔧 修复：限制返回的帧数不超过 maxFramesPerWindow，防止解码缓冲区溢出
-      // composite worker 的 maxDecodedFrames = 150，留 10 帧余量
       const maxFramesPerWindow = 140
-      if (endIdx - startIdx > maxFramesPerWindow) {
-        console.warn(`⚠️ [OPFS-READER] Window size ${endIdx - startIdx} exceeds max ${maxFramesPerWindow}, truncating`)
-        endIdx = startIdx + maxFramesPerWindow
+      const plan = planReaderWindowByTime({
+        sourceTimestampsMs: indexEntries.map((entry) => (entry.timestamp - baseTimestamp) / 1000),
+        keyframeIndices: indexEntries.flatMap((entry, index) =>
+          entry.isKeyframe === true || entry.type === 'key' ? [index] : []),
+        centerMs,
+        beforeMs,
+        afterMs,
+        maxFrames: maxFramesPerWindow
+      })
+      if (!plan.ok) {
+        const error = new Error(plan.code)
+        ;(error as any).code = plan.code
+        throw error
       }
+      const startIdx = plan.startIndex
+      const endIdx = plan.endIndexExclusive
 
       const file = await getDataFile()
       const chunks: ChunkWire[] = []
@@ -385,9 +406,11 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
         type: 'range',
         start: startIdx,
         count: endIdx - startIdx,
+        targetIndex: plan.targetIndex,
         startMs,
         endMs,
-        chunks
+        chunks,
+        ...getReaderReplyContext(msg)
       }, transfer)
       return
     }
@@ -400,20 +423,22 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
       const requestedStart = Math.max(0, Math.min(indexEntries.length - 1, Math.floor(msg.start)))
       const count = Math.max(0, Math.floor(msg.count))
 
-      // 编辑器语义：无论如何，从“请求位置之前的最近关键帧”开始
-      const prevKey = keyframeBefore(requestedStart)
-      let start = prevKey
-      // 需要保证覆盖从 prevKey 到 requestedStart 的GOP，再加上用户期望的 count
-      const distance = requestedStart - prevKey
-      // 🔧 修复：限制返回的帧数不超过 maxFramesPerWindow，防止解码缓冲区溢出
-      // composite worker 的 maxDecodedFrames = 150，留 10 帧余量
       const maxFramesPerWindow = 140
-      let end = Math.min(indexEntries.length, start + count + Math.max(0, distance))
-      // 如果超过限制，截断到 maxFramesPerWindow
-      if (end - start > maxFramesPerWindow) {
-        console.warn(`⚠️ [OPFS-READER] Window size ${end - start} exceeds max ${maxFramesPerWindow}, truncating`)
-        end = start + maxFramesPerWindow
+      const plan = planReaderWindowByIndex({
+        totalFrames: indexEntries.length,
+        keyframeIndices: indexEntries.flatMap((entry, index) =>
+          entry.isKeyframe === true || entry.type === 'key' ? [index] : []),
+        targetIndex: requestedStart,
+        requestedCount: count,
+        maxFrames: maxFramesPerWindow
+      })
+      if (!plan.ok) {
+        const error = new Error(plan.code)
+        ;(error as any).code = plan.code
+        throw error
       }
+      const start = plan.startIndex
+      const end = plan.endIndexExclusive
 
 
 
@@ -450,7 +475,14 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
         chunks.push(wire)
         transfer.push(buf)
       }
-      ;(self as any).postMessage({ type: 'range', start, count: end - start, chunks }, transfer)
+      ;(self as any).postMessage({
+        type: 'range',
+        start,
+        count: end - start,
+        targetIndex: plan.targetIndex,
+        chunks,
+        ...getReaderReplyContext(msg)
+      }, transfer)
       return
     }
 
@@ -462,11 +494,23 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
       }
 
       const targetFrame = Math.max(0, Math.min(indexEntries.length - 1, Math.floor(msg.targetFrame)))
-      const prevKey = keyframeBefore(targetFrame)
-      
+      const plan = planReaderWindowByIndex({
+        totalFrames: indexEntries.length,
+        keyframeIndices: indexEntries.flatMap((entry, index) =>
+          entry.isKeyframe === true || entry.type === 'key' ? [index] : []),
+        targetIndex: targetFrame,
+        requestedCount: 1,
+        maxFrames: 140
+      })
+      if (!plan.ok) {
+        const error = new Error(plan.code)
+        ;(error as any).code = plan.code
+        throw error
+      }
+
       // 只读取从关键帧到目标帧的 GOP（包含目标帧）
-      const start = prevKey
-      const end = targetFrame + 1  // 包含目标帧
+      const start = plan.startIndex
+      const end = plan.endIndexExclusive
       const gopSize = end - start
 
 
@@ -513,7 +557,8 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
         targetIndexInGOP,
         start,
         count: gopSize,
-        chunks
+        chunks,
+        ...getReaderReplyContext(msg)
       }, transfer)
       return
     }
@@ -530,9 +575,13 @@ self.onmessage = async (e: MessageEvent<InMsg | any>) => {
     }
   } catch (err: any) {
     const message = err?.message || String(err)
-    self.postMessage({ type: 'error', code: 'READER_ERROR', message })
+    self.postMessage({
+      type: 'error',
+      code: err?.code || 'READER_ERROR',
+      message,
+      ...getReaderReplyContext(msg)
+    })
   }
 }
 
 export {} // make this a module
-

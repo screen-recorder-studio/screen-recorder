@@ -4,18 +4,31 @@
 
 // 导入类型定义
 import type { BackgroundConfig, GradientConfig, GradientStop, ImageBackgroundConfig } from '../../types/background'
+import {
+  WindowProcessingGenerationGate,
+  isExpectedDecoderCancellation
+} from '../../studio/window-processing-generation'
+import {
+  resolvePrefetchDecodedFrame,
+  resolvePreviewPresentationTimeMs
+} from '../../studio/preview-playback-scheduler'
 
 interface CompositeMessage {
-  type: 'init' | 'process' | 'play' | 'pause' | 'seek' | 'config' | 'appendWindow' | 'decodeSingleFrame' | 'preview-frame' | 'getCurrentFrameBitmap' | 'getSourceFrameBitmap';
+  type: 'init' | 'process' | 'play' | 'pause' | 'seek' | 'renderAtTime' | 'config' | 'appendWindow' | 'decodeSingleFrame' | 'preview-frame' | 'getCurrentFrameBitmap' | 'getSourceFrameBitmap';
   data: {
     chunks?: any[];
     backgroundConfig?: BackgroundConfig;
     timestamp?: number;
     frameIndex?: number;
     startGlobalFrame?: number; // 新增：窗口全局起点（用于C-2复用判断）
+    retainStartGlobalFrame?: number;
+    retainedFrameCount?: number;
+    windowGeneration?: number;
     frameRate?: number; // 🆕 视频帧率
     targetIndexInGOP?: number; // 🆕 单帧预览：目标帧在 GOP 中的索引
     globalFrameIndex?: number; // 🆕 单帧预览：全局帧索引
+    presentationTimeMs?: number;
+    requestId?: number;
   };
 }
 
@@ -35,13 +48,23 @@ let decodedFrames: VideoFrame[] = [];
 let currentConfig: BackgroundConfig | null = null;
 // 下一窗口后台解码帧缓冲（C-2）
 let nextDecoded: VideoFrame[] = []
-let nextMeta: { start: number | null; codec: string | null } | null = null
+let nextMeta: { start: number | null; codec: string | null; expectedFrames: number } | null = null
 // 解码输出目标：当前窗口 or 下一窗口
 let outputTarget: 'current' | 'next' = 'current'
+let nextDecodeStartGlobalFrame = 0
+let nextRetainStartGlobalFrame = 0
+let nextDecodedOutputIndex = 0
 
 let isPlaying = false;
 let isDecoding = false; // streaming decode in progress
+const windowGenerationGate = new WindowProcessingGenerationGate();
 let pendingSeekIndex: number | null = null; // seek request waiting for frames
+let pendingTimelineRender: {
+  frameIndex: number;
+  presentationTimeMs: number;
+  requestId: number;
+  windowGeneration: number;
+} | null = null;
 let currentFrameIndex = 0;
 let animationId: number | null = null;
 
@@ -640,7 +663,13 @@ function calculateZoomScale(currentTimeMs: number, zoomConfig: any, debugLog: bo
 
 // 渲染合成帧（严格保持原始显示比例，支持可见区域裁剪）
 // frameIndex: 窗口内帧索引（用于计算 Zoom 时间）
-function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: BackgroundConfig, frameIndex: number = currentFrameIndex) {
+function renderCompositeFrame(
+  frame: VideoFrame,
+  layout: VideoLayout,
+  config: BackgroundConfig,
+  frameIndex: number = currentFrameIndex,
+  presentationTimeMs?: number
+) {
   if (!ctx || !offscreenCanvas) {
     console.error('❌ [COMPOSITE-WORKER] Canvas not initialized');
     return null;
@@ -651,9 +680,14 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
     ctx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
 
     // 🆕 计算当前时间的 Zoom 缩放比例（包含缓动）- 移到背景渲染之前以支持 syncBackground
-    // 使用帧索引计算时间（而不是 frame.timestamp，因为它可能是系统时间戳）
-    const globalFrameIndex = windowStartFrameIndex + frameIndex  // 使用传入的 frameIndex
-    const currentTimeMs = (globalFrameIndex / videoFrameRate) * 1000
+    // Timeline playback supplies canonical display time. Legacy callers keep the
+    // frame-index fallback until their contracts are migrated.
+    const currentTimeMs = resolvePreviewPresentationTimeMs({
+      presentationTimeMs,
+      windowStartFrameIndex,
+      frameIndex,
+      nominalFps: videoFrameRate
+    })
 
     // 🔍 每 30 帧启用详细调试
     const shouldDebug = frameIndex % 30 === 0 && config.videoZoom?.enabled
@@ -940,6 +974,59 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
   }
 }
 
+function renderTimelineRequest(request: {
+  frameIndex: number;
+  presentationTimeMs: number;
+  requestId: number;
+  windowGeneration: number;
+}): boolean {
+  if (!windowGenerationGate.isCurrent(request.windowGeneration)) return false
+  if (!currentConfig || !fixedVideoLayout) return false
+  if (request.frameIndex < 0 || request.frameIndex >= decodedFrames.length) return false
+
+  const frame = decodedFrames[request.frameIndex]
+  const bitmap = renderCompositeFrame(
+    frame,
+    fixedVideoLayout,
+    currentConfig,
+    request.frameIndex,
+    request.presentationTimeMs
+  )
+  if (!bitmap) return false
+
+  currentFrameIndex = request.frameIndex
+  self.postMessage({
+    type: 'frame',
+    data: {
+      bitmap,
+      frameIndex: request.frameIndex,
+      timestamp: frame.timestamp,
+      presentationTimeMs: request.presentationTimeMs,
+      requestId: request.requestId,
+      windowStartFrameIndex,
+      windowGeneration: request.windowGeneration
+    }
+  }, { transfer: [bitmap] })
+  return true
+}
+
+function rejectTimelineRender(
+  request: NonNullable<typeof pendingTimelineRender>,
+  reason: 'frame-not-decoded' | 'decode-complete-without-frame'
+) {
+  self.postMessage({
+    type: 'renderUnavailable',
+    data: {
+      requestId: request.requestId,
+      frameIndex: request.frameIndex,
+      presentationTimeMs: request.presentationTimeMs,
+      reason,
+      windowStartFrameIndex,
+      windowGeneration: request.windowGeneration
+    }
+  })
+}
+
 // 🆕 Render and send single-frame preview
 function renderAndSendPreviewFrame() {
   if (previewDecodedFrames.length <= previewTargetIndex) {
@@ -1008,7 +1095,7 @@ function renderAndSendPreviewFrame() {
 }
 
 // 基础流式解码：开始提交块并在后台flush，边解边播
-function startStreamingDecode(chunks: any[]) {
+function startStreamingDecode(chunks: any[], processingGeneration: number) {
   if (!chunks || chunks.length === 0) {
     throw new Error('No video chunks provided');
   }
@@ -1040,6 +1127,18 @@ function startStreamingDecode(chunks: any[]) {
 
     videoDecoder = new VideoDecoder({
       output: (frame: VideoFrame) => {
+        if (outputTarget === 'next') {
+          const decision = resolvePrefetchDecodedFrame({
+            decodeStartGlobalFrame: nextDecodeStartGlobalFrame,
+            retainStartGlobalFrame: nextRetainStartGlobalFrame,
+            decodedOutputIndex: nextDecodedOutputIndex
+          })
+          nextDecodedOutputIndex += 1
+          if (decision.action === 'discard-preroll') {
+            try { frame.close() } catch {}
+            return
+          }
+        }
         const targetBuf = (outputTarget === 'next') ? nextDecoded : decodedFrames;
         const maxSize = (outputTarget === 'next') ? FRAME_BUFFER_LIMITS.maxNextDecoded : FRAME_BUFFER_LIMITS.maxDecodedFrames;
 
@@ -1095,6 +1194,13 @@ function startStreamingDecode(chunks: any[]) {
 
         // 仅当输出到当前窗口时，才执行日志与 pending seek 渲染
         if (outputTarget !== 'next') {
+          if (
+            pendingTimelineRender
+            && decodedFrames.length > pendingTimelineRender.frameIndex
+            && renderTimelineRequest(pendingTimelineRender)
+          ) {
+            pendingTimelineRender = null
+          }
           if (decodedFrames.length % 60 === 0) {
           }
           if (pendingSeekIndex !== null && decodedFrames.length > pendingSeekIndex) {
@@ -1109,7 +1215,8 @@ function startStreamingDecode(chunks: any[]) {
                       bitmap,
                       frameIndex: pendingSeekIndex,
                       timestamp: f.timestamp,
-                      windowStartFrameIndex
+                      windowStartFrameIndex,
+                      windowGeneration: windowGenerationGate.activeGeneration
                     }
                   }, { transfer: [bitmap] });
                   currentFrameIndex = pendingSeekIndex;
@@ -1203,15 +1310,30 @@ function startStreamingDecode(chunks: any[]) {
 
   // 后台flush，不阻塞ready/播放
   videoDecoder!.flush().then(() => {
-    isDecoding = false;
+    if (windowGenerationGate.isCurrent(processingGeneration)) {
+      isDecoding = false;
+      if (pendingTimelineRender) {
+        const request = pendingTimelineRender
+        pendingTimelineRender = null
+        rejectTimelineRender(request, 'decode-complete-without-frame')
+      }
+    }
   }).catch((error) => {
-    console.error('[progress] VideoComposite - decoder flush error (stream):', error);
-    isDecoding = false;
+    if (windowGenerationGate.isCurrent(processingGeneration)) {
+      isDecoding = false;
+    }
+    if (!isExpectedDecoderCancellation({
+      activeGeneration: windowGenerationGate.activeGeneration,
+      settledGeneration: processingGeneration,
+      errorName: error?.name
+    })) {
+      console.error('[progress] VideoComposite - decoder flush error (stream):', error);
+    }
   });
 }
 
 // 追加解码：在现有解码器与帧缓冲基础上追加下一窗口的编码块
-function appendStreamingDecode(chunks: any[]) {
+function appendStreamingDecode(chunks: any[], processingGeneration: number) {
   if (!chunks || chunks.length === 0) {
     console.warn('[COMPOSITE-WORKER] appendStreamingDecode: no chunks');
     return;
@@ -1248,12 +1370,32 @@ function appendStreamingDecode(chunks: any[]) {
   }
 
   videoDecoder!.flush().then(() => {
-    isDecoding = false;
-    outputTarget = 'current';
+    if (windowGenerationGate.isCurrent(processingGeneration)) {
+      isDecoding = false;
+      outputTarget = 'current';
+      if (nextMeta && nextDecoded.length === nextMeta.expectedFrames) {
+        self.postMessage({
+          type: 'prefetchReady',
+          data: {
+            startGlobalFrame: nextMeta.start,
+            totalFrames: nextDecoded.length,
+            windowGeneration: processingGeneration
+          }
+        })
+      }
+    }
   }).catch((error) => {
-    console.error('[progress] VideoComposite - decoder flush error (append):', error);
-    isDecoding = false;
-    outputTarget = 'current';
+    if (windowGenerationGate.isCurrent(processingGeneration)) {
+      isDecoding = false;
+      outputTarget = 'current';
+    }
+    if (!isExpectedDecoderCancellation({
+      activeGeneration: windowGenerationGate.activeGeneration,
+      settledGeneration: processingGeneration,
+      errorName: error?.name
+    })) {
+      console.error('[progress] VideoComposite - decoder flush error (append):', error);
+    }
   });
 }
 
@@ -1323,7 +1465,11 @@ function startPlayback() {
       if (currentFrameIndex >= boundary) {
         self.postMessage({
           type: 'windowComplete',
-          data: { totalFrames: boundary, lastFrameIndex: Math.max(0, currentFrameIndex - 1) }
+          data: {
+            totalFrames: boundary,
+            lastFrameIndex: Math.max(0, currentFrameIndex - 1),
+            windowGeneration: windowGenerationGate.activeGeneration
+          }
         });
         isPlaying = false;
         // 🔧 修复：重置 currentFrameIndex，确保下次播放从头开始
@@ -1345,7 +1491,8 @@ function startPlayback() {
               bitmap,
               frameIndex: currentFrameIndex,
               timestamp: frame.timestamp,
-              windowStartFrameIndex
+              windowStartFrameIndex,
+              windowGeneration: windowGenerationGate.activeGeneration
             }
           }, { transfer: [bitmap] }); // 转移 ImageBitmap 所有权
         }
@@ -1371,7 +1518,8 @@ function startPlayback() {
               decoded: decodedFrames.length,
               currentIndex: currentFrameIndex,
               config: BUFFER_CONFIG,
-              isDecoding
+              isDecoding,
+              windowGeneration: windowGenerationGate.activeGeneration
             }
           });
           criticalWatermarkNotified = true;
@@ -1385,7 +1533,8 @@ function startPlayback() {
               decoded: decodedFrames.length,
               currentIndex: currentFrameIndex,
               config: BUFFER_CONFIG,
-              isDecoding
+              isDecoding,
+              windowGeneration: windowGenerationGate.activeGeneration
             }
           });
           lowWatermarkNotified = true;
@@ -1401,7 +1550,8 @@ function startPlayback() {
               decoded: decodedFrames.length,
               currentIndex: currentFrameIndex,
               config: BUFFER_CONFIG,
-              isDecoding
+              isDecoding,
+              windowGeneration: windowGenerationGate.activeGeneration
             }
           });
           lowWatermarkNotified = false;
@@ -1421,7 +1571,8 @@ function startPlayback() {
                 decoded: decodedFrames.length,
                 currentIndex: currentFrameIndex,
                 config: BUFFER_CONFIG,
-                isDecoding
+                isDecoding,
+                windowGeneration: windowGenerationGate.activeGeneration
               }
             });
             criticalWatermarkNotified = true;
@@ -1433,7 +1584,8 @@ function startPlayback() {
             type: 'windowComplete',
             data: {
               totalFrames: decodedFrames.length,
-              lastFrameIndex: currentFrameIndex - 1
+              lastFrameIndex: currentFrameIndex - 1,
+              windowGeneration: windowGenerationGate.activeGeneration
             }
           });
           // 暂停播放，等待新窗口数据
@@ -1468,6 +1620,12 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         if (!data.chunks || !data.backgroundConfig) {
           throw new Error('Missing chunks or background config');
         }
+
+        const processingGeneration = windowGenerationGate.resolveIncoming(data.windowGeneration);
+        if (!windowGenerationGate.activate(processingGeneration)) {
+          break;
+        }
+        pendingTimelineRender = null;
 
         // 🔧 重置播放状态 - 处理新窗口数据
         isPlaying = false;
@@ -1520,7 +1678,14 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
 
         const requestedStart = (data.startGlobalFrame ?? null) as number | null
         const incomingCodec = (firstChunk.codec || 'vp8') as string
-        const canReuse = !!(nextMeta && requestedStart !== null && nextMeta.start === requestedStart && videoDecoder && videoDecoderCodec === incomingCodec && nextDecoded.length > 0)
+        const canReuse = !!(
+          nextMeta
+          && requestedStart !== null
+          && nextMeta.start === requestedStart
+          && nextDecoded.length === nextMeta.expectedFrames
+          && videoDecoder
+          && videoDecoderCodec === incomingCodec
+        )
         if (canReuse) {
           // 关闭旧的当前窗口帧
           if (decodedFrames.length > 0) {
@@ -1547,11 +1712,18 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
               totalFrames: windowBoundaryFrames,
               outputSize: { width: outputWidth, height: outputHeight },
               videoLayout: fixedVideoLayout,
-              windowStartFrameIndex
+              windowStartFrameIndex,
+              windowGeneration: windowGenerationGate.activeGeneration
             }
           });
           break;
         }
+
+        if (nextDecoded.length > 0) {
+          for (const frame of nextDecoded) { try { frame.close() } catch {} }
+          nextDecoded = []
+        }
+        nextMeta = null
 
 
 
@@ -1574,7 +1746,7 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         initializeCanvas(outputWidth, outputHeight);
 
         // 启动流式解码（不阻塞ready）
-        startStreamingDecode(data.chunks);
+        startStreamingDecode(data.chunks, processingGeneration);
 
         // 计算固定布局
         calculateAndCacheLayout();
@@ -1585,7 +1757,8 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
             totalFrames: data.chunks.length,
             outputSize: { width: outputWidth, height: outputHeight },
             videoLayout: fixedVideoLayout,
-            windowStartFrameIndex
+            windowStartFrameIndex,
+            windowGeneration: windowGenerationGate.activeGeneration
           }
         });
         break;
@@ -1603,21 +1776,78 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         break;
 
       case 'appendWindow':
+        if (data.windowGeneration !== undefined && !windowGenerationGate.isCurrent(data.windowGeneration)) {
+          break;
+        }
         if (data.chunks && data.chunks.length > 0) {
-          // 记录下一窗口元数据，清理不匹配的遗留
-          const start = (data.startGlobalFrame ?? null) as number | null
-          if (start !== null && nextMeta && nextMeta.start !== start && nextDecoded.length > 0) {
+          // Decode may start at an earlier keyframe. Only frames at/after the
+          // playback boundary are retained as the next visible window.
+          const decodeStart = Math.max(0, Math.floor(data.startGlobalFrame ?? 0))
+          const retainStart = Math.max(
+            decodeStart,
+            Math.floor(data.retainStartGlobalFrame ?? decodeStart)
+          )
+          const expectedFrames = Math.max(
+            0,
+            Math.floor(data.retainedFrameCount ?? data.chunks.length)
+          )
+          if (nextMeta?.start === retainStart) {
+            if (nextDecoded.length === nextMeta.expectedFrames) {
+              self.postMessage({
+                type: 'prefetchReady',
+                data: {
+                  startGlobalFrame: nextMeta.start,
+                  totalFrames: nextDecoded.length,
+                  windowGeneration: windowGenerationGate.activeGeneration
+                }
+              })
+            }
+            break
+          }
+          if (nextMeta && nextMeta.start !== retainStart && nextDecoded.length > 0) {
             for (const f of nextDecoded) { try { f.close() } catch {} }
             nextDecoded = []
           }
-          nextMeta = { start, codec: videoDecoderCodec }
+          nextMeta = { start: retainStart, codec: videoDecoderCodec, expectedFrames }
+          nextDecodeStartGlobalFrame = decodeStart
+          nextRetainStartGlobalFrame = retainStart
+          nextDecodedOutputIndex = 0
 
           // 将解码输出切换到 nextDecoded
           outputTarget = 'next'
-          appendStreamingDecode(data.chunks)
+          appendStreamingDecode(data.chunks, windowGenerationGate.activeGeneration)
           // flush 完成后会在 appendStreamingDecode 内部复位 outputTarget
         } else {
           console.warn('[COMPOSITE-WORKER] appendWindow: missing chunks')
+        }
+        break;
+
+      case 'renderAtTime':
+        if (
+          data.frameIndex === undefined
+          || data.presentationTimeMs === undefined
+          || data.requestId === undefined
+        ) {
+          break;
+        }
+        if (data.windowGeneration !== undefined && !windowGenerationGate.isCurrent(data.windowGeneration)) {
+          break;
+        }
+        {
+          const request = {
+            frameIndex: Math.max(0, Math.floor(data.frameIndex)),
+            presentationTimeMs: Math.max(0, data.presentationTimeMs),
+            requestId: data.requestId,
+            windowGeneration: data.windowGeneration ?? windowGenerationGate.activeGeneration
+          }
+          if (!renderTimelineRequest(request)) {
+            if (isDecoding) {
+              // Keep only the newest requested display time while decode catches up.
+              pendingTimelineRender = request
+            } else {
+              rejectTimelineRender(request, 'frame-not-decoded')
+            }
+          }
         }
         break;
 
@@ -1637,7 +1867,8 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
                     bitmap,
                     frameIndex: currentFrameIndex,
                     timestamp: frame.timestamp,
-                    windowStartFrameIndex
+                    windowStartFrameIndex,
+                    windowGeneration: windowGenerationGate.activeGeneration
                   }
                 }, { transfer: [bitmap] });
               } else {
@@ -1667,7 +1898,8 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
                     bitmap,
                     frameIndex: last,
                     timestamp: frame.timestamp,
-                    windowStartFrameIndex
+                    windowStartFrameIndex,
+                    windowGeneration: windowGenerationGate.activeGeneration
                   }
                 }, { transfer: [bitmap] });
               }
@@ -1690,7 +1922,11 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
             if (bitmap) {
               self.postMessage({
                 type: 'preview-frame',
-                data: { bitmap, frameIndex: previewFrameIndex }
+                data: {
+                  bitmap,
+                  frameIndex: previewFrameIndex,
+                  windowGeneration: windowGenerationGate.activeGeneration
+                }
               }, { transfer: [bitmap] });
 
             }
@@ -1763,6 +1999,9 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         break;
 
       case 'config':
+        if (data.windowGeneration !== undefined && !windowGenerationGate.isCurrent(data.windowGeneration)) {
+          break;
+        }
         if (data.backgroundConfig) {
           const oldConfig = currentConfig;
           currentConfig = data.backgroundConfig;
@@ -1801,7 +2040,8 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
               type: 'sizeChanged',
               data: {
                 outputSize: { width: outputWidth, height: outputHeight },
-                outputRatio: currentConfig.outputRatio
+                outputRatio: currentConfig.outputRatio,
+                windowGeneration: windowGenerationGate.activeGeneration
               }
             });
           }
@@ -1824,7 +2064,8 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
                   bitmap,
                   frameIndex: currentFrameIndex,
                   timestamp: frame.timestamp,
-                  windowStartFrameIndex
+                  windowStartFrameIndex,
+                  windowGeneration: windowGenerationGate.activeGeneration
                 }
               }, { transfer: [bitmap] });
             } else {
@@ -1981,4 +2222,3 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
   }
 
 };
-

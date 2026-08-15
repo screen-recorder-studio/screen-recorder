@@ -1,13 +1,46 @@
 <!-- Video preview component - using VideoComposite Worker for background composition -->
 <script lang="ts">
-  import { onMount } from 'svelte'
+  import { onMount, untrack } from 'svelte'
   import { Play, Pause, LoaderCircle, Monitor, Info, Scissors, Crop, ZoomIn } from '@lucide/svelte'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import { DataFormatValidator } from '$lib/utils/data-format-validator'
+  import {
+    reportPreviewLoadFailure,
+    runPreviewProcessing
+  } from '$lib/studio/preview-load-failure'
   import { imageBackgroundManager } from '$lib/services/image-background-manager'
   import { trimStore } from '$lib/stores/trim.svelte'
   import { videoCropStore } from '$lib/stores/video-crop.svelte'
   import { videoZoomStore, type ZoomMode, type ZoomEasing } from '$lib/stores/video-zoom.svelte'
+  import {
+    advanceStaticHold,
+    clampStaticHoldPosition,
+    createStaticHoldPlan
+  } from '$lib/recording/static-hold-plan'
+  import {
+    findSourceFrameAtTime,
+    resolveDisplayedTimelinePosition
+  } from '$lib/recording/recording-timeline'
+  import { decidePendingTimelineFrame } from '$lib/studio/pending-timeline-frame'
+  import {
+    completePreviewRender,
+    createPreviewClock,
+    createPreviewRenderGate,
+    createTimelinePrefetchWindow,
+    decidePreviewTarget,
+    failPreviewRender,
+    pausePreviewClock,
+    playPreviewClock,
+    queuePreviewRender,
+    resetPreviewRenderGate,
+    samplePreviewClock,
+    seekPreviewClock,
+    shouldPresentPreviewFrame,
+    type PreviewClock,
+    type PreviewRenderGate,
+    type PreviewRenderRequest
+  } from '$lib/studio/preview-playback-scheduler'
+  import { calculatePreviewSize } from '$lib/studio/preview-size'
   import VideoCropPanel from './VideoCropPanel.svelte'
   import VideoFocusPanel from './VideoFocusPanel.svelte'
   import Timeline from './Timeline.svelte'
@@ -21,17 +54,27 @@
     showControls?: boolean
     showTimeline?: boolean
     durationMs?: number
+    sourceFps?: number
+    timelineTimestampsMs?: number[]
     windowStartMs?: number
     windowEndMs?: number
     totalFramesAll?: number
     windowStartIndex?: number
+    windowGeneration?: number
     keyframeInfo?: {
       indices: number[]
       timestamps: number[]
       count: number
       avgInterval: number
     } | null
-    onRequestWindow?: (args: { centerMs: number; beforeMs: number; afterMs: number }) => void
+    onRequestWindow?: (args: {
+      centerMs: number
+      beforeMs: number
+      afterMs: number
+      prefetchedWindow?: { chunks: any[]; windowStartIndex: number }
+    }) => void
+    onFirstFrameVisible?: () => void
+    onLoadError?: (errorCode: string) => void
     // Optional: only fetch data, don't switch window, used for prefetch cache
     fetchWindowData?: (args: { centerMs: number; beforeMs: number; afterMs: number }) => Promise<{ chunks: any[]; windowStartIndex: number }>
     // 🆕 Single-frame preview: fetch minimal GOP for target frame (for fast preview)
@@ -47,12 +90,17 @@
     showControls = true,
     showTimeline = true,
     durationMs = 0,
+    sourceFps = 30,
+    timelineTimestampsMs = [],
     windowStartMs = 0,
     windowEndMs = 0,
     totalFramesAll = 0,
     windowStartIndex = 0,
+    windowGeneration = 0,
     keyframeInfo = null,
     onRequestWindow,
+    onFirstFrameVisible,
+    onLoadError,
     fetchWindowData,
     fetchSingleFrameGOP,
     className = ''
@@ -67,6 +115,7 @@
     windowSize: number
     transferableChunks: any[]
     transferObjects: Transferable[]
+    decodedReady: boolean
   } | null
   let prefetchCache: PrefetchCache = null
   // building flag to avoid duplicate prefetch
@@ -100,19 +149,82 @@
   let currentTime = $state(0)
   let duration = $state(0)
   let frameRate = $state(30)
+  let timelinePlaybackPositionMs = $state(0)
+  let timelineIdentity = ''
+  let timelinePlaybackRafId: number | null = null
+  let timelinePlaybackClock: PreviewClock = createPreviewClock({ durationMs: 0 })
+  let timelineRenderGate: PreviewRenderGate = createPreviewRenderGate(0)
+  let pendingTimelineWindowTarget: number | null = null
+  let timelinePrefetchBoundaryFrame: number | null = null
+  let timelineLastRenderedGlobalFrame = -1
+  const MAX_TIMELINE_RENDER_LATENESS_MS = 34
+  let staticHoldPositionMs = $state(0)
+  let staticHoldRafId: number | null = null
+  let staticHoldLastTickMs: number | null = null
+  const staticHoldPlan = $derived(createStaticHoldPlan({
+    sourceFrameCount: totalFramesAll,
+    durationMs
+  }))
 
-  // 🆕 自动推断真实帧率（优先使用全局帧数和时长），避免 Zoom 时间漂移/跳出
+  const hasSourceTimeline = $derived(
+    durationMs > 0
+    && totalFramesAll > 0
+    && timelineTimestampsMs.length === totalFramesAll
+    && timelineTimestampsMs[0] === 0
+  )
+
   $effect(() => {
-    if (totalFramesAll > 0 && durationMs > 0) {
-      const fps = Math.max(1, Math.round(totalFramesAll / (durationMs / 1000)))
-      if (fps !== frameRate) {
-        frameRate = fps
-      }
+    const fps = Number(sourceFps) > 0 ? Number(sourceFps) : 30
+    if (fps !== frameRate) {
+      frameRate = fps
     }
   })
+
+  function globalFrameAtTimeMs(timeMs: number): number {
+    if (!hasSourceTimeline) {
+      return Math.max(0, Math.min(totalFramesAll - 1, Math.floor((Math.max(0, timeMs) / 1000) * frameRate)))
+    }
+    return findSourceFrameAtTime(timelineTimestampsMs, timeMs)
+  }
+
+  function timeMsAtGlobalFrame(globalFrameIndex: number): number {
+    if (hasSourceTimeline) {
+      const index = Math.max(0, Math.min(timelineTimestampsMs.length - 1, Math.floor(globalFrameIndex)))
+      return timelineTimestampsMs[index]
+    }
+    return Math.max(0, globalFrameIndex) / frameRate * 1000
+  }
   let isPlaying = $state(false)
   let shouldContinuePlayback = $state(false) // 🔧 Continuous playback flag
   let continueFromGlobalFrame = $state(0) // 🔧 Record which global frame to continue playback from
+
+  $effect(() => {
+    const nextTimelineIdentity = hasSourceTimeline
+      ? `${durationMs}:${timelineTimestampsMs.length}:${timelineTimestampsMs.at(-1)}`
+      : ''
+    untrack(() => {
+      if (nextTimelineIdentity === timelineIdentity) return
+
+      timelineIdentity = nextTimelineIdentity
+      timelinePlaybackPositionMs = 0
+      timelinePlaybackClock = createPreviewClock({ durationMs })
+      timelineLastRenderedGlobalFrame = -1
+      timelineRenderGate = resetPreviewRenderGate(timelineRenderGate, windowGeneration)
+      pendingTimelineWindowTarget = null
+      timelinePrefetchBoundaryFrame = null
+      isPlaying = false
+      cancelTimelinePlayback()
+    })
+  })
+
+  $effect(() => {
+    const generation = windowGeneration
+    untrack(() => {
+      if (timelineRenderGate.windowGeneration === generation) return
+      timelineRenderGate = resetPreviewRenderGate(timelineRenderGate, generation)
+    })
+  })
+
   // Rendered frame corresponding window start point (for stable timing display/log, avoid false jumps caused by props changing first)
   let lastFrameWindowStartIndex = $state(windowStartIndex)
 
@@ -156,8 +268,9 @@
 
   // UI display duration: prioritize using global frame count/frame rate (consistent with timeline), then durationMs, finally fallback to internal duration
   const uiDurationSec = $derived.by(() => {
-    if (totalFramesAll > 0 && frameRate > 0) return totalFramesAll / frameRate
     if (durationMs > 0) return durationMs / 1000
+    if (staticHoldPlan) return staticHoldPlan.sampleDurationSeconds
+    if (totalFramesAll > 0 && frameRate > 0) return totalFramesAll / frameRate
     return duration
   })
 
@@ -165,17 +278,20 @@
   const timelineMaxMs = $derived.by(() => {
     let result: number
 
+    // A single captured frame can legitimately represent a long static scene.
+    if (durationMs > 0) {
+      result = Math.max(1, Math.floor(durationMs))
+    }
+    else if (staticHoldPlan) {
+      result = Math.max(1, Math.floor(staticHoldPlan.durationMs))
+    }
     // Priority 1: Use global duration (based on global frame count)
-    if (totalFramesAll > 0 && frameRate > 0) {
+    else if (totalFramesAll > 0 && frameRate > 0) {
       // 使用总时长，不是最后一帧的时间戳
       // 这样时间轴会显示完整的视频时长
       result = Math.max(1, Math.floor((totalFramesAll / frameRate) * 1000))
     }
-    // Priority 2: Use passed real duration
-    else if (durationMs > 0) {
-      result = Math.max(1, Math.floor(durationMs))
-    }
-    // Priority 3: Use current window frame count calculation
+    // Priority 2: Use current window frame count calculation
     else if (totalFrames > 0 && frameRate > 0) {
       result = Math.max(1, Math.floor((totalFrames / frameRate) * 1000))
     }
@@ -203,53 +319,17 @@
 
   // Update preview size - intelligent adaptive full height layout
   function updatePreviewSize() {
-    if (displayWidth <= 0 || displayHeight <= 0) return
-    const aspectRatio = outputWidth / outputHeight
-
-    // Calculate available space - consider control bar and timeline height
-    const headerHeight = 0  // Preview info bar height (Removed)
-    const controlsHeight = showControls && totalFrames > 0 ? 56 : 0  // Play control bar height
-    // 🔧 更新：新 Timeline 组件包含时间刻度、轨道和 Zoom 控制区，总高度约 200-232px
-    // 保守估计使用 232px 以确保不会溢出
-    const timelineHeight = showTimeline && totalFrames > 0 ? 232 : 0  // New Timeline component height (with zoom control)
-    const padding = 0  // Canvas area padding (Removed)
-
-    const availableWidth = displayWidth - padding
-    const availableHeight = displayHeight - headerHeight - controlsHeight - timelineHeight - padding
-
-    // Calculate suitable preview size, maintain aspect ratio, fully utilize available space
-    let calculatedWidth, calculatedHeight
-
-    if (aspectRatio > availableWidth / availableHeight) {
-      // Width limited: use all available width
-      calculatedWidth = availableWidth
-      calculatedHeight = Math.round(calculatedWidth / aspectRatio)
-    } else {
-      // Height limited: use all available height
-      calculatedHeight = availableHeight
-      calculatedWidth = Math.round(calculatedHeight * aspectRatio)
-    }
-
-    // Ensure minimum size, avoid too small preview
-    const minSize = 300
-    if (calculatedWidth < minSize || calculatedHeight < minSize) {
-      if (aspectRatio > 1) {
-        // Landscape video
-        previewWidth = Math.max(minSize, calculatedWidth)
-        previewHeight = Math.round(previewWidth / aspectRatio)
-      } else {
-        // Portrait video
-        previewHeight = Math.max(minSize, calculatedHeight)
-        previewWidth = Math.round(previewHeight * aspectRatio)
-      }
-    } else {
-      previewWidth = calculatedWidth
-      previewHeight = calculatedHeight
-    }
-
-    // Ensure not exceeding container limits
-    previewWidth = Math.min(previewWidth, availableWidth)
-    previewHeight = Math.min(previewHeight, availableHeight)
+    const next = calculatePreviewSize({
+      displayWidth,
+      displayHeight,
+      outputWidth,
+      outputHeight,
+      showControls,
+      showTimeline,
+      hasFrames: totalFrames > 0
+    })
+    if (next.width !== previewWidth) previewWidth = next.width
+    if (next.height !== previewHeight) previewHeight = next.height
   }
 
   // Initialize Canvas (only used for display)
@@ -261,6 +341,7 @@
 
     if (!bitmapCtx) {
       console.error('❌ [VideoPreview] Failed to get ImageBitmapRenderingContext')
+      onLoadError?.('STUDIO_PREVIEW_CONTEXT_UNAVAILABLE')
       return
     }
 
@@ -281,15 +362,34 @@
   function initializeWorker() {
     if (compositeWorker) return
 
-    compositeWorker = new Worker(
-      new URL('../workers/composite-worker/index.ts', import.meta.url),
-      { type: 'module' }
-    )
+    try {
+      compositeWorker = new Worker(
+        new URL('../workers/composite-worker/index.ts', import.meta.url),
+        { type: 'module' }
+      )
+    } catch (error) {
+      console.error('❌ [VideoPreview] Failed to start worker:', error)
+      onLoadError?.('STUDIO_PREVIEW_WORKER_START_FAILED')
+      return
+    }
 
     // Worker message handling
     compositeWorker.onmessage = (event) => {
       workerMessageCount = (workerMessageCount + 1) % MAX_MESSAGE_COUNT
       const { type, data } = event.data
+
+      const windowBoundMessage = type === 'ready'
+        || type === 'frame'
+        || type === 'renderUnavailable'
+        || type === 'prefetchReady'
+        || type === 'preview-frame'
+        || type === 'bufferStatus'
+        || type === 'windowComplete'
+        || type === 'sizeChanged'
+      if (windowBoundMessage && data?.windowGeneration !== windowGeneration) {
+        try { data?.bitmap?.close?.() } catch {}
+        return
+      }
 
       switch (type) {
         case 'initialized':
@@ -309,9 +409,17 @@
           isProcessing = false
 
           // 🔧 检查是否在预览模式
-          if (isPreviewMode && previewTimeMs > 0) {
+          if (hasSourceTimeline && !isPreviewMode && (
+            pendingTimelineWindowTarget !== null
+            || pendingRestoreGlobalFrameIndex !== null
+            || isPlaying
+          )) {
+            pendingTimelineWindowTarget = null
+            const targetGlobalFrame = globalFrameAtTimeMs(timelinePlaybackPositionMs)
+            scheduleTimelineRender(targetGlobalFrame, timelinePlaybackPositionMs)
+          } else if (isPreviewMode && previewTimeMs > 0) {
             // 窗口切换完成后，继续预览
-            const globalFrameIndex = Math.floor((previewTimeMs / 1000) * frameRate)
+            const globalFrameIndex = globalFrameAtTimeMs(previewTimeMs)
             const windowFrameIndex = globalFrameIndex - windowStartIndex
 
             if (windowFrameIndex >= 0 && windowFrameIndex < totalFrames) {
@@ -326,12 +434,10 @@
           }
 
           // 🆕 如果存在悬而未决的“恢复到保存位置”的请求，则优先恢复
-          if (pendingRestoreGlobalFrameIndex != null) {
+          if (!hasSourceTimeline && pendingRestoreGlobalFrameIndex != null) {
             const targetWindowFrame = pendingRestoreGlobalFrameIndex - windowStartIndex
             if (targetWindowFrame >= 0 && targetWindowFrame < data.totalFrames) {
               compositeWorker?.postMessage({ type: 'seek', data: { frameIndex: targetWindowFrame } })
-              pendingRestoreGlobalFrameIndex = null
-              pendingPreviewWindowSwitch = false
             }
           }
 
@@ -358,7 +464,7 @@
           }
 
           // 🔧 Check if new window is prepared to continue playback
-          if (shouldContinuePlayback) {
+          if (!hasSourceTimeline && shouldContinuePlayback) {
             const targetWindowFrame = continueFromGlobalFrame - windowStartIndex
             const startFrame = Math.max(0, Math.min(targetWindowFrame, data.totalFrames - 1))
             const resumeGlobalFrame = windowStartIndex + startFrame
@@ -389,21 +495,73 @@
           break
 
         case 'frame':
-          // Display composite after frame
-
-          // 如果存在挂起的恢复目标，则优先跳到目标帧，避免短暂显示错误帧（如 0 帧）
-          if (pendingRestoreGlobalFrameIndex != null) {
-            const desired = pendingRestoreGlobalFrameIndex - windowStartIndex
-            if (desired >= 0 && desired < totalFrames && data.frameIndex !== desired) {
-              compositeWorker?.postMessage({ type: 'seek', data: { frameIndex: desired } })
+          if (typeof data.requestId === 'number') {
+            const completed = completePreviewRender(timelineRenderGate, data.requestId)
+            timelineRenderGate = completed.gate
+            if (!completed.accepted) {
+              try { data.bitmap?.close?.() } catch {}
               break
             }
+            if (completed.dispatch) {
+              dispatchTimelineRender(completed.dispatch)
+              try { data.bitmap?.close?.() } catch {}
+              break
+            }
+
+            const currentClockSample = samplePreviewClock(
+              timelinePlaybackClock,
+              performance.now()
+            )
+            if (isPlaying && !shouldPresentPreviewFrame({
+              requestedPresentationTimeMs: data.presentationTimeMs,
+              currentPresentationTimeMs: currentClockSample.positionMs,
+              maxLatenessMs: MAX_TIMELINE_RENDER_LATENESS_MS
+            })) {
+              try { data.bitmap?.close?.() } catch {}
+              timelinePlaybackPositionMs = currentClockSample.positionMs
+              const currentGlobalFrame = globalFrameAtTimeMs(currentClockSample.positionMs)
+              scheduleTimelineRender(currentGlobalFrame, currentClockSample.positionMs)
+              break
+            }
+
+            if (!isCropMode) {
+              displayFrame(data.bitmap, data.frameIndex, data.timestamp, data.presentationTimeMs)
+              pendingRestoreGlobalFrameIndex = null
+              pendingTimelineWindowTarget = null
+              pendingPreviewWindowSwitch = false
+            } else {
+              try { data.bitmap?.close?.() } catch {}
+            }
+            break
+          }
+
+          // Display composite after frame. A pending seek is committed only after
+          // its exact global frame arrives; transient/stale window frames stay hidden.
+          const frameWindowStartIndex = data.windowStartFrameIndex ?? windowStartIndex
+          const pendingFrameDecision = decidePendingTimelineFrame({
+            targetGlobalFrame: pendingRestoreGlobalFrameIndex,
+            frameWindowStartIndex,
+            frameIndex: data.frameIndex,
+            windowFrameCount: totalFrames
+          })
+          if (pendingFrameDecision.action === 'suppress' || pendingFrameDecision.action === 'target-outside-window') {
+            try {
+              data.bitmap.close()
+            } catch (e) {
+              console.warn('⚠️ [VideoPreview] Failed to close suppressed pending-seek bitmap:', e)
+            }
+            if (pendingFrameDecision.action === 'suppress') {
+              compositeWorker?.postMessage({
+                type: 'seek',
+                data: { frameIndex: pendingFrameDecision.targetLocalFrame }
+              })
+            }
+            break
           }
 
           // 🔧 关键修复：只在非裁剪模式下显示帧
           if (!isCropMode) {
-            const frameWindowStartIndex = data.windowStartFrameIndex ?? windowStartIndex
-            const displayedGlobalFrame = frameWindowStartIndex + data.frameIndex
+            const displayedGlobalFrame = pendingFrameDecision.displayedGlobalFrame
             const shouldSuppressForCutover = cutoverDisplayGateTargetGlobalFrame != null
               && displayedGlobalFrame < cutoverDisplayGateTargetGlobalFrame
 
@@ -420,7 +578,11 @@
               cutoverDisplayGateTargetGlobalFrame = null
             }
 
-            displayFrame(data.bitmap, data.frameIndex, data.timestamp)
+            displayFrame(data.bitmap, data.frameIndex, data.timestamp, data.presentationTimeMs)
+            if (pendingFrameDecision.action === 'display-target') {
+              pendingRestoreGlobalFrameIndex = null
+              pendingTimelineWindowTarget = null
+            }
             pendingPreviewWindowSwitch = false
           } else {
             try {
@@ -428,6 +590,34 @@
             } catch (e) {
               console.warn('⚠️ [VideoPreview] Failed to close bitmap:', e)
             }
+          }
+          break
+
+        case 'renderUnavailable':
+          if (typeof data.requestId === 'number') {
+            const failed = failPreviewRender(timelineRenderGate, data.requestId)
+            timelineRenderGate = failed.gate
+            if (!failed.accepted) break
+
+            // A decoded-window miss must never leave the display clock running
+            // behind a permanently occupied render gate. Ask the reader for a
+            // fresh keyframe-aligned window around the newest desired frame.
+            const desired = failed.dispatch ?? {
+              windowGeneration,
+              sourceFrameIndex: data.frameIndex ?? 0,
+              presentationTimeMs: data.presentationTimeMs ?? timelinePlaybackPositionMs,
+              requestId: data.requestId
+            }
+            const targetGlobalFrame = globalFrameAtTimeMs(desired.presentationTimeMs)
+            timelineRenderGate = resetPreviewRenderGate(timelineRenderGate, windowGeneration)
+            pendingTimelineWindowTarget = targetGlobalFrame
+            pendingPreviewWindowSwitch = true
+            pendingRestoreGlobalFrameIndex = targetGlobalFrame
+            onRequestWindow?.({
+              centerMs: timeMsAtGlobalFrame(targetGlobalFrame),
+              beforeMs: 1_500,
+              afterMs: 2_500
+            })
           }
           break
 
@@ -447,6 +637,11 @@
           // Record latest buffer level
           lastBufferLevel = data.level as any
 
+          // Source-timeline playback has its own display-clock prefetch path.
+          // The legacy eager append path assumes a non-overlapping next window;
+          // keyframe-aligned reader ranges can overlap and corrupt its indices.
+          if (hasSourceTimeline) break
+
           // If already prefetch cache and current level is low/critical, then priority append background decode (avoid health period waste)
           if (
             (data.level === 'low' || data.level === 'critical') &&
@@ -463,7 +658,11 @@
               const appendedTransfers = appendedChunks.map((c: any) => c.data as ArrayBuffer)
               compositeWorker.postMessage({
                 type: 'appendWindow',
-                data: { chunks: appendedChunks, startGlobalFrame: prefetchCache.targetGlobalFrame }
+                data: {
+                  chunks: appendedChunks,
+                  startGlobalFrame: prefetchCache.targetGlobalFrame,
+                  windowGeneration
+                }
               }, { transfer: appendedTransfers as unknown as Transferable[] })
               lastAppendedStartFrame = prefetchCache.targetGlobalFrame
               console.log('➕ [prefetch] appendWindow dispatched (reuse cache) for start:', lastAppendedStartFrame, 'chunks:', appendedChunks.length)
@@ -511,8 +710,9 @@
                 ;(async () => {
                   try {
                     console.time('[prefetch] build')
-                    const centerMs = (prefetchPlan.nextGlobalFrame / frameRate) * 1000
-                    const afterMs = (prefetchPlan.windowSize / frameRate) * 1000
+                    const centerMs = timeMsAtGlobalFrame(prefetchPlan.nextGlobalFrame)
+                    const prefetchEndFrame = Math.min(totalFramesAll - 1, prefetchPlan.nextGlobalFrame + prefetchPlan.windowSize)
+                    const afterMs = Math.max(0, timeMsAtGlobalFrame(prefetchEndFrame) - centerMs)
                     console.log('[prefetch] Building cache for plan:', { centerMs, afterMs, plan: prefetchPlan })
                     const res = await fetchWindowData({ centerMs, beforeMs: 0, afterMs })
                     const rawChunks = Array.isArray(res?.chunks) ? res.chunks : []
@@ -533,7 +733,8 @@
                       targetGlobalFrame: (res?.windowStartIndex ?? prefetchPlan.nextGlobalFrame),
                       windowSize: tChunks.length,
                       transferableChunks: tChunks,
-                      transferObjects: tChunks.map((c: any) => c.data as ArrayBuffer)
+                      transferObjects: tChunks.map((c: any) => c.data as ArrayBuffer),
+                      decodedReady: false
                     }
                     console.timeEnd('[prefetch] build')
                     console.log('[prefetch] Cache ready for start:', prefetchCache?.targetGlobalFrame, 'size:', prefetchCache?.windowSize)
@@ -554,7 +755,11 @@
                         const appendedTransfers = appendedChunks.map((c: any) => c.data as ArrayBuffer)
                         compositeWorker.postMessage({
                           type: 'appendWindow',
-                          data: { chunks: appendedChunks, startGlobalFrame: prefetchCache.targetGlobalFrame }
+                          data: {
+                            chunks: appendedChunks,
+                            startGlobalFrame: prefetchCache.targetGlobalFrame,
+                            windowGeneration
+                          }
                         }, { transfer: appendedTransfers as unknown as Transferable[] })
                         lastAppendedStartFrame = prefetchCache.targetGlobalFrame
                         console.log('➕ [prefetch] appendWindow dispatched for start:', lastAppendedStartFrame, 'chunks:', appendedChunks.length)
@@ -570,6 +775,16 @@
                 })()
               }
             }
+          }
+          break
+
+        case 'prefetchReady':
+          if (
+            prefetchCache
+            && data.startGlobalFrame === prefetchCache.targetGlobalFrame
+            && data.totalFrames === prefetchCache.windowSize
+          ) {
+            prefetchCache.decodedReady = true
           }
           break
 
@@ -624,6 +839,7 @@
         case 'error':
           console.error('❌ [VideoPreview] Worker error:', data)
           isProcessing = false
+          onLoadError?.('STUDIO_PREVIEW_WORKER_ERROR')
           break
 
         default:
@@ -634,6 +850,13 @@
     compositeWorker.onerror = (error) => {
       console.error('❌ [VideoPreview] Worker error:', error)
       isProcessing = false
+      onLoadError?.('STUDIO_PREVIEW_WORKER_ERROR')
+    }
+
+    compositeWorker.onmessageerror = (error) => {
+      console.error('❌ [VideoPreview] Worker message error:', error)
+      isProcessing = false
+      onLoadError?.('STUDIO_PREVIEW_MESSAGE_ERROR')
     }
 
     // Initialize Worker
@@ -641,19 +864,12 @@
   }
 
   // Display frame (core display logic)
-  function displayFrame(bitmap: ImageBitmap, frameIndex?: number, timestamp?: number) {
-    console.log('📀 [VideoPreview] displayFrame called:', {
-      frameIndex,
-      timestamp,
-      hasBitmap: !!bitmap,
-      bitmapWidth: bitmap.width,
-      bitmapHeight: bitmap.height,
-      hasBitmapCtx: !!bitmapCtx,
-      hasCanvas: !!canvas,
-      canvasWidth: canvas?.width,
-      canvasHeight: canvas?.height
-    })
-
+  function displayFrame(
+    bitmap: ImageBitmap,
+    frameIndex?: number,
+    timestamp?: number,
+    presentationTimeMs?: number
+  ) {
     if (!bitmapCtx) {
       console.error('❌ [VideoPreview] Bitmap context not available', {
         hasCanvas: !!canvas,
@@ -668,9 +884,8 @@
 
     try {
       // Efficiently display ImageBitmap
-      console.log('🎨 [VideoPreview] Transferring bitmap to canvas...')
       bitmapCtx.transferFromImageBitmap(bitmap)
-      console.log('✅ [VideoPreview] Frame displayed successfully:', frameIndex)
+      onFirstFrameVisible?.()
 
       // Update playback state only when a valid frameIndex is provided (i.e., not in hover preview)
       if (typeof frameIndex === 'number') {
@@ -678,7 +893,22 @@
         // Bind this frame to corresponding window start point, stable display/log of global frame
         lastFrameWindowStartIndex = windowStartIndex
         // Use global frame index calculation relative video start time, avoid absolute timestamp (like epoch/us) causing huge value
-        currentTime = (lastFrameWindowStartIndex + frameIndex) / frameRate
+        const renderedGlobalFrame = lastFrameWindowStartIndex + frameIndex
+        currentTime = Number.isFinite(presentationTimeMs)
+          ? Math.max(0, presentationTimeMs!) / 1000
+          : timeMsAtGlobalFrame(renderedGlobalFrame) / 1000
+        if (hasSourceTimeline) {
+          timelineLastRenderedGlobalFrame = renderedGlobalFrame
+          if (Number.isFinite(presentationTimeMs)) {
+            timelinePlaybackPositionMs = Math.max(0, Math.min(presentationTimeMs!, durationMs))
+          } else if (!isPlaying && !isPreviewMode) {
+            timelinePlaybackPositionMs = resolveDisplayedTimelinePosition({
+              sourceTimestampsMs: timelineTimestampsMs,
+              requestedTimeMs: timelinePlaybackPositionMs,
+              renderedFrameIndex: renderedGlobalFrame
+            })
+          }
+        }
 
         // 🔧 裁剪检查：如果启用了裁剪且到达裁剪终点，自动停止播放
         if (trimStore.enabled && isPlaying) {
@@ -698,11 +928,12 @@
       // }
     } catch (error) {
       console.error('❌ [VideoPreview] Display error:', error)
+      onLoadError?.('STUDIO_PREVIEW_DISPLAY_FAILED')
     }
   }
 
   // Handle video data
-  async function processVideo() {
+  async function processVideo(processingGeneration = windowGeneration) {
     if (!compositeWorker || !encodedChunks.length) {
       console.warn('⚠️ [VideoPreview] Cannot process: missing worker or chunks')
       return
@@ -722,6 +953,7 @@
       } else {
         console.error('❌ [VideoPreview] Cannot fix chunk format, aborting')
         isProcessing = false
+        reportPreviewLoadFailure(onLoadError, 'invalid-chunks')
         return
       }
     }
@@ -776,6 +1008,13 @@
     }
 
     console.log('📤 [VideoPreview] Prepared', transferableChunks.length, 'transferable chunks', usingPrefetchCache ? '(from cache)' : '')
+
+    if (transferableChunks.length === 0) {
+      console.error('❌ [VideoPreview] No valid transferable chunks, aborting')
+      isProcessing = false
+      reportPreviewLoadFailure(onLoadError, 'invalid-chunks')
+      return
+    }
 
     // Debug: check first data chunk size information
     if (transferableChunks.length > 0) {
@@ -931,6 +1170,7 @@
         chunks: transferableChunks,
         backgroundConfig: plainBackgroundConfig,
         startGlobalFrame: windowStartIndex,
+        windowGeneration: processingGeneration,
         frameRate: frameRate  // 🆕 传递帧率
       }
     }, { transfer: transferObjects })
@@ -1042,8 +1282,229 @@
   }
 
   // Playback control
+  function cancelStaticHoldPlayback() {
+    if (staticHoldRafId !== null) cancelAnimationFrame(staticHoldRafId)
+    staticHoldRafId = null
+    staticHoldLastTickMs = null
+  }
+
+  function tickStaticHoldPlayback(nowMs: number) {
+    if (!isPlaying || !staticHoldPlan) {
+      cancelStaticHoldPlayback()
+      return
+    }
+
+    const previousTickMs = staticHoldLastTickMs ?? nowMs
+    staticHoldLastTickMs = nowMs
+    const next = advanceStaticHold({
+      positionMs: staticHoldPositionMs,
+      elapsedMs: nowMs - previousTickMs,
+      durationMs: staticHoldPlan.durationMs
+    })
+    staticHoldPositionMs = next.positionMs
+
+    if (next.ended) {
+      isPlaying = false
+      cancelStaticHoldPlayback()
+      return
+    }
+    staticHoldRafId = requestAnimationFrame(tickStaticHoldPlayback)
+  }
+
+  function cancelTimelinePlayback() {
+    if (timelinePlaybackRafId !== null) cancelAnimationFrame(timelinePlaybackRafId)
+    timelinePlaybackRafId = null
+  }
+
+  function dispatchTimelineRender(request: PreviewRenderRequest) {
+    compositeWorker?.postMessage({
+      type: 'renderAtTime',
+      data: {
+        frameIndex: request.sourceFrameIndex,
+        presentationTimeMs: request.presentationTimeMs,
+        requestId: request.requestId,
+        windowGeneration: request.windowGeneration
+      }
+    })
+  }
+
+  async function maybePrefetchTimeline(positionMs: number) {
+    if (!fetchWindowData || isBuildingPrefetch || totalFrames <= 0) return
+
+    const nextGlobalFrame = windowStartIndex + totalFrames
+    if (nextGlobalFrame >= totalFramesAll) return
+    const timeUntilBoundaryMs = timeMsAtGlobalFrame(nextGlobalFrame) - positionMs
+    if (timeUntilBoundaryMs > 2_000) return
+    if (
+      timelinePrefetchBoundaryFrame === nextGlobalFrame
+      ||
+      prefetchCache?.targetGlobalFrame === nextGlobalFrame
+      || lastAppendedStartFrame === nextGlobalFrame
+    ) return
+
+    const requestedGeneration = windowGeneration
+    const requestedWindowStart = windowStartIndex
+    timelinePrefetchBoundaryFrame = nextGlobalFrame
+    isBuildingPrefetch = true
+    try {
+      const prefetchEndFrame = Math.min(totalFramesAll - 1, nextGlobalFrame + 90)
+      const result = await fetchWindowData({
+        centerMs: timeMsAtGlobalFrame(nextGlobalFrame),
+        beforeMs: 0,
+        afterMs: Math.max(
+          0,
+          timeMsAtGlobalFrame(prefetchEndFrame) - timeMsAtGlobalFrame(nextGlobalFrame)
+        )
+      })
+      if (
+        requestedGeneration !== windowGeneration
+        || requestedWindowStart !== windowStartIndex
+      ) return
+
+      const transferableChunks = result.chunks.map((chunk: any) => {
+        const uint8 = DataFormatValidator.convertToUint8Array(chunk.data)
+        const data = uint8
+          ? uint8.buffer.slice(uint8.byteOffset, uint8.byteOffset + uint8.byteLength)
+          : chunk.data as ArrayBuffer
+        return {
+          ...chunk,
+          data
+        }
+      })
+      const cacheWindow = createTimelinePrefetchWindow({
+        requestedGlobalFrame: nextGlobalFrame,
+        returnedStartGlobalFrame: result.windowStartIndex,
+        returnedFrameCount: transferableChunks.length
+      })
+      if (!cacheWindow) {
+        timelinePrefetchBoundaryFrame = null
+        return
+      }
+      prefetchCache = {
+        targetGlobalFrame: cacheWindow.targetGlobalFrame,
+        windowSize: cacheWindow.windowSize,
+        transferableChunks: transferableChunks.slice(cacheWindow.retainOffset),
+        transferObjects: transferableChunks
+          .slice(cacheWindow.retainOffset)
+          .map((chunk: any) => chunk.data as ArrayBuffer),
+        decodedReady: false
+      }
+
+      const decodeChunks = transferableChunks.map((chunk: any) => ({
+        ...chunk,
+        data: (chunk.data as ArrayBuffer).slice(0)
+      }))
+      compositeWorker?.postMessage({
+        type: 'appendWindow',
+        data: {
+          chunks: decodeChunks,
+          startGlobalFrame: cacheWindow.decodeStartGlobalFrame,
+          retainStartGlobalFrame: cacheWindow.targetGlobalFrame,
+          retainedFrameCount: cacheWindow.windowSize,
+          windowGeneration: requestedGeneration
+        }
+      }, { transfer: decodeChunks.map((chunk: any) => chunk.data as ArrayBuffer) })
+      lastAppendedStartFrame = cacheWindow.targetGlobalFrame
+    } catch (error) {
+      timelinePrefetchBoundaryFrame = null
+      console.warn('[VideoPreview] Timeline prefetch failed:', error)
+    } finally {
+      isBuildingPrefetch = false
+    }
+  }
+
+  function scheduleTimelineRender(globalFrameIndex: number, presentationTimeMs: number) {
+    if (!compositeWorker) return
+
+    const target = decidePreviewTarget({
+      targetGlobalFrame: globalFrameIndex,
+      windowStartIndex,
+      windowFrameCount: totalFrames,
+      pendingWindowTarget: pendingTimelineWindowTarget
+    })
+
+    if (target.action === 'render') {
+      pendingTimelineWindowTarget = null
+      const queued = queuePreviewRender(timelineRenderGate, {
+        windowGeneration,
+        sourceFrameIndex: target.localFrameIndex,
+        presentationTimeMs
+      })
+      timelineRenderGate = queued.gate
+      if (queued.dispatch) dispatchTimelineRender(queued.dispatch)
+      return
+    }
+
+    if (target.action === 'request-window') {
+      pendingTimelineWindowTarget = target.targetGlobalFrame
+      pendingPreviewWindowSwitch = true
+      pendingRestoreGlobalFrameIndex = target.targetGlobalFrame
+      const readyPrefetch = prefetchCache
+        && prefetchCache.decodedReady
+        && target.targetGlobalFrame >= prefetchCache.targetGlobalFrame
+        && target.targetGlobalFrame < prefetchCache.targetGlobalFrame + prefetchCache.windowSize
+        ? {
+            chunks: prefetchCache.transferableChunks,
+            windowStartIndex: prefetchCache.targetGlobalFrame
+          }
+        : undefined
+      onRequestWindow?.({
+        centerMs: timeMsAtGlobalFrame(target.targetGlobalFrame),
+        beforeMs: 1_500,
+        afterMs: 2_500,
+        prefetchedWindow: readyPrefetch
+      })
+    }
+  }
+
+  function tickTimelinePlayback(nowMs: number) {
+    if (!isPlaying || !hasSourceTimeline) {
+      cancelTimelinePlayback()
+      return
+    }
+
+    const clockSample = samplePreviewClock(timelinePlaybackClock, nowMs)
+    timelinePlaybackPositionMs = clockSample.positionMs
+    const targetGlobalFrame = globalFrameAtTimeMs(timelinePlaybackPositionMs)
+    timelineLastRenderedGlobalFrame = targetGlobalFrame
+    scheduleTimelineRender(targetGlobalFrame, timelinePlaybackPositionMs)
+    void maybePrefetchTimeline(timelinePlaybackPositionMs)
+
+    if (clockSample.ended) {
+      isPlaying = false
+      timelinePlaybackClock = pausePreviewClock(timelinePlaybackClock, nowMs)
+      cancelTimelinePlayback()
+      return
+    }
+    timelinePlaybackRafId = requestAnimationFrame(tickTimelinePlayback)
+  }
+
   function play() {
     if (!compositeWorker || totalFrames === 0) return
+
+    if (hasSourceTimeline && !trimStore.enabled) {
+      const nowMs = performance.now()
+      if (timelinePlaybackPositionMs >= durationMs) {
+        timelinePlaybackPositionMs = 0
+        timelinePlaybackClock = seekPreviewClock(timelinePlaybackClock, 0, nowMs)
+      }
+      cancelTimelinePlayback()
+      isPlaying = true
+      timelinePlaybackClock = playPreviewClock(timelinePlaybackClock, nowMs)
+      timelineLastRenderedGlobalFrame = globalFrameAtTimeMs(timelinePlaybackPositionMs)
+      scheduleTimelineRender(timelineLastRenderedGlobalFrame, timelinePlaybackPositionMs)
+      timelinePlaybackRafId = requestAnimationFrame(tickTimelinePlayback)
+      return
+    }
+
+    if (staticHoldPlan) {
+      if (staticHoldPositionMs >= staticHoldPlan.durationMs) staticHoldPositionMs = 0
+      cancelStaticHoldPlayback()
+      isPlaying = true
+      staticHoldLastTickMs = performance.now()
+      staticHoldRafId = requestAnimationFrame(tickStaticHoldPlayback)
+      return
+    }
 
     // 🔧 如果在预览模式，退出预览
     if (isPreviewMode) {
@@ -1112,11 +1573,31 @@
     console.log('⏸️ [VideoPreview] Pausing playback')
     isPlaying = false
 
+    if (hasSourceTimeline) {
+      timelinePlaybackClock = pausePreviewClock(timelinePlaybackClock, performance.now())
+      timelinePlaybackPositionMs = samplePreviewClock(
+        timelinePlaybackClock,
+        performance.now()
+      ).positionMs
+      cancelTimelinePlayback()
+      return
+    }
+
+    if (staticHoldPlan) {
+      cancelStaticHoldPlayback()
+      return
+    }
+
     compositeWorker.postMessage({ type: 'pause' })
   }
 
   function stop() {
     pause()
+    if (hasSourceTimeline) {
+      seekToGlobalTime(0)
+      return
+    }
+    if (staticHoldPlan) staticHoldPositionMs = 0
     seekToFrame(0)
   }
 
@@ -1133,6 +1614,14 @@
   }
 
   function seekToTime(time: number) {
+    if (hasSourceTimeline) {
+      seekToGlobalTime(time * 1000)
+      return
+    }
+    if (staticHoldPlan) {
+      staticHoldPositionMs = clampStaticHoldPosition(time * 1000, staticHoldPlan.durationMs)
+      return
+    }
     const frameIndex = Math.floor(time * frameRate)
     seekToFrame(frameIndex)
   }
@@ -1150,11 +1639,11 @@
   // 初始化 trimStore
   $effect(() => {
     if (timelineMaxMs > 0 && totalFramesAll > 0 && !hasInitializedTrim) {
-      trimStore.initialize(timelineMaxMs, frameRate, totalFramesAll)
+      untrack(() => trimStore.initialize(timelineMaxMs, frameRate, totalFramesAll))
       hasInitializedTrim = true
       console.log('✂️ [VideoPreview] Trim store initialized')
     } else if (timelineMaxMs > 0 && totalFramesAll > 0 && hasInitializedTrim) {
-      trimStore.updateParameters(timelineMaxMs, frameRate, totalFramesAll)
+      untrack(() => trimStore.updateParameters(timelineMaxMs, frameRate, totalFramesAll))
     }
   })
 
@@ -1162,12 +1651,14 @@
   // 🔧 修复：使用 lastFrameWindowStartIndex 而非 windowStartIndex
   // 避免窗口切换期间 props 更新与帧渲染不同步导致的时间跳跃
   const currentTimeMs = $derived.by(() => {
+    if (hasSourceTimeline) return Math.floor(timelinePlaybackPositionMs)
+    if (staticHoldPlan) return Math.floor(staticHoldPositionMs)
     // 🔧 预览模式下，显示保存的播放位置（蓝色播放头不动）
     if (isPreviewMode && savedPlaybackState) {
-      return Math.floor((savedPlaybackState.frameIndex) / frameRate * 1000)
+      return Math.floor(timeMsAtGlobalFrame(savedPlaybackState.frameIndex))
     }
     // 正常模式：使用 lastFrameWindowStartIndex 确保与最后渲染的帧同步
-    return Math.floor((lastFrameWindowStartIndex + currentFrameIndex) / frameRate * 1000)
+    return Math.floor(timeMsAtGlobalFrame(lastFrameWindowStartIndex + currentFrameIndex))
   })
 
   // 🆕 计算当前帧号（用于显示）
@@ -1301,6 +1792,7 @@
       data: {
         backgroundConfig: plainConfig,
         startGlobalFrame: windowStartIndex,  // 🔧 添加窗口起始帧
+        windowGeneration,
         frameRate: frameRate  // 🔧 添加帧率
       }
     }, transferObjects.length > 0 ? { transfer: transferObjects } : undefined)
@@ -1316,6 +1808,7 @@
   // 🔧 修复：追踪已处理的 chunks 引用，防止重复处理
   let processedChunksRef: any[] | null = null
   let lastChunksRef: any[] | null = null
+  let processedWindowGeneration = -1
 
   $effect(() => {
     console.log('🔍 [VideoPreview] Effect triggered:', {
@@ -1343,15 +1836,18 @@
     // Only process when recording is complete and has encoded chunks
     if (isRecordingComplete &&
         encodedChunks.length > 0 &&
-        !hasProcessed &&
+        (!hasProcessed || processedWindowGeneration !== windowGeneration) &&
         isInitialized &&
         compositeWorker) {
       console.log('🎬 [VideoPreview] Processing completed recording with', encodedChunks.length, 'chunks')
       hasProcessed = true
+      processedWindowGeneration = windowGeneration
       processedChunksRef = encodedChunks  // 🔧 标记为已处理，防止第二个 effect 重复处理
-      processVideo().catch(error => {
-        console.error('❌ [VideoPreview] Failed to process video:', error)
-      })
+      void runPreviewProcessing(
+        () => processVideo(windowGeneration),
+        onLoadError,
+        (error) => console.error('❌ [VideoPreview] Failed to process video:', error)
+      )
     }
   })
 
@@ -1363,7 +1859,7 @@
       lastChunksRef = encodedChunks
 
       // 🔧 关键修复：如果这批 chunks 已经被处理过，跳过
-      if (encodedChunks === processedChunksRef) {
+      if (encodedChunks === processedChunksRef && processedWindowGeneration === windowGeneration) {
         console.log('[progress] Skipping already processed chunks:', {
           length: encodedChunks.length,
           windowStartIndex
@@ -1403,10 +1899,13 @@
         }
 
         hasProcessed = true
+        processedWindowGeneration = windowGeneration
         processedChunksRef = encodedChunks  // 标记为已处理
-        processVideo().catch(error => {
-          console.error('❌ [VideoPreview] Failed to process new window data:', error)
-        })
+        void runPreviewProcessing(
+          () => processVideo(windowGeneration),
+          onLoadError,
+          (error) => console.error('❌ [VideoPreview] Failed to process new window data:', error)
+        )
       }
     }
   })
@@ -1480,11 +1979,12 @@
 
       // 🔧 Directly use frame range request, avoid time conversion error
       if (onRequestWindow) {
-        const nextTimeMs = (plannedNext / frameRate) * 1000
+        const nextTimeMs = timeMsAtGlobalFrame(plannedNext)
+        const nextWindowEndFrame = Math.min(totalFramesAll - 1, plannedNext + windowSize)
         onRequestWindow({
           centerMs: nextTimeMs,
           beforeMs: 0,
-          afterMs: (windowSize / frameRate) * 1000
+          afterMs: Math.max(0, timeMsAtGlobalFrame(nextWindowEndFrame) - nextTimeMs)
         })
       }
 
@@ -1515,10 +2015,11 @@
     } else {
       // Need to switch window
       console.log('[progress] Frame outside current window, requesting new window')
-      const targetTimeMs = (globalFrameIndex / frameRate) * 1000
+      const targetTimeMs = timeMsAtGlobalFrame(globalFrameIndex)
 
       // guard default ready behavior while switching
       pendingPreviewWindowSwitch = true
+      pendingRestoreGlobalFrameIndex = globalFrameIndex
       onRequestWindow?.({
         centerMs: targetTimeMs,
         beforeMs: 1500,
@@ -1528,7 +2029,23 @@
   }
 
   function seekToGlobalTime(globalTimeMs: number) {
-    const globalFrameIndex = Math.floor((globalTimeMs / 1000) * frameRate)
+    if (hasSourceTimeline) {
+      timelinePlaybackPositionMs = Math.max(0, Math.min(globalTimeMs, durationMs))
+      timelinePlaybackClock = seekPreviewClock(
+        timelinePlaybackClock,
+        timelinePlaybackPositionMs,
+        performance.now()
+      )
+      const globalFrameIndex = globalFrameAtTimeMs(timelinePlaybackPositionMs)
+      timelineLastRenderedGlobalFrame = globalFrameIndex
+      scheduleTimelineRender(globalFrameIndex, timelinePlaybackPositionMs)
+      return
+    }
+    if (staticHoldPlan) {
+      staticHoldPositionMs = clampStaticHoldPosition(globalTimeMs, staticHoldPlan.durationMs)
+      return
+    }
+    const globalFrameIndex = globalFrameAtTimeMs(globalTimeMs)
     seekToGlobalFrame(globalFrameIndex)
   }
 
@@ -1589,7 +2106,7 @@
     }
 
     // 计算预览帧索引（全局 → 窗口内）
-    const globalFrameIndex = Math.floor((timeMs / 1000) * frameRate)
+    const globalFrameIndex = globalFrameAtTimeMs(timeMs)
     const windowFrameIndex = globalFrameIndex - windowStartIndex
 
     previewTimeMs = timeMs
@@ -1623,7 +2140,7 @@
 
         // Check again if preview is still needed (mouse may have moved back into window or left)
         if (!isPreviewMode) return
-        const currentGlobalFrame = Math.floor((previewTimeMs / 1000) * frameRate)
+        const currentGlobalFrame = globalFrameAtTimeMs(previewTimeMs)
         const currentWindowFrame = currentGlobalFrame - windowStartIndex
         if (currentWindowFrame >= 0 && currentWindowFrame < totalFrames) {
           // 已经在窗口内了，直接请求预览
@@ -1676,7 +2193,7 @@
           }
         } else {
           // 🔧 Fallback: use full window switching (legacy method)
-          const targetTimeMs = (currentGlobalFrame / frameRate) * 1000
+          const targetTimeMs = timeMsAtGlobalFrame(currentGlobalFrame)
 
           // 显示加载指示器
           previewLoadingStartTime = performance.now()
@@ -1954,7 +2471,7 @@
         return
       }
       const startMs = interval.startMs
-      const globalFrameIndex = Math.floor((startMs / 1000) * frameRate)
+      const globalFrameIndex = globalFrameAtTimeMs(startMs)
       const windowFrameIndex = globalFrameIndex - windowStartIndex
 
       // 若目标帧在当前窗口内，直接请求位图
@@ -2045,13 +2562,6 @@
     }
   })
 
-  // Respond to output size changes, update preview size
-  $effect(() => {
-    if (outputWidth > 0 && outputHeight > 0) {
-      updatePreviewSize()
-    }
-  })
-
   // Component mount
   onMount(() => {
     console.log('[progress] Component mounted with props:', {
@@ -2101,6 +2611,7 @@
 
     // Cleanup function
     return () => {
+      cancelStaticHoldPlayback()
       if (compositeWorker) {
         compositeWorker.terminate()
         compositeWorker = null
@@ -2120,10 +2631,10 @@
       seekToGlobalTime,
       updateBackgroundConfig,
       getCurrentFrame: () => currentFrameIndex,
-      getCurrentTime: () => currentTime,
+      getCurrentTime: () => staticHoldPlan ? staticHoldPositionMs / 1000 : currentTime,
       getTotalFrames: () => totalFrames,
       getGlobalFrame: () => windowStartIndex + currentFrameIndex,
-      getDuration: () => duration,
+      getDuration: () => staticHoldPlan ? staticHoldPlan.sampleDurationSeconds : duration,
       isPlaying: () => isPlaying
     }
   }
@@ -2332,4 +2843,3 @@
   {/if}
 
 </div>
-
