@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Recording Performance Lab</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">RECORD → PREVIEW → WEBM EXPORT</p>
+        <h1>录制全链路性能 Lab</h1>
+        <p>确定性画面经过 WebCodecs 编码、生产 Composite Worker 逐帧预览、真实 ExportManager WebM 导出。低配场景使用软件编码偏好作为压力代理。</p>
+      </header>
+
+      <section class="toolbar">
+        <label>场景 <select id="scenario"></select></label>
+        <button id="run" type="button">运行选中场景</button>
+        <span id="environment"></span>
+      </section>
+
+      <section class="status">
+        <strong id="status">等待运行</strong>
+        <div><i id="progress"></i></div>
+      </section>
+
+      <section class="cards" id="metrics"></section>
+
+      <section class="visuals">
+        <article><h2>源画面</h2><canvas id="source" width="640" height="360"></canvas></article>
+        <article><h2>生产预览</h2><canvas id="preview" width="640" height="360"></canvas></article>
+      </section>
+
+      <section class="evidence">
+        <h2>发布判定</h2>
+        <table>
+          <thead><tr><th>阶段</th><th>实测</th><th>预算</th><th>结论</th></tr></thead>
+          <tbody id="results"></tbody>
+        </table>
+        <pre id="details"></pre>
+      </section>
+    </main>
+    <script type="module" src="./app.ts"></script>
+  </body>
+</html>

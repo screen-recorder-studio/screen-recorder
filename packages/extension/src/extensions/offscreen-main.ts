@@ -3,6 +3,8 @@
 
 import { emitJourneyEvent } from '../lib/observability/journey-events'
 import { classifyCaptureError } from '../lib/recording/capture-errors'
+import { resolveRecordingEncodePlan } from '../lib/recording/recording-encode-plan'
+import { createRecordingFrameCadence, sampleRecordingFrame } from '../lib/recording/recording-frame-cadence'
 import { RecordingDurationTracker } from '../lib/recording/recording-duration-tracker'
 import { buildTabCaptureConstraints } from '../lib/recording/tab-capture'
 import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
@@ -481,6 +483,7 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
 
   async function startRecording(options?: any, tabStreamId?: unknown): Promise<void> {
     const timestamp = new Date().toISOString()
+    let heldFirstFrame: VideoFrame | null = null
     log(`🎯 [${timestamp}] Starting recording directly in offscreen document...`, { options })
 
     // Guard against concurrent start requests
@@ -540,11 +543,12 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
         throw new Error('WebCodecs APIs not supported in this environment')
       }
 
-      // 3) Derive encoding parameters from track settings
+      // 3) Track settings are hints. The first post-countdown VideoFrame is the
+      // source-of-truth for the stable, balanced encoder plan.
       const settings = (videoTrack as any)?.getSettings?.() || {}
-      let width = settings.width || 1920
-      let height = settings.height || 1080
-      const framerate = Math.round(settings.frameRate || 30)
+      let width = 1920
+      let height = 1080
+      let framerate = Math.round(settings.frameRate || 30)
       const bitrate = options?.bitrate || 8_000_000 // 8 Mbps default
 
       // 4) Create MediaStreamTrackProcessor
@@ -565,7 +569,11 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
 
       let configuredEncoderConfig: any = null
       let resolveConfigured: (() => void) | null = null
-      const waitForConfigured = new Promise<void>((res) => { resolveConfigured = res })
+      let rejectConfigured: ((error: Error) => void) | null = null
+      const waitForConfigured = new Promise<void>((resolve, reject) => {
+        resolveConfigured = resolve
+        rejectConfigured = reject
+      })
       recordedChunks = []
       recordingStartTime = null
       recordingDurationTracker.reset()
@@ -578,7 +586,9 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
             break
           case 'configured':
             configuredEncoderConfig = config
-            try { resolveConfigured?.(); resolveConfigured = null } catch {}
+            try { resolveConfigured?.() } catch {}
+            resolveConfigured = null
+            rejectConfigured = null
             log('✅ WebCodecs worker configured:', config)
             break
           case 'chunk': {
@@ -612,6 +622,11 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
           }
           case 'error':
             log('❌ [WebCodecs Worker] error:', data)
+            if (rejectConfigured) {
+              try { rejectConfigured(createErrorWithCode(String(data), 'ENCODER_CONFIG_ERROR')) } catch {}
+              resolveConfigured = null
+              rejectConfigured = null
+            }
             try {
               emitStreamError(String(data), 'ENCODER_ERROR')
             } catch {}
@@ -670,13 +685,6 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
         }
       }
 
-      wcWorker.postMessage({ type: 'configure', config: { width, height, bitrate, framerate } })
-
-      // Wait until worker confirms configured to avoid unconfigured encode errors
-      await waitForConfigured
-      if (OPFS_WRITER_ENABLED) {
-        await initOpfsWriter({ codec: configuredEncoderConfig?.codec, width, height, framerate })
-      }
       // The capture owner also owns the countdown. Action popups are disposable
       // and may close as soon as the browser source picker takes focus.
       const COUNTDOWN_SECONDS = (typeof options?.countdown === 'number' && options.countdown >= 1 && options.countdown <= 5) ? options.countdown : 3;
@@ -700,6 +708,30 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
       // Extra guard to avoid capturing the last compositor frame of countdown window
       await new Promise((r) => setTimeout(r, 140));
 
+      // Read the first frame only after the countdown. This prevents a stale
+      // track-settings size (or a DPR-expanded tab frame) from configuring an
+      // unexpectedly large encoder and keeps OPFS metadata aligned with chunks.
+      const firstRead = await reader.read()
+      heldFirstFrame = firstRead.value ?? null
+      if (firstRead.done || !heldFirstFrame) {
+        throw createErrorWithCode('Capture ended before the first video frame', 'CAPTURE_ENDED_EARLY')
+      }
+      const firstFrameWidth = heldFirstFrame.displayWidth || heldFirstFrame.codedWidth || settings.width || 1920
+      const firstFrameHeight = heldFirstFrame.displayHeight || heldFirstFrame.codedHeight || settings.height || 1080
+      const encodePlan = resolveRecordingEncodePlan(firstFrameWidth, firstFrameHeight, settings.frameRate || 30)
+      width = encodePlan.width
+      height = encodePlan.height
+      framerate = encodePlan.framerate
+
+      wcWorker.postMessage({ type: 'configure', config: { width, height, bitrate, framerate } })
+      await waitForConfigured
+      width = configuredEncoderConfig?.width || width
+      height = configuredEncoderConfig?.height || height
+      framerate = configuredEncoderConfig?.framerate || framerate
+      if (OPFS_WRITER_ENABLED) {
+        await initOpfsWriter({ codec: configuredEncoderConfig?.codec, width, height, framerate })
+      }
+
       // 6) Start frame processing loop
       isPaused = false
       wcFrameLoopActive = true
@@ -722,41 +754,41 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
 
       let frameIndex = 0
       let lastActiveFrameTimestampUs = -1
+      let frameCadence = createRecordingFrameCadence(framerate)
       const keyEvery = Math.max(1, framerate * 2) // force keyframe every 2 seconds
+      const enqueueFrame = (frame: VideoFrame) => {
+        if (isPaused) {
+          try { frame.close() } catch {}
+          return
+        }
+        const candidateTimestampUs = Math.max(
+          lastActiveFrameTimestampUs + 1,
+          recordingDurationTracker.timestampUs(performance.now())
+        )
+        const cadenceDecision = sampleRecordingFrame(frameCadence, candidateTimestampUs)
+        frameCadence = cadenceDecision.cadence
+        if (!cadenceDecision.accept) {
+          try { frame.close() } catch {}
+          return
+        }
+
+        const keyFrame = frameIndex === 0 || (frameIndex % keyEvery === 0)
+        const activeTimestampUs = candidateTimestampUs
+        const activeTimelineFrame = new VideoFrame(frame, { timestamp: activeTimestampUs })
+        lastActiveFrameTimestampUs = activeTimestampUs
+        try { frame.close() } catch {}
+        wcWorker?.postMessage({ type: 'encode', frame: activeTimelineFrame, keyFrame }, [activeTimelineFrame])
+        frameIndex++
+      }
+
+      enqueueFrame(heldFirstFrame)
+      heldFirstFrame = null
       ;(async () => {
         try {
           while (wcFrameLoopActive) {
             const { value: frame, done } = await reader.read()
             if (done || !frame) break
-            if (isPaused) { try { frame.close() } catch {}
-              continue }
-
-            // On first frame, check actual dimensions and reconfigure encoder if needed
-            // This fixes aspect ratio distortion when track.getSettings() dimensions
-            // don't match actual VideoFrame dimensions (common in tab capture)
-            if (frameIndex === 0) {
-              const fw = (frame as any).displayWidth || (frame as any).codedWidth
-              const fh = (frame as any).displayHeight || (frame as any).codedHeight
-              if (fw && fh && (fw !== width || fh !== height)) {
-                log(`🔧 Frame dimensions (${fw}x${fh}) differ from track settings (${width}x${height}), reconfiguring encoder`)
-                width = fw
-                height = fh
-                const waitForReconfigured = new Promise<void>((resolve) => { resolveConfigured = resolve })
-                wcWorker?.postMessage({ type: 'configure', config: { width: fw, height: fh, bitrate, framerate } })
-                await waitForReconfigured
-              }
-            }
-
-            const keyFrame = frameIndex === 0 || (frameIndex % keyEvery === 0)
-            const activeTimestampUs = Math.max(
-              lastActiveFrameTimestampUs + 1,
-              recordingDurationTracker.timestampUs(performance.now())
-            )
-            const activeTimelineFrame = new VideoFrame(frame, { timestamp: activeTimestampUs })
-            lastActiveFrameTimestampUs = activeTimestampUs
-            try { frame.close() } catch {}
-            wcWorker?.postMessage({ type: 'encode', frame: activeTimelineFrame, keyFrame }, [activeTimelineFrame])
-            frameIndex++
+            enqueueFrame(frame)
           }
         } catch (err) {
           log('❌ Frame loop error:', err)
@@ -768,6 +800,10 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
       })
 
     } catch (e) {
+      if (heldFirstFrame) {
+        try { heldFirstFrame.close() } catch {}
+        heldFirstFrame = null
+      }
       log('❌ Failed to start recording:', e)
       isRecording = false
       isPaused = false

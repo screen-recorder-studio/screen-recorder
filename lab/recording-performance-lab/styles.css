@@ -1,0 +1,29 @@
+:root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #07111f; color: #dbeafe; }
+* { box-sizing: border-box; }
+body { margin: 0; background: radial-gradient(circle at top, #142846, #07111f 55%); min-height: 100vh; }
+main { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 42px 0 64px; }
+header, section { background: rgba(9, 22, 39, .88); border: 1px solid #25405f; border-radius: 18px; padding: 22px; margin-bottom: 18px; }
+h1 { margin: 4px 0 10px; font-size: clamp(28px, 5vw, 48px); }
+h2 { margin: 0 0 14px; font-size: 18px; }
+p { color: #9fb6cf; line-height: 1.55; }
+.eyebrow { margin: 0; color: #5eead4; font-size: 12px; font-weight: 800; letter-spacing: .14em; }
+.toolbar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+label { display: flex; align-items: center; gap: 8px; }
+select, button { border: 1px solid #365979; border-radius: 10px; background: #10253d; color: #e5f3ff; padding: 10px 13px; }
+button { cursor: pointer; background: #0f766e; border-color: #14b8a6; font-weight: 800; }
+button:disabled { opacity: .55; cursor: wait; }
+#environment { margin-left: auto; color: #8ba5bf; font-size: 12px; }
+.status div { height: 8px; margin-top: 12px; overflow: hidden; border-radius: 20px; background: #142d48; }
+.status i { display: block; width: 0; height: 100%; background: #2dd4bf; transition: width .2s ease; }
+.cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.cards article { padding: 16px; border-radius: 12px; background: #0d2036; border: 1px solid #244663; }
+.cards b { display: block; margin-top: 7px; font-size: 24px; color: #fff; }
+.visuals { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.visuals article { min-width: 0; }
+canvas { width: 100%; aspect-ratio: 16/9; display: block; background: #000; border-radius: 12px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 11px 8px; border-bottom: 1px solid #1d3853; }
+.pass { color: #5eead4; }
+.fail { color: #fda4af; }
+pre { white-space: pre-wrap; color: #9fb6cf; line-height: 1.5; }
+@media (max-width: 800px) { .cards { grid-template-columns: 1fr 1fr; } .visuals { grid-template-columns: 1fr; } #environment { width: 100%; } }
