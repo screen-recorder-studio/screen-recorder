@@ -104,10 +104,20 @@ export interface BackgroundConfig {
   videoZoom?: {
     enabled: boolean
     scale: number  // 放大倍数（例如 1.5）
-    transitionDurationMs: number  // 过渡时长（暂不使用）
+    transitionDurationMs: number
+    focusX?: number
+    focusY?: number
     intervals: Array<{
       startMs: number
       endMs: number
+      focusX?: number
+      focusY?: number
+      focusSpace?: 'source' | 'layout'
+      scale?: number
+      mode?: 'dolly' | 'anchor'
+      transitionDurationMs?: number
+      easing?: 'smooth' | 'linear' | 'punch'
+      syncBackground?: boolean
     }>
   }
 }

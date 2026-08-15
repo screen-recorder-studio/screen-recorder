@@ -4,6 +4,42 @@ interface ScheduledVideoSource {
   add(timestampSeconds: number, durationSeconds: number): Promise<void>
 }
 
+export type ExportCompositeRenderRequest = {
+  type: 'renderAtTime'
+  data: {
+    frameIndex: number
+    presentationTimeMs: number
+    requestId: number
+  }
+} | {
+  type: 'seek'
+  data: {
+    frameIndex: number
+  }
+}
+
+export function createExportCompositeRenderRequest(input: {
+  frameIndex: number
+  requestId: number
+  scheduleEntry?: PresentationScheduleEntry
+}): ExportCompositeRenderRequest {
+  if (input.scheduleEntry) {
+    return {
+      type: 'renderAtTime',
+      data: {
+        frameIndex: input.frameIndex,
+        presentationTimeMs: input.scheduleEntry.timestampSeconds * 1000,
+        requestId: input.requestId
+      }
+    }
+  }
+
+  return {
+    type: 'seek',
+    data: { frameIndex: input.frameIndex }
+  }
+}
+
 export function isSourceFrameInLoadedWindow(
   window: { start: number; count: number },
   sourceFrameIndex: number
@@ -16,7 +52,12 @@ export function isSourceFrameInLoadedWindow(
 
 export async function writePresentationSchedule(input: {
   schedule: readonly PresentationScheduleEntry[]
-  renderSourceFrame: (sourceFrameIndex: number) => Promise<void>
+  hasTimeVaryingEffects?: boolean
+  renderSourceFrame: (
+    sourceFrameIndex: number,
+    entry: PresentationScheduleEntry,
+    presentationTimeMs: number
+  ) => Promise<void>
   videoSource: ScheduledVideoSource
   onSampleWritten?: (writtenCount: number, entry: PresentationScheduleEntry) => void
 }): Promise<number> {
@@ -24,8 +65,12 @@ export async function writePresentationSchedule(input: {
   let writtenCount = 0
 
   for (const entry of input.schedule) {
-    if (entry.sourceFrameIndex !== renderedSourceFrameIndex) {
-      await input.renderSourceFrame(entry.sourceFrameIndex)
+    if (input.hasTimeVaryingEffects || entry.sourceFrameIndex !== renderedSourceFrameIndex) {
+      await input.renderSourceFrame(
+        entry.sourceFrameIndex,
+        entry,
+        entry.timestampSeconds * 1000
+      )
       renderedSourceFrameIndex = entry.sourceFrameIndex
     }
     await input.videoSource.add(entry.timestampSeconds, entry.durationSeconds)

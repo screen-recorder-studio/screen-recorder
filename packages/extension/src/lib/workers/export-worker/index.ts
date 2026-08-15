@@ -7,9 +7,15 @@ import { GifStrategy, type GifFrameData } from './strategies/gif'
 import { ExportCancellationController, type ActiveExportResource } from './export-cancellation-controller'
 import { buildPresentationSchedule, type PresentationScheduleEntry } from '../../recording/recording-timeline'
 import {
+  createExportCompositeRenderRequest,
   isSourceFrameInLoadedWindow,
   writePresentationSchedule
 } from '../../export/presentation-schedule-export'
+import {
+  hasUsableExportTimeline,
+  hasTimeVaryingEditEffects,
+  rebaseZoomForTrim
+} from '../../export/edit-export-parity'
 import { createStaticHoldPlan } from '../../recording/static-hold-plan'
 import { writeStaticHoldVideoSample } from '../../export/static-hold-export'
 import { H264_PROBE_CODECS, normalizeH264Dimensions } from '../../utils/h264-export-config'
@@ -81,6 +87,7 @@ let currentWindowStart = -1
 let currentWindowFrames = 0
 let lastEmittedGlobalEnd = 0
 let warnedCanvasSizeMismatch = false
+let compositeRenderRequestId = 0
 
 let isOpfsMode = false
 
@@ -164,8 +171,8 @@ function cleanupOpfsReader(): void {
 
 function getOpfsPresentationSchedule(targetFps: number): PresentationScheduleEntry[] | null {
   if (!isOpfsMode) return null
-  if (Number(opfsSummary?.timeline?.version) !== 2) return null
-  const sampleTimestampsMs = opfsSummary?.timeline?.sampleTimestampsMs
+  if (!hasUsableExportTimeline(opfsSummary?.timeline, totalOpfsFrames)) return null
+  const sampleTimestampsMs = opfsSummary.timeline.sampleTimestampsMs
   const durationMs = Number(opfsSummary?.timeline?.durationMs ?? opfsSummary?.durationMs)
   if (!Array.isArray(sampleTimestampsMs) || sampleTimestampsMs.length !== totalOpfsFrames) return null
   return buildPresentationSchedule({
@@ -177,28 +184,6 @@ function getOpfsPresentationSchedule(targetFps: number): PresentationScheduleEnt
   })
 }
 // ---- end OPFS data processing utilities ----
-
-// 调整 Zoom 区间以适配裁剪（trim）：将区间整体左移 trim.startMs 并裁剪到导出时长
-function adjustZoomForTrim(bg: any, trim?: { enabled?: boolean; startMs: number; endMs: number }) {
-  try {
-    if (!bg || !bg.videoZoom || !Array.isArray(bg.videoZoom.intervals)) return bg
-    if (!trim?.enabled) return bg
-    const start = Math.max(0, trim.startMs || 0)
-    const end = Math.max(start, trim.endMs || start)
-    const dur = Math.max(0, end - start)
-    const intervals = bg.videoZoom.intervals
-      .map((it: any) => ({ startMs: (it.startMs || 0) - start, endMs: (it.endMs || 0) - start }))
-      .map((it: any) => ({
-        startMs: Math.max(0, Math.min(it.startMs, dur)),
-        endMs: Math.max(0, Math.min(it.endMs, dur))
-      }))
-      .filter((it: any) => it.endMs > it.startMs)
-    return { ...bg, videoZoom: { ...bg.videoZoom, intervals, enabled: intervals.length > 0 } }
-  } catch {
-    return bg
-  }
-}
-
 
 // 合成状态
 let totalFrames = 0
@@ -482,10 +467,13 @@ async function handleExport(exportData: ExportData) {
     // 记录当前导出格式
     currentExportFormat = options?.format || ''
 
-    // ✂️ 将 Zoom 区间与裁剪时间对齐：平移并裁剪到导出区间
-    try {
-      (options as any).backgroundConfig = adjustZoomForTrim((options as any).backgroundConfig, (options as any).trim)
-    } catch {}
+    // The compositor evaluates an output-relative clock during export. Rebase
+    // the edit intervals without dropping interval-level focus/easing data or
+    // clamping away a transition already in progress at the trim boundary.
+    ;(options as any).backgroundConfig = rebaseZoomForTrim(
+      (options as any).backgroundConfig,
+      (options as any).trim
+    )
 
 
     // 分支：WebM 兼容路径（保持原 webm-export-worker 行为：不使用 OPFS 窗口/流式）
@@ -1385,7 +1373,10 @@ async function renderFramesForExport(videoSource: any, frameDuration: number): P
 /**
  * 请求 composite worker 渲染指定帧
  */
-async function requestCompositeFrame(frameIndex: number): Promise<void> {
+async function requestCompositeFrame(
+  frameIndex: number,
+  scheduleEntry?: PresentationScheduleEntry
+): Promise<void> {
   return new Promise((resolve, reject) => {
     if (!compositeWorker) {
       reject(new Error('Composite worker not available'))
@@ -1393,6 +1384,7 @@ async function requestCompositeFrame(frameIndex: number): Promise<void> {
     }
 
     // 设置临时消息处理器等待帧渲染完成
+    const requestId = ++compositeRenderRequestId
     const originalOnMessage = compositeWorker.onmessage
     const timeout = setTimeout(() => {
       console.error(`⏰ [MP4-Export-Worker] Frame ${frameIndex} rendering timeout (5s)`)
@@ -1403,7 +1395,10 @@ async function requestCompositeFrame(frameIndex: number): Promise<void> {
     compositeWorker.onmessage = (event) => {
       const { type, data } = event.data
 
-      if (type === 'frame' && data.frameIndex === frameIndex) {
+      const matchesScheduledRequest = scheduleEntry
+        ? data?.requestId === requestId
+        : true
+      if (type === 'frame' && data.frameIndex === frameIndex && matchesScheduledRequest) {
         // 恢复原始消息处理器
         compositeWorker!.onmessage = originalOnMessage
         clearTimeout(timeout)
@@ -1429,11 +1424,11 @@ async function requestCompositeFrame(frameIndex: number): Promise<void> {
       }
     }
 
-    // 请求渲染指定帧
-    compositeWorker.postMessage({
-      type: 'seek',
-      data: { frameIndex }
-    })
+    compositeWorker.postMessage(createExportCompositeRenderRequest({
+      frameIndex,
+      requestId,
+      scheduleEntry
+    }))
   })
 }
 
@@ -1498,6 +1493,7 @@ function cleanup() {
   processedFrames = 0
   videoInfo = null
   currentExportFormat = ''
+  compositeRenderRequestId = 0
 }
 
 // Worker 初始化检查
@@ -1531,7 +1527,10 @@ async function renderFramesForExportOpfs(videoSource: any, frameDuration: number
     let loadedWindowStart = currentWindowStart
     let loadedWindowCount = currentWindowFrames
 
-    const renderSourceFrame = async (sourceFrameIndex: number) => {
+    const renderSourceFrame = async (
+      sourceFrameIndex: number,
+      entry: PresentationScheduleEntry
+    ) => {
       const isLoaded = isSourceFrameInLoadedWindow({
         start: loadedWindowStart,
         count: loadedWindowCount
@@ -1550,12 +1549,13 @@ async function renderFramesForExportOpfs(videoSource: any, frameDuration: number
       if (localFrameIndex < 0 || localFrameIndex >= loadedWindowCount) {
         throw new Error(`OPFS timeline frame ${sourceFrameIndex} is outside the decoded window`)
       }
-      await requestCompositeFrame(localFrameIndex)
+      await requestCompositeFrame(localFrameIndex, entry)
       lastEmittedGlobalEnd = Math.max(lastEmittedGlobalEnd, sourceFrameIndex + 1)
     }
 
     return writePresentationSchedule({
       schedule: presentationSchedule,
+      hasTimeVaryingEffects: hasTimeVaryingEditEffects(options.backgroundConfig),
       renderSourceFrame,
       videoSource,
       onSampleWritten: (writtenCount) => {
@@ -2083,7 +2083,7 @@ async function streamFramesOpfs(
       }
 
       const localFrameIndex = sourceFrameIndex - loadedWindowStart
-      await requestCompositeFrame(localFrameIndex)
+      await requestCompositeFrame(localFrameIndex, entry)
       const imageData = extractCurrentFrameImageData(gifStrategy, scale)
       if (!imageData) continue
       await sendFrameToMainThread(
