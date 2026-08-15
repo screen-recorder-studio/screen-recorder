@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildPresentationSchedule,
+  countSourceFramesInRange,
   createRecordingTimeline,
   findSourceFrameAtTime,
   resolveDisplayedTimelinePosition,
@@ -70,6 +71,37 @@ describe('recording timeline', () => {
       { sourceFrameIndex: 1, timestampSeconds: 1.5, durationSeconds: 0.5 },
       { sourceFrameIndex: 2, timestampSeconds: 2, durationSeconds: 0.25 }
     ])
+  })
+
+  it('builds a trimmed CFR schedule on the original VFR timeline', () => {
+    const schedule = buildPresentationSchedule({
+      sourceTimestampsMs: [0, 5_000, 20_000],
+      durationMs: 25_000,
+      targetFps: 2,
+      startMs: 4_750,
+      endMs: 7_250
+    })
+
+    expect(schedule).toHaveLength(5)
+    expect(schedule.map((entry) => entry.sourceFrameIndex)).toEqual([0, 1, 1, 1, 1])
+    expect(schedule[0]).toEqual({
+      sourceFrameIndex: 0,
+      timestampSeconds: 0,
+      durationSeconds: 0.5
+    })
+    expect(schedule.at(-1)).toEqual({
+      sourceFrameIndex: 1,
+      timestampSeconds: 2,
+      durationSeconds: 0.5
+    })
+  })
+
+  it('counts source frames used by the half-open trim range', () => {
+    const timestamps = [0, 5_000, 20_000, 24_000]
+
+    expect(countSourceFramesInRange(timestamps, 0, 25_000)).toBe(4)
+    expect(countSourceFramesInRange(timestamps, 5_000, 20_000)).toBe(1)
+    expect(countSourceFramesInRange(timestamps, 4_750, 7_250)).toBe(2)
   })
 
   it('always starts at timestamp zero and covers a non-integral frame count', () => {

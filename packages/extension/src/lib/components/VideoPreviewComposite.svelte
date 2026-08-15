@@ -18,6 +18,7 @@
     createStaticHoldPlan
   } from '$lib/recording/static-hold-plan'
   import {
+    countSourceFramesInRange,
     findSourceFrameAtTime,
     resolveDisplayedTimelinePosition
   } from '$lib/recording/recording-timeline'
@@ -33,6 +34,7 @@
     playPreviewClock,
     queuePreviewRender,
     resetPreviewRenderGate,
+    resolvePreviewPlaybackRange,
     samplePreviewClock,
     seekPreviewClock,
     shouldPresentPreviewFrame,
@@ -911,7 +913,7 @@
         }
 
         // 🔧 裁剪检查：如果启用了裁剪且到达裁剪终点，自动停止播放
-        if (trimStore.enabled && isPlaying) {
+        if (!hasSourceTimeline && trimStore.enabled && isPlaying) {
           const currentGlobalFrame = lastFrameWindowStartIndex + frameIndex
           
           // 🔧 修复：使用帧索引比较避免时间戳精度问题
@@ -1482,12 +1484,22 @@
   function play() {
     if (!compositeWorker || totalFrames === 0) return
 
-    if (hasSourceTimeline && !trimStore.enabled) {
+    if (hasSourceTimeline) {
       const nowMs = performance.now()
-      if (timelinePlaybackPositionMs >= durationMs) {
-        timelinePlaybackPositionMs = 0
-        timelinePlaybackClock = seekPreviewClock(timelinePlaybackClock, 0, nowMs)
-      }
+      const playbackRange = resolvePreviewPlaybackRange({
+        durationMs,
+        positionMs: timelinePlaybackPositionMs,
+        trim: trimStore.enabled ? {
+          enabled: true,
+          startMs: trimStore.trimStartMs,
+          endMs: trimStore.trimEndMs
+        } : undefined
+      })
+      timelinePlaybackPositionMs = playbackRange.positionMs
+      timelinePlaybackClock = createPreviewClock({
+        durationMs: playbackRange.endMs,
+        positionMs: playbackRange.positionMs
+      })
       cancelTimelinePlayback()
       isPlaying = true
       timelinePlaybackClock = playPreviewClock(timelinePlaybackClock, nowMs)
@@ -2703,7 +2715,7 @@
           <!-- 裁剪信息 -->
           {#if trimStore.enabled}
             <span class="text-xs text-blue-400 font-semibold">
-              ✂️ {formatTimeSec(trimStore.trimDurationMs / 1000)} ({trimStore.trimFrameCount} frames)
+              ✂️ {formatTimeSec(trimStore.trimDurationMs / 1000)} ({countSourceFramesInRange(timelineTimestampsMs, trimStore.trimStartMs, trimStore.trimEndMs)} source frames)
             </span>
           {/if}
         </div>

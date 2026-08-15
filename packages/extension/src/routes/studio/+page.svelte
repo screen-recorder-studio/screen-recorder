@@ -1022,6 +1022,7 @@
           {opfsDirId}
           {sourceFps}
           sourceDurationMs={durationMs}
+          sourceTimestampsMs={timelineSampleTimestampsMs}
           licenseTier="pro-trial"
           showLicenseBadge={false}
         />

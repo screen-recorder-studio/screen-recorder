@@ -85,11 +85,11 @@ let warnedCanvasSizeMismatch = false
 let isOpfsMode = false
 
 // 裁剪参数
-let trimStartFrame = 0
-let trimEndFrame = Number.MAX_SAFE_INTEGER
+let trimStartMs = 0
+let trimEndMs = Number.MAX_SAFE_INTEGER
 let isTrimEnabled = false
 
-async function initializeOpfsReader(dirId: string, windowSize?: number, trimOptions?: { startFrame: number, endFrame: number }): Promise<void> {
+async function initializeOpfsReader(dirId: string, windowSize?: number, trimOptions?: { startMs: number, endMs: number }): Promise<void> {
   try {
 
     opfsReader = new Worker(new URL('../opfs-reader-worker.ts', import.meta.url), { type: 'module' })
@@ -105,9 +105,8 @@ async function initializeOpfsReader(dirId: string, windowSize?: number, trimOpti
     // ✂️ 应用裁剪范围
     if (trimOptions) {
       isTrimEnabled = true
-      trimStartFrame = Math.max(0, trimOptions.startFrame)
-      trimEndFrame = Math.min(totalOpfsFrames - 1, trimOptions.endFrame)
-      totalOpfsFrames = Math.max(0, trimEndFrame - trimStartFrame + 1)
+      trimStartMs = Math.max(0, trimOptions.startMs)
+      trimEndMs = Math.max(trimStartMs, trimOptions.endMs)
     }
 
     consumedGlobalFrames = 0
@@ -127,25 +126,11 @@ async function loadOpfsWindow(start: number, count: number): Promise<{ chunks: a
     throw new Error('OPFS reader not initialized')
   }
 
-  // ✂️ 应用裁剪偏移：将逻辑帧索引转换为物理帧索引
-  let physicalStart = start
-  let physicalCount = count
-
-  if (isTrimEnabled) {
-    physicalStart = trimStartFrame + start
-    // 确保不超出裁剪结束位置
-    const maxCount = Math.max(0, trimEndFrame - physicalStart + 1)
-    physicalCount = Math.min(count, maxCount)
-
-  }
-
-
-  opfsReader.postMessage({ type: 'getRange', start: physicalStart, count: physicalCount })
+  opfsReader.postMessage({ type: 'getRange', start, count })
   const range: any = await onceFromWorker(opfsReader, 'range')
 
   const chunks = range?.chunks || []
-  // 返回逻辑帧索引（相对于裁剪区间的偏移）
-  const actualStart = isTrimEnabled ? Number(range?.start ?? physicalStart) - trimStartFrame : Number(range?.start ?? start)
+  const actualStart = Number(range?.start ?? start)
   const actualCount = Number(range?.count ?? chunks.length ?? 0)
 
 
@@ -173,12 +158,12 @@ function cleanupOpfsReader(): void {
 
   // ✂️ 重置裁剪参数
   isTrimEnabled = false
-  trimStartFrame = 0
-  trimEndFrame = Number.MAX_SAFE_INTEGER
+  trimStartMs = 0
+  trimEndMs = Number.MAX_SAFE_INTEGER
 }
 
 function getOpfsPresentationSchedule(targetFps: number): PresentationScheduleEntry[] | null {
-  if (!isOpfsMode || isTrimEnabled) return null
+  if (!isOpfsMode) return null
   if (Number(opfsSummary?.timeline?.version) !== 2) return null
   const sampleTimestampsMs = opfsSummary?.timeline?.sampleTimestampsMs
   const durationMs = Number(opfsSummary?.timeline?.durationMs ?? opfsSummary?.durationMs)
@@ -186,7 +171,9 @@ function getOpfsPresentationSchedule(targetFps: number): PresentationScheduleEnt
   return buildPresentationSchedule({
     sourceTimestampsMs: sampleTimestampsMs,
     durationMs,
-    targetFps
+    targetFps,
+    startMs: isTrimEnabled ? trimStartMs : undefined,
+    endMs: isTrimEnabled ? trimEndMs : undefined
   })
 }
 // ---- end OPFS data processing utilities ----
@@ -515,8 +502,8 @@ async function handleExport(exportData: ExportData) {
       if ((options as any)?.source === 'opfs' && (options as any)?.opfsDirId) {
         // ✂️ 准备裁剪参数
         const trimOptions = options.trim?.enabled ? {
-          startFrame: options.trim.startFrame,
-          endFrame: options.trim.endFrame
+          startMs: options.trim.startMs,
+          endMs: options.trim.endMs
         } : undefined
         await initializeOpfsReader((options as any).opfsDirId, (options as any).windowSize, trimOptions)
         const { chunks: firstChunks, actualStart } = await loadOpfsWindow(0, opfsWindowSize)
@@ -552,8 +539,8 @@ async function handleExport(exportData: ExportData) {
       // 2) 处理视频合成
       if ((options as any)?.source === 'opfs' && (options as any)?.opfsDirId) {
         const trimOptions = options.trim?.enabled ? {
-          startFrame: options.trim.startFrame,
-          endFrame: options.trim.endFrame
+          startMs: options.trim.startMs,
+          endMs: options.trim.endMs
         } : undefined
         await initializeOpfsReader((options as any).opfsDirId, (options as any).windowSize, trimOptions)
         const { chunks: firstChunks, actualStart } = await loadOpfsWindow(0, opfsWindowSize)
@@ -577,8 +564,8 @@ async function handleExport(exportData: ExportData) {
     if ((options as any)?.source === 'opfs' && (options as any)?.opfsDirId) {
       // ✂️ 准备裁剪参数
       const trimOptions = options.trim?.enabled ? {
-        startFrame: options.trim.startFrame,
-        endFrame: options.trim.endFrame
+        startMs: options.trim.startMs,
+        endMs: options.trim.endMs
       } : undefined
       await initializeOpfsReader((options as any).opfsDirId, (options as any).windowSize, trimOptions)
     }
@@ -1539,9 +1526,7 @@ async function renderFramesForExportOpfs(videoSource: any, frameDuration: number
   const targetFps = Number((options as any)?.framerate) > 0
     ? Number((options as any).framerate)
     : 1 / frameDuration
-  const presentationSchedule = options.format === 'mp4'
-    ? getOpfsPresentationSchedule(targetFps)
-    : null
+  const presentationSchedule = getOpfsPresentationSchedule(targetFps)
   if (presentationSchedule) {
     let loadedWindowStart = currentWindowStart
     let loadedWindowCount = currentWindowFrames
@@ -1842,7 +1827,9 @@ async function exportToGIF(options: ExportOptions): Promise<Blob> {
   // 以源帧率为时间基，按 gif fps 抽帧，保证时间轴一致
   const sourceFps = videoInfo?.frameRate || 30
   const stride = Math.max(1, Math.round(sourceFps / fps))
-  const expectedFrames = isOpfsMode ? Math.ceil(totalOpfsFrames / stride) : Math.ceil(totalFrames / stride)
+  const gifPresentationSchedule = isOpfsMode ? getOpfsPresentationSchedule(fps) : null
+  const expectedFrames = gifPresentationSchedule?.length
+    ?? (isOpfsMode ? Math.ceil(totalOpfsFrames / stride) : Math.ceil(totalFrames / stride))
 
   // 计算输出尺寸
   const outputWidth = Math.floor(offscreenCanvas.width * scale)
@@ -1865,7 +1852,15 @@ async function exportToGIF(options: ExportOptions): Promise<Blob> {
   const frameDelay = 1000 / fps // 毫秒
 
   // 流式 GIF 编码：边解码边编码，避免将所有帧存入内存
-  const gifBlob = await streamGifEncode(gifStrategy, options, frameDelay, scale, stride, expectedFrames)
+  const gifBlob = await streamGifEncode(
+    gifStrategy,
+    options,
+    frameDelay,
+    scale,
+    stride,
+    expectedFrames,
+    gifPresentationSchedule
+  )
 
   // 清理
   gifStrategy.cleanup()
@@ -1887,7 +1882,8 @@ async function streamGifEncode(
   frameDelay: number,
   scale: number,
   stride: number,
-  expectedFrames: number
+  expectedFrames: number,
+  presentationSchedule: readonly PresentationScheduleEntry[] | null
 ): Promise<Blob> {
   // 1) 初始化主线程 GIF 编码器并等待 ready
   await initGifEncoderOnMainThread(gifStrategy.getOptions(), expectedFrames)
@@ -1895,7 +1891,14 @@ async function streamGifEncode(
   // 2) 边解码边发送帧（流式）
   let sentFrames = 0
   if (isOpfsMode) {
-    sentFrames = await streamFramesOpfs(gifStrategy, frameDelay, scale, stride, expectedFrames)
+    sentFrames = await streamFramesOpfs(
+      gifStrategy,
+      frameDelay,
+      scale,
+      stride,
+      expectedFrames,
+      presentationSchedule
+    )
   } else {
     sentFrames = await streamFramesMemory(gifStrategy, frameDelay, scale, stride, expectedFrames)
   }
@@ -2056,8 +2059,52 @@ async function streamFramesOpfs(
   frameDelay: number,
   scale: number,
   stride: number,
-  expectedFrames: number
+  expectedFrames: number,
+  presentationSchedule: readonly PresentationScheduleEntry[] | null
 ): Promise<number> {
+  if (presentationSchedule) {
+    let sentFrames = 0
+    let loadedWindowStart = currentWindowStart
+    let loadedWindowCount = currentWindowFrames
+
+    for (const entry of presentationSchedule) {
+      if (shouldCancel) break
+      const sourceFrameIndex = entry.sourceFrameIndex
+      if (!isSourceFrameInLoadedWindow({ start: loadedWindowStart, count: loadedWindowCount }, sourceFrameIndex)) {
+        const window = await loadOpfsWindow(sourceFrameIndex, opfsWindowSize)
+        if (window.actualCount <= 0 || window.chunks.length === 0) break
+        loadedWindowStart = window.actualStart
+        loadedWindowCount = window.actualCount
+        await processVideoCompositionOpfs(
+          window.chunks,
+          { backgroundConfig: currentBackgroundConfig } as any,
+          window.actualStart
+        )
+      }
+
+      const localFrameIndex = sourceFrameIndex - loadedWindowStart
+      await requestCompositeFrame(localFrameIndex)
+      const imageData = extractCurrentFrameImageData(gifStrategy, scale)
+      if (!imageData) continue
+      await sendFrameToMainThread(
+        imageData,
+        Math.max(1, entry.durationSeconds * 1000),
+        2,
+        sentFrames,
+        expectedFrames
+      )
+      sentFrames++
+      updateProgress({
+        stage: 'encoding',
+        progress: 5 + (sentFrames / expectedFrames) * 35,
+        currentFrame: sentFrames,
+        totalFrames: expectedFrames
+      })
+    }
+
+    return sentFrames
+  }
+
   let sentFrames = 0
   let nextRequestStart = 0
 

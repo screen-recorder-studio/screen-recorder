@@ -23,6 +23,7 @@
     type SourceVideoInfo
   } from './UnifiedExportDialog.svelte'
   import { extractSourceInfo, convertBackgroundConfigForExport } from '$lib/utils/export-utils'
+  import { countSourceFramesInRange } from '$lib/recording/recording-timeline'
   import { _t as t } from '$lib/utils/i18n'
 
   // License tier type
@@ -43,6 +44,8 @@
     sourceFps?: number
     /** Canonical source duration from OPFS metadata, in milliseconds. */
     sourceDurationMs?: number
+    /** Normalized source PTS values used to report VFR trim coverage. */
+    sourceTimestampsMs?: number[]
     /**
      * Current license tier for the user
      */
@@ -62,6 +65,7 @@
     className = '',
     sourceFps = 30,
     sourceDurationMs = 0,
+    sourceTimestampsMs = [],
     licenseTier = 'pro-trial',
     showLicenseBadge = true
   }: Props = $props()
@@ -87,7 +91,11 @@
   // Display total frames: prioritize trimmed frame count if enabled, otherwise use total source frames
   const displayTotalFrames = $derived.by(() => {
     if (trimStore.enabled) {
-      return Math.max(1, trimStore.trimFrameCount)
+      return Math.max(1, countSourceFramesInRange(
+        sourceTimestampsMs,
+        trimStore.trimStartMs,
+        trimStore.trimEndMs
+      ))
     }
     return totalFramesAll > 0 ? totalFramesAll : encodedChunks.length
   })
@@ -490,7 +498,7 @@
             estimatedTimeRemaining: progress.estimatedTimeRemaining || 0
           }
           // Use "current frame / display total frames" to calculate percentage, ensure consistency with 136 / 1020 frames
-          const denomWebm = displayTotalFrames || progress.totalFrames || 0
+          const denomWebm = progress.totalFrames || displayTotalFrames || 0
           const frameBasedPctWebm = denomWebm > 0 ? (progress.currentFrame / denomWebm) * 100 : progress.progress
           setProgressTarget(frameBasedPctWebm)
           scheduleProgressFieldsUpdate()
@@ -622,7 +630,7 @@
             estimatedTimeRemaining: progress.estimatedTimeRemaining || 0
           }
 
-          const denomMp4 = displayTotalFrames || progress.totalFrames || 0
+          const denomMp4 = progress.totalFrames || displayTotalFrames || 0
           const frameBasedPctMp4 = denomMp4 > 0 ? (progress.currentFrame / denomMp4) * 100 : progress.progress
           setProgressTarget(frameBasedPctMp4)
           scheduleProgressFieldsUpdate()
@@ -797,6 +805,7 @@
   onOpenDrive={openDriveFromExportError}
   sourceInfo={sourceInfo}
   sourceFps={sourceFps}
+  selectedSourceFrameCount={displayTotalFrames}
   isExporting={isExporting}
   errorMessage={exportErrorMessage}
   errorHint={exportErrorHint}

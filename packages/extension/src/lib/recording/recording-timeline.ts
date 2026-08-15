@@ -65,28 +65,63 @@ export function buildPresentationSchedule(input: {
   sourceTimestampsMs: readonly number[]
   durationMs: number
   targetFps: number
+  startMs?: number
+  endMs?: number
 }): PresentationScheduleEntry[] {
   const targetFps = requirePositiveFinite(input.targetFps, 'targetFps')
   const durationMs = requirePositiveFinite(input.durationMs, 'durationMs')
   validateNormalizedTimestamps(input.sourceTimestampsMs)
 
+  const startMs = clampFinite(input.startMs ?? 0, 0, durationMs)
+  const endMs = clampFinite(input.endMs ?? durationMs, startMs, durationMs)
+  const presentationDurationMs = requirePositiveFinite(endMs - startMs, 'presentation duration')
+
   const frameDurationMs = 1000 / targetFps
-  const targetFrameCount = Math.ceil(durationMs / frameDurationMs)
+  const targetFrameCount = Math.ceil(presentationDurationMs / frameDurationMs)
   const schedule: PresentationScheduleEntry[] = []
-  let sourceFrameIndex = 0
+  let sourceFrameIndex = findSourceFrameAtTime(input.sourceTimestampsMs, startMs)
 
   for (let targetFrameIndex = 0; targetFrameIndex < targetFrameCount; targetFrameIndex++) {
     const timestampMs = targetFrameIndex * frameDurationMs
-    sourceFrameIndex = findSourceFrameAtTime(input.sourceTimestampsMs, timestampMs, sourceFrameIndex)
+    sourceFrameIndex = findSourceFrameAtTime(
+      input.sourceTimestampsMs,
+      startMs + timestampMs,
+      sourceFrameIndex
+    )
 
     schedule.push({
       sourceFrameIndex,
       timestampSeconds: timestampMs / 1000,
-      durationSeconds: Math.min(frameDurationMs, durationMs - timestampMs) / 1000
+      durationSeconds: Math.min(frameDurationMs, presentationDurationMs - timestampMs) / 1000
     })
   }
 
   return schedule
+}
+
+export function countSourceFramesInRange(
+  sourceTimestampsMs: readonly number[],
+  startMs: number,
+  endMs: number
+): number {
+  if (sourceTimestampsMs.length === 0) return 0
+  validateNormalizedTimestamps(sourceTimestampsMs)
+  const safeStartMs = Number.isFinite(startMs) ? Math.max(0, startMs) : 0
+  const safeEndMs = Number.isFinite(endMs) ? Math.max(safeStartMs, endMs) : safeStartMs
+  if (safeEndMs <= safeStartMs) return 0
+
+  const firstIndex = findSourceFrameAtTime(sourceTimestampsMs, safeStartMs)
+  let endExclusiveIndex = sourceTimestampsMs.length
+  let lo = 0
+  let hi = sourceTimestampsMs.length
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1
+    if (sourceTimestampsMs[mid] < safeEndMs) lo = mid + 1
+    else hi = mid
+  }
+  endExclusiveIndex = lo
+  const lastIndex = Math.max(firstIndex, endExclusiveIndex - 1)
+  return Math.max(0, lastIndex - firstIndex + 1)
 }
 
 export function findSourceFrameAtTime(
@@ -155,4 +190,9 @@ function requirePositiveFinite(value: number, field: string): number {
     throw new RecordingTimelineError(`${field} must be greater than zero`)
   }
   return finite
+}
+
+function clampFinite(value: number, min: number, max: number): number {
+  const finite = Number.isFinite(value) ? value : min
+  return Math.max(min, Math.min(max, finite))
 }

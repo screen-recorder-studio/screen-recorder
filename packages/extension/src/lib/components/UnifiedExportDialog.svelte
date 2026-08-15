@@ -24,6 +24,7 @@
     onOpenDrive?: () => void
     sourceInfo: SourceVideoInfo
     sourceFps?: number
+    selectedSourceFrameCount?: number
     isExporting?: boolean
     exportProgress?: {
       stage: string
@@ -46,6 +47,7 @@
     onOpenDrive,
     sourceInfo,
     sourceFps = 30,
+    selectedSourceFrameCount,
     isExporting = false,
     exportProgress = null,
     hasBackground = false,
@@ -206,7 +208,9 @@
   const outputHeight = $derived(selectedResolution.height)
 
   const displayFrameCount = $derived(
-    trimStore.enabled ? trimStore.trimFrameCount : sourceInfo.frameCount
+    trimStore.enabled && selectedSourceFrameCount !== undefined
+      ? selectedSourceFrameCount
+      : sourceInfo.frameCount
   )
 
   const displayDuration = $derived(
@@ -254,7 +258,7 @@
   // GIF estimates
   const gifOutputWidth = $derived(Math.floor(sourceInfo.width * (gifScale / 100)))
   const gifOutputHeight = $derived(Math.floor(sourceInfo.height * (gifScale / 100)))
-  const gifEstimatedFrames = $derived(Math.ceil(displayFrameCount / Math.max(1, Math.round(sourceFps / gifFps))))
+  const gifEstimatedFrames = $derived(Math.ceil(displayDuration * gifFps))
   const gifEstimatedSize = $derived.by(() => {
     const pixels = gifOutputWidth * gifOutputHeight
     const baseSize = (pixels * gifEstimatedFrames * (21 - gifQuality)) / 1000

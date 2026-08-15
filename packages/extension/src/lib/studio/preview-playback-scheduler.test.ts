@@ -10,6 +10,7 @@ import {
   queuePreviewRender,
   failPreviewRender,
   resetPreviewRenderGate,
+  resolvePreviewPlaybackRange,
   resolvePrefetchDecodedFrame,
   resolvePreviewPresentationTimeMs,
   samplePreviewClock,
@@ -18,6 +19,20 @@ import {
 } from './preview-playback-scheduler'
 
 describe('preview playback clock', () => {
+  it('uses trim boundaries as a time-domain playback range', () => {
+    expect(resolvePreviewPlaybackRange({
+      durationMs: 89_590,
+      positionMs: 21_880,
+      trim: { enabled: true, startMs: 8_300, endMs: 21_880 }
+    })).toEqual({ startMs: 8_300, endMs: 21_880, positionMs: 8_300 })
+
+    expect(resolvePreviewPlaybackRange({
+      durationMs: 89_590,
+      positionMs: 12_000,
+      trim: { enabled: true, startMs: 8_300, endMs: 21_880 }
+    })).toEqual({ startMs: 8_300, endMs: 21_880, positionMs: 12_000 })
+  })
+
   it('advances from a monotonic anchor without accumulating frame callback drift', () => {
     const paused = createPreviewClock({ durationMs: 5_000, positionMs: 1_000 })
     const playing = playPreviewClock(paused, 10_000)

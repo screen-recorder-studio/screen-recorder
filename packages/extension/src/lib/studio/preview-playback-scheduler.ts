@@ -10,6 +10,33 @@ export interface PreviewClockSample {
   ended: boolean
 }
 
+export interface PreviewPlaybackRange {
+  startMs: number
+  endMs: number
+  positionMs: number
+}
+
+export function resolvePreviewPlaybackRange(input: {
+  durationMs: number
+  positionMs: number
+  trim?: { enabled?: boolean; startMs: number; endMs: number }
+}): PreviewPlaybackRange {
+  const durationMs = nonNegativeFinite(input.durationMs)
+  const startMs = input.trim?.enabled
+    ? clampPosition(input.trim.startMs, durationMs)
+    : 0
+  const candidateEndMs = input.trim?.enabled
+    ? clampPosition(input.trim.endMs, durationMs)
+    : durationMs
+  const endMs = Math.max(startMs, candidateEndMs)
+  const requestedPositionMs = clampPosition(input.positionMs, durationMs)
+  const positionMs = requestedPositionMs < startMs || requestedPositionMs >= endMs
+    ? startMs
+    : requestedPositionMs
+
+  return { startMs, endMs, positionMs }
+}
+
 export interface PreviewRenderDesired {
   windowGeneration: number
   sourceFrameIndex: number
