@@ -4,6 +4,7 @@
 import { emitJourneyEvent } from '../lib/observability/journey-events'
 import { classifyCaptureError } from '../lib/recording/capture-errors'
 import { RecordingDurationTracker } from '../lib/recording/recording-duration-tracker'
+import { buildTabCaptureConstraints } from '../lib/recording/tab-capture'
 import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
 
 (function(){
@@ -373,7 +374,7 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
   }
 
   // 直接在 offscreen document 中获取显示媒体流
-  async function getDisplayMediaStream(mode: 'tab' | 'window' | 'screen' = 'screen'): Promise<MediaStream> {
+  async function getDisplayMediaStream(mode: 'window' | 'screen' = 'screen'): Promise<MediaStream> {
     log('🎥 Requesting display media directly in offscreen document...', { mode })
     emitJourneyEvent({
       name: 'capture.permission_requested',
@@ -393,10 +394,6 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
             displaySurface: 'window',
             selfBrowserSurface: 'exclude'
           }),
-          ...(mode === 'tab' && {
-            displaySurface: 'browser',
-            selfBrowserSurface: 'exclude'
-          })
         },
         audio: false,
         ...(mode === 'screen' && {
@@ -441,7 +438,7 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
       log('❌ Error getting display media:', { code })
 
       const messages: Record<string, string> = {
-        PERMISSION_DENIED: 'Screen sharing permission was denied',
+        PERMISSION_DENIED: 'Screen sharing was not started',
         CAPTURE_CANCELLED: 'Screen sharing was cancelled',
         CAPTURE_SOURCE_NOT_FOUND: 'No display media source was found',
         CAPTURE_NOT_SUPPORTED: 'Screen sharing is not supported in this environment',
@@ -452,7 +449,37 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
     }
   }
 
-  async function startRecording(options?: any): Promise<void> {
+  async function getTabMediaStream(streamId: unknown, includeAudio: boolean): Promise<MediaStream> {
+    log('🎥 Consuming current-tab capture stream in offscreen document...')
+    try {
+      const constraints = buildTabCaptureConstraints(
+        typeof streamId === 'string' ? streamId : '',
+        includeAudio
+      )
+      const stream = await navigator.mediaDevices.getUserMedia(constraints as any)
+      if (!stream || stream.getVideoTracks().length === 0) {
+        throw createErrorWithCode('No current-tab video track was returned', 'TAB_CAPTURE_FAILED')
+      }
+      emitJourneyEvent({
+        name: 'capture.permission_granted',
+        context: 'offscreen',
+        attributes: { mode: 'tab' }
+      })
+      return stream
+    } catch (error) {
+      const code = typeof (error as any)?.code === 'string'
+        ? (error as any).code
+        : 'TAB_CAPTURE_FAILED'
+      emitJourneyEvent({
+        name: 'capture.failed',
+        context: 'offscreen',
+        attributes: { mode: 'tab', outcome: 'failure', errorCode: code }
+      })
+      throw createErrorWithCode('Current-tab recording could not be started', code)
+    }
+  }
+
+  async function startRecording(options?: any, tabStreamId?: unknown): Promise<void> {
     const timestamp = new Date().toISOString()
     log(`🎯 [${timestamp}] Starting recording directly in offscreen document...`, { options })
 
@@ -474,11 +501,16 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
       }
 
       // 提取录制模式，默认为 screen
-      const mode = options?.mode || 'screen'
+      const mode = options?.mode === 'tab' || options?.mode === 'window' || options?.mode === 'screen'
+        ? options.mode
+        : 'screen'
       log(`📺 Recording mode: ${mode}`)
 
-      // 1) Get the media stream directly through getDisplayMedia with mode-specific options
-      const stream = await getDisplayMediaStream(mode)
+      // Current-tab capture is a no-picker tabCapture stream. Window/screen
+      // capture intentionally continue to use the system display picker.
+      const stream = mode === 'tab'
+        ? await getTabMediaStream(tabStreamId, options?.audio === true)
+        : await getDisplayMediaStream(mode)
       currentStream = stream
 
       const videoTracks = stream.getVideoTracks() || []
@@ -871,22 +903,24 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
         case 'OFFSCREEN_START_RECORDING':
         case 'start-recording-offscreen': {
           const options = msg?.payload?.options || msg?.payload
+          const tabStreamId = msg?.payload?.streamId
 
           log(`🎬 [${timestamp}] START_RECORDING request:`, {
-            options,
+            mode: options?.mode,
             currentlyRecording: isRecording,
-            message: 'Will request display media directly in offscreen'
+            captureSource: tabStreamId ? 'tabCapture' : 'displayMedia'
           })
 
-          // Start recording asynchronously - no streamId needed
           ;(async () => {
             try {
-              await startRecording(options)
+              await startRecording(options, tabStreamId)
               log(`✅ [${timestamp}] Recording started successfully`)
               try {
                 sendResponse?.({
                   ok: true,
-                  message: 'Recording started via getDisplayMedia',
+                  message: tabStreamId
+                    ? 'Recording started via tabCapture'
+                    : 'Recording started via getDisplayMedia',
                   timestamp
                 })
               } catch (e) {

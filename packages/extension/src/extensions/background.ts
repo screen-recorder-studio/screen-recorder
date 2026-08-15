@@ -9,6 +9,7 @@ import { isJourneyEventInput, type JourneyEventInput } from '../lib/observabilit
 import { createJourneyRecorder } from '../lib/observability/journey-recorder'
 import { RecordingCoordinator } from '../lib/recording/recording-coordinator'
 import { createRecordingSessionStore } from '../lib/recording/recording-session-store'
+import { requestTabCaptureStreamId, resolveTabCaptureTargetId } from '../lib/recording/tab-capture'
 
 const journeyRecorder = createJourneyRecorder(chrome.storage.session as any)
 const ownedDownloadTracker = new OwnedDownloadTracker(chrome.storage.session as any)
@@ -86,7 +87,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return false
 })
 
-const OFFSCREEN_REASONS = ['DISPLAY_MEDIA', 'WORKERS', 'BLOBS']
+const OFFSCREEN_REASONS = ['DISPLAY_MEDIA', 'USER_MEDIA', 'WORKERS', 'BLOBS']
 const OFFSCREEN_ENSURE_TIMEOUT_MS = 10_000
 const OFFSCREEN_START_TIMEOUT_MS = 45_000
 const OFFSCREEN_CONTROL_TIMEOUT_MS = 10_000
@@ -1350,7 +1351,9 @@ async function startRecordingViaOffscreen(options, operationId: string) {
 
     let targetTabId: number | null = null
     if (mode === 'tab') {
-      targetTabId = await resolveTargetTabId();
+      const invokingTabId = resolveTabCaptureTargetId(options?.targetTabId, null)
+      const fallbackTabId = invokingTabId == null ? await resolveTargetTabId() : null
+      targetTabId = resolveTabCaptureTargetId(invokingTabId, fallbackTabId)
     }
 
     // Persist the accepted operation before offscreen can emit STREAM_META or
@@ -1367,8 +1370,32 @@ async function startRecordingViaOffscreen(options, operationId: string) {
       operationId
     }
 
+    let tabStreamId: string | undefined
+    if (mode === 'tab') {
+      // Chrome's supported MV3 path is: ensure the offscreen consumer, obtain a
+      // one-time tabCapture id in the service worker, then consume it
+      // immediately with getUserMedia in the offscreen document.
+      const ensured = await ensureOffscreenDocument({
+        url: 'offscreen.html',
+        reasons: OFFSCREEN_REASONS,
+        timeoutMs: OFFSCREEN_ENSURE_TIMEOUT_MS
+      })
+      if (!ensured.success) {
+        throw createErrorWithCode(ensured.error || 'Failed to prepare background recording', 'OFFSCREEN_UNAVAILABLE')
+      }
+      tabStreamId = await requestTabCaptureStreamId(chrome.tabCapture, targetTabId)
+    }
+
     const resp = await sendToOffscreen(
-      { target: 'offscreen-doc', type: 'OFFSCREEN_START_RECORDING', payload: { options: normalizedOptions }, operationId },
+      {
+        target: 'offscreen-doc',
+        type: 'OFFSCREEN_START_RECORDING',
+        payload: {
+          options: normalizedOptions,
+          ...(tabStreamId ? { streamId: tabStreamId } : {})
+        },
+        operationId
+      },
       { url: 'offscreen.html', reasons: OFFSCREEN_REASONS, timeoutMs: OFFSCREEN_ENSURE_TIMEOUT_MS, messageTimeoutMs: OFFSCREEN_START_TIMEOUT_MS }
     )
     if (resp?.ok !== true) {
@@ -1380,6 +1407,14 @@ async function startRecordingViaOffscreen(options, operationId: string) {
       await enableTabAnnotation(targetTabId)
     }
   } catch (e) {
+    if (typeof e?.code === 'string' && e.code.startsWith('TAB_CAPTURE_')) {
+      const cause = e?.cause
+      console.warn('[TabCapture] Failed to acquire current-tab stream id', {
+        code: e.code,
+        causeName: typeof cause?.name === 'string' ? cause.name : undefined,
+        causeMessage: getErrorMessage(cause, 'No browser diagnostic was provided')
+      })
+    }
     // keep state unchanged on failure
     throw e
   }

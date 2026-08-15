@@ -113,6 +113,11 @@
     actionInProgress = 'start'
     commandError = ''
     try {
+      let targetTabId: number | undefined
+      if (selectedMode === 'tab') {
+        const [targetTab] = await chrome.tabs.query({ active: true, currentWindow: true })
+        targetTabId = targetTab?.id
+      }
       const response = await chrome.runtime.sendMessage({
         type: 'REQUEST_START_RECORDING',
         payload: {
@@ -120,7 +125,8 @@
             mode: selectedMode,
             video: true,
             audio: false,
-            countdown: countdownSeconds
+            countdown: countdownSeconds,
+            ...(targetTabId ? { targetTabId } : {})
           }
         }
       })
@@ -280,7 +286,7 @@
         <div class="grid grid-cols-2 gap-2">
           <button
             type="button"
-            class="flex items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-gray-800 disabled:opacity-60"
+            class="flex items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-gray-900 px-3 py-3 text-xs font-semibold text-white transition-colors hover:bg-gray-800 disabled:opacity-60"
             disabled={!!actionInProgress}
             onclick={togglePause}
           >
@@ -289,7 +295,7 @@
           </button>
           <button
             type="button"
-            class="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-60"
+            class="flex items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-red-600 px-3 py-3 text-xs font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-60"
             disabled={!!actionInProgress}
             onclick={stopRecording}
           >
