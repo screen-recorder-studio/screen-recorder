@@ -1,5 +1,6 @@
 // 导出管理器 - 统一处理 WebM、MP4 和 GIF 导出
 import type { ExportOptions, ExportProgress, EncodedChunk } from '$lib/types/background'
+import { createMemoryTrimExportPlan } from '$lib/export/memory-trim-export'
 import { handleGifEncodeRequest, type GifFrameData } from './gif-encoder'
 
 export class ExportCancelledError extends Error {
@@ -80,24 +81,20 @@ export class ExportManager {
       codec: chunk.codec || 'vp8'
     }))
 
-    // 🔧 裁剪处理：根据时间戳过滤帧
+    let preparedOptions: ExportOptions & { memoryChunkVisibleRange?: unknown } = {
+      ...options
+    }
+
+    // Keep decoder preroll distinct from the strict output range. In
+    // particular, do not rebase decoder PTS: the worker maps output frame zero
+    // through memoryChunkVisibleRange instead.
     if (options.trim && options.trim.enabled) {
-
-      const firstTimestamp = standardChunks[0]?.timestamp || 0
-      const trimStartTimestamp = firstTimestamp + (options.trim.startMs * 1000) // 转换为微秒
-      const trimEndTimestamp = firstTimestamp + (options.trim.endMs * 1000)
-
-      // 过滤并调整时间戳
-      standardChunks = standardChunks
-        .filter(chunk => {
-          return chunk.timestamp >= trimStartTimestamp && chunk.timestamp <= trimEndTimestamp
-        })
-        .map((chunk, index) => ({
-          ...chunk,
-          // 重新计算时间戳，使其从 0 开始
-          timestamp: chunk.timestamp - trimStartTimestamp
-        }))
-
+      const plan = createMemoryTrimExportPlan(standardChunks, options.trim)
+      standardChunks = plan.decodeChunks
+      preparedOptions = {
+        ...preparedOptions,
+        memoryChunkVisibleRange: plan.visibleRange
+      }
     }
 
     // 根据质量级别映射比特率（当用户未显式指定 bitrate 时使用）
@@ -117,7 +114,7 @@ export class ExportManager {
 
     return {
       chunks: standardChunks,
-      options: { ...defaultOptions, ...options }
+      options: { ...defaultOptions, ...preparedOptions }
     }
   }
 

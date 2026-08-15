@@ -73,3 +73,39 @@ describe('ExportManager GIF cancellation', () => {
     await expect(pending).rejects.toMatchObject({ code: 'EXPORT_CANCELLED' })
   })
 })
+
+describe('ExportManager memory trim contract', () => {
+  it('posts keyframe preroll separately from the strict visible range', async () => {
+    const manager = new ExportManager()
+    const pending = manager.exportEditedVideo(
+      [
+        { data: new Uint8Array([0]), timestamp: 0, type: 'key', size: 1 },
+        { data: new Uint8Array([1]), timestamp: 1_000_000, type: 'key', size: 1 },
+        { data: new Uint8Array([2]), timestamp: 2_000_000, type: 'delta', size: 1 },
+        { data: new Uint8Array([3]), timestamp: 3_000_000, type: 'delta', size: 1 },
+        { data: new Uint8Array([4]), timestamp: 4_000_000, type: 'key', size: 1 }
+      ],
+      {
+        format: 'mp4',
+        quality: 'high',
+        trim: { enabled: true, startMs: 2_000, endMs: 4_000 }
+      } as any
+    )
+    const worker = FakeWorker.instances[0]
+    const message = worker.messages[0] as any
+
+    expect(message.data.chunks.map((item: any) => [item.timestamp, item.type])).toEqual([
+      [1_000_000, 'key'],
+      [2_000_000, 'delta'],
+      [3_000_000, 'delta']
+    ])
+    expect(message.data.options.memoryChunkVisibleRange).toEqual({
+      visibleStartIndex: 1,
+      visibleEndExclusive: 3
+    })
+
+    manager.cancelExport()
+    worker.emit({ type: 'cancelled', data: {} })
+    await expect(pending).rejects.toMatchObject({ code: 'EXPORT_CANCELLED' })
+  })
+})

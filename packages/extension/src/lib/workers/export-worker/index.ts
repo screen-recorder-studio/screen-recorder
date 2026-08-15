@@ -18,6 +18,11 @@ import {
 } from '../../export/edit-export-parity'
 import { createStaticHoldPlan } from '../../recording/static-hold-plan'
 import { writeStaticHoldVideoSample } from '../../export/static-hold-export'
+import {
+  createMemoryExportCompositeRenderRequest,
+  getMemoryVisibleFrameCount,
+  type MemoryChunkVisibleRange
+} from '../../export/memory-trim-export'
 import { H264_PROBE_CODECS, normalizeH264Dimensions } from '../../utils/h264-export-config'
 
 import { Output, Mp4OutputFormat, BufferTarget, CanvasSource } from 'mediabunny'
@@ -189,6 +194,8 @@ function getOpfsPresentationSchedule(targetFps: number): PresentationScheduleEnt
 let totalFrames = 0
 let processedFrames = 0
 let videoInfo: { width: number, height: number, frameRate: number } | null = null
+let memoryChunkVisibleRange: MemoryChunkVisibleRange | null = null
+let memoryOutputFrameRate = 30
 
 // 创建渐变对象
 function createGradient(gradientConfig: GradientConfig, width: number, height: number): CanvasGradient | null {
@@ -641,7 +648,9 @@ async function createCompositeWorker(): Promise<void> {
             break
 
           case 'ready':
-            totalFrames = data.totalFrames
+            totalFrames = !isOpfsMode && memoryChunkVisibleRange
+              ? getMemoryVisibleFrameCount(memoryChunkVisibleRange)
+              : data.totalFrames
             if (!videoInfo) {
               videoInfo = {
                 width: data.outputSize.width,
@@ -727,6 +736,13 @@ async function processVideoComposition(chunks: EncodedChunk[], options: ExportOp
     currentBackgroundConfig = options.backgroundConfig || null
     exportBgColor = options.backgroundConfig?.color || exportBgColor
   } catch {}
+
+  memoryChunkVisibleRange = (options as ExportOptions & {
+    memoryChunkVisibleRange?: MemoryChunkVisibleRange
+  }).memoryChunkVisibleRange ?? null
+  memoryOutputFrameRate = Number(options.framerate) > 0
+    ? Number(options.framerate)
+    : 30
 
   return new Promise((resolve, reject) => {
     if (!compositeWorker) {
@@ -1385,6 +1401,19 @@ async function requestCompositeFrame(
 
     // 设置临时消息处理器等待帧渲染完成
     const requestId = ++compositeRenderRequestId
+    const compositeRequest = !isOpfsMode && memoryChunkVisibleRange
+      ? createMemoryExportCompositeRenderRequest({
+          outputFrameIndex: frameIndex,
+          outputFrameRate: memoryOutputFrameRate,
+          requestId,
+          visibleRange: memoryChunkVisibleRange
+        })
+      : createExportCompositeRenderRequest({
+          frameIndex,
+          requestId,
+          scheduleEntry
+        })
+    const decodeFrameIndex = compositeRequest.data.frameIndex
     const originalOnMessage = compositeWorker.onmessage
     const timeout = setTimeout(() => {
       console.error(`⏰ [MP4-Export-Worker] Frame ${frameIndex} rendering timeout (5s)`)
@@ -1395,10 +1424,10 @@ async function requestCompositeFrame(
     compositeWorker.onmessage = (event) => {
       const { type, data } = event.data
 
-      const matchesScheduledRequest = scheduleEntry
+      const matchesScheduledRequest = compositeRequest.type === 'renderAtTime'
         ? data?.requestId === requestId
         : true
-      if (type === 'frame' && data.frameIndex === frameIndex && matchesScheduledRequest) {
+      if (type === 'frame' && data.frameIndex === decodeFrameIndex && matchesScheduledRequest) {
         // 恢复原始消息处理器
         compositeWorker!.onmessage = originalOnMessage
         clearTimeout(timeout)
@@ -1424,11 +1453,7 @@ async function requestCompositeFrame(
       }
     }
 
-    compositeWorker.postMessage(createExportCompositeRenderRequest({
-      frameIndex,
-      requestId,
-      scheduleEntry
-    }))
+    compositeWorker.postMessage(compositeRequest)
   })
 }
 
@@ -1494,6 +1519,8 @@ function cleanup() {
   videoInfo = null
   currentExportFormat = ''
   compositeRenderRequestId = 0
+  memoryChunkVisibleRange = null
+  memoryOutputFrameRate = 30
 }
 
 // Worker 初始化检查
