@@ -10,6 +10,8 @@
 		"preview": "pnpm --filter extension preview",
 		"check": "pnpm --filter extension check",
 		"check:watch": "pnpm --filter extension check:watch",
+		"test": "pnpm --filter extension test",
+		"test:watch": "pnpm --filter extension test:watch",
 		"build:extension": "pnpm --filter extension build:extension",
 		"package:extension": "pnpm --filter extension package:extension"
 	},

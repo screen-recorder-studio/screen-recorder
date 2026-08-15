@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Recording Entry V2 Lab",
+  "version": "0.1.0",
+  "minimum_chrome_version": "116",
+  "description": "Validates disposable popup capture flows before production integration.",
+  "permissions": [
+    "activeTab",
+    "offscreen",
+    "storage",
+    "tabCapture"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Recording Entry V2 Lab",
+    "default_popup": "popup.html"
+  }
+}

@@ -198,12 +198,11 @@
         }
         if (msg?.type === 'STREAM_META' && msg?.meta) {
           if (msg.meta.preparing && typeof msg.meta.countdown === 'number') {
-            // Start countdown in control page
+            // Offscreen owns countdown lifetime; this legacy window is only a view.
             clearPreparingTimeout()
             phase = 'countdown'
             countdownValue = msg.meta.countdown
-            countdownActive = true
-            startCountdown(msg.meta.countdown)
+            countdownActive = msg.meta.countdown > 0
           }
           if (typeof msg.meta.paused === 'boolean') {
             const nextPaused = !!msg.meta.paused
@@ -283,48 +282,6 @@
     clearElapsedTimer()
   })
 
-  // Countdown timer logic
-  let countdownTimer: ReturnType<typeof setTimeout> | null = null
-
-  function beep(final = false) {
-    try {
-      const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext
-      const ctx = new Ctx()
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.type = 'sine'
-      osc.frequency.value = final ? 880 : 440
-      gain.gain.setValueAtTime(0.001, ctx.currentTime)
-      gain.gain.exponentialRampToValueAtTime(0.28, ctx.currentTime + 0.015)
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.3)
-      osc.connect(gain).connect(ctx.destination)
-      osc.start()
-      osc.stop(ctx.currentTime + 0.32)
-    } catch {}
-  }
-
-  function startCountdown(seconds: number) {
-    countdownValue = seconds
-    if (countdownTimer) clearTimeout(countdownTimer)
-    tickCountdown()
-  }
-
-  function tickCountdown() {
-    if (countdownValue <= 0) {
-      beep(true)
-      countdownActive = false
-      // Notify background that countdown is done
-      try {
-        chrome.runtime.sendMessage({ type: 'COUNTDOWN_DONE' })
-      } catch {}
-      return
-    }
-    beep()
-    countdownTimer = setTimeout(() => {
-      countdownValue -= 1
-      tickCountdown()
-    }, 1000)
-  }
   // Recording mode configuration
   const recordingModes = [
     {

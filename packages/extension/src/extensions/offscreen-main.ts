@@ -1,6 +1,11 @@
 // Enhanced Offscreen engine with MediaRecorder support
 // Complete screen recording implementation with data handling
 
+import { emitJourneyEvent } from '../lib/observability/journey-events'
+import { classifyCaptureError } from '../lib/recording/capture-errors'
+import { RecordingDurationTracker } from '../lib/recording/recording-duration-tracker'
+import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
+
 (function(){
   const log = (...args: any[]) => {
     try { console.log('[OffscreenEngine]', ...args) } catch {}
@@ -16,6 +21,8 @@
   let isRecording = false
   let isPaused = false
   let recordingStartTime: number | null = null
+  const recordingDurationTracker = new RecordingDurationTracker()
+  let activeOperationId: string | null = null
 
   // Badge elapsed timer for action button (drives BADGE_TICK for background)
   let badgeTicker: any = null
@@ -32,12 +39,12 @@
   function startBadgeTicker() {
     resetBadgeTicker()
     badgeLastStart = Date.now()
-    try { chrome.runtime?.sendMessage({ type: 'BADGE_TICK', elapsedMs: 0, source: 'offscreen' }) } catch {}
+    try { chrome.runtime?.sendMessage({ type: 'BADGE_TICK', elapsedMs: 0, source: 'offscreen', operationId: activeOperationId }) } catch {}
     badgeTicker = setInterval(() => {
       if (!isRecording) return
       const extra = (!isPaused && badgeLastStart != null) ? Date.now() - badgeLastStart : 0
       const elapsedMs = badgeAccumMs + extra
-      try { chrome.runtime?.sendMessage({ type: 'BADGE_TICK', elapsedMs, source: 'offscreen' }) } catch {}
+      try { chrome.runtime?.sendMessage({ type: 'BADGE_TICK', elapsedMs, source: 'offscreen', operationId: activeOperationId }) } catch {}
     }, 1000)
   }
 
@@ -73,6 +80,7 @@
   const opfsPendingChunks: Array<{ data: any; timestamp?: number; type?: string; codedWidth?: number; codedHeight?: number; codec?: string }> = []
   const OPFS_PENDING_CHUNKS_MAX = 500
   let opfsEndPending = false
+  let opfsPendingFinalizeDurationMs = 0
   let opfsInitPromise: Promise<void> | null = null
   let resolveOpfsInit: (() => void) | null = null
   let rejectOpfsInit: ((error: any) => void) | null = null
@@ -93,11 +101,11 @@
   }
 
   function emitStreamWarning(warning: string, code?: string) {
-    try { chrome.runtime?.sendMessage({ type: 'STREAM_WARNING', warning, code }) } catch {}
+    try { chrome.runtime?.sendMessage({ type: 'STREAM_WARNING', warning, code, operationId: activeOperationId }) } catch {}
   }
 
   function emitStreamError(error: string, code?: string) {
-    try { chrome.runtime?.sendMessage({ type: 'STREAM_ERROR', error, code }) } catch {}
+    try { chrome.runtime?.sendMessage({ type: 'STREAM_ERROR', error, code, operationId: activeOperationId }) } catch {}
   }
 
   function clearOpfsInitState() {
@@ -128,6 +136,7 @@
     opfsLastMeta = null
     opfsPendingChunks.length = 0
     opfsEndPending = false
+    opfsPendingFinalizeDurationMs = 0
     clearOpfsInitState()
   }
 
@@ -148,6 +157,7 @@
     recordedChunks = []
     isPaused = false
     recordingStartTime = null
+    recordingDurationTracker.reset()
     resetOpfsWriterState()
   }
 
@@ -164,6 +174,11 @@
     const error = createErrorWithCode(message, code)
     const wasWaitingForInit = rejectOpfsInitIfPending(error)
     log('[Offscreen][OPFS] fatal error:', payload)
+    emitJourneyEvent({
+      name: 'storage.failed',
+      context: 'offscreen',
+      attributes: { outcome: 'failure', errorCode: code }
+    })
     resetOpfsWriterState()
     if (wasWaitingForInit) return
     emitStreamError(message, code)
@@ -195,18 +210,31 @@
       const id = ensureOpfsSessionId()
       opfsWriter.onmessage = (ev: MessageEvent) => {
         const d: any = ev.data || {}
-        if (d.type === 'ready') { opfsWriterReady = true; resolveOpfsInitIfPending(); flushOpfsPendingIfReady() }
+        if (d.type === 'ready') {
+          opfsWriterReady = true
+          emitJourneyEvent({ name: 'storage.ready', context: 'offscreen' })
+          resolveOpfsInitIfPending()
+          flushOpfsPendingIfReady()
+        }
         else if (d.type === 'warning') { handleOpfsWriterWarning(d) }
         else if (d.type === 'progress') { /* light log omitted */ }
         else if (d.type === 'error') { handleOpfsWriterFatalError(d) }
         else if (d.type === 'finalized') {
+          emitJourneyEvent({ name: 'storage.finalized', context: 'offscreen', attributes: { outcome: 'success' } })
           try {
             log('[stop-share] offscreen: sending OPFS_RECORDING_READY')
-            chrome.runtime?.sendMessage({ type: 'OPFS_RECORDING_READY', id: `rec_${d?.id ?? id}`, meta: opfsLastMeta })
+            chrome.runtime?.sendMessage({
+              type: 'OPFS_RECORDING_READY',
+              id: `rec_${d?.id ?? id}`,
+              meta: opfsLastMeta,
+              operationId: activeOperationId
+            })
           } catch {}
           clearOpfsInitState()
           try { opfsWriter?.terminate() } catch {}
-          opfsWriter = null; opfsWriterReady = false; opfsSessionId = null; opfsLastMeta = null; opfsPendingChunks.length = 0; opfsEndPending = false
+          opfsWriter = null; opfsWriterReady = false; opfsSessionId = null; opfsLastMeta = null; opfsPendingChunks.length = 0; opfsEndPending = false; opfsPendingFinalizeDurationMs = 0
+          recordingDurationTracker.reset()
+          activeOperationId = null
         }
       }
       opfsWriter.postMessage({ type: 'init', id, meta: opfsLastMeta })
@@ -223,7 +251,12 @@
   function flushOpfsPendingIfReady() {
     if (!opfsWriter || !opfsWriterReady) return
     while (opfsPendingChunks.length) { const c = opfsPendingChunks.shift()!; appendToOpfsChunk(c) }
-    if (opfsEndPending) { opfsEndPending = false; void finalizeOpfsWriter() }
+    if (opfsEndPending) {
+      const durationMs = opfsPendingFinalizeDurationMs
+      opfsEndPending = false
+      opfsPendingFinalizeDurationMs = 0
+      void finalizeOpfsWriter(durationMs)
+    }
   }
 
   function appendToOpfsChunk(d: { data: any; timestamp?: number; type?: string; isKeyframe?: boolean; codedWidth?: number; codedHeight?: number; codec?: string }) {
@@ -258,19 +291,27 @@
     } catch (e) { log('[Offscreen][OPFS] append failed', e) }
   }
 
-  async function finalizeOpfsWriter() {
+  async function finalizeOpfsWriter(wallClockDurationMs = 0) {
     if (!opfsWriter) return
-    const w = opfsWriter
+    const writer = opfsWriter
+    emitJourneyEvent({ name: 'storage.finalize_started', context: 'offscreen' })
     try {
-      await new Promise<void>((resolve) => {
-        let settled = false
-        const onMsg = (ev: MessageEvent) => { const t = (ev.data || {}).type; if (t === 'finalized' || t === 'error') { if (!settled) { settled = true; try { w.removeEventListener('message', onMsg as any) } catch {}; resolve() } } }
-        try { w.addEventListener('message', onMsg as any) } catch {}
-        try { w.postMessage({ type: 'finalize' }) } catch {}
-        setTimeout(() => { if (!settled) { settled = true; try { w.removeEventListener('message', onMsg as any) } catch {}; resolve() } }, 1500)
-      })
-    } catch (e) { log('[Offscreen][OPFS] finalize failed', e) }
-    finally { try { w.terminate() } catch {}; if (opfsWriter === w) { opfsWriter = null; opfsWriterReady = false; opfsSessionId = null } }
+      await waitForOpfsFinalization(writer, 30_000, { wallClockDurationMs })
+    } catch (error) {
+      const code = typeof (error as any)?.code === 'string' ? (error as any).code : 'OPFS_FINALIZE_FAILED'
+      log('[Offscreen][OPFS] finalize failed', error)
+      if (code.startsWith('OPFS_FINALIZE_')) {
+        emitJourneyEvent({
+          name: 'storage.failed',
+          context: 'offscreen',
+          attributes: { outcome: 'failure', errorCode: code }
+        })
+        emitStreamError('Recording storage could not be finalized', code)
+      }
+    } finally {
+      try { writer.terminate() } catch {}
+      if (opfsWriter === writer) resetOpfsWriterState()
+    }
   }
 
   // ✅ Preload WebCodecs Worker for faster recording start
@@ -334,15 +375,17 @@
   // 直接在 offscreen document 中获取显示媒体流
   async function getDisplayMediaStream(mode: 'tab' | 'window' | 'screen' = 'screen'): Promise<MediaStream> {
     log('🎥 Requesting display media directly in offscreen document...', { mode })
+    emitJourneyEvent({
+      name: 'capture.permission_requested',
+      context: 'offscreen',
+      attributes: { mode }
+    })
 
     try {
-      // 根据模式配置 getDisplayMedia 选项
       const displayMediaOptions: any = {
         video: {
-          // 根据模式设置默认的显示表面类型
           ...(mode === 'screen' && {
             displaySurface: 'monitor',
-            // 优先显示屏幕选项
             monitorTypeSurfaces: 'include',
             selfBrowserSurface: 'exclude'
           }),
@@ -352,13 +395,10 @@
           }),
           ...(mode === 'tab' && {
             displaySurface: 'browser',
-            // preferCurrentTab: true,
             selfBrowserSurface: 'exclude'
           })
         },
         audio: false,
-        // 根据模式设置顶级选项
-        // ...(mode === 'tab' && { preferCurrentTab: true }),
         ...(mode === 'screen' && {
           selfBrowserSurface: 'exclude',
           monitorTypeSurfaces: 'include'
@@ -366,16 +406,18 @@
       }
 
       log('📋 Display media options:', displayMediaOptions)
-
       const stream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions)
-
-      if (!stream) {
-        throw new Error('getDisplayMedia returned null stream')
+      const videoTracks = stream?.getVideoTracks() || []
+      if (!stream || videoTracks.length === 0) {
+        throw new DOMException('No display video track was returned', 'NotFoundError')
       }
 
-      const videoTracks = stream.getVideoTracks()
       const audioTracks = stream.getAudioTracks()
-
+      emitJourneyEvent({
+        name: 'capture.permission_granted',
+        context: 'offscreen',
+        attributes: { mode }
+      })
       log('📺 Display media stream obtained successfully:', {
         id: stream.id,
         videoTracks: videoTracks.length,
@@ -383,28 +425,30 @@
         videoLabel: videoTracks[0]?.label,
         videoState: videoTracks[0]?.readyState
       })
-
       return stream
-
     } catch (error) {
-      log('❌ Error getting display media:', error)
-
-      // 提供更详细的错误信息
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          throw new Error(`User cancelled screen sharing: ${error.message}`)
-        } else if (error.name === 'NotAllowedError') {
-          throw new Error(`Permission denied for screen sharing: ${error.message}`)
-        } else if (error.name === 'NotFoundError') {
-          throw new Error(`No display media source found: ${error.message}`)
-        } else if (error.name === 'NotSupportedError') {
-          throw new Error(`getDisplayMedia not supported: ${error.message}`)
-        } else {
-          throw new Error(`getDisplayMedia failed: ${error.name} - ${error.message}`)
+      const { code } = classifyCaptureError(error)
+      const isDenied = code === 'PERMISSION_DENIED'
+      emitJourneyEvent({
+        name: isDenied ? 'capture.permission_denied' : 'capture.failed',
+        context: 'offscreen',
+        attributes: {
+          mode,
+          outcome: code === 'CAPTURE_CANCELLED' ? 'cancelled' : 'failure',
+          errorCode: code
         }
-      } else {
-        throw new Error(`Unknown error getting display media: ${error}`)
+      })
+      log('❌ Error getting display media:', { code })
+
+      const messages: Record<string, string> = {
+        PERMISSION_DENIED: 'Screen sharing permission was denied',
+        CAPTURE_CANCELLED: 'Screen sharing was cancelled',
+        CAPTURE_SOURCE_NOT_FOUND: 'No display media source was found',
+        CAPTURE_NOT_SUPPORTED: 'Screen sharing is not supported in this environment',
+        CAPTURE_INVALID_STATE: 'Screen sharing must be started from an active extension window',
+        CAPTURE_FAILED: 'Screen sharing could not be started'
       }
+      throw createErrorWithCode(messages[code] || messages.CAPTURE_FAILED, code)
     }
   }
 
@@ -418,6 +462,9 @@
       throw createErrorWithCode('Recording start already in progress', 'START_ALREADY_IN_PROGRESS')
     }
     isStarting = true
+    activeOperationId = typeof options?.operationId === 'string' && options.operationId.trim()
+      ? options.operationId
+      : null
 
     try {
       // Stop any existing recording
@@ -488,7 +535,8 @@
       let resolveConfigured: (() => void) | null = null
       const waitForConfigured = new Promise<void>((res) => { resolveConfigured = res })
       recordedChunks = []
-      recordingStartTime = Date.now()
+      recordingStartTime = null
+      recordingDurationTracker.reset()
 
       wcWorker.onmessage = (evt: MessageEvent) => {
         const { type, data, config } = (evt.data || {})
@@ -533,14 +581,14 @@
           case 'error':
             log('❌ [WebCodecs Worker] error:', data)
             try {
-              chrome.runtime.sendMessage({ type: 'STREAM_ERROR', error: String(data) })
+              emitStreamError(String(data), 'ENCODER_ERROR')
             } catch {}
             break
           case 'complete':
             try {
               log('🎞️ WebCodecs encoding complete')
               const stopTs = new Date().toISOString()
-              const duration = recordingStartTime ? Date.now() - recordingStartTime : 0
+              const duration = recordingDurationTracker.duration(performance.now())
 
               // ✅ 延迟100ms确保所有chunks到达OPFS Writer
               setTimeout(() => {
@@ -549,9 +597,10 @@
                     if (!opfsWriterReady || opfsPendingChunks.length > 0) {
                       log(`⏳ OPFS not ready or has pending chunks (${opfsPendingChunks.length}), deferring finalize`)
                       opfsEndPending = true
+                      opfsPendingFinalizeDurationMs = duration
                     } else {
                       log('✅ Finalizing OPFS writer')
-                      void finalizeOpfsWriter()
+                      void finalizeOpfsWriter(duration)
                     }
                   }
                 } catch (e) {
@@ -565,6 +614,7 @@
                 chrome.runtime.sendMessage({
                   type: 'RECORDING_COMPLETE',
                   target: 'service-worker',
+                  operationId: activeOperationId,
                   data: {
                     metadata: {
                       duration,
@@ -595,16 +645,26 @@
       if (OPFS_WRITER_ENABLED) {
         await initOpfsWriter({ codec: configuredEncoderConfig?.codec, width, height, framerate })
       }
-      // Global pre-start countdown for all modes to avoid early layout shifts and unify UX
-      // After user grants capture (stream available), open centralized countdown via background
+      // The capture owner also owns the countdown. Action popups are disposable
+      // and may close as soon as the browser source picker takes focus.
       const COUNTDOWN_SECONDS = (typeof options?.countdown === 'number' && options.countdown >= 1 && options.countdown <= 5) ? options.countdown : 3;
-      try { chrome.runtime.sendMessage({ type: 'STREAM_META', meta: { preparing: true, countdown: COUNTDOWN_SECONDS, mode } }) } catch {}
-      // Wait for unified countdown gate from background (use dynamic timeout based on configured countdown)
-      await new Promise((resolve) => {
-        const to = setTimeout(resolve, (COUNTDOWN_SECONDS + 2) * 1000);
-        function onMsg(msg: any) { if (msg?.type === 'COUNTDOWN_DONE_BROADCAST') { try { clearTimeout(to) } catch {}; try { chrome.runtime.onMessage.removeListener(onMsg) } catch {}; resolve(null); } }
-        try { chrome.runtime.onMessage.addListener(onMsg) } catch {}
-      })
+      for (let remaining = COUNTDOWN_SECONDS; remaining > 0; remaining -= 1) {
+        try {
+          chrome.runtime.sendMessage({
+            type: 'STREAM_META',
+            operationId: activeOperationId,
+            meta: { preparing: true, countdown: remaining, mode }
+          })
+        } catch {}
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+      }
+      try {
+        chrome.runtime.sendMessage({
+          type: 'STREAM_META',
+          operationId: activeOperationId,
+          meta: { preparing: true, countdown: 0, mode }
+        })
+      } catch {}
       // Extra guard to avoid capturing the last compositor frame of countdown window
       await new Promise((r) => setTimeout(r, 140));
 
@@ -612,6 +672,8 @@
       isPaused = false
       wcFrameLoopActive = true
       isRecording = true
+      recordingStartTime = Date.now()
+      recordingDurationTracker.start(performance.now())
 
       // Start badge elapsed ticker for action button
       startBadgeTicker()
@@ -620,12 +682,14 @@
       try {
         chrome.runtime.sendMessage({
           type: 'STREAM_START',
+          operationId: activeOperationId,
           mode: mode,
           metadata: { engine: 'webcodecs', width, height, framerate, bitrate, startTime: recordingStartTime }
         })
       } catch {}
 
       let frameIndex = 0
+      let lastActiveFrameTimestampUs = -1
       const keyEvery = Math.max(1, framerate * 2) // force keyframe every 2 seconds
       ;(async () => {
         try {
@@ -645,16 +709,21 @@
                 log(`🔧 Frame dimensions (${fw}x${fh}) differ from track settings (${width}x${height}), reconfiguring encoder`)
                 width = fw
                 height = fh
+                const waitForReconfigured = new Promise<void>((resolve) => { resolveConfigured = resolve })
                 wcWorker?.postMessage({ type: 'configure', config: { width: fw, height: fh, bitrate, framerate } })
-                // Drop this frame to allow reconfiguration to complete before encoding
-                // Don't increment frameIndex so the next frame is still treated as first (keyframe)
-                try { (frame as any).close() } catch {}
-                continue
+                await waitForReconfigured
               }
             }
 
             const keyFrame = frameIndex === 0 || (frameIndex % keyEvery === 0)
-            wcWorker?.postMessage({ type: 'encode', frame, keyFrame }, [frame])
+            const activeTimestampUs = Math.max(
+              lastActiveFrameTimestampUs + 1,
+              recordingDurationTracker.timestampUs(performance.now())
+            )
+            const activeTimelineFrame = new VideoFrame(frame, { timestamp: activeTimestampUs })
+            lastActiveFrameTimestampUs = activeTimestampUs
+            try { frame.close() } catch {}
+            wcWorker?.postMessage({ type: 'encode', frame: activeTimelineFrame, keyFrame }, [activeTimelineFrame])
             frameIndex++
           }
         } catch (err) {
@@ -687,6 +756,7 @@
     log('[stop-share] offscreen: stopRecordingInternal invoked')
 
     try {
+      recordingDurationTracker.stop(performance.now())
       // Stop badge ticker first so background stops updating time
       try { stopBadgeTicker() } catch {}
       // Stop WebCodecs pipeline (if active)
@@ -719,7 +789,7 @@
       // Notify service worker
       try {
         log('[stop-share] offscreen: sending STREAM_END')
-        chrome.runtime.sendMessage({ type: 'STREAM_END' })
+        chrome.runtime.sendMessage({ type: 'STREAM_END', operationId: activeOperationId })
       } catch {
         log('[stop-share] offscreen: failed to send STREAM_END')
       }
@@ -728,7 +798,7 @@
       log('❌ Error during recording cleanup:', e)
       try {
         log('[stop-share] offscreen: sending STREAM_END (error path)')
-        chrome.runtime.sendMessage({ type: 'STREAM_END' })
+        chrome.runtime.sendMessage({ type: 'STREAM_END', operationId: activeOperationId })
       } catch {
         log('[stop-share] offscreen: failed to send STREAM_END (error path)')
       }
@@ -877,11 +947,13 @@
             : !isPaused
           isPaused = desired
           if (isPaused) {
+            recordingDurationTracker.pause(performance.now())
             pauseBadgeTicker()
           } else {
+            recordingDurationTracker.resume(performance.now())
             resumeBadgeTicker()
           }
-          try { chrome.runtime.sendMessage({ type: 'STREAM_META', meta: { paused: isPaused } }) } catch {}
+          try { chrome.runtime.sendMessage({ type: 'STREAM_META', operationId: activeOperationId, meta: { paused: isPaused } }) } catch {}
           try { sendResponse?.({ ok: true, paused: isPaused }) } catch {}
           return true
         }
@@ -892,7 +964,9 @@
           try {
             const status = {
               isRecording,
+              isPaused,
               recordingStartTime,
+              operationId: activeOperationId,
               currentStreamId: currentStream?.id,
               recordedChunks: recordedChunks.length,
               timestamp
@@ -927,4 +1001,3 @@
     }
   })
 })()
-

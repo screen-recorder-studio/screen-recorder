@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Recording Entry V2 Lab</title>
+    <style>
+      :root { color-scheme: light dark; font: 13px/1.45 system-ui, sans-serif; }
+      body { box-sizing: border-box; margin: 0; min-width: 330px; padding: 16px; }
+      h1 { font-size: 16px; margin: 0 0 12px; }
+      p { margin: 8px 0; }
+      .state { background: color-mix(in srgb, CanvasText 8%, Canvas); border-radius: 8px; padding: 10px; }
+      .state strong { display: block; font-size: 15px; }
+      .buttons { display: grid; gap: 8px; margin-top: 12px; }
+      label { display: grid; gap: 4px; font-size: 12px; }
+      select { font: inherit; padding: 7px 9px; }
+      button { cursor: pointer; font: inherit; padding: 9px 12px; }
+      button.primary { font-weight: 650; }
+      button:disabled { cursor: default; opacity: .55; }
+      pre { font-size: 11px; max-height: 140px; overflow: auto; white-space: pre-wrap; }
+      .hint { color: color-mix(in srgb, CanvasText 65%, Canvas); font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <h1>Recording Entry V2 Lab</h1>
+    <div class="state" aria-live="polite">
+      <strong id="summary">Loading…</strong>
+      <span id="detail"></span>
+    </div>
+    <div class="buttons">
+      <label>
+        Display call timing
+        <select id="display-variant">
+          <option value="immediate">Immediate</option>
+          <option value="microtask">Microtask</option>
+          <option value="delay-0">Delay 0 ms</option>
+          <option value="delay-1000">Delay 1000 ms</option>
+        </select>
+      </label>
+      <button class="primary" id="display">Display picker</button>
+      <button class="primary" id="tab">Quick current tab</button>
+      <button id="stop">Stop</button>
+      <button id="reset">Reset state</button>
+    </div>
+    <p class="hint">The popup is expected to close during source selection. Reopen it to verify that capture state survives.</p>
+    <pre id="events"></pre>
+    <script src="popup.js"></script>
+  </body>
+</html>

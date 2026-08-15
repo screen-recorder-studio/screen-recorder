@@ -1,7 +1,21 @@
 // OPFS Writer Worker: stream-append encoded chunks into Origin Private File System
 // Notes:
-// - Prefer SyncAccessHandle (only available in Dedicated Worker)
-// - Fallback to createWritable() on unsupported environments (append simulated on finalize)
+// - Prefer SyncAccessHandle in this Dedicated Worker.
+// - Keep index writes incremental; never rewrite the complete JSONL history.
+
+import {
+  buildFinalMeta,
+  closeTakenResource,
+  createFallbackDataCheckpointState,
+  createSerialTaskQueue,
+  createWriterLifecycle,
+  createWriterProgressState,
+  drainIndexLines,
+  flushFallbackDataCheckpoint,
+  flushInDurabilityOrder,
+  recordWrittenChunk,
+  type WriterProgressState
+} from './opfs-writer-state'
 
 interface InitMessage {
   type: 'init'
@@ -26,7 +40,7 @@ interface AppendMessage {
 }
 
 interface FlushMessage { type: 'flush' }
-interface FinalizeMessage { type: 'finalize' }
+interface FinalizeMessage { type: 'finalize'; wallClockDurationMs?: number }
 
 interface WriterProgressEvent {
   type: 'progress'
@@ -46,22 +60,22 @@ interface FinalizedEvent { type: 'finalized'; id: string }
 let rootDir: FileSystemDirectoryHandle | null = null
 let recDir: FileSystemDirectoryHandle | null = null
 let dataHandle: FileSystemFileHandle | null = null
-let dataSyncHandle: any | null = null // FileSystemSyncAccessHandle (typed as any for TS lib compat)
-let dataOffset = 0
+let dataSyncHandle: any | null = null
+let indexSyncHandle: any | null = null
+let indexWritable: any | null = null
+let indexOffset = 0
 let pendingIndexLines: string[] = []
-let chunksWritten = 0
+let writerState: WriterProgressState = createWriterProgressState()
 let recordingId = ''
-let initialMeta: any = {}
+let initialMeta: Record<string, unknown> = {}
+let fallbackDataState = createFallbackDataCheckpointState()
+let finalMetaWritten = false
 
-// ✅ 追踪实际时间戳
-let firstTimestamp = -1
-let lastTimestamp = -1
-
-// Fallback buffers when SyncAccessHandle is unavailable; we flush to file on finalize
-let fallbackDataParts: Uint8Array[] = []
+const textEncoder = new TextEncoder()
+const writerLifecycle = createWriterLifecycle()
+const messageQueue = createSerialTaskQueue()
 
 async function ensureRoot() {
-  // @ts-ignore - navigator in Worker is available
   const nav: any = self.navigator
   if (!nav?.storage?.getDirectory) throw new Error('OPFS not available in this context')
   rootDir = await nav.storage.getDirectory()
@@ -72,187 +86,306 @@ async function ensureRecDir(id: string) {
   recDir = await (rootDir as FileSystemDirectoryHandle).getDirectoryHandle(`rec_${id}`, { create: true })
 }
 
-async function writeMeta(partial: any) {
+async function writeMeta(meta: Record<string, unknown>) {
   if (!recDir) return
-  const fh = await recDir.getFileHandle('meta.json', { create: true })
-  const writable = await (fh as any).createWritable({ keepExistingData: false })
-  const blob = new Blob([JSON.stringify(partial, null, 2)], { type: 'application/json' })
-  await writable.write(blob)
+  const fileHandle = await recDir.getFileHandle('meta.json', { create: true })
+  const writable = await (fileHandle as any).createWritable({ keepExistingData: false })
+  await writable.write(new Blob([JSON.stringify(meta, null, 2)], { type: 'application/json' }))
   await writable.close()
 }
 
-async function appendIndexLine(line: string) {
-  // Buffer in memory; write to file on flush/finalize to avoid append complexity without SyncAccessHandle
-  pendingIndexLines.push(line)
+async function openIndexFile() {
+  if (!recDir) throw new Error('recDir not ready')
+  const fileHandle = await recDir.getFileHandle('index.jsonl', { create: true })
+  indexOffset = 0
+  if (typeof (fileHandle as any).createSyncAccessHandle === 'function') {
+    indexSyncHandle = await (fileHandle as any).createSyncAccessHandle()
+    indexSyncHandle.truncate(0)
+    indexWritable = null
+  } else {
+    indexSyncHandle = null
+    indexWritable = await (fileHandle as any).createWritable({ keepExistingData: false })
+  }
+}
+
+async function appendIndexText(text: string) {
+  if (!text) return
+  const bytes = textEncoder.encode(text)
+  if (indexSyncHandle) {
+    const written = indexSyncHandle.write(bytes, { at: indexOffset })
+    if (written !== bytes.byteLength) throw new Error(`Partial index write: ${written}/${bytes.byteLength}`)
+  } else if (indexWritable) {
+    await indexWritable.write(bytes)
+  } else {
+    throw new Error('index writer not initialized')
+  }
+  indexOffset += bytes.byteLength
 }
 
 async function flushIndexToFile() {
-  if (!recDir || pendingIndexLines.length === 0) return
-  const text = pendingIndexLines.join('')
-  const fh = await recDir.getFileHandle('index.jsonl', { create: true })
-  const writable = await (fh as any).createWritable({ keepExistingData: false })
-  await writable.write(new Blob([text], { type: 'text/plain' }))
-  await writable.close()
+  const text = drainIndexLines(pendingIndexLines)
+  if (!text) return
+  try {
+    await appendIndexText(text)
+    indexSyncHandle?.flush()
+  } catch (error) {
+    pendingIndexLines.unshift(text)
+    throw error
+  }
+}
+
+async function closeIndex(flushPending = true) {
+  if (flushPending) await flushIndexToFile()
+  else pendingIndexLines = []
+
+  await closeTakenResource(
+    () => {
+      const handle = indexSyncHandle
+      indexSyncHandle = null
+      return handle
+    },
+    (handle) => {
+      try { handle.flush() } finally { handle.close() }
+    }
+  )
+
+  await closeTakenResource(
+    () => {
+      const writable = indexWritable
+      indexWritable = null
+      return writable
+    },
+    (writable) => writable.close()
+  )
 }
 
 async function openDataFile() {
   if (!recDir) throw new Error('recDir not ready')
   dataHandle = await recDir.getFileHandle('data.bin', { create: true })
-  const hasSync = typeof (dataHandle as any).createSyncAccessHandle === 'function'
-  if (hasSync) {
+  if (typeof (dataHandle as any).createSyncAccessHandle === 'function') {
     dataSyncHandle = await (dataHandle as any).createSyncAccessHandle()
-    // start at 0
-    dataOffset = 0
+    dataSyncHandle.truncate(0)
   } else {
     dataSyncHandle = null
-    dataOffset = 0
-    fallbackDataParts = []
   }
+  fallbackDataState = createFallbackDataCheckpointState()
+  writerLifecycle.markOpen()
 }
 
-async function appendData(u8: Uint8Array) {
+async function appendData(bytes: Uint8Array, offset: number) {
   if (dataSyncHandle) {
-    // SyncAccessHandle.write() is synchronous and takes Uint8Array directly
-    const written = dataSyncHandle.write(u8, { at: dataOffset })
-    dataOffset += (typeof written === 'number' ? written : u8.byteLength)
+    const written = dataSyncHandle.write(bytes, { at: offset })
+    if (written !== bytes.byteLength) throw new Error(`Partial data write: ${written}/${bytes.byteLength}`)
   } else {
-    // Fallback: keep in memory; will flush to file on finalize
-    fallbackDataParts.push(u8)
-    dataOffset += u8.byteLength
+    fallbackDataState.pendingParts.push(bytes)
   }
 }
 
 async function flushDataFallback() {
-  if (!dataHandle || fallbackDataParts.length === 0) return
-  const writable = await (dataHandle as any).createWritable({ keepExistingData: false })
-  for (const part of fallbackDataParts) {
-    await writable.write(part)
+  const handle = dataHandle
+  if (!handle) return
+  await flushFallbackDataCheckpoint(
+    fallbackDataState,
+    (options) => (handle as any).createWritable(options)
+  )
+}
+
+async function flushDataCheckpoint() {
+  if (dataSyncHandle) {
+    dataSyncHandle.flush()
+    return
   }
-  await writable.close()
-  fallbackDataParts = []
+  await flushDataFallback()
+}
+
+async function flushWriterCheckpoint() {
+  await flushInDurabilityOrder(flushDataCheckpoint, flushIndexToFile)
 }
 
 async function closeData() {
+  if (!dataHandle && !dataSyncHandle) return
+
   if (dataSyncHandle) {
-    // flush() and close() are synchronous methods
-    try { dataSyncHandle.flush() } catch {}
-    try { dataSyncHandle.close() } catch {}
-    dataSyncHandle = null
+    await closeTakenResource(
+      () => {
+        const handle = dataSyncHandle
+        dataSyncHandle = null
+        return handle
+      },
+      (handle) => {
+        try { handle.flush() } finally { handle.close() }
+      }
+    )
   } else {
     await flushDataFallback()
   }
+
+  dataHandle = null
+  fallbackDataState = createFallbackDataCheckpointState()
 }
 
-self.onmessage = async (e: MessageEvent<InitMessage | AppendMessage | FlushMessage | FinalizeMessage>) => {
-  const msg: any = e.data
+async function closeWriterFiles() {
+  if (!writerLifecycle.beginClose()) return
+
   try {
-    if (msg.type === 'init') {
-      recordingId = msg.id
+    await closeData()
+  } catch (dataError) {
+    // Never publish pending index entries when their data durability is unknown.
+    try { await closeIndex(false) } catch {}
+    throw dataError
+  }
+  await closeIndex()
+  writerLifecycle.markClosed()
+}
+
+async function resetForInit() {
+  try { await closeWriterFiles() } catch {}
+  writerLifecycle.reset()
+  recDir = null
+  dataHandle = null
+  dataSyncHandle = null
+  indexSyncHandle = null
+  indexWritable = null
+  indexOffset = 0
+  pendingIndexLines = []
+  fallbackDataState = createFallbackDataCheckpointState()
+  writerState = createWriterProgressState()
+  recordingId = ''
+  initialMeta = {}
+  finalMetaWritten = false
+}
+
+async function checkStorageSpace(): Promise<boolean> {
+  try {
+    const nav: any = self.navigator
+    if (!nav?.storage?.estimate) return true
+    const estimate = await nav.storage.estimate()
+    const usage = estimate.usage || 0
+    const quota = estimate.quota || 0
+    const available = quota - usage
+    const minimumErrorBytes = 50 * 1024 * 1024
+    const minimumWarningBytes = 100 * 1024 * 1024
+    if (available < minimumErrorBytes) {
+      self.postMessage({
+        type: 'error',
+        code: 'STORAGE_LOW',
+        message: `Storage critically low: ${Math.round(available / 1024 / 1024)}MB remaining`
+      } as WriterErrorEvent)
+      return false
+    }
+    if (available < minimumWarningBytes) {
+      self.postMessage({
+        type: 'warning',
+        code: 'STORAGE_LOW_WARNING',
+        availableSpace: available,
+        message: `Storage space low: ${Math.round(available / 1024 / 1024)}MB remaining`
+      })
+    }
+  } catch {}
+  return true
+}
+
+async function handleWriterMessage(event: MessageEvent<InitMessage | AppendMessage | FlushMessage | FinalizeMessage>) {
+  const message: any = event.data
+  try {
+    if (message.type === 'init') {
+      await resetForInit()
+      recordingId = message.id
       initialMeta = {
-        id: `rec_${msg.id}`,
+        id: `rec_${message.id}`,
         createdAt: Date.now(),
         completed: false,
-        codec: msg.meta?.codec,
-        width: msg.meta?.width,
-        height: msg.meta?.height,
-        fps: msg.meta?.fps
+        codec: message.meta?.codec,
+        width: message.meta?.width,
+        height: message.meta?.height,
+        fps: message.meta?.fps,
+        timelineVersion: 2,
+        timestampBasis: 'recording-active-us'
       }
       await ensureRoot()
-      await ensureRecDir(msg.id)
+      await ensureRecDir(message.id)
       await openDataFile()
+      await openIndexFile()
       await writeMeta(initialMeta)
 
-      // Check storage quota and warn if low
-      try {
-        const nav: any = self.navigator
-        if (nav?.storage?.estimate) {
-          const estimate = await nav.storage.estimate()
-          const usage = estimate.usage || 0
-          const quota = estimate.quota || 0
-          const available = quota - usage
-          const MIN_SPACE_ERROR = 50 * 1024 * 1024   // 50MB
-          const MIN_SPACE_WARNING = 100 * 1024 * 1024 // 100MB
-          if (available < MIN_SPACE_ERROR) {
-            // Clean up resources before returning error
-            await closeData()
-            self.postMessage({ type: 'error', code: 'STORAGE_LOW', message: `Storage critically low: ${Math.round(available / 1024 / 1024)}MB remaining` } as WriterErrorEvent)
-            return
-          }
-          if (available < MIN_SPACE_WARNING) {
-            self.postMessage({ type: 'warning', availableSpace: available, message: `Storage space low: ${Math.round(available / 1024 / 1024)}MB remaining` })
-          }
-        }
-      } catch {}
+      if (!(await checkStorageSpace())) {
+        try { await closeWriterFiles() } catch {}
+        return
+      }
 
-      self.postMessage({ type: 'ready', id: msg.id } as ReadyEvent)
+      self.postMessage({ type: 'ready', id: message.id } as ReadyEvent)
       return
     }
 
-    if (msg.type === 'append') {
-      if (!dataHandle) throw new Error('writer not initialized')
-      const u8 = new Uint8Array(msg.buffer)
-      await appendData(u8)
+    if (message.type === 'append') {
+      writerLifecycle.assertCanAppend()
+      const bytes = new Uint8Array(message.buffer)
+      const recorded = recordWrittenChunk(writerState, {
+        byteLength: bytes.byteLength,
+        timestamp: message.timestamp,
+        chunkType: message.chunkType,
+        codedWidth: message.codedWidth,
+        codedHeight: message.codedHeight,
+        codec: message.codec,
+        isKeyframe: message.isKeyframe
+      })
+      await appendData(bytes, recorded.entry.offset)
+      writerState = recorded.state
+      pendingIndexLines.push(`${JSON.stringify(recorded.entry)}\n`)
 
-      // ✅ 追踪时间戳
-      const ts = msg.timestamp ?? 0
-      if (firstTimestamp === -1) firstTimestamp = ts
-      lastTimestamp = ts
-
-      await appendIndexLine(JSON.stringify({
-        offset: dataOffset - u8.byteLength,
-        size: u8.byteLength,
-        timestamp: ts,
-        type: msg.chunkType === 'key' ? 'key' : 'delta',
-        codedWidth: msg.codedWidth,
-        codedHeight: msg.codedHeight,
-        codec: msg.codec,
-        isKeyframe: !!msg.isKeyframe
-      }) + '\n')
-      chunksWritten++
-      if (chunksWritten % 100 === 0) {
-        self.postMessage({ type: 'progress', bytesWrittenTotal: dataOffset, chunksWritten } as WriterProgressEvent)
-        try { await flushIndexToFile() } catch {}
+      if (writerState.chunksWritten % 100 === 0) {
+        await flushWriterCheckpoint()
+        self.postMessage({
+          type: 'progress',
+          bytesWrittenTotal: writerState.dataOffset,
+          chunksWritten: writerState.chunksWritten
+        } as WriterProgressEvent)
       }
       return
     }
 
-    if (msg.type === 'flush') {
-      // flush() is synchronous
-      try { dataSyncHandle?.flush() } catch {}
-      try { await flushIndexToFile() } catch {}
-      self.postMessage({ type: 'progress', bytesWrittenTotal: dataOffset, chunksWritten } as WriterProgressEvent)
+    if (message.type === 'flush') {
+      writerLifecycle.assertCanAppend()
+      await flushWriterCheckpoint()
+      self.postMessage({
+        type: 'progress',
+        bytesWrittenTotal: writerState.dataOffset,
+        chunksWritten: writerState.chunksWritten
+      } as WriterProgressEvent)
       return
     }
 
-    if (msg.type === 'finalize') {
-      await flushIndexToFile()
-      await closeData()
-
-      // ✅ 使用实际时长（最后chunk的timestamp）
-      const actualDuration = lastTimestamp >= 0 ? lastTimestamp : 0
-
-
-      await writeMeta({
-        ...initialMeta,
-        completed: true,
-        totalBytes: dataOffset,
-        totalChunks: chunksWritten,
-        duration: actualDuration,  // ✅ 实际时长
-        firstTimestamp,
-        lastTimestamp
-      })
-
+    if (message.type === 'finalize') {
+      if (!recordingId) throw new Error('writer not initialized')
+      await closeWriterFiles()
+      if (!finalMetaWritten) {
+        await writeMeta(buildFinalMeta(initialMeta, writerState, {
+          wallClockDurationMs: message.wallClockDurationMs
+        }))
+        finalMetaWritten = true
+      }
       self.postMessage({ type: 'finalized', id: recordingId } as FinalizedEvent)
-      return
     }
-  } catch (err: any) {
-    const ev: WriterErrorEvent = { type: 'error', code: 'OPFS_WRITE_ERROR', message: err?.message || String(err) }
-    try { self.postMessage(ev) } catch {}
+  } catch (error: any) {
+    try { await closeWriterFiles() } catch {}
+    const response: WriterErrorEvent = {
+      type: 'error',
+      code: 'OPFS_WRITE_ERROR',
+      message: error?.message || String(error)
+    }
+    try { self.postMessage(response) } catch {}
   }
 }
 
-self.addEventListener('error', (ev: any) => {
-  const msg: WriterErrorEvent = { type: 'error', code: 'WORKER_ERROR', message: ev?.message || 'Unknown worker error' }
-  try { self.postMessage(msg) } catch {}
-})
+self.onmessage = (event: MessageEvent<InitMessage | AppendMessage | FlushMessage | FinalizeMessage>) => {
+  void messageQueue.enqueue(() => handleWriterMessage(event))
+}
 
+self.addEventListener('error', (event: any) => {
+  const message: WriterErrorEvent = {
+    type: 'error',
+    code: 'WORKER_ERROR',
+    message: event?.message || 'Unknown worker error'
+  }
+  try { self.postMessage(message) } catch {}
+})
