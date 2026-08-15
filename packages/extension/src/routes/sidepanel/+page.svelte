@@ -978,9 +978,8 @@
     const elementRecordingListener = (data: ElementRecordingData) => {
       console.log('🎬 [Sidepanel] Element recording integration callback:', data)
 
-      // 转换并设置数据
-      const compatibleChunks = elementRecordingIntegration.convertToMainSystemFormat(data)
-      workerEncodedChunks = compatibleChunks
+      // handleElementRecordingData 已将数据标准化为主系统 chunk 结构。
+      workerEncodedChunks = data.encodedChunks
 
       // 更新状态
       recordingStore.updateStatus('completed')
@@ -1155,4 +1154,3 @@
     background: rgba(156, 163, 175, 0.8);
   }
 </style>
-

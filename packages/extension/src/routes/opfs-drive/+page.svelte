@@ -218,10 +218,7 @@
     showDeleteAllConfirm = false
   }
 
-  onMount(async () => {
-    await checkEnv();
-    await listRecordings();
-
+  onMount(() => {
     // 添加键盘快捷键支持
     const handleKeydown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
@@ -238,6 +235,10 @@
     }
 
     document.addEventListener('keydown', handleKeydown)
+    void (async () => {
+      await checkEnv()
+      await listRecordings()
+    })()
 
     return () => {
       document.removeEventListener('keydown', handleKeydown)
@@ -453,4 +454,3 @@
 <style>
   pre { max-height: 240px; }
 </style>
-
