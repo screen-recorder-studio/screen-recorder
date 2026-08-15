@@ -45,6 +45,7 @@
     type PreviewRenderRequest
   } from '$lib/studio/preview-playback-scheduler'
   import { calculatePreviewSize } from '$lib/studio/preview-size'
+  import { shouldAcceptHoverPreviewResponse } from '$lib/studio/preview-hover-frame'
   import VideoCropPanel from './VideoCropPanel.svelte'
   import VideoFocusPanel from './VideoFocusPanel.svelte'
   import Timeline from './Timeline.svelte'
@@ -230,6 +231,7 @@
     untrack(() => {
       if (timelineRenderGate.windowGeneration === generation) return
       timelineRenderGate = resetPreviewRenderGate(timelineRenderGate, generation)
+      activeHoverRequestId = null
       if (pendingTimelinePlaybackStart) {
         pendingTimelinePlaybackStart = {
           ...pendingTimelinePlaybackStart,
@@ -263,6 +265,8 @@
   let isPreviewMode = $state(false)
   let previewTimeMs = $state(0)
   let previewFrameIndex = $state<number | null>(null)  // 🆕 预览帧索引（独立于播放位置）
+  let hoverRequestSequence = 0
+  let activeHoverRequestId: number | null = null
   let savedPlaybackState = $state<{ frameIndex: number; isPlaying: boolean; windowStartIndex?: number } | null>(null)
   let hoverPreviewThrottleTimer: number | null = null
   let windowSwitchThrottleTimer: number | null = null  // 🔧 窗口切换防抖
@@ -400,6 +404,8 @@
         || type === 'bufferStatus'
         || type === 'windowComplete'
         || type === 'sizeChanged'
+        || type === 'singleFramePreview'
+        || type === 'previewMemoryPlan'
       if (windowBoundMessage && data?.windowGeneration !== windowGeneration) {
         try { data?.bitmap?.close?.() } catch {}
         return
@@ -408,6 +414,16 @@
       switch (type) {
         case 'initialized':
           break
+
+        case 'previewMemoryPlan': {
+          const sourceWidth = Number(data.sourceDisplayWidth)
+          const sourceHeight = Number(data.sourceDisplayHeight)
+          if (sourceWidth > 0 && sourceHeight > 0) {
+            videoCropStore.setOriginalSize(sourceWidth, sourceHeight)
+            videoInfo = { width: sourceWidth, height: sourceHeight }
+          }
+          break
+        }
 
         case 'ready':
           hasEverProcessed = true
@@ -857,6 +873,16 @@
 
         // 🆕 Single-frame preview response handling
         case 'singleFramePreview':
+          if (!shouldAcceptHoverPreviewResponse({
+            responseRequestId: data.requestId,
+            activeRequestId: activeHoverRequestId,
+            responseGeneration: data.windowGeneration,
+            currentGeneration: windowGeneration,
+            isPreviewMode
+          })) {
+            try { data.bitmap?.close?.() } catch {}
+            break
+          }
           console.log('🔍 [VideoPreview] Received single frame preview:', {
             success: data.success,
             hasError: !!data.error,
@@ -872,8 +898,10 @@
             displayFrame(data.bitmap)
             previewFrameIndex = data.globalFrameIndex
             pendingPreviewWindowSwitch = false
+            activeHoverRequestId = null
             console.log('✅ [VideoPreview] Single frame preview displayed')
           } else {
+            activeHoverRequestId = null
             console.warn('⚠️ [VideoPreview] Single frame preview failed:', data.error)
           }
           break
@@ -1216,7 +1244,9 @@
         decodeStartGlobalFrame: windowDecodeStartIndex,
         retainStartGlobalFrame: windowStartIndex,
         windowGeneration: processingGeneration,
-        frameRate: frameRate  // 🆕 传递帧率
+        frameRate: frameRate,  // 🆕 传递帧率
+        previewMemoryPolicy: 'bounded',
+        deviceMemoryGB: (navigator as Navigator & { deviceMemory?: number }).deviceMemory
       }
     }, { transfer: transferObjects })
 
@@ -2226,11 +2256,20 @@
             }
           }, PREVIEW_LOADING_DELAY_MS)
 
+          const hoverRequestId = ++hoverRequestSequence
+          activeHoverRequestId = hoverRequestId
           try {
             const gopData = await fetchSingleFrameGOP(currentGlobalFrame)
 
             // 检查预览模式是否仍然有效
-            if (!isPreviewMode || !gopData || gopData.chunks.length === 0) {
+            if (
+              !isPreviewMode
+              || activeHoverRequestId !== hoverRequestId
+              || globalFrameAtTimeMs(previewTimeMs) !== currentGlobalFrame
+              || !gopData
+              || gopData.chunks.length === 0
+            ) {
+              if (activeHoverRequestId === hoverRequestId) activeHoverRequestId = null
               pendingPreviewWindowSwitch = false
               isLoadingPreview = false
               return
@@ -2242,10 +2281,14 @@
               data: {
                 chunks: gopData.chunks,
                 targetIndexInGOP: gopData.targetIndexInGOP,
-                globalFrameIndex: currentGlobalFrame
+                globalFrameIndex: currentGlobalFrame,
+                presentationTimeMs: previewTimeMs,
+                requestId: hoverRequestId,
+                windowGeneration
               }
             })
           } catch (error) {
+            if (activeHoverRequestId === hoverRequestId) activeHoverRequestId = null
             console.warn('⚠️ [Preview] Single-frame GOP fetch failed:', error)
             pendingPreviewWindowSwitch = false
             isLoadingPreview = false
@@ -2291,6 +2334,7 @@
     
     // 🔧 清理预览状态
     isPreviewMode = false
+    activeHoverRequestId = null
     previewFrameIndex = null
 
     // 🔧 清理节流定时器
@@ -2610,6 +2654,10 @@
         try { focusFrameBitmap.close() } catch {}
         focusFrameBitmap = null
       }
+      if (currentFrameBitmap) {
+        try { currentFrameBitmap.close() } catch {}
+        currentFrameBitmap = null
+      }
       focusFrameSize = null  // 🔧 清理焦点帧尺寸
       focusIntervalIndex = null
     }
@@ -2671,8 +2719,38 @@
     // Cleanup function
     return () => {
       cancelStaticHoldPlayback()
+      cancelTimelinePlayback()
+      if (hoverPreviewThrottleTimer !== null) {
+        clearTimeout(hoverPreviewThrottleTimer)
+        hoverPreviewThrottleTimer = null
+      }
+      if (windowSwitchThrottleTimer !== null) {
+        clearTimeout(windowSwitchThrottleTimer)
+        windowSwitchThrottleTimer = null
+      }
+      if (focusFrameBitmap) {
+        try { focusFrameBitmap.close() } catch {}
+        focusFrameBitmap = null
+      }
+      if (currentFrameBitmap) {
+        try { currentFrameBitmap.close() } catch {}
+        currentFrameBitmap = null
+      }
+      if (waitingForFrameBitmap) {
+        frameBitmapRejecter?.(new Error('Video preview was disposed'))
+        waitingForFrameBitmap = false
+        frameBitmapResolver = null
+        frameBitmapRejecter = null
+      }
+      activeHoverRequestId = null
+      isPreviewMode = false
       if (compositeWorker) {
-        compositeWorker.terminate()
+        const workerToDispose = compositeWorker
+        workerToDispose.onmessage = (event) => {
+          try { event.data?.data?.bitmap?.close?.() } catch {}
+        }
+        try { workerToDispose.postMessage({ type: 'dispose', data: {} }) } catch {}
+        setTimeout(() => workerToDispose.terminate(), 50)
         compositeWorker = null
       }
     }
