@@ -19,6 +19,7 @@
   interface Props {
     open: boolean
     onClose: () => void
+    onCancel?: () => void
     onExport: (format: ExportFormat, options: VideoExportOptions | GifExportOptions) => void
     onOpenDrive?: () => void
     sourceInfo: SourceVideoInfo
@@ -40,6 +41,7 @@
   let {
     open = $bindable(),
     onClose,
+    onCancel,
     onExport,
     onOpenDrive,
     sourceInfo,
@@ -116,7 +118,24 @@
 
   // Resolution options
   const resolutionOptions = $derived([
-    { value: 'source', label: t('export_res_source', [String(sourceInfo.width), String(sourceInfo.height)]), width: sourceInfo.width, height: sourceInfo.height },
+    {
+      value: 'source',
+      label: t(
+        'export_res_canvas',
+        [String(sourceInfo.width), String(sourceInfo.height)],
+        {
+          export_res_canvas: {
+            message: 'Match Canvas ($WIDTH$×$HEIGHT$)',
+            placeholders: {
+              width: { content: '$1' },
+              height: { content: '$2' }
+            }
+          }
+        }
+      ),
+      width: sourceInfo.width,
+      height: sourceInfo.height
+    },
     { value: '2160p', label: '2160p (4K)', width: 3840, height: 2160 },
     { value: '1440p', label: '1440p (2K)', width: 2560, height: 1440 },
     { value: '1080p', label: '1080p (Full HD)', width: 1920, height: 1080 },
@@ -276,6 +295,10 @@
     }
   }
 
+  function handleCancel() {
+    if (isExporting) onCancel?.()
+  }
+
   // Format tabs config
   const formatTabs = $derived([
     { id: 'mp4' as ExportFormat, label: t('export_format_mp4'), icon: Film },
@@ -359,10 +382,18 @@
               </div>
             {/if}
 
-            <!-- Cancel hint -->
-            <p class="text-center text-xs text-gray-400">
-              {t('export_progress_hint')}
-            </p>
+            <div class="flex flex-col items-center gap-2">
+              <p class="text-center text-xs text-gray-400">
+                {t('export_progress_hint')}
+              </p>
+              <button
+                type="button"
+                class="px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100"
+                onclick={handleCancel}
+              >
+                {t('export_btn_cancel')}
+              </button>
+            </div>
           </div>
         </div>
       {/if}

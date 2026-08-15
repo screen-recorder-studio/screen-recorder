@@ -1,7 +1,18 @@
 <!-- Video export panel component -->
 <script lang="ts">
   import { Download, HardDrive, LoaderCircle, TriangleAlert, Sparkles } from '@lucide/svelte'
-  import { ExportManager } from '$lib/services/export-manager'
+  import { ExportCancelledError, ExportManager } from '$lib/services/export-manager'
+  import { emitJourneyEvent } from '$lib/observability/journey-events'
+  import { withOpfsExportTarget } from '$lib/export/export-target'
+  import {
+    createExportPreflightCancellation,
+    type ExportPreflightCancellation
+  } from '$lib/export/export-preflight-cancellation'
+  import {
+    buildExportDimensions,
+    resolveCompositionSize,
+    resolveExportDialogSourceInfo
+  } from '$lib/export/export-dimensions'
   import { backgroundConfigStore } from '$lib/stores/background-config.svelte'
   import { trimStore } from '$lib/stores/trim.svelte'
   import { videoCropStore } from '$lib/stores/video-crop.svelte'
@@ -30,6 +41,8 @@
      * export duration and preview duration stay consistent.
      */
     sourceFps?: number
+    /** Canonical source duration from OPFS metadata, in milliseconds. */
+    sourceDurationMs?: number
     /**
      * Current license tier for the user
      */
@@ -48,6 +61,7 @@
     opfsDirId = '',
     className = '',
     sourceFps = 30,
+    sourceDurationMs = 0,
     licenseTier = 'pro-trial',
     showLicenseBadge = true
   }: Props = $props()
@@ -85,6 +99,7 @@
   let isExportingWebM = $state(false)
   let isExportingMP4 = $state(false)
   let isExportingGIF = $state(false)
+  let gifPreflightCancellation: ExportPreflightCancellation | null = null
 
   // Export error feedback
   let exportErrorMessage = $state('')
@@ -104,8 +119,12 @@
   } | null>(null)
 
   // Source video information for export dialogs
+  const captureInfo = $derived<SourceVideoInfo>(
+    extractSourceInfo(encodedChunks, totalFramesAll, sourceFps, sourceDurationMs)
+  )
+  const compositionSize = $derived(resolveCompositionSize(backgroundConfig))
   const sourceInfo = $derived<SourceVideoInfo>(
-    extractSourceInfo(encodedChunks, totalFramesAll, sourceFps)
+    resolveExportDialogSourceInfo(captureInfo, compositionSize)
   )
 
 
@@ -146,6 +165,9 @@
   async function performGifExport(options: GifExportOptions) {
     if (!canExport) return
 
+    const preflightCancellation = createExportPreflightCancellation()
+    gifPreflightCancellation = preflightCancellation
+
     try {
       clearExportError()
       isExportingGIF = true
@@ -158,11 +180,13 @@
         estimatedTimeRemaining: 0
       }
 
+      emitJourneyEvent({ name: 'export.started', context: 'export', attributes: { format: 'gif' } })
       console.log('🎨 [Export] Starting GIF export with', encodedChunks.length, 'chunks')
       console.log('🎨 [Export] GIF options:', options)
 
       // 确保 gif.js 已加载
       const gifLibLoaded = await ensureGifLibLoaded()
+      preflightCancellation.throwIfRequested()
       if (!gifLibLoaded) {
         throw new Error('Failed to load gif.js library')
       }
@@ -187,6 +211,11 @@
         transparent: options.transparent
       }
 
+      preflightCancellation.throwIfRequested()
+      if (gifPreflightCancellation === preflightCancellation) {
+        gifPreflightCancellation = null
+      }
+
       const gifBlob = await exportManager.exportEditedVideo(
         encodedChunks,
         {
@@ -194,7 +223,7 @@
           includeBackground: !!plainBackgroundConfig,
           backgroundConfig: plainBackgroundConfig as any,
           quality: 'medium',
-          source: opfsDirId ? 'opfs' : 'chunks',
+          source: opfsDirId ? ('opfs' as const) : ('chunks' as const),
           opfsDirId: opfsDirId || undefined,
           trim: trimStore.enabled ? {
             enabled: true,
@@ -219,6 +248,8 @@
         }
       )
 
+      emitJourneyEvent({ name: 'export.completed', context: 'export', attributes: { format: 'gif', outcome: 'success' } })
+
       // Download file
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
       const filename = `edited-video-${timestamp}.gif`
@@ -235,9 +266,19 @@
       showExportDialog = false
 
     } catch (error) {
-      console.error('❌ [Export] GIF export failed:', error)
-      setExportError(t('export_error_gif_failed'), t('export_error_retry_hint'))
+      if (error instanceof ExportCancelledError) {
+        emitJourneyEvent({ name: 'export.cancelled', context: 'export', attributes: { format: 'gif', outcome: 'cancelled' } })
+        clearExportError()
+        showExportDialog = false
+      } else {
+        console.error('❌ [Export] GIF export failed:', error)
+        emitJourneyEvent({ name: 'export.failed', context: 'export', attributes: { format: 'gif', outcome: 'failure', errorCode: 'EXPORT_GIF_FAILED' } })
+        setExportError(t('export_error_gif_failed'), t('export_error_retry_hint'))
+      }
     } finally {
+      if (gifPreflightCancellation === preflightCancellation) {
+        gifPreflightCancellation = null
+      }
       isExportingGIF = false
       resetProgressAnimation()
       exportProgress = null
@@ -311,6 +352,17 @@
   // Export manager
   const exportManager = new ExportManager()
 
+  function handleCancelExport() {
+    const format: ExportFormat | null = isExportingMP4 ? 'mp4' : isExportingWebM ? 'webm' : isExportingGIF ? 'gif' : null
+    if (!format) return
+
+    const preflightCancelled = format === 'gif' && gifPreflightCancellation?.request() === true
+    const workerCancelled = exportManager.cancelExport()
+    if (!preflightCancelled && !workerCancelled) return
+
+    emitJourneyEvent({ name: 'export.cancel_requested', context: 'export', attributes: { format } })
+  }
+
   // Check if export is possible
   const canExport = $derived(
     isRecordingComplete &&
@@ -381,11 +433,16 @@
         estimatedTimeRemaining: 0
       }
 
+      emitJourneyEvent({ name: 'export.started', context: 'export', attributes: { format: 'webm' } })
       console.log('🎬 [Export] Starting WebM export with', encodedChunks.length, 'chunks')
       console.log('⚙️ [Export] WebM options:', options)
 
       // Convert Svelte 5 Proxy objects to plain objects using utility
       const plainBackgroundConfig = convertBackgroundConfigForExport(backgroundConfig, videoCropStore)
+      const exportDimensions = buildExportDimensions(plainBackgroundConfig || {}, {
+        width: options.resolutionWidth,
+        height: options.resolutionHeight
+      })
 
       console.log('🎬 [Export] WebM export config:', {
         hasBackgroundConfig: !!plainBackgroundConfig,
@@ -406,21 +463,16 @@
 
       const videoResult = await exportManager.exportEditedVideo(
         encodedChunks,
-        {
+        withOpfsExportTarget({
           format: 'webm',
           includeBackground: !!plainBackgroundConfig,
-          backgroundConfig: plainBackgroundConfig as any,
+          backgroundConfig: exportDimensions.backgroundConfig as any,
           quality: qualityMap[options.quality] || 'high',
           bitrate: bitrateInBps,
           framerate: options.framerate,
-          source: opfsDirId ? 'opfs' : 'chunks',
+          resolution: exportDimensions.resolution,
+          source: opfsDirId ? ('opfs' as const) : ('chunks' as const),
           opfsDirId: opfsDirId || undefined,
-          saveToOpfs: !!opfsDirId,
-          opfsFileName: (() => {
-            if (!opfsDirId) return undefined
-            const ts = new Date().toISOString().replace(/[:.]/g, '-')
-            return `edited-video-${ts}.webm`
-          })(),
           trim: trimStore.enabled ? {
             enabled: true,
             startMs: trimStore.trimStartMs,
@@ -428,7 +480,7 @@
             startFrame: trimStore.trimStartFrame,
             endFrame: trimStore.trimEndFrame
           } : undefined
-        },
+        }, 'webm', opfsDirId),
         (progress) => {
           // Cache and throttle update non-critical fields, avoid high-frequency re-rendering of entire block area
           pendingProgress = {
@@ -444,6 +496,8 @@
           scheduleProgressFieldsUpdate()
         }
       )
+
+      emitJourneyEvent({ name: 'export.completed', context: 'export', attributes: { format: 'webm', outcome: 'success' } })
 
       // Ensure display progress reaches 100%
       setProgressTarget(100)
@@ -479,8 +533,15 @@
       showExportDialog = false
 
     } catch (error) {
-      console.error('❌ [Export] WebM export failed:', error)
-      setExportError(t('export_error_webm_failed'), t('export_error_retry_hint'))
+      if (error instanceof ExportCancelledError) {
+        emitJourneyEvent({ name: 'export.cancelled', context: 'export', attributes: { format: 'webm', outcome: 'cancelled' } })
+        clearExportError()
+        showExportDialog = false
+      } else {
+        console.error('❌ [Export] WebM export failed:', error)
+        emitJourneyEvent({ name: 'export.failed', context: 'export', attributes: { format: 'webm', outcome: 'failure', errorCode: 'EXPORT_WEBM_FAILED' } })
+        setExportError(t('export_error_webm_failed'), t('export_error_retry_hint'))
+      }
     } finally {
       isExportingWebM = false
       resetProgressAnimation()
@@ -504,11 +565,16 @@
         estimatedTimeRemaining: 0
       }
 
+      emitJourneyEvent({ name: 'export.started', context: 'export', attributes: { format: 'mp4' } })
       console.log('🎬 [Export] Starting MP4 export with', encodedChunks.length, 'chunks')
       console.log('⚙️ [Export] MP4 options:', options)
 
       // Convert Svelte 5 Proxy objects to plain objects using utility
       const plainBackgroundConfig = convertBackgroundConfigForExport(backgroundConfig, videoCropStore)
+      const exportDimensions = buildExportDimensions(plainBackgroundConfig || {}, {
+        width: options.resolutionWidth,
+        height: options.resolutionHeight
+      })
 
       console.log('🎬 [Export] MP4 export config:', {
         hasBackgroundConfig: !!plainBackgroundConfig,
@@ -527,16 +593,17 @@
       // Convert bitrate from Mbps to bps (integer)
       const bitrateInBps = Math.round(options.bitrate * 1000000)
 
-      const videoBlob = await exportManager.exportEditedVideo(
+      const videoResult = await exportManager.exportEditedVideo(
         encodedChunks,
-        {
+        withOpfsExportTarget({
           format: 'mp4',
           includeBackground: !!plainBackgroundConfig,
-          backgroundConfig: plainBackgroundConfig as any,
+          backgroundConfig: exportDimensions.backgroundConfig as any,
           quality: qualityMap[options.quality] || 'high',
           bitrate: bitrateInBps,
           framerate: options.framerate,
-          source: opfsDirId ? 'opfs' : 'chunks',
+          resolution: exportDimensions.resolution,
+          source: opfsDirId ? ('opfs' as const) : ('chunks' as const),
           opfsDirId: opfsDirId || undefined,
           trim: trimStore.enabled ? {
             enabled: true,
@@ -545,7 +612,7 @@
             startFrame: trimStore.trimStartFrame,
             endFrame: trimStore.trimEndFrame
           } : undefined
-        },
+        }, 'mp4', opfsDirId),
         (progress) => {
           // Cache and throttle update non-critical fields, avoid high-frequency re-rendering of entire block area
           pendingProgress = {
@@ -562,24 +629,45 @@
         }
       )
 
-      // Download file
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-      const filename = `edited-video-${timestamp}.mp4`
-
-      // Ensure display progress reaches 100%
+      emitJourneyEvent({ name: 'export.completed', context: 'export', attributes: { format: 'mp4', outcome: 'success' } })
       setProgressTarget(100)
 
-      await downloadBlob(videoBlob, filename)
-
-      console.log('✅ [Export] MP4 export completed:', filename)
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+      const fallbackFilename = `edited-video-${timestamp}.mp4`
+      if (videoResult && (videoResult as any).savedToOpfs) {
+        const info = (videoResult as any).savedToOpfs as { dirId: string; fileName: string; bytesWritten: number }
+        try {
+          const root: any = await (navigator as any).storage.getDirectory()
+          const dir: any = await root.getDirectoryHandle(info.dirId, { create: false })
+          const fileHandle: any = await dir.getFileHandle(info.fileName, { create: false })
+          const file: File = await fileHandle.getFile()
+          await downloadBlob(file.slice(0, file.size, 'video/mp4'), info.fileName)
+          console.log('✅ [Export] MP4 streamed to OPFS and downloaded:', info.fileName)
+        } catch (error) {
+          console.warn('⚠️ [Export] Failed to read MP4 from OPFS:', error)
+          emitJourneyEvent({ name: 'download.failed', context: 'export', attributes: { format: 'mp4', outcome: 'failure', errorCode: 'OPFS_DOWNLOAD_FAILED' } })
+          setExportError(t('export_error_opfs_download_failed'), '', 'open-drive')
+          return
+        }
+      } else {
+        await downloadBlob(videoResult as Blob, fallbackFilename)
+        console.log('✅ [Export] MP4 export completed:', fallbackFilename)
+      }
 
       // Close dialog on success
       clearExportError()
       showExportDialog = false
 
     } catch (error) {
-      console.error('❌ [Export] MP4 export failed:', error)
-      setExportError(t('export_error_mp4_failed'), t('export_error_retry_hint'))
+      if (error instanceof ExportCancelledError) {
+        emitJourneyEvent({ name: 'export.cancelled', context: 'export', attributes: { format: 'mp4', outcome: 'cancelled' } })
+        clearExportError()
+        showExportDialog = false
+      } else {
+        console.error('❌ [Export] MP4 export failed:', error)
+        emitJourneyEvent({ name: 'export.failed', context: 'export', attributes: { format: 'mp4', outcome: 'failure', errorCode: 'EXPORT_MP4_FAILED' } })
+        setExportError(t('export_error_mp4_failed'), t('export_error_retry_hint'))
+      }
     } finally {
       isExportingMP4 = false
       resetProgressAnimation()
@@ -704,6 +792,7 @@
 <UnifiedExportDialog
   bind:open={showExportDialog}
   onClose={() => { showExportDialog = false }}
+  onCancel={handleCancelExport}
   onExport={handleExport}
   onOpenDrive={openDriveFromExportError}
   sourceInfo={sourceInfo}

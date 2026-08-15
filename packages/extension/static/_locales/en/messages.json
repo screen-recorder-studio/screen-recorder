@@ -215,6 +215,7 @@
   "export_quality_best_desc": { "message": "Maximum quality, slowest" },
   "export_label_resolution": { "message": "Resolution" },
   "export_res_source": { "message": "Match Source ($WIDTH$×$HEIGHT$)", "placeholders": { "width": { "content": "$1" }, "height": { "content": "$2" } } },
+  "export_res_canvas": { "message": "Match Canvas ($WIDTH$×$HEIGHT$)", "placeholders": { "width": { "content": "$1" }, "height": { "content": "$2" } } },
   "export_label_framerate": { "message": "Frame Rate" },
   "export_fps_source": { "message": "$FPS$ fps (Source)", "placeholders": { "fps": { "content": "$1" } } },
   "export_label_bitrate": { "message": "Bitrate" },

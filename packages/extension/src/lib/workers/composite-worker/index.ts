@@ -12,6 +12,7 @@ import {
   resolvePrefetchDecodedFrame,
   resolvePreviewPresentationTimeMs
 } from '../../studio/preview-playback-scheduler'
+import { resolveCompositionSize } from '../../export/export-dimensions'
 
 interface CompositeMessage {
   type: 'init' | 'process' | 'play' | 'pause' | 'seek' | 'renderAtTime' | 'config' | 'appendWindow' | 'decodeSingleFrame' | 'preview-frame' | 'getCurrentFrameBitmap' | 'getSourceFrameBitmap';
@@ -198,34 +199,9 @@ function initializeCanvas(width: number, height: number) {
 }
 
 // 计算输出尺寸
-function calculateOutputSize(config: BackgroundConfig, sourceWidth: number, sourceHeight: number) {
-  let outputWidth: number, outputHeight: number;
-
-
-  if (config.outputRatio === 'custom') {
-    outputWidth = config.customWidth || 1920;
-    outputHeight = config.customHeight || 1080;
-  } else {
-    // 平台标准输出分辨率（与 UI 显示一致），优先保证编码兼容性
-    const standardSizes: Record<BackgroundConfig['outputRatio'], { width: number; height: number }> = {
-      '16:9': { width: 1920, height: 1080 },
-      '1:1': { width: 1080, height: 1080 },
-      '9:16': { width: 1080, height: 1920 },
-      '4:5': { width: 1080, height: 1350 },
-      'custom': { width: 1920, height: 1080 }
-    };
-
-    const target = standardSizes[config.outputRatio] || standardSizes['16:9'];
-    outputWidth = target.width;
-    outputHeight = target.height;
-
-    // 记录选择结果
-
-    // 说明：padding/inset 仅影响视频布局（calculateVideoLayout），不再放大画布，
-    // 以避免 16:9 因 padding 导致分辨率超过常见 H.264 Level 限制而报错。
-  }
-
-  return { outputWidth, outputHeight };
+function calculateOutputSize(config: BackgroundConfig, _sourceWidth: number, _sourceHeight: number) {
+  const { width, height } = resolveCompositionSize(config)
+  return { outputWidth: width, outputHeight: height }
 }
 
 // 计算视频布局
