@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Preview Decode Window Lab</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">VIDEO PREVIEW / BOUNDED DECODE WINDOW</p>
+      <h1>Slice 解码窗口索引 Lab</h1>
+      <p class="lede">复现关键帧预卷 61 帧、Reader 返回 140 帧、4K 预览容量 30 帧时的旧窗口错位。</p>
+
+      <section class="controls" aria-label="Decode window inputs">
+        <label>解码起点 <input id="decode-start" type="number" value="180" /></label>
+        <label>可见起点 <input id="retain-start" type="number" value="241" /></label>
+        <label>解码块数 <input id="chunk-count" type="number" value="140" /></label>
+        <label>容量 <input id="capacity" type="number" value="30" /></label>
+        <button id="run" type="button">运行边界验证</button>
+      </section>
+
+      <p id="acceptance" class="acceptance">等待运行</p>
+      <div class="grid">
+        <section class="card old">
+          <p class="label">旧策略：满后 shift 最早帧</p>
+          <h2>窗口起点未同步</h2>
+          <dl id="old-metrics"></dl>
+          <div id="old-frames" class="frames"></div>
+        </section>
+        <section class="card fixed">
+          <p class="label">修复策略：固定可见起点</p>
+          <h2>只解预卷与可见帧</h2>
+          <dl id="fixed-metrics"></dl>
+          <div id="fixed-frames" class="frames"></div>
+        </section>
+      </div>
+    </main>
+    <script type="module" src="./app.ts"></script>
+  </body>
+</html>

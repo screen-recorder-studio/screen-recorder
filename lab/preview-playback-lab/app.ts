@@ -2,6 +2,7 @@ import {
   completePreviewRender,
   createPreviewClock,
   createPreviewRenderGate,
+  evaluatePreviewPressureRecovery,
   pausePreviewClock,
   playPreviewClock,
   queuePreviewRender,
@@ -49,6 +50,8 @@ interface Player {
 }
 
 const DURATION_MS = 8_000
+const PRESSURE_BLOCK_MS = 70
+const RECOVERY_BUDGET_MS = 34
 const scenarioElement = document.querySelector<HTMLSelectElement>('#scenario')!
 const workloadElement = document.querySelector<HTMLSelectElement>('#workload')!
 const prepareButton = document.querySelector<HTMLButtonElement>('#prepare')!
@@ -253,17 +256,17 @@ function handleWorkerMessage(player: Player, data: any) {
       data.bitmap.close()
       return
     }
+    const hasQueuedFollowUp = Boolean(completed.dispatch)
     if (completed.dispatch) {
       dispatchClockRender(player, completed.dispatch)
-      data.bitmap.close()
-      return
     }
 
     const latestClock = samplePreviewClock(player.clock, performance.now())
     if (running && !shouldPresentPreviewFrame({
       requestedPresentationTimeMs: data.presentationTimeMs,
       currentPresentationTimeMs: latestClock.positionMs,
-      maxLatenessMs: 34
+      maxLatenessMs: 34,
+      hasQueuedFollowUp
     })) {
       data.bitmap.close()
       player.metrics.coalesced += 1
@@ -440,8 +443,11 @@ function finalizeAcceptance() {
   const candidateGaps = differences(candidate.metrics.displayedAt)
   const p95Gap = percentile(candidateGaps, 0.95)
   const p95Drift = percentile(candidate.metrics.driftMs, 0.95)
-  const baselineMaxDrift = Math.max(0, ...baseline.metrics.driftMs)
   const candidateMaxDrift = Math.max(0, ...candidate.metrics.driftMs)
+  const candidateMaxGap = Math.max(0, ...candidateGaps)
+  const candidateDisplayedSpan = candidate.metrics.displayedAt.length >= 2
+    ? candidate.metrics.displayedAt.at(-1)! - candidate.metrics.displayedAt[0]
+    : 0
   const heldPass = scenarioElement.value !== 'sparse'
     || (candidate.metrics.heldRedraws >= 120 && candidate.metrics.heldRedraws > baseline.metrics.heldRedraws * 4)
 
@@ -451,12 +457,26 @@ function finalizeAcceptance() {
       : '失败：静态区效果重绘不足')
   setCheck('cadence', p95Gap <= 25, `${p95Gap <= 25 ? '通过' : '失败'}：候选 p95 显示间隔 ${p95Gap.toFixed(1)}ms`)
   setCheck('drift', p95Drift <= 34, `${p95Drift <= 34 ? '通过' : '失败'}：候选 p95 时钟漂移 ${p95Drift.toFixed(1)}ms`)
-  const recoveryPass = scenarioElement.value !== 'pressure'
-    || (candidateMaxDrift <= 34 && candidateMaxDrift < baselineMaxDrift * 0.6)
-  setCheck('recovery', recoveryPass,
-    scenarioElement.value === 'pressure'
-      ? `${recoveryPass ? '通过' : '失败'}：最大漂移候选 ${candidateMaxDrift.toFixed(1)}ms / 基线 ${baselineMaxDrift.toFixed(1)}ms`
-      : '通过：当前场景未注入 Worker 长阻塞')
+  if (scenarioElement.value === 'pressure') {
+    const recovery = evaluatePreviewPressureRecovery({
+      playbackDurationMs: DURATION_MS,
+      displayedFrameCount: candidate.metrics.displayed,
+      displayedSpanMs: candidateDisplayedSpan,
+      p95DriftMs: p95Drift,
+      maxDriftMs: candidateMaxDrift,
+      maxDisplayGapMs: candidateMaxGap,
+      coalescedRequestCount: candidate.metrics.coalesced,
+      injectedBlockMs: PRESSURE_BLOCK_MS,
+      recoveryBudgetMs: RECOVERY_BUDGET_MS
+    })
+    setCheck(
+      'recovery',
+      recovery.passed,
+      `${recovery.passed ? '通过' : '失败'}：覆盖 ${candidateDisplayedSpan.toFixed(1)}/${DURATION_MS}ms，最大间隔 ${candidateMaxGap.toFixed(1)}/${recovery.maxAllowedInterruptionMs.toFixed(1)}ms，合并 ${candidate.metrics.coalesced} 次`
+    )
+  } else {
+    setCheck('recovery', true, '通过：当前场景未注入 Worker 长阻塞')
+  }
   statusElement.textContent += ` · LoAF ${longAnimationFrames}`
 }
 
@@ -474,7 +494,7 @@ function clearChecks() {
     'held-redraw': '等待：静态区编辑效果持续重绘',
     cadence: '等待：候选 p95 显示间隔 ≤ 25ms（60Hz 前台页）',
     drift: '等待：候选 p95 媒体时钟漂移 ≤ 34ms',
-    recovery: '等待：过载恢复后不追播过时位图',
+    recovery: '等待：过载后在一帧预算内恢复并持续播放到区间末尾',
     seek: '等待：精确定位命中率 100%'
   }
   for (const [name, text] of Object.entries(defaults)) {

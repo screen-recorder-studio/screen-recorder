@@ -9,12 +9,14 @@ import {
   playPreviewClock,
   queuePreviewRender,
   failPreviewRender,
+  evaluatePreviewPressureRecovery,
   resetPreviewRenderGate,
   resolvePreviewPlaybackRange,
   resolvePrefetchDecodedFrame,
   resolvePreviewPresentationTimeMs,
   samplePreviewClock,
   seekPreviewClock,
+  shouldCommitPreviewPlaybackStart,
   shouldPresentPreviewFrame
 } from './preview-playback-scheduler'
 
@@ -53,6 +55,29 @@ describe('preview playback clock', () => {
     expect(samplePreviewClock(paused, 2_500)).toEqual({ positionMs: 1_250, ended: false })
     expect(samplePreviewClock(resumed, 3_250)).toEqual({ positionMs: 4_750, ended: false })
     expect(samplePreviewClock(resumed, 3_600)).toEqual({ positionMs: 5_000, ended: true })
+  })
+
+  it('does not start a trim playback clock until the exact slice-start frame is presented', () => {
+    const pending = {
+      windowGeneration: 12,
+      targetGlobalFrame: 249,
+      positionMs: 8_300
+    }
+
+    expect(shouldCommitPreviewPlaybackStart({
+      pending,
+      presentedWindowGeneration: 11,
+      presentedWindowStartFrame: 657,
+      presentedLocalFrame: 0,
+      presentedPositionMs: 21_880
+    })).toBe(false)
+    expect(shouldCommitPreviewPlaybackStart({
+      pending,
+      presentedWindowGeneration: 12,
+      presentedWindowStartFrame: 249,
+      presentedLocalFrame: 0,
+      presentedPositionMs: 8_300
+    })).toBe(true)
   })
 })
 
@@ -98,6 +123,7 @@ describe('preview render backpressure', () => {
     })
 
     const completed = completePreviewRender(latest.gate, first.dispatch!.requestId)
+    expect(completed.presentCurrent).toBe(true)
     expect(completed.dispatch).toMatchObject({
       sourceFrameIndex: 12,
       presentationTimeMs: 1_066
@@ -114,7 +140,8 @@ describe('preview render backpressure', () => {
     expect(completePreviewRender(first.gate, 999)).toEqual({
       gate: first.gate,
       dispatch: null,
-      accepted: false
+      accepted: false,
+      presentCurrent: false
     })
 
     const reset = resetPreviewRenderGate(first.gate, 4)
@@ -135,10 +162,67 @@ describe('preview render backpressure', () => {
 
     const failed = failPreviewRender(latest.gate, first.dispatch!.requestId)
     expect(failed.accepted).toBe(true)
+    expect(failed.presentCurrent).toBe(false)
     expect(failed.dispatch).toMatchObject({
       sourceFrameIndex: 9,
       presentationTimeMs: 900
     })
+  })
+
+  it('accepts one unavoidable pressure gap when playback promptly recovers and stays live', () => {
+    expect(evaluatePreviewPressureRecovery({
+      playbackDurationMs: 8_000,
+      displayedFrameCount: 472,
+      displayedSpanMs: 7_970,
+      p95DriftMs: 3.6,
+      maxDriftMs: 73.5,
+      maxDisplayGapMs: 86.9,
+      coalescedRequestCount: 12,
+      injectedBlockMs: 70,
+      recoveryBudgetMs: 34
+    }).passed).toBe(true)
+  })
+
+  it('rejects a player that stops presenting before the playback range ends', () => {
+    expect(evaluatePreviewPressureRecovery({
+      playbackDurationMs: 8_000,
+      displayedFrameCount: 120,
+      displayedSpanMs: 1_950,
+      p95DriftMs: 3,
+      maxDriftMs: 20,
+      maxDisplayGapMs: 20,
+      coalescedRequestCount: 8,
+      injectedBlockMs: 70,
+      recoveryBudgetMs: 34
+    }).passed).toBe(false)
+  })
+
+  it('rejects stale-frame catch-up that exceeds the injected block plus one recovery budget', () => {
+    expect(evaluatePreviewPressureRecovery({
+      playbackDurationMs: 8_000,
+      displayedFrameCount: 430,
+      displayedSpanMs: 7_980,
+      p95DriftMs: 10,
+      maxDriftMs: 180,
+      maxDisplayGapMs: 190,
+      coalescedRequestCount: 20,
+      injectedBlockMs: 70,
+      recoveryBudgetMs: 34
+    }).passed).toBe(false)
+  })
+
+  it('rejects incomplete pressure telemetry instead of treating invalid metrics as zero', () => {
+    expect(evaluatePreviewPressureRecovery({
+      playbackDurationMs: 8_000,
+      displayedFrameCount: 472,
+      displayedSpanMs: 7_970,
+      p95DriftMs: Number.NaN,
+      maxDriftMs: 73.5,
+      maxDisplayGapMs: 86.9,
+      coalescedRequestCount: 12,
+      injectedBlockMs: 70,
+      recoveryBudgetMs: 34
+    }).passed).toBe(false)
   })
 })
 
@@ -241,6 +325,15 @@ describe('preview effect presentation time', () => {
       requestedPresentationTimeMs: 1_000,
       currentPresentationTimeMs: 1_025,
       maxLatenessMs: 34
+    })).toBe(true)
+  })
+
+  it('presents a late completed bitmap when a coalesced follow-up is already chasing the clock', () => {
+    expect(shouldPresentPreviewFrame({
+      requestedPresentationTimeMs: 1_000,
+      currentPresentationTimeMs: 1_080,
+      maxLatenessMs: 34,
+      hasQueuedFollowUp: true
     })).toBe(true)
   })
 })

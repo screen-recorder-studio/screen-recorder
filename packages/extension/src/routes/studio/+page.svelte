@@ -136,6 +136,7 @@
   // 全局帧数与窗口起始全局索引
   let globalTotalFrames = $state(0);
   let windowStartIndex = $state(0);
+  let windowDecodeStartIndex = $state(0);
   // Nominal capture FPS is metadata, not average encoded-frame density.
   let sourceFps = $state(30);
   let timelineSampleTimestampsMs = $state<number[]>([]);
@@ -319,13 +320,22 @@
     return request;
   }
 
-  function applyMainWindow(chunks: any[], start: number) {
+  function applyMainWindow(chunks: any[], decodeStart: number, requestedRetainStart = decodeStart) {
+    const normalizedDecodeStart = Math.max(0, Math.floor(decodeStart));
+    const normalizedRetainStart = Math.max(0, Math.floor(requestedRetainStart));
+    const decodedEndExclusive = normalizedDecodeStart + chunks.length;
+    const retainStart = normalizedRetainStart >= normalizedDecodeStart
+      && normalizedRetainStart < decodedEndExclusive
+      ? normalizedRetainStart
+      : normalizedDecodeStart;
+
     windowGeneration += 1;
     workerEncodedChunks = chunks;
-    windowStartIndex = Math.max(0, Math.floor(start));
+    windowDecodeStartIndex = normalizedDecodeStart;
+    windowStartIndex = retainStart;
     windowStartMs = timelineSampleTimestampsMs[windowStartIndex]
       ?? Math.round(((chunks[0]?.timestamp ?? 0) - timelineFirstTimestampUs) / 1000);
-    windowEndMs = timelineSampleTimestampsMs[windowStartIndex + chunks.length - 1]
+    windowEndMs = timelineSampleTimestampsMs[normalizedDecodeStart + chunks.length - 1]
       ?? Math.round(((chunks[chunks.length - 1]?.timestamp ?? 0) - timelineFirstTimestampUs) / 1000);
 
     dataReadyReporter.report()
@@ -466,6 +476,7 @@
     timelineSampleTimestampsMs = []
     timelineFirstTimestampUs = 0
     windowStartIndex = 0
+    windowDecodeStartIndex = 0
     keyframeInfo = null
 
     opfsDirId = dirId
@@ -507,6 +518,7 @@
         requestId,
         purpose,
         targetFrame,
+        targetIndex,
         keyframeInfo: receivedKeyframeInfo,
       } = ev.data || {};
 
@@ -546,7 +558,12 @@
           return;
         }
         if (Array.isArray(chunks) && chunks.length > 0) {
-          applyMainWindow(chunks, typeof start === "number" ? start : 0)
+          const decodeStart = typeof start === "number" ? start : 0
+          applyMainWindow(
+            chunks,
+            decodeStart,
+            typeof targetIndex === "number" ? targetIndex : decodeStart
+          )
         } else {
           console.warn("⚠️ [OPFSReader] Empty range received");
           firstFrameGate.fail('STUDIO_EMPTY_RANGE')
@@ -976,6 +993,7 @@
             {windowEndMs}
             totalFramesAll={globalTotalFrames}
             {windowStartIndex}
+            {windowDecodeStartIndex}
             {windowGeneration}
             {keyframeInfo}
             onRequestWindow={handleWindowRequest}

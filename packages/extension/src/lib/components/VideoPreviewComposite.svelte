@@ -37,7 +37,9 @@
     resolvePreviewPlaybackRange,
     samplePreviewClock,
     seekPreviewClock,
+    shouldCommitPreviewPlaybackStart,
     shouldPresentPreviewFrame,
+    type PendingPreviewPlaybackStart,
     type PreviewClock,
     type PreviewRenderGate,
     type PreviewRenderRequest
@@ -62,6 +64,7 @@
     windowEndMs?: number
     totalFramesAll?: number
     windowStartIndex?: number
+    windowDecodeStartIndex?: number
     windowGeneration?: number
     keyframeInfo?: {
       indices: number[]
@@ -98,6 +101,7 @@
     windowEndMs = 0,
     totalFramesAll = 0,
     windowStartIndex = 0,
+    windowDecodeStartIndex = 0,
     windowGeneration = 0,
     keyframeInfo = null,
     onRequestWindow,
@@ -197,6 +201,7 @@
     return Math.max(0, globalFrameIndex) / frameRate * 1000
   }
   let isPlaying = $state(false)
+  let pendingTimelinePlaybackStart = $state<PendingPreviewPlaybackStart | null>(null)
   let shouldContinuePlayback = $state(false) // 🔧 Continuous playback flag
   let continueFromGlobalFrame = $state(0) // 🔧 Record which global frame to continue playback from
 
@@ -213,6 +218,7 @@
       timelineLastRenderedGlobalFrame = -1
       timelineRenderGate = resetPreviewRenderGate(timelineRenderGate, windowGeneration)
       pendingTimelineWindowTarget = null
+      pendingTimelinePlaybackStart = null
       timelinePrefetchBoundaryFrame = null
       isPlaying = false
       cancelTimelinePlayback()
@@ -224,6 +230,12 @@
     untrack(() => {
       if (timelineRenderGate.windowGeneration === generation) return
       timelineRenderGate = resetPreviewRenderGate(timelineRenderGate, generation)
+      if (pendingTimelinePlaybackStart) {
+        pendingTimelinePlaybackStart = {
+          ...pendingTimelinePlaybackStart,
+          windowGeneration: generation
+        }
+      }
     })
   })
 
@@ -500,14 +512,13 @@
           if (typeof data.requestId === 'number') {
             const completed = completePreviewRender(timelineRenderGate, data.requestId)
             timelineRenderGate = completed.gate
-            if (!completed.accepted) {
+            if (!completed.presentCurrent) {
               try { data.bitmap?.close?.() } catch {}
               break
             }
+            const hasQueuedFollowUp = Boolean(completed.dispatch)
             if (completed.dispatch) {
               dispatchTimelineRender(completed.dispatch)
-              try { data.bitmap?.close?.() } catch {}
-              break
             }
 
             const currentClockSample = samplePreviewClock(
@@ -517,7 +528,8 @@
             if (isPlaying && !shouldPresentPreviewFrame({
               requestedPresentationTimeMs: data.presentationTimeMs,
               currentPresentationTimeMs: currentClockSample.positionMs,
-              maxLatenessMs: MAX_TIMELINE_RENDER_LATENESS_MS
+              maxLatenessMs: MAX_TIMELINE_RENDER_LATENESS_MS,
+              hasQueuedFollowUp
             })) {
               try { data.bitmap?.close?.() } catch {}
               timelinePlaybackPositionMs = currentClockSample.positionMs
@@ -531,6 +543,25 @@
               pendingRestoreGlobalFrameIndex = null
               pendingTimelineWindowTarget = null
               pendingPreviewWindowSwitch = false
+
+              const presentedWindowStartFrame = data.windowStartFrameIndex ?? windowStartIndex
+              if (shouldCommitPreviewPlaybackStart({
+                pending: pendingTimelinePlaybackStart,
+                presentedWindowGeneration: data.windowGeneration ?? windowGeneration,
+                presentedWindowStartFrame,
+                presentedLocalFrame: data.frameIndex,
+                presentedPositionMs: data.presentationTimeMs
+              })) {
+                const start = pendingTimelinePlaybackStart!
+                timelinePlaybackPositionMs = start.positionMs
+                timelinePlaybackClock = playPreviewClock(
+                  timelinePlaybackClock,
+                  performance.now()
+                )
+                pendingTimelinePlaybackStart = null
+                cancelTimelinePlayback()
+                timelinePlaybackRafId = requestAnimationFrame(tickTimelinePlayback)
+              }
             } else {
               try { data.bitmap?.close?.() } catch {}
             }
@@ -784,8 +815,17 @@
           if (
             prefetchCache
             && data.startGlobalFrame === prefetchCache.targetGlobalFrame
-            && data.totalFrames === prefetchCache.windowSize
+            && Number.isInteger(data.totalFrames)
+            && data.totalFrames > 0
+            && data.totalFrames <= prefetchCache.windowSize
           ) {
+            // The reader can return a keyframe-aligned range larger than the
+            // worker's resolution-dependent decoded-frame capacity. Keep the
+            // data cache identical to the bounded decoded window so a later
+            // cutover cannot advertise or transfer frames the worker dropped.
+            prefetchCache.windowSize = data.totalFrames
+            prefetchCache.transferableChunks = prefetchCache.transferableChunks.slice(0, data.totalFrames)
+            prefetchCache.transferObjects = prefetchCache.transferObjects.slice(0, data.totalFrames)
             prefetchCache.decodedReady = true
           }
           break
@@ -1163,7 +1203,8 @@
     console.log('[progress] VideoPreview - sending process message to worker:', {
       chunksLength: transferableChunks.length,
       transferObjectsLength: transferObjects.length,
-      windowStartIndex
+      windowStartIndex,
+      windowDecodeStartIndex
     })
 
     compositeWorker.postMessage({
@@ -1172,6 +1213,8 @@
         chunks: transferableChunks,
         backgroundConfig: plainBackgroundConfig,
         startGlobalFrame: windowStartIndex,
+        decodeStartGlobalFrame: windowDecodeStartIndex,
+        retainStartGlobalFrame: windowStartIndex,
         windowGeneration: processingGeneration,
         frameRate: frameRate  // 🆕 传递帧率
       }
@@ -1474,6 +1517,7 @@
 
     if (clockSample.ended) {
       isPlaying = false
+      pendingTimelinePlaybackStart = null
       timelinePlaybackClock = pausePreviewClock(timelinePlaybackClock, nowMs)
       cancelTimelinePlayback()
       return
@@ -1485,7 +1529,6 @@
     if (!compositeWorker || totalFrames === 0) return
 
     if (hasSourceTimeline) {
-      const nowMs = performance.now()
       const playbackRange = resolvePreviewPlaybackRange({
         durationMs,
         positionMs: timelinePlaybackPositionMs,
@@ -1502,10 +1545,13 @@
       })
       cancelTimelinePlayback()
       isPlaying = true
-      timelinePlaybackClock = playPreviewClock(timelinePlaybackClock, nowMs)
       timelineLastRenderedGlobalFrame = globalFrameAtTimeMs(timelinePlaybackPositionMs)
+      pendingTimelinePlaybackStart = {
+        windowGeneration,
+        targetGlobalFrame: timelineLastRenderedGlobalFrame,
+        positionMs: timelinePlaybackPositionMs
+      }
       scheduleTimelineRender(timelineLastRenderedGlobalFrame, timelinePlaybackPositionMs)
-      timelinePlaybackRafId = requestAnimationFrame(tickTimelinePlayback)
       return
     }
 
@@ -1586,6 +1632,7 @@
     isPlaying = false
 
     if (hasSourceTimeline) {
+      pendingTimelinePlaybackStart = null
       timelinePlaybackClock = pausePreviewClock(timelinePlaybackClock, performance.now())
       timelinePlaybackPositionMs = samplePreviewClock(
         timelinePlaybackClock,

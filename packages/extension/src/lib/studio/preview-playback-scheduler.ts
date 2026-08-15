@@ -16,6 +16,12 @@ export interface PreviewPlaybackRange {
   positionMs: number
 }
 
+export interface PendingPreviewPlaybackStart {
+  windowGeneration: number
+  targetGlobalFrame: number
+  positionMs: number
+}
+
 export function resolvePreviewPlaybackRange(input: {
   durationMs: number
   positionMs: number
@@ -37,6 +43,29 @@ export function resolvePreviewPlaybackRange(input: {
   return { startMs, endMs, positionMs }
 }
 
+/**
+ * Playback may reset from the slice end to a start frame in another decode
+ * window. The media clock must remain paused until that exact rendered result
+ * is visible; otherwise a slow 4K window load can consume the whole slice while
+ * the canvas still shows the old end frame.
+ */
+export function shouldCommitPreviewPlaybackStart(input: {
+  pending: PendingPreviewPlaybackStart | null
+  presentedWindowGeneration: number
+  presentedWindowStartFrame: number
+  presentedLocalFrame: number
+  presentedPositionMs: number
+}): boolean {
+  if (!input.pending) return false
+  const presentedGlobalFrame = Math.max(
+    0,
+    Math.floor(input.presentedWindowStartFrame) + Math.floor(input.presentedLocalFrame)
+  )
+  return input.presentedWindowGeneration === input.pending.windowGeneration
+    && presentedGlobalFrame === input.pending.targetGlobalFrame
+    && Math.abs(input.presentedPositionMs - input.pending.positionMs) < 0.5
+}
+
 export interface PreviewRenderDesired {
   windowGeneration: number
   sourceFrameIndex: number
@@ -52,6 +81,24 @@ export interface PreviewRenderGate {
   nextRequestId: number
   inFlight: PreviewRenderRequest | null
   queued: PreviewRenderDesired | null
+}
+
+export interface PreviewPressureRecoveryInput {
+  playbackDurationMs: number
+  displayedFrameCount: number
+  displayedSpanMs: number
+  p95DriftMs: number
+  maxDriftMs: number
+  maxDisplayGapMs: number
+  coalescedRequestCount: number
+  injectedBlockMs: number
+  recoveryBudgetMs: number
+}
+
+export interface PreviewPressureRecoveryResult {
+  passed: boolean
+  maxAllowedInterruptionMs: number
+  minimumDisplayedSpanMs: number
 }
 
 export type PreviewTargetDecision =
@@ -121,6 +168,52 @@ export function createPreviewRenderGate(windowGeneration: number): PreviewRender
   }
 }
 
+/**
+ * A synthetic worker block necessarily creates one long presentation gap. The
+ * preview passes when it catches up within one extra frame budget, keeps the
+ * normal p95 drift bounded, and continues presenting through the end of the
+ * playback range. Comparing the single worst sample against an unblocked frame
+ * budget would reject every real recovery, while omitting coverage would let a
+ * permanently frozen preview pass on its last observed samples.
+ */
+export function evaluatePreviewPressureRecovery(
+  input: PreviewPressureRecoveryInput
+): PreviewPressureRecoveryResult {
+  const playbackDurationMs = nonNegativeFinite(input.playbackDurationMs)
+  const injectedBlockMs = nonNegativeFinite(input.injectedBlockMs)
+  const recoveryBudgetMs = nonNegativeFinite(input.recoveryBudgetMs)
+  const maxAllowedInterruptionMs = injectedBlockMs + recoveryBudgetMs
+  const minimumDisplayedSpanMs = Math.max(
+    0,
+    playbackDurationMs - (maxAllowedInterruptionMs * 2)
+  )
+  const hasValidTelemetry = [
+    input.playbackDurationMs,
+    input.displayedFrameCount,
+    input.displayedSpanMs,
+    input.p95DriftMs,
+    input.maxDriftMs,
+    input.maxDisplayGapMs,
+    input.coalescedRequestCount,
+    input.injectedBlockMs,
+    input.recoveryBudgetMs
+  ].every(value => Number.isFinite(value) && value >= 0)
+  const hasObservedRecovery = input.playbackDurationMs > 0
+    && input.displayedFrameCount >= 2
+    && input.coalescedRequestCount > 0
+
+  return {
+    passed: hasValidTelemetry
+      && hasObservedRecovery
+      && nonNegativeFinite(input.displayedSpanMs) >= minimumDisplayedSpanMs
+      && nonNegativeFinite(input.p95DriftMs) <= recoveryBudgetMs
+      && nonNegativeFinite(input.maxDriftMs) <= maxAllowedInterruptionMs
+      && nonNegativeFinite(input.maxDisplayGapMs) <= maxAllowedInterruptionMs,
+    maxAllowedInterruptionMs,
+    minimumDisplayedSpanMs
+  }
+}
+
 export function queuePreviewRender(
   gate: PreviewRenderGate,
   desired: PreviewRenderDesired
@@ -155,16 +248,22 @@ export function completePreviewRender(
   gate: PreviewRenderGate
   dispatch: PreviewRenderRequest | null
   accepted: boolean
+  /**
+   * The completed bitmap is still the newest available rendered result and may
+   * be presented even when a coalesced follow-up request is dispatched.
+   */
+  presentCurrent: boolean
 } {
   if (!gate.inFlight || gate.inFlight.requestId !== requestId) {
-    return { gate, dispatch: null, accepted: false }
+    return { gate, dispatch: null, accepted: false, presentCurrent: false }
   }
 
   if (!gate.queued) {
     return {
       gate: { ...gate, inFlight: null },
       dispatch: null,
-      accepted: true
+      accepted: true,
+      presentCurrent: true
     }
   }
 
@@ -177,7 +276,8 @@ export function completePreviewRender(
       queued: null
     },
     dispatch,
-    accepted: true
+    accepted: true,
+    presentCurrent: true
   }
 }
 
@@ -190,7 +290,8 @@ export function failPreviewRender(
   gate: PreviewRenderGate,
   requestId: number
 ): ReturnType<typeof completePreviewRender> {
-  return completePreviewRender(gate, requestId)
+  const completed = completePreviewRender(gate, requestId)
+  return { ...completed, presentCurrent: false }
 }
 
 /**
@@ -288,7 +389,12 @@ export function shouldPresentPreviewFrame(input: {
   requestedPresentationTimeMs: number
   currentPresentationTimeMs: number
   maxLatenessMs: number
+  hasQueuedFollowUp?: boolean
 }): boolean {
+  // A coalesced follow-up is already chasing the display clock. Presenting the
+  // completed bitmap keeps motion visible on slower renderers without adding
+  // backlog; dropping every >1-frame result would otherwise starve the canvas.
+  if (input.hasQueuedFollowUp) return true
   const requested = nonNegativeFinite(input.requestedPresentationTimeMs)
   const current = nonNegativeFinite(input.currentPresentationTimeMs)
   const maxLateness = nonNegativeFinite(input.maxLatenessMs)

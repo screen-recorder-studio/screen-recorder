@@ -9,9 +9,21 @@ import {
   isExpectedDecoderCancellation
 } from '../../studio/window-processing-generation'
 import {
-  resolvePrefetchDecodedFrame,
   resolvePreviewPresentationTimeMs
 } from '../../studio/preview-playback-scheduler'
+import {
+  classifyPreviewDecodedOutput,
+  planBoundedPreviewDecodeWindow,
+  type BoundedPreviewDecodeWindow
+} from '../../studio/preview-decode-window'
+import {
+  beginMainDecode,
+  createPreviewDecodeLane,
+  finishMainDecode,
+  finishPrefetchDecode,
+  requestPrefetchDecode,
+  type PreviewDecodeLane
+} from '../../studio/preview-decode-lane'
 import { resolveCompositionSize } from '../../export/export-dimensions'
 
 interface CompositeMessage {
@@ -22,6 +34,7 @@ interface CompositeMessage {
     timestamp?: number;
     frameIndex?: number;
     startGlobalFrame?: number; // 新增：窗口全局起点（用于C-2复用判断）
+    decodeStartGlobalFrame?: number;
     retainStartGlobalFrame?: number;
     retainedFrameCount?: number;
     windowGeneration?: number;
@@ -52,9 +65,15 @@ let nextDecoded: VideoFrame[] = []
 let nextMeta: { start: number | null; codec: string | null; expectedFrames: number } | null = null
 // 解码输出目标：当前窗口 or 下一窗口
 let outputTarget: 'current' | 'next' = 'current'
-let nextDecodeStartGlobalFrame = 0
-let nextRetainStartGlobalFrame = 0
+let currentDecodePlan: BoundedPreviewDecodeWindow | null = null
+let currentDecodedOutputIndex = 0
+let nextDecodePlan: BoundedPreviewDecodeWindow | null = null
 let nextDecodedOutputIndex = 0
+let previewDecodeLane: PreviewDecodeLane = createPreviewDecodeLane()
+let deferredAppendWindow: {
+  data: CompositeMessage['data']
+  generation: number
+} | null = null
 
 let isPlaying = false;
 let isDecoding = false; // streaming decode in progress
@@ -1071,6 +1090,128 @@ function renderAndSendPreviewFrame() {
 }
 
 // 基础流式解码：开始提交块并在后台flush，边解边播
+function syncPreviewDecodeLaneState() {
+  outputTarget = previewDecodeLane.outputTarget
+  // renderAtTime only cares whether a requested current-window frame can still
+  // arrive. Background prefetch must never keep or clear this flag.
+  isDecoding = previewDecodeLane.currentInFlight
+}
+
+function beginCurrentDecode(processingGeneration: number) {
+  const transition = beginMainDecode(previewDecodeLane, processingGeneration)
+  previewDecodeLane = transition.state
+  deferredAppendWindow = null
+  syncPreviewDecodeLaneState()
+}
+
+function settleCurrentDecode(processingGeneration: number) {
+  const transition = finishMainDecode(previewDecodeLane, processingGeneration)
+  previewDecodeLane = transition.state
+  syncPreviewDecodeLaneState()
+
+  if (transition.effect !== 'start-prefetch' || !deferredAppendWindow) return
+  const pending = deferredAppendWindow
+  deferredAppendWindow = null
+  startAppendWindowDecode(pending.data, pending.generation)
+}
+
+function settlePrefetchDecode(processingGeneration: number) {
+  const transition = finishPrefetchDecode(previewDecodeLane, processingGeneration)
+  previewDecodeLane = transition.state
+  syncPreviewDecodeLaneState()
+
+  if (transition.effect !== 'start-prefetch' || !deferredAppendWindow) return
+  const pending = deferredAppendWindow
+  deferredAppendWindow = null
+  startAppendWindowDecode(pending.data, pending.generation)
+}
+
+function requestAppendWindowDecode(data: CompositeMessage['data'], processingGeneration: number) {
+  const targetGlobalFrame = Math.max(
+    0,
+    Math.floor(data.retainStartGlobalFrame ?? data.startGlobalFrame ?? 0)
+  )
+  const transition = requestPrefetchDecode(previewDecodeLane, {
+    generation: processingGeneration,
+    targetGlobalFrame
+  })
+  previewDecodeLane = transition.state
+  syncPreviewDecodeLaneState()
+
+  if (transition.effect === 'defer-prefetch') {
+    // Keep only the newest prefetch intent. ArrayBuffers have already been
+    // transferred into this worker, so retaining the message is safe.
+    deferredAppendWindow = { data, generation: processingGeneration }
+    return
+  }
+  if (transition.effect === 'start-prefetch') {
+    startAppendWindowDecode(data, processingGeneration)
+  }
+}
+
+function startAppendWindowDecode(data: CompositeMessage['data'], processingGeneration: number) {
+  if (!data.chunks?.length || !windowGenerationGate.isCurrent(processingGeneration)) {
+    settlePrefetchDecode(processingGeneration)
+    return
+  }
+
+  // Decode may start at an earlier keyframe. Only frames at/after the playback
+  // boundary are retained as the next visible window.
+  const decodeStart = Math.max(0, Math.floor(data.startGlobalFrame ?? 0))
+  const retainStart = Math.max(
+    decodeStart,
+    Math.floor(data.retainStartGlobalFrame ?? decodeStart)
+  )
+  const requestedRetainedFrames = Math.max(
+    0,
+    Math.floor(data.retainedFrameCount ?? data.chunks.length)
+  )
+  const plannedNextWindow = planBoundedPreviewDecodeWindow({
+    decodeStartGlobalFrame: decodeStart,
+    retainStartGlobalFrame: retainStart,
+    decodedChunkCount: Math.min(
+      data.chunks.length,
+      (retainStart - decodeStart) + requestedRetainedFrames
+    ),
+    capacity: FRAME_BUFFER_LIMITS.maxNextDecoded
+  })
+  if (!plannedNextWindow) {
+    console.warn('[COMPOSITE-WORKER] appendWindow: invalid bounded decode window')
+    settlePrefetchDecode(processingGeneration)
+    return
+  }
+  if (nextMeta?.start === plannedNextWindow.retainStartGlobalFrame) {
+    if (nextDecoded.length === nextMeta.expectedFrames) {
+      self.postMessage({
+        type: 'prefetchReady',
+        data: {
+          startGlobalFrame: nextMeta.start,
+          totalFrames: nextDecoded.length,
+          windowGeneration: windowGenerationGate.activeGeneration
+        }
+      })
+    }
+    settlePrefetchDecode(processingGeneration)
+    return
+  }
+  if (nextMeta && nextMeta.start !== plannedNextWindow.retainStartGlobalFrame && nextDecoded.length > 0) {
+    for (const frame of nextDecoded) { try { frame.close() } catch {} }
+    nextDecoded = []
+  }
+  nextMeta = {
+    start: plannedNextWindow.retainStartGlobalFrame,
+    codec: videoDecoderCodec,
+    expectedFrames: plannedNextWindow.retainedFrameCount
+  }
+  nextDecodePlan = plannedNextWindow
+  nextDecodedOutputIndex = 0
+
+  appendStreamingDecode(
+    data.chunks.slice(0, plannedNextWindow.decodeFrameCount),
+    processingGeneration
+  )
+}
+
 function startStreamingDecode(chunks: any[], processingGeneration: number) {
   if (!chunks || chunks.length === 0) {
     throw new Error('No video chunks provided');
@@ -1103,20 +1244,11 @@ function startStreamingDecode(chunks: any[], processingGeneration: number) {
 
     videoDecoder = new VideoDecoder({
       output: (frame: VideoFrame) => {
-        if (outputTarget === 'next') {
-          const decision = resolvePrefetchDecodedFrame({
-            decodeStartGlobalFrame: nextDecodeStartGlobalFrame,
-            retainStartGlobalFrame: nextRetainStartGlobalFrame,
-            decodedOutputIndex: nextDecodedOutputIndex
-          })
-          nextDecodedOutputIndex += 1
-          if (decision.action === 'discard-preroll') {
-            try { frame.close() } catch {}
-            return
-          }
-        }
         const targetBuf = (outputTarget === 'next') ? nextDecoded : decodedFrames;
-        const maxSize = (outputTarget === 'next') ? FRAME_BUFFER_LIMITS.maxNextDecoded : FRAME_BUFFER_LIMITS.maxDecodedFrames;
+        const decodePlan = outputTarget === 'next' ? nextDecodePlan : currentDecodePlan
+        const decodedOutputIndex = outputTarget === 'next'
+          ? nextDecodedOutputIndex++
+          : currentDecodedOutputIndex++
 
         // 🔧 Use decoded frame display size to correct aspect ratio (avoids non-square pixel stretching)
         const displayWidth = frame.displayWidth ?? frame.codedWidth ?? 0;
@@ -1134,27 +1266,18 @@ function startStreamingDecode(chunks: any[], processingGeneration: number) {
           }
         }
 
-        // 🚀 P1 优化：帧缓冲限制
-        if (targetBuf.length >= maxSize) {
-          const bufferName = (outputTarget === 'next') ? 'nextDecoded' : 'decodedFrames';
-          console.warn(`⚠️ [COMPOSITE-WORKER] Buffer full (${bufferName}: ${targetBuf.length}/${maxSize}), dropping oldest frame`);
-
-          const oldest = targetBuf.shift();
-          try {
-            oldest?.close();
-          } catch (e) {
-            console.warn('[COMPOSITE-WORKER] Failed to close dropped frame:', e);
-          }
-
-          droppedFramesCount++;
-
-          // 每10个丢帧或每5秒报告一次
-          const now = Date.now();
-          if (droppedFramesCount % 10 === 0 || now - lastBufferWarningTime > 5000) {
-            console.warn(`⚠️ [COMPOSITE-WORKER] Total frames dropped: ${droppedFramesCount}`);
-            lastBufferWarningTime = now;
-          }
+        if (!decodePlan) {
+          try { frame.close() } catch {}
+          return
         }
+        const decision = classifyPreviewDecodedOutput(decodePlan, decodedOutputIndex)
+        if (decision.action !== 'retain') {
+          try { frame.close() } catch {}
+          if (decision?.action === 'discard-overflow') droppedFramesCount++
+          return
+        }
+
+        const maxSize = decodePlan.retainedFrameCount
 
         // 缓冲区接近满时警告
         if (targetBuf.length >= maxSize * FRAME_BUFFER_LIMITS.warningThreshold) {
@@ -1230,8 +1353,9 @@ function startStreamingDecode(chunks: any[], processingGeneration: number) {
   } else {
   }
 
-  // 开始流式解码
-  isDecoding = true;
+  // Start a new exclusive main lane. Any prefetch from the previous window is
+  // invalidated before decoder callbacks can be routed.
+  beginCurrentDecode(processingGeneration)
 
   // 🔧 诊断：检查 chunks 中的关键帧分布
   const keyframeIndices: number[] = []
@@ -1287,7 +1411,7 @@ function startStreamingDecode(chunks: any[], processingGeneration: number) {
   // 后台flush，不阻塞ready/播放
   videoDecoder!.flush().then(() => {
     if (windowGenerationGate.isCurrent(processingGeneration)) {
-      isDecoding = false;
+      settleCurrentDecode(processingGeneration)
       if (pendingTimelineRender) {
         const request = pendingTimelineRender
         pendingTimelineRender = null
@@ -1296,7 +1420,7 @@ function startStreamingDecode(chunks: any[], processingGeneration: number) {
     }
   }).catch((error) => {
     if (windowGenerationGate.isCurrent(processingGeneration)) {
-      isDecoding = false;
+      settleCurrentDecode(processingGeneration)
     }
     if (!isExpectedDecoderCancellation({
       activeGeneration: windowGenerationGate.activeGeneration,
@@ -1312,6 +1436,7 @@ function startStreamingDecode(chunks: any[], processingGeneration: number) {
 function appendStreamingDecode(chunks: any[], processingGeneration: number) {
   if (!chunks || chunks.length === 0) {
     console.warn('[COMPOSITE-WORKER] appendStreamingDecode: no chunks');
+    settlePrefetchDecode(processingGeneration)
     return;
   }
   const firstChunk = chunks[0];
@@ -1319,14 +1444,15 @@ function appendStreamingDecode(chunks: any[], processingGeneration: number) {
 
   if (!videoDecoder) {
     console.warn('[COMPOSITE-WORKER] appendStreamingDecode: decoder not initialized, ignoring');
+    settlePrefetchDecode(processingGeneration)
     return;
   }
   if (videoDecoderCodec !== codec) {
     console.warn('[COMPOSITE-WORKER] appendStreamingDecode: codec mismatch, expected', videoDecoderCodec, 'got', codec);
+    settlePrefetchDecode(processingGeneration)
     return;
   }
 
-  isDecoding = true;
   try {
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
@@ -1342,13 +1468,12 @@ function appendStreamingDecode(chunks: any[], processingGeneration: number) {
     }
   } catch (error) {
     console.error('[progress] VideoComposite - error during append decode submit:', error);
+    settlePrefetchDecode(processingGeneration)
     return;
   }
 
   videoDecoder!.flush().then(() => {
     if (windowGenerationGate.isCurrent(processingGeneration)) {
-      isDecoding = false;
-      outputTarget = 'current';
       if (nextMeta && nextDecoded.length === nextMeta.expectedFrames) {
         self.postMessage({
           type: 'prefetchReady',
@@ -1359,11 +1484,11 @@ function appendStreamingDecode(chunks: any[], processingGeneration: number) {
           }
         })
       }
+      settlePrefetchDecode(processingGeneration)
     }
   }).catch((error) => {
     if (windowGenerationGate.isCurrent(processingGeneration)) {
-      isDecoding = false;
-      outputTarget = 'current';
+      settlePrefetchDecode(processingGeneration)
     }
     if (!isExpectedDecoderCancellation({
       activeGeneration: windowGenerationGate.activeGeneration,
@@ -1602,6 +1727,9 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
           break;
         }
         pendingTimelineRender = null;
+        previewDecodeLane = createPreviewDecodeLane(processingGeneration)
+        deferredAppendWindow = null
+        syncPreviewDecodeLaneState()
 
         // 🔧 重置播放状态 - 处理新窗口数据
         isPlaying = false;
@@ -1629,11 +1757,8 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
 
         // 重置水位提示状态，确保每个窗口都会重新发出 low/critical 事件
 
-        // 记录本窗口边界帧数（用于按窗口触发 windowComplete）
-        windowBoundaryFrames = data.chunks.length;
-
-        // 🆕 存储窗口起始帧索引和帧率（用于计算时间）
-        windowStartFrameIndex = data.startGlobalFrame ?? 0;
+        // The visible window boundary is resolved after keyframe preroll and
+        // the dynamic decoded-frame capacity are known.
         if (data.frameRate) {
           videoFrameRate = data.frameRate;
         }
@@ -1651,6 +1776,30 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         const firstChunk = data.chunks[0];
         const sourceWidth = firstChunk.codedWidth || 1920;
         const sourceHeight = firstChunk.codedHeight || 1080;
+        FRAME_BUFFER_LIMITS = computeDynamicBufferLimits(sourceWidth, sourceHeight)
+
+        const decodeStartGlobalFrame = Math.max(
+          0,
+          Math.floor(data.decodeStartGlobalFrame ?? data.startGlobalFrame ?? 0)
+        )
+        const retainStartGlobalFrame = Math.max(
+          decodeStartGlobalFrame,
+          Math.floor(data.retainStartGlobalFrame ?? data.startGlobalFrame ?? decodeStartGlobalFrame)
+        )
+        const plannedCurrentWindow = planBoundedPreviewDecodeWindow({
+          decodeStartGlobalFrame,
+          retainStartGlobalFrame,
+          decodedChunkCount: data.chunks.length,
+          capacity: FRAME_BUFFER_LIMITS.maxDecodedFrames
+        })
+        if (!plannedCurrentWindow) {
+          throw new Error('INVALID_PREVIEW_DECODE_WINDOW')
+        }
+        currentDecodePlan = plannedCurrentWindow
+        currentDecodedOutputIndex = 0
+        outputTarget = 'current'
+        windowStartFrameIndex = plannedCurrentWindow.retainStartGlobalFrame
+        windowBoundaryFrames = plannedCurrentWindow.retainedFrameCount
 
         const requestedStart = (data.startGlobalFrame ?? null) as number | null
         const incomingCodec = (firstChunk.codec || 'vp8') as string
@@ -1673,6 +1822,7 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
           videoInfo = { width: sourceWidth, height: sourceHeight };
 
           nextMeta = null
+          nextDecodePlan = null
 
           // 确认边界并进入就绪态
           windowBoundaryFrames = decodedFrames.length
@@ -1700,6 +1850,7 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
           nextDecoded = []
         }
         nextMeta = null
+        nextDecodePlan = null
 
 
 
@@ -1722,7 +1873,13 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         initializeCanvas(outputWidth, outputHeight);
 
         // 启动流式解码（不阻塞ready）
-        startStreamingDecode(data.chunks, processingGeneration);
+        // Reader ranges include a long post-target tail for other consumers.
+        // Decoding that tail cannot add addressable preview frames once the
+        // bounded cache is full, and stalls 4K window cutovers.
+        startStreamingDecode(
+          data.chunks.slice(0, plannedCurrentWindow.decodeFrameCount),
+          processingGeneration
+        );
 
         // 计算固定布局
         calculateAndCacheLayout();
@@ -1730,7 +1887,7 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         self.postMessage({
           type: 'ready',
           data: {
-            totalFrames: data.chunks.length,
+            totalFrames: plannedCurrentWindow.retainedFrameCount,
             outputSize: { width: outputWidth, height: outputHeight },
             videoLayout: fixedVideoLayout,
             windowStartFrameIndex,
@@ -1756,43 +1913,7 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
           break;
         }
         if (data.chunks && data.chunks.length > 0) {
-          // Decode may start at an earlier keyframe. Only frames at/after the
-          // playback boundary are retained as the next visible window.
-          const decodeStart = Math.max(0, Math.floor(data.startGlobalFrame ?? 0))
-          const retainStart = Math.max(
-            decodeStart,
-            Math.floor(data.retainStartGlobalFrame ?? decodeStart)
-          )
-          const expectedFrames = Math.max(
-            0,
-            Math.floor(data.retainedFrameCount ?? data.chunks.length)
-          )
-          if (nextMeta?.start === retainStart) {
-            if (nextDecoded.length === nextMeta.expectedFrames) {
-              self.postMessage({
-                type: 'prefetchReady',
-                data: {
-                  startGlobalFrame: nextMeta.start,
-                  totalFrames: nextDecoded.length,
-                  windowGeneration: windowGenerationGate.activeGeneration
-                }
-              })
-            }
-            break
-          }
-          if (nextMeta && nextMeta.start !== retainStart && nextDecoded.length > 0) {
-            for (const f of nextDecoded) { try { f.close() } catch {} }
-            nextDecoded = []
-          }
-          nextMeta = { start: retainStart, codec: videoDecoderCodec, expectedFrames }
-          nextDecodeStartGlobalFrame = decodeStart
-          nextRetainStartGlobalFrame = retainStart
-          nextDecodedOutputIndex = 0
-
-          // 将解码输出切换到 nextDecoded
-          outputTarget = 'next'
-          appendStreamingDecode(data.chunks, windowGenerationGate.activeGeneration)
-          // flush 完成后会在 appendStreamingDecode 内部复位 outputTarget
+          requestAppendWindowDecode(data, windowGenerationGate.activeGeneration)
         } else {
           console.warn('[COMPOSITE-WORKER] appendWindow: missing chunks')
         }
