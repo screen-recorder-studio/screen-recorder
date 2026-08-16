@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Recording start latency test surface</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body class="surface">
+    <main>
+      <h1>Controlled capture surface</h1>
+      <p>Keep this tab visible. The magenta countdown layer must never appear in the first formal frame.</p>
+      <div class="shapes">
+        <div class="circle"></div><div class="square"></div>
+      </div>
+      <output id="clock">0.000s</output>
+    </main>
+    <div id="countdown-overlay" hidden>
+      <strong>COUNTDOWN</strong><span id="countdown-value">3</span>
+    </div>
+    <script type="module" src="surface.js"></script>
+  </body>
+</html>

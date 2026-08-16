@@ -6,6 +6,11 @@ import { classifyCaptureError } from '../lib/recording/capture-errors'
 import { resolveRecordingEncodePlan } from '../lib/recording/recording-encode-plan'
 import { createRecordingFrameCadence, sampleRecordingFrame } from '../lib/recording/recording-frame-cadence'
 import { RecordingDurationTracker } from '../lib/recording/recording-duration-tracker'
+import {
+  normalizeRecordingCountdown,
+  readFirstFormalFrameAfterWarmup,
+  startRecordingWarmup
+} from '../lib/recording/recording-startup'
 import { buildTabCaptureConstraints } from '../lib/recording/tab-capture'
 import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
 
@@ -147,6 +152,8 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
     try { stopBadgeTicker() } catch {}
     try { wcFrameLoopActive = false; wcWorker?.postMessage({ type: 'stop' }) } catch {}
     wcWorker = null
+    try { void wcReader?.cancel() } catch {}
+    try { wcReader?.releaseLock() } catch {}
     wcReader = null
     if (currentStream) {
       try {
@@ -484,6 +491,7 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
   async function startRecording(options?: any, tabStreamId?: unknown): Promise<void> {
     const timestamp = new Date().toISOString()
     let heldFirstFrame: VideoFrame | null = null
+    let stopWarmup: (() => Promise<void>) | null = null
     log(`🎯 [${timestamp}] Starting recording directly in offscreen document...`, { options })
 
     // Guard against concurrent start requests
@@ -543,21 +551,16 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
         throw new Error('WebCodecs APIs not supported in this environment')
       }
 
-      // 3) Track settings are hints. The first post-countdown VideoFrame is the
-      // source-of-truth for the stable, balanced encoder plan.
+      // 3) Track settings are only hints. The first warm-up frame is the source
+      // of truth for the stable balanced encode plan, but no warm-up frame may
+      // cross the formal recording boundary.
       const settings = (videoTrack as any)?.getSettings?.() || {}
       let width = 1920
       let height = 1080
       let framerate = Math.round(settings.frameRate || 30)
       const bitrate = options?.bitrate || 8_000_000 // 8 Mbps default
 
-      // 4) Create MediaStreamTrackProcessor
-      const ProcessorCtor: any = (window as any).MediaStreamTrackProcessor
-      const processor = new ProcessorCtor({ track: videoTrack })
-      const reader: ReadableStreamDefaultReader<VideoFrame> = processor.readable.getReader()
-      wcReader = reader
-
-      // 5) Create or reuse preloaded WebCodecs Worker
+      // 4) Create or reuse preloaded WebCodecs Worker
       const wasPreloaded = wcWorker !== null && wcWorkerPreloaded
       if (!wcWorker) {
         log('🔧 Creating new WebCodecs Worker (not preloaded)')
@@ -685,12 +688,50 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
         }
       }
 
+      // 5) Drain countdown frames while encoder selection and OPFS startup run
+      // concurrently. Every frame in this lane is closed by the warm-up owner;
+      // a fresh processor is created only after the countdown boundary.
+      const ProcessorCtor: any = (window as any).MediaStreamTrackProcessor
+      const createProcessorReader = (): ReadableStreamDefaultReader<VideoFrame> => {
+        let processor: any
+        try {
+          processor = new ProcessorCtor({ track: videoTrack, maxBufferSize: 1 })
+        } catch {
+          processor = new ProcessorCtor({ track: videoTrack })
+        }
+        return processor.readable.getReader()
+      }
+      const warmup = startRecordingWarmup({
+        reader: createProcessorReader(),
+        prepareFromFrame: async (frame: VideoFrame) => {
+          const firstFrameWidth = frame.displayWidth || frame.codedWidth || settings.width || 1920
+          const firstFrameHeight = frame.displayHeight || frame.codedHeight || settings.height || 1080
+          const encodePlan = resolveRecordingEncodePlan(firstFrameWidth, firstFrameHeight, settings.frameRate || 30)
+          width = encodePlan.width
+          height = encodePlan.height
+          framerate = encodePlan.framerate
+
+          wcWorker?.postMessage({ type: 'configure', config: { width, height, bitrate, framerate } })
+          await waitForConfigured
+          width = configuredEncoderConfig?.width || width
+          height = configuredEncoderConfig?.height || height
+          framerate = configuredEncoderConfig?.framerate || framerate
+          if (OPFS_WRITER_ENABLED) {
+            await initOpfsWriter({ codec: configuredEncoderConfig?.codec, width, height, framerate })
+          }
+        }
+      })
+      stopWarmup = () => warmup.stop()
+      // Preparation failures are observed after the countdown so the user still
+      // sees a stable countdown lifecycle without an unhandled rejection.
+      void warmup.prepared.catch(() => {})
+
       // The capture owner also owns the countdown. Action popups are disposable
       // and may close as soon as the browser source picker takes focus.
-      const COUNTDOWN_SECONDS = (typeof options?.countdown === 'number' && options.countdown >= 1 && options.countdown <= 5) ? options.countdown : 3;
+      const COUNTDOWN_SECONDS = normalizeRecordingCountdown(options?.countdown)
       for (let remaining = COUNTDOWN_SECONDS; remaining > 0; remaining -= 1) {
         try {
-          chrome.runtime.sendMessage({
+          await chrome.runtime.sendMessage({
             type: 'STREAM_META',
             operationId: activeOperationId,
             meta: { preparing: true, countdown: remaining, mode }
@@ -699,7 +740,7 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
         await new Promise((resolve) => setTimeout(resolve, 1000))
       }
       try {
-        chrome.runtime.sendMessage({
+        await chrome.runtime.sendMessage({
           type: 'STREAM_META',
           operationId: activeOperationId,
           meta: { preparing: true, countdown: 0, mode }
@@ -708,29 +749,18 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
       // Extra guard to avoid capturing the last compositor frame of countdown window
       await new Promise((r) => setTimeout(r, 140));
 
-      // Read the first frame only after the countdown. This prevents a stale
-      // track-settings size (or a DPR-expanded tab frame) from configuring an
-      // unexpectedly large encoder and keeps OPFS metadata aligned with chunks.
-      const firstRead = await reader.read()
-      heldFirstFrame = firstRead.value ?? null
-      if (firstRead.done || !heldFirstFrame) {
-        throw createErrorWithCode('Capture ended before the first video frame', 'CAPTURE_ENDED_EARLY')
-      }
-      const firstFrameWidth = heldFirstFrame.displayWidth || heldFirstFrame.codedWidth || settings.width || 1920
-      const firstFrameHeight = heldFirstFrame.displayHeight || heldFirstFrame.codedHeight || settings.height || 1080
-      const encodePlan = resolveRecordingEncodePlan(firstFrameWidth, firstFrameHeight, settings.frameRate || 30)
-      width = encodePlan.width
-      height = encodePlan.height
-      framerate = encodePlan.framerate
+      const formalStart = await readFirstFormalFrameAfterWarmup({
+        warmup,
+        createFormalReader: createProcessorReader
+      })
+      stopWarmup = null
 
-      wcWorker.postMessage({ type: 'configure', config: { width, height, bitrate, framerate } })
-      await waitForConfigured
-      width = configuredEncoderConfig?.width || width
-      height = configuredEncoderConfig?.height || height
-      framerate = configuredEncoderConfig?.framerate || framerate
-      if (OPFS_WRITER_ENABLED) {
-        await initOpfsWriter({ codec: configuredEncoderConfig?.codec, width, height, framerate })
-      }
+      // The formal lane is intentionally a new processor. MediaStreamTrackProcessor
+      // queues are implementation-owned and can contain the last countdown frame;
+      // recreating it after the boundary prevents that frame from entering OPFS.
+      const reader = formalStart.reader as ReadableStreamDefaultReader<VideoFrame>
+      wcReader = reader
+      heldFirstFrame = formalStart.frame
 
       // 6) Start frame processing loop
       isPaused = false
@@ -800,6 +830,10 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
       })
 
     } catch (e) {
+      if (stopWarmup) {
+        try { await stopWarmup() } catch {}
+        stopWarmup = null
+      }
       if (heldFirstFrame) {
         try { heldFirstFrame.close() } catch {}
         heldFirstFrame = null
@@ -830,6 +864,8 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
       // Stop WebCodecs pipeline (if active)
       try { wcFrameLoopActive = false; wcWorker?.postMessage({ type: 'stop' }) } catch (e) { log('❌ Error posting stop to WebCodecs worker:', e) }
       wcWorker = null
+      try { void wcReader?.cancel() } catch {}
+      try { wcReader?.releaseLock() } catch {}
       wcReader = null
 
       // Stop MediaRecorder (fallback)

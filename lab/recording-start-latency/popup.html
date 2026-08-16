@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Recording start latency</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body class="popup">
+    <h1>Start latency Lab</h1>
+    <p>Open the controlled surface, keep it active, then start a probe.</p>
+    <button id="open-surface" type="button">Open test surface</button>
+    <label>Countdown
+      <select id="countdown"><option value="0">Off</option><option value="3" selected>3 seconds</option></select>
+    </label>
+    <label>Post-hide settle
+      <select id="settle"><option value="0">0 ms</option><option value="140" selected>140 ms</option></select>
+    </label>
+    <div class="actions">
+      <button id="start-tab" type="button">Probe current tab</button>
+      <button id="start-display" type="button">Probe display picker</button>
+    </div>
+    <button id="stop" class="secondary" type="button">Stop</button>
+    <p id="status" role="status">Idle</p>
+    <pre id="result">No result yet.</pre>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

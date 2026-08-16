@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Recording Start Latency Lab",
+  "version": "1.0.0",
+  "minimum_chrome_version": "116",
+  "permissions": ["offscreen", "storage", "tabCapture"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  }
+}

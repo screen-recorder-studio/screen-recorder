@@ -14,6 +14,7 @@
   } from '@lucide/svelte'
   import { onDestroy, onMount } from 'svelte'
   import { _t as t } from '$lib/utils/i18n'
+  import { normalizeRecordingCountdown } from '$lib/recording/recording-startup'
   import { formatRecordingDuration, normalizeElapsedMs } from '$lib/utils/recording-duration'
 
   // Extension version
@@ -24,7 +25,7 @@
   let isPaused = $state(false)
   let selectedMode = $state<'tab' | 'window' | 'screen'>('tab')
   let isLoading = $state(false)
-  // Countdown seconds setting (1-5)
+  // Countdown seconds setting (0-5; 0 means start immediately after warm-up)
   let countdownSeconds = $state(3)
   // Countdown display state
   let countdownActive = $state(false)
@@ -43,8 +44,7 @@
   const PREPARING_TIMEOUT_MS = 30_000
 
   function clampCountdown(v: number) {
-    if (isNaN(v)) return 3
-    return Math.min(5, Math.max(1, v))
+    return normalizeRecordingCountdown(v)
   }
 
   async function saveCountdown(newVal: number) {
@@ -677,7 +677,7 @@
           <Clock class="w-3 h-3 text-gray-500" /> {t('control_countdownLabel')}
         </label>
         <div class="flex items-center gap-1">
-          {#each [1, 2, 3, 4, 5] as v}
+          {#each [0, 1, 2, 3, 4, 5] as v}
             <button
               class="px-2 py-1 text-xs rounded-md border transition-colors"
               class:bg-blue-600={countdownSeconds === v}

@@ -8,13 +8,55 @@ import { OwnedDownloadTracker } from '../lib/downloads/owned-download-tracker'
 import { isJourneyEventInput, type JourneyEventInput } from '../lib/observability/journey-events'
 import { createJourneyRecorder } from '../lib/observability/journey-recorder'
 import { RecordingCoordinator } from '../lib/recording/recording-coordinator'
+import { createRecordingCountdownSurface } from '../lib/recording/recording-countdown-surface'
 import { createRecordingSessionStore } from '../lib/recording/recording-session-store'
+import {
+  normalizeRecordingCountdown,
+  persistRecordingCountdownSetting
+} from '../lib/recording/recording-startup'
 import { requestTabCaptureStreamId, resolveTabCaptureTargetId } from '../lib/recording/tab-capture'
 
 const journeyRecorder = createJourneyRecorder(chrome.storage.session as any)
 const ownedDownloadTracker = new OwnedDownloadTracker(chrome.storage.session as any)
 const recordingSessionStore = createRecordingSessionStore(chrome.storage.session as any)
 const recordingCoordinator = new RecordingCoordinator(recordingSessionStore)
+const recordingCountdownSurface = createRecordingCountdownSurface({
+  driver: {
+    create: (data) => chrome.windows.create(data),
+    remove: (windowId) => chrome.windows.remove(windowId)
+  },
+  getUrl: (path) => chrome.runtime.getURL(path)
+})
+
+let recordingCountdownHost: {
+  operationId: string
+  bounds: { left?: number; top?: number; width?: number; height?: number } | null
+} | null = null
+
+async function rememberRecordingCountdownHost(operationId: string) {
+  let bounds = null
+  try {
+    const host = await chrome.windows.getLastFocused({ windowTypes: ['normal'] })
+    bounds = {
+      left: host.left,
+      top: host.top,
+      width: host.width,
+      height: host.height
+    }
+  } catch {}
+  recordingCountdownHost = { operationId, bounds }
+}
+
+function countdownHostBounds(operationId: string | null) {
+  return operationId && recordingCountdownHost?.operationId === operationId
+    ? recordingCountdownHost.bounds
+    : null
+}
+
+async function hideRecordingCountdownSurface(operationId?: string | null) {
+  await recordingCountdownSurface.hide(operationId)
+  if (!operationId || recordingCountdownHost?.operationId === operationId) recordingCountdownHost = null
+}
 
 function recordJourneyEvent(input: JourneyEventInput) {
   void journeyRecorder.record(input).catch((error) => {
@@ -320,6 +362,7 @@ chrome.action.onClicked.addListener(() => openOrFocusControlWindow());
 
 // Clean up control window ID when window is closed
 chrome.windows.onRemoved.addListener((windowId) => {
+  recordingCountdownSurface.windowRemoved(windowId)
   if (windowId === controlWinId) {
     controlWinId = null;
   }
@@ -336,7 +379,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // 处理 lab 功能的消息类型
   if (message.type) {
     const tabId = sender.tab?.id ?? message.tabId;
-    const globalTypes = new Set(['REQUEST_START_RECORDING','REQUEST_STOP_RECORDING','REQUEST_RECORDING_STATE','REQUEST_RECORDING_SESSION','REQUEST_TOGGLE_PAUSE','OFFSCREEN_START_RECORDING','OFFSCREEN_STOP_RECORDING','REQUEST_OFFSCREEN_PING','GET_RECORDING_STATE','RECORDING_COMPLETE','OPFS_RECORDING_READY','STREAM_START','STREAM_META','STREAM_END','STREAM_ERROR','BADGE_TICK','OPEN_CONTROL_WINDOW','OPEN_DRIVE','OPEN_LATEST_RECORDING']);
+    const globalTypes = new Set(['REQUEST_START_RECORDING','REQUEST_STOP_RECORDING','REQUEST_RECORDING_STATE','REQUEST_RECORDING_SESSION','REQUEST_TOGGLE_PAUSE','SET_RECORDING_COUNTDOWN','OFFSCREEN_START_RECORDING','OFFSCREEN_STOP_RECORDING','REQUEST_OFFSCREEN_PING','GET_RECORDING_STATE','RECORDING_COMPLETE','OPFS_RECORDING_READY','STREAM_START','STREAM_META','STREAM_END','STREAM_ERROR','BADGE_TICK','OPEN_CONTROL_WINDOW','OPEN_DRIVE','OPEN_LATEST_RECORDING']);
     let state: any;
     if (!globalTypes.has(message.type)) {
       if (!tabId) return;
@@ -392,14 +435,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         state.recording = true;
         ensureContentInjected(tabId).then(async () => {
           let c = (typeof message.countdown === 'number') ? message.countdown : undefined;
-          if (!(typeof c === 'number' && c >= 1 && c <= 5)) {
+          if (!(typeof c === 'number' && c >= 0 && c <= 5)) {
             try {
               const stored = await new Promise<any>(res => chrome.storage.local.get(['settings'], r => res(r)));
               const v = stored?.settings?.countdownSeconds;
-              if (typeof v === 'number' && v >= 1 && v <= 5) c = v;
+              if (typeof v === 'number' && v >= 0 && v <= 5) c = v;
             } catch {}
           }
-          if (!(typeof c === 'number' && c >= 1 && c <= 5)) c = 3;
+          c = normalizeRecordingCountdown(c)
           // Countdown should open only after user grants capture permission (stream ready)
           // So we do NOT open countdown here; content will trigger via STREAM_META once stream is available
           chrome.tabs.sendMessage(tabId, { type: 'START_CAPTURE', countdown: c });
@@ -455,6 +498,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'RECORDING_COMPLETE': {
         // Treat as a stop event when it originates from offscreen
         const operationId = operationIdFromMessage(message) || currentRecording.operationId
+        void hideRecordingCountdownSurface(operationId)
         void markRecordingFinalizing(operationId).catch((error) => {
           console.warn('[RecordingSession] Failed to enter finalizing state', error)
         })
@@ -536,6 +580,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'STREAM_START': {
         // Dual-path handling: tab-scoped (content pipeline) vs global (offscreen pipeline)
         const operationId = operationIdFromMessage(message) || currentRecording.operationId
+        void hideRecordingCountdownSurface(operationId)
         try {
           currentRecording.isRecording = true
           currentRecording.isPaused = false
@@ -568,19 +613,47 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const meta = message?.meta || {}
         const operationId = operationIdFromMessage(message) || currentRecording.operationId
         if (meta && meta.preparing && typeof meta.countdown === 'number') {
-          if (operationId) {
-            void publishRecordingTransition(recordingCoordinator.countdownChanged(operationId, meta.countdown))
-              .catch((error) => console.warn('[RecordingSession] Failed to update countdown', error))
-          }
-          // Broadcast STREAM_META to control page for inline countdown
-          // Control page will handle countdown display and send COUNTDOWN_DONE when finished
-          try {
-            chrome.runtime.sendMessage({
-              type: 'STREAM_META',
-              meta: { preparing: true, countdown: meta.countdown, mode: meta.mode }
-            }).catch(() => {})
-          } catch {}
-          try { sendResponse({ ok: true }) } catch {}
+          ;(async () => {
+            try {
+              if (operationId) {
+                await publishRecordingTransition(recordingCoordinator.countdownChanged(operationId, meta.countdown))
+              }
+
+              // Action popups close when the system picker takes focus. Screen
+              // and Window capture therefore use a short-lived independent
+              // surface. The final zero tick waits for the window to close
+              // before the capture owner crosses the formal frame boundary.
+              if (operationId) {
+                if (meta.countdown > 0) {
+                  await recordingCountdownSurface.show({
+                    operationId,
+                    mode: meta.mode,
+                    remaining: meta.countdown,
+                    hostBounds: countdownHostBounds(operationId)
+                  })
+                } else {
+                  await hideRecordingCountdownSurface(operationId)
+                }
+              } else if (meta.countdown <= 0) {
+                await hideRecordingCountdownSurface()
+              }
+
+              // Keep the control page and countdown view synchronized. The
+              // capture owner remains the only countdown clock.
+              try {
+                chrome.runtime.sendMessage({
+                  target: 'recording-ui',
+                  type: 'STREAM_META',
+                  operationId,
+                  meta: { preparing: true, countdown: meta.countdown, mode: meta.mode }
+                }).catch(() => {})
+              } catch {}
+              try { sendResponse({ ok: true }) } catch {}
+            } catch (error) {
+              console.warn('[RecordingSession] Failed to present countdown', error)
+              try { sendResponse({ ok: false, error: String(error) }) } catch {}
+            }
+          })()
           return true;
         }
         if (meta && typeof meta.paused === 'boolean') {
@@ -620,6 +693,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
       case 'STREAM_END': {
         const operationId = operationIdFromMessage(message) || currentRecording.operationId
+        void hideRecordingCountdownSurface(operationId)
         void markRecordingFinalizing(operationId).catch((error) => {
           console.warn('[RecordingSession] Failed to handle stream end', error)
         })
@@ -645,6 +719,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
       case 'STREAM_ERROR': {
         const operationId = operationIdFromMessage(message) || currentRecording.operationId
+        void hideRecordingCountdownSurface(operationId)
         const errorCode = typeof message?.code === 'string' && message.code.trim()
           ? message.code
           : 'RECORDING_FAILED'
@@ -684,14 +759,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           try {
             // Inject countdown from storage if missing / invalid
             let c = raw?.countdown
-            if (!(typeof c === 'number' && c >=1 && c <=5)) {
+            if (!(typeof c === 'number' && c >= 0 && c <= 5)) {
               try {
                 const stored = await new Promise<any>(res => chrome.storage.local.get(['settings'], r => res(r)));
                 const v = stored?.settings?.countdownSeconds;
-                if (typeof v === 'number' && v >=1 && v <=5) c = v; else c = 3;
+                if (typeof v === 'number' && v >= 0 && v <= 5) c = v; else c = 3;
               } catch { c = 3 }
             }
-            raw.countdown = c;
+            raw.countdown = normalizeRecordingCountdown(c)
             const mode = (raw?.mode === 'tab' || raw?.mode === 'window' || raw?.mode === 'screen')
               ? raw.mode
               : 'screen'
@@ -727,6 +802,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         })()
         return true;
       }
+      case 'SET_RECORDING_COUNTDOWN': {
+        persistRecordingCountdownSetting({
+          get: (keys) => chrome.storage.local.get(keys),
+          set: (value) => chrome.storage.local.set(value)
+        }, message?.value)
+          .then((countdownSeconds) => sendResponse({ ok: true, countdownSeconds }))
+          .catch(() => sendResponse({ ok: false, error: 'COUNTDOWN_STORAGE_FAILED' }))
+        return true
+      }
       case 'REQUEST_STOP_RECORDING': {
         // Only handle stop requests from popup, not OFFSCREEN_STOP_RECORDING
         // OFFSCREEN_STOP_RECORDING is sent TO offscreen, not FROM it
@@ -745,6 +829,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               try { sendResponse({ ok: false, error: 'Recording cannot be stopped in its current state', code: 'INVALID_RECORDING_STATE', state: stopping.state }) } catch {}
               return
             }
+            await hideRecordingCountdownSurface(state.operationId)
             recordJourneyEvent({ name: 'recording.stop_requested', context: 'background' })
             await stopRecordingViaOffscreen()
             try { sendResponse({ ok: true, state: await recordingCoordinator.getState() }) } catch (e) {}
@@ -1345,8 +1430,14 @@ async function startRecordingViaOffscreen(options, operationId: string) {
       mode,
       video: options?.video ?? true,
       audio: options?.audio ?? false,
-      countdown: (typeof options?.countdown === 'number' && options.countdown >=1 && options.countdown <=5) ? options.countdown : 3,
+      countdown: normalizeRecordingCountdown(options?.countdown),
       operationId
+    }
+
+    if ((mode === 'screen' || mode === 'window') && normalizedOptions.countdown > 0) {
+      await rememberRecordingCountdownHost(operationId)
+    } else {
+      recordingCountdownHost = null
     }
 
     let targetTabId: number | null = null
@@ -1407,6 +1498,7 @@ async function startRecordingViaOffscreen(options, operationId: string) {
       await enableTabAnnotation(targetTabId)
     }
   } catch (e) {
+    await hideRecordingCountdownSurface(operationId).catch(() => {})
     if (typeof e?.code === 'string' && e.code.startsWith('TAB_CAPTURE_')) {
       const cause = e?.cause
       console.warn('[TabCapture] Failed to acquire current-tab stream id', {

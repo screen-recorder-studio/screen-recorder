@@ -24,6 +24,7 @@
     type RecordingMode,
     type RecordingSessionState
   } from '$lib/recording/recording-session'
+  import { normalizeRecordingCountdown } from '$lib/recording/recording-startup'
   import { formatRecordingDuration } from '$lib/utils/recording-duration'
   import { emitJourneyEvent } from '$lib/observability/journey-events'
 
@@ -60,9 +61,7 @@
         chrome.storage.local.get(['settings'], (value) => resolve(value))
       })
       const configured = stored?.settings?.countdownSeconds
-      if (typeof configured === 'number' && configured >= 1 && configured <= 5) {
-        countdownSeconds = Math.floor(configured)
-      }
+      countdownSeconds = normalizeRecordingCountdown(configured)
     } catch {}
     try {
       const response = await chrome.runtime.sendMessage({ type: 'REQUEST_RECORDING_SESSION' })
@@ -95,15 +94,14 @@
   })
 
   async function persistCountdown(value: number) {
-    countdownSeconds = Math.min(5, Math.max(1, Math.floor(value)))
+    countdownSeconds = normalizeRecordingCountdown(value)
     try {
-      const stored = await new Promise<any>((resolve) => {
-        chrome.storage.local.get(['settings'], (value) => resolve(value))
-      })
-      await new Promise<void>((resolve) => {
-        chrome.storage.local.set({
-          settings: { ...(stored?.settings || {}), countdownSeconds }
-        }, () => resolve())
+      // Native select menus can close an action popup as soon as the option is
+      // chosen. Dispatch persistence to the long-lived service worker before
+      // yielding instead of depending on this disposable document.
+      await chrome.runtime.sendMessage({
+        type: 'SET_RECORDING_COUNTDOWN',
+        value: countdownSeconds
       })
     } catch {}
   }
@@ -241,12 +239,13 @@
           <select
             class="rounded-md border border-gray-200 bg-white px-1.5 py-1 text-xs text-gray-700 outline-none focus:border-blue-400"
             disabled={!model.canSelectMode}
-            value={countdownSeconds}
-            onchange={(event) => persistCountdown(Number(event.currentTarget.value))}
+            bind:value={countdownSeconds}
+            onchange={() => persistCountdown(countdownSeconds)}
           >
-            <option value="1">1s</option>
-            <option value="3">3s</option>
-            <option value="5">5s</option>
+            <option value={0}>0s</option>
+            <option value={1}>1s</option>
+            <option value={3}>3s</option>
+            <option value={5}>5s</option>
           </select>
         </label>
       </div>
