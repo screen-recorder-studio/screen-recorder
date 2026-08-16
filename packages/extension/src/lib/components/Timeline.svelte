@@ -8,6 +8,10 @@
     parseTrimSecondsInput,
     resolveTrimKeyboardValue
   } from '$lib/studio/trim-boundary'
+  import {
+    resolvePaddedTimelinePositionCss,
+    TIMELINE_CONTENT_INSET_REM
+  } from '$lib/studio/timeline-coordinate'
 
   // Props Interface
   interface Props {
@@ -143,6 +147,8 @@
 
   // 🆕 计算预览位置百分比
   const hoverPreviewPercent = $derived(timelineMaxMs > 0 ? (hoverPreviewTimeMs / timelineMaxMs) * 100 : 0)
+  const playheadLeft = $derived(resolvePaddedTimelinePositionCss(playheadPercent, TIMELINE_CONTENT_INSET_REM))
+  const hoverPreviewLeft = $derived(resolvePaddedTimelinePositionCss(hoverPreviewPercent, TIMELINE_CONTENT_INSET_REM))
 
   // 🆕 Zoom 是否激活（基于区间列表）
   const hasZoomIntervals = $derived(zoomIntervals.length > 0)
@@ -997,7 +1003,14 @@
 </script>
 
 <!-- Timeline Container -->
-<div class="timeline-container" role="region" aria-label="Timeline area" onmousemove={handleContainerMouseMove} onmouseleave={handleContainerMouseLeave}>
+<div
+  class="timeline-container"
+  style={`--timeline-content-inset: ${TIMELINE_CONTENT_INSET_REM}rem`}
+  role="region"
+  aria-label="Timeline area"
+  onmousemove={handleContainerMouseMove}
+  onmouseleave={handleContainerMouseLeave}
+>
   <!-- 主时间轴区域 -->
   <div class="timeline-main">
     <!-- 时间刻度 -->
@@ -1127,7 +1140,7 @@
   {#if isHoveringTimeline && !isDraggingPlayhead && !isDraggingTrimStart && !isDraggingTrimEnd}
     <div
       class="preview-line-container"
-      style="left: {hoverPreviewPercent}%"
+      style="left: {hoverPreviewLeft}"
     >
       <div class="preview-line"></div>
       <div class="preview-tooltip">
@@ -1250,7 +1263,7 @@
   <!-- 播放头竖线 - 覆盖整个时间轴包括 zoom 区 -->
   <div
     class="playhead-container"
-    style="left: {playheadPercent}%"
+    style="left: {playheadLeft}"
   >
     <!-- 竖线 -->
     <div
@@ -1275,7 +1288,7 @@
   .timeline-container {
     position: relative;
     width: 100%;
-    padding: 1rem;
+    padding: var(--timeline-content-inset);
     background: linear-gradient(to bottom, #1f2937, #111827); /* 深色渐变背景 */
     border-radius: 0.5rem;
     box-shadow:
