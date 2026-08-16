@@ -14,6 +14,7 @@
 2. **GIF 的 `BRIDGE-REQUIRED` 只是 Worker Lab 边界，不是产品缺陷。** 真实 Studio → ExportManager → gif.js 主线程桥接 → 下载链已成功输出 647 帧、64.60s、1440×810 的 GIF。复核同时发现旧体积估算严重偏小（约 7.9 MB，实际 107.1 MB），已改为基于真实产物校准的范围估算并经 Chrome 验证。
 3. **录制能力文案与产品策略不一致。** 原中/英/俄发布说明把默认录制描述为 4K/60；实际为 Balanced 1080p/30。文案已改为“录制最高 1080p/30，编辑画布可最高 4K 导出”，并由测试固化。
 4. Service Worker 回收后会话继续、扩展重载、最终构建上的 3 秒 Slice WebM/MP4 连续导出均已补测通过。
+5. **短 Slice 结束位置的 Playhead 视觉偏移。** 播放状态实际精确停在 3000ms，但 Playhead 相对带 padding 的外层容器定位，Trim 位于内层轨道，导致靠近开头时视觉上偏进区间中部。现已统一坐标契约，并同步修复 Hover Preview 竖线。
 
 仍未完成的是 Windows Stable、低配 Windows 和 10/30/60 分钟长时 Soak；这些是**外部覆盖缺口**，不能写成 PASS，但当前没有新增的确定性代码失败。基于已有 macOS 主路径、格式导出和性能证据，可进行受控 macOS 灰度；全平台发布签字应等待 Windows 实机矩阵。
 
@@ -23,7 +24,7 @@
 | --- | --- |
 | 版本 | 0.6.12 |
 | 基线 Git commit | `b8b281f51d041fb5caf34df97f020f25655aebe4` |
-| 修正提交 | `d0c14c8` GIF 估算；`49cdebb` 录制能力文案契约 |
+| 修正提交 | `d0c14c8` GIF 估算；`49cdebb` 录制能力文案契约；`6c923ad` Timeline 坐标 |
 | 分支 | `v0.6.12` |
 | 构建产物 | `/Users/wxnet/Base/Projects/video-record/packages/extension/build`，Manifest MV3 |
 | 扩展安装 | Chrome Unpacked，ID `hjknmbigiplfnijadglappikppmecpga` |
@@ -58,7 +59,7 @@ Chrome 中存在 ChatGPT 调试 infobar，以及其他历史 DevTools 的无关�
 
 | Case ID | 命令/检查 | 结果 | 证据 |
 | --- | --- | --- | --- |
-| GATE-001 | `pnpm --filter extension test` | **PASS** | 56 files passed，299 tests passed |
+| GATE-001 | `pnpm --filter extension test` | **PASS** | 57 files passed，302 tests passed |
 | GATE-002 | `pnpm -C packages/extension exec tsc --noEmit` | **PASS** | 无输出、退出码 0 |
 | GATE-003 | `pnpm build:extension` | **PASS** | Release logging policy verified across 87 JavaScript bundles；构建产物 Manifest 为 0.6.12 |
 | GATE-004 | `git diff --check` | **PASS** | 无 whitespace 错误 |
@@ -204,6 +205,12 @@ MP4 的 Node 侧 H.264 解码不可用，因此本轮对 MP4 做了容器/时长
 
 - `49cdebb` 将中/英/俄说明统一为 Balanced 录制最高 1080p/30、导出最高 4K；同时区分 MP4/WebM 最高 60 FPS 与 GIF 最高 30 FPS。
 - 新增测试防止重新出现“默认录制从 SD 到 4K”的错误承诺。
+
+### FIX-03：短 Slice 的 Playhead/Trim 视觉坐标已统一
+
+- 根因：Trim/Zoom 使用 `.timeline-track` 内容盒坐标；全高 Playhead 和 Hover Preview 使用带 `1rem` padding 的外层容器百分比坐标。位置误差为 `padding × (1 - 2 × percent)`，因此时间线开头向左偏、50% 处偶然无误差、末尾向右偏。
+- `6c923ad` 新增共享 padded timeline 坐标契约，并让 Playhead、Hover Preview 与 Trim 使用相同内容盒边界。
+- TDD 覆盖 0%/50%/100% 和真实 `[0,3s]/146.44s` 短区间；真实 Chrome Reload 后播放从 0.46s 前进并精确结束于 3.000s，截图确认 Playhead 对齐 Trim end 时间边界。
 
 ### 非阻塞观察项
 
