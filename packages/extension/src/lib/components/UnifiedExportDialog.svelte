@@ -11,7 +11,8 @@
     Info,
     Clock,
     TriangleAlert,
-    HardDrive
+    HardDrive,
+    RefreshCw
   } from '@lucide/svelte'
   import { trimStore } from '$lib/stores/trim.svelte'
   import { _t as t } from '$lib/utils/i18n'
@@ -22,6 +23,7 @@
     onCancel?: () => void
     onExport: (format: ExportFormat, options: VideoExportOptions | GifExportOptions) => void
     onOpenDrive?: () => void
+    onReloadStudio?: () => void
     sourceInfo: SourceVideoInfo
     sourceFps?: number
     selectedSourceFrameCount?: number
@@ -37,6 +39,7 @@
     errorMessage?: string
     errorHint?: string
     showOpenDriveAction?: boolean
+    showReloadStudioAction?: boolean
   }
 
   let {
@@ -45,6 +48,7 @@
     onCancel,
     onExport,
     onOpenDrive,
+    onReloadStudio,
     sourceInfo,
     sourceFps = 30,
     selectedSourceFrameCount,
@@ -53,7 +57,8 @@
     hasBackground = false,
     errorMessage = '',
     errorHint = '',
-    showOpenDriveAction = false
+    showOpenDriveAction = false,
+    showReloadStudioAction = false
   }: Props = $props()
 
   // Types
@@ -714,6 +719,17 @@
             >
               <HardDrive class="h-3.5 w-3.5" />
               {t('studio_emptyOpenDrive')}
+            </button>
+          {/if}
+          {#if showReloadStudioAction && onReloadStudio}
+            <button
+              class="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-100"
+              onclick={onReloadStudio}
+            >
+              <RefreshCw class="h-3.5 w-3.5" />
+              {t('export_error_reload_action', undefined, {
+                export_error_reload_action: 'Reload Studio'
+              })}
             </button>
           {/if}
         </div>

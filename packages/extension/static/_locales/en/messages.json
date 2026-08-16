@@ -193,6 +193,9 @@
   "export_error_mp4_failed": { "message": "MP4 export failed. Please try again." },
   "export_error_retry_hint": { "message": "Try again or use a different format." },
   "export_error_opfs_download_failed": { "message": "File saved to Drive but download failed. Open Drive to retrieve your file." },
+  "export_error_worker_unavailable": { "message": "Export components could not start." },
+  "export_error_reload_hint": { "message": "Studio may have been updated. Reload to restore export. Your recording is safe, but unsaved edits may reset." },
+  "export_error_reload_action": { "message": "Reload Studio" },
 
   "export_dialog_title": { "message": "Export Video" },
   "export_source_res": { "message": "Resolution" },

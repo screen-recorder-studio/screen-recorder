@@ -1,7 +1,8 @@
 <!-- Video export panel component -->
 <script lang="ts">
-  import { Download, HardDrive, LoaderCircle, TriangleAlert, Sparkles } from '@lucide/svelte'
+  import { Download, HardDrive, LoaderCircle, RefreshCw, TriangleAlert, Sparkles } from '@lucide/svelte'
   import { ExportCancelledError, ExportManager } from '$lib/services/export-manager'
+  import { classifyExportFailure } from '$lib/export/export-error'
   import { emitJourneyEvent } from '$lib/observability/journey-events'
   import { withOpfsExportTarget } from '$lib/export/export-target'
   import {
@@ -112,7 +113,8 @@
   // Export error feedback
   let exportErrorMessage = $state('')
   let exportErrorHint = $state('')
-  let exportErrorAction = $state<'none' | 'open-drive'>('none')
+  type ExportErrorAction = 'none' | 'open-drive' | 'reload-studio'
+  let exportErrorAction = $state<ExportErrorAction>('none')
 
   // Unified export dialog
   let showExportDialog = $state(false)
@@ -280,8 +282,8 @@
         showExportDialog = false
       } else {
         console.error('❌ [Export] GIF export failed:', error)
-        emitJourneyEvent({ name: 'export.failed', context: 'export', attributes: { format: 'gif', outcome: 'failure', errorCode: 'EXPORT_GIF_FAILED' } })
-        setExportError(t('export_error_gif_failed'), t('export_error_retry_hint'))
+        const errorCode = presentExportFailure(error, 'gif')
+        emitJourneyEvent({ name: 'export.failed', context: 'export', attributes: { format: 'gif', outcome: 'failure', errorCode } })
       }
     } finally {
       if (gifPreflightCancellation === preflightCancellation) {
@@ -389,10 +391,26 @@
     exportErrorAction = 'none'
   }
 
-  function setExportError(message: string, hint = '', action: 'none' | 'open-drive' = 'none') {
+  function setExportError(message: string, hint = '', action: ExportErrorAction = 'none') {
     exportErrorMessage = message
     exportErrorHint = hint
     exportErrorAction = action
+  }
+
+  const exportWorkerFallbackMessages = {
+    export_error_worker_unavailable: 'Export components could not start.',
+    export_error_reload_hint: 'Studio may have been updated. Reload to restore export. Your recording is safe, but unsaved edits may reset.',
+    export_error_reload_action: 'Reload Studio'
+  }
+
+  function presentExportFailure(error: unknown, format: ExportFormat): string {
+    const failure = classifyExportFailure(error, format)
+    setExportError(
+      t(failure.messageKey, undefined, exportWorkerFallbackMessages),
+      t(failure.hintKey, undefined, exportWorkerFallbackMessages),
+      failure.action
+    )
+    return failure.errorCode
   }
 
   function openDriveFromExportError() {
@@ -401,6 +419,10 @@
     } catch {
       window.open('/drive.html', '_blank')
     }
+  }
+
+  function reloadStudioFromExportError() {
+    window.location.reload()
   }
 
   // Open unified export dialog
@@ -547,8 +569,8 @@
         showExportDialog = false
       } else {
         console.error('❌ [Export] WebM export failed:', error)
-        emitJourneyEvent({ name: 'export.failed', context: 'export', attributes: { format: 'webm', outcome: 'failure', errorCode: 'EXPORT_WEBM_FAILED' } })
-        setExportError(t('export_error_webm_failed'), t('export_error_retry_hint'))
+        const errorCode = presentExportFailure(error, 'webm')
+        emitJourneyEvent({ name: 'export.failed', context: 'export', attributes: { format: 'webm', outcome: 'failure', errorCode } })
       }
     } finally {
       isExportingWebM = false
@@ -673,8 +695,8 @@
         showExportDialog = false
       } else {
         console.error('❌ [Export] MP4 export failed:', error)
-        emitJourneyEvent({ name: 'export.failed', context: 'export', attributes: { format: 'mp4', outcome: 'failure', errorCode: 'EXPORT_MP4_FAILED' } })
-        setExportError(t('export_error_mp4_failed'), t('export_error_retry_hint'))
+        const errorCode = presentExportFailure(error, 'mp4')
+        emitJourneyEvent({ name: 'export.failed', context: 'export', attributes: { format: 'mp4', outcome: 'failure', errorCode } })
       }
     } finally {
       isExportingMP4 = false
@@ -785,6 +807,15 @@
           {t('studio_emptyOpenDrive')}
         </button>
       {/if}
+      {#if exportErrorAction === 'reload-studio'}
+        <button
+          class="inline-flex items-center gap-1 rounded border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 flex-shrink-0"
+          onclick={reloadStudioFromExportError}
+        >
+          <RefreshCw class="w-3 h-3" />
+          {t('export_error_reload_action', undefined, exportWorkerFallbackMessages)}
+        </button>
+      {/if}
       <button
         class="p-0.5 rounded hover:bg-red-100 transition-colors flex-shrink-0"
         onclick={clearExportError}
@@ -803,6 +834,7 @@
   onCancel={handleCancelExport}
   onExport={handleExport}
   onOpenDrive={openDriveFromExportError}
+  onReloadStudio={reloadStudioFromExportError}
   sourceInfo={sourceInfo}
   sourceFps={sourceFps}
   selectedSourceFrameCount={displayTotalFrames}
@@ -810,6 +842,7 @@
   errorMessage={exportErrorMessage}
   errorHint={exportErrorHint}
   showOpenDriveAction={exportErrorAction === 'open-drive'}
+  showReloadStudioAction={exportErrorAction === 'reload-studio'}
   exportProgress={exportProgress ? {
     stage: exportProgress.stage,
     progress: displayedProgress,

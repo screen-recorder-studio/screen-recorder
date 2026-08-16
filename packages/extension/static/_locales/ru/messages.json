@@ -189,6 +189,9 @@
   "export_error_mp4_failed": { "message": "Ошибка экспорта MP4. Попробуйте снова." },
   "export_error_retry_hint": { "message": "Попробуйте снова или используйте другой формат." },
   "export_error_opfs_download_failed": { "message": "Файл сохранён в Drive, но загрузка не удалась. Откройте Drive, чтобы получить файл." },
+  "export_error_worker_unavailable": { "message": "Не удалось запустить компоненты экспорта." },
+  "export_error_reload_hint": { "message": "Возможно, Studio обновилась. Перезагрузите страницу, чтобы восстановить экспорт. Запись сохранена, но несохранённые правки могут сброситься." },
+  "export_error_reload_action": { "message": "Перезагрузить Studio" },
 
   "export_dialog_title": { "message": "Экспорт видео" },
   "export_source_res": { "message": "Разрешение" },

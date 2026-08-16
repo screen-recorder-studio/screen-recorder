@@ -12,12 +12,47 @@ export class ExportCancelledError extends Error {
   }
 }
 
+export class ExportWorkerUnavailableError extends Error {
+  readonly code = 'EXPORT_WORKER_UNAVAILABLE'
+  readonly cause: unknown
+
+  constructor(readonly format: ExportOptions['format'], cause?: unknown) {
+    super(`${format.toUpperCase()} export worker is unavailable`)
+    this.name = 'ExportWorkerUnavailableError'
+    this.cause = cause
+  }
+}
+
 export class ExportManager {
   private currentExportWorker: Worker | null = null
   private progressCallback: ((progress: ExportProgress) => void) | null = null
   private gifEncodeHandler: ((event: MessageEvent) => void) | null = null
   private activeGifEncoder: any | null = null
   private cancelRequested = false
+
+  private createExportWorker(format: ExportOptions['format']): Worker {
+    try {
+      return new Worker(
+        new URL('../workers/export-worker/index.ts', import.meta.url),
+        { type: 'module' }
+      )
+    } catch (error) {
+      throw new ExportWorkerUnavailableError(format, error)
+    }
+  }
+
+  private createWorkerFailure(
+    format: ExportOptions['format'],
+    workerResponded: boolean,
+    cause: unknown
+  ): Error {
+    if (!workerResponded) {
+      return new ExportWorkerUnavailableError(format, cause)
+    }
+
+    const label = format === 'webm' ? 'WebM' : format.toUpperCase()
+    return new Error(`${label} export worker failed`)
+  }
 
   /**
    * 导出编辑后的视频
@@ -128,14 +163,13 @@ export class ExportManager {
 
 
     return new Promise((resolve, reject) => {
+      let workerResponded = false
       // 创建 WebM 导出 Worker（统一入口）
-      this.currentExportWorker = new Worker(
-        new URL('../workers/export-worker/index.ts', import.meta.url),
-        { type: 'module' }
-      )
+      this.currentExportWorker = this.createExportWorker('webm')
 
       // 设置消息处理
       this.currentExportWorker.onmessage = (event) => {
+        workerResponded = true
         const { type, data } = event.data
 
         switch (type) {
@@ -176,7 +210,7 @@ export class ExportManager {
 
       this.currentExportWorker.onerror = (error) => {
         console.error('❌ [ExportManager] WebM worker error:', error)
-        reject(new Error('WebM export worker failed'))
+        reject(this.createWorkerFailure('webm', workerResponded, error))
       }
 
       // 开始导出
@@ -197,14 +231,13 @@ export class ExportManager {
 
 
     return new Promise((resolve, reject) => {
+      let workerResponded = false
       // 创建 MP4 导出 Worker
-      this.currentExportWorker = new Worker(
-        new URL('../workers/export-worker/index.ts', import.meta.url),
-        { type: 'module' }
-      )
+      this.currentExportWorker = this.createExportWorker('mp4')
 
       // 设置消息处理
       this.currentExportWorker.onmessage = (event) => {
+        workerResponded = true
         const { type, data } = event.data
 
         switch (type) {
@@ -245,7 +278,7 @@ export class ExportManager {
 
       this.currentExportWorker.onerror = (error) => {
         console.error('❌ [ExportManager] MP4 worker error:', error)
-        reject(new Error('MP4 export worker failed'))
+        reject(this.createWorkerFailure('mp4', workerResponded, error))
       }
 
       // 开始导出
@@ -308,11 +341,9 @@ export class ExportManager {
    */
   private async exportGIF(exportData: any, options: ExportOptions): Promise<Blob> {
     return new Promise((resolve, reject) => {
+      let workerResponded = false
       // 创建 Worker
-      this.currentExportWorker = new Worker(
-        new URL('../workers/export-worker/index.ts', import.meta.url),
-        { type: 'module' }
-      )
+      this.currentExportWorker = this.createExportWorker('gif')
 
       // 设置 GIF 编码请求处理器（流式处理）
       this.gifEncodeHandler = async (event: MessageEvent) => {
@@ -415,6 +446,7 @@ export class ExportManager {
 
       // 监听 Worker 消息
       this.currentExportWorker.addEventListener('message', (event) => {
+        workerResponded = true
         const { type, data } = event.data
 
         switch (type) {
@@ -450,7 +482,7 @@ export class ExportManager {
       // 监听 Worker 错误
       this.currentExportWorker.addEventListener('error', (error) => {
         console.error('❌ [ExportManager] Worker error:', error)
-        reject(error)
+        reject(this.createWorkerFailure('gif', workerResponded, error))
       })
 
       // 发送导出请求到 Worker

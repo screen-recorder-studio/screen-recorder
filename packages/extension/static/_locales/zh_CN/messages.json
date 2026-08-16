@@ -193,6 +193,9 @@
   "export_error_mp4_failed": { "message": "MP4 导出失败，请重试。" },
   "export_error_retry_hint": { "message": "请重试或使用其他格式。" },
   "export_error_opfs_download_failed": { "message": "文件已保存到 Drive，但下载失败。请打开 Drive 获取您的文件。" },
+  "export_error_worker_unavailable": { "message": "导出组件无法启动。" },
+  "export_error_reload_hint": { "message": "Studio 可能已更新。请重新加载以恢复导出；录制文件不会丢失，但尚未保存的编辑可能重置。" },
+  "export_error_reload_action": { "message": "重新加载 Studio" },
 
   "export_dialog_title": { "message": "导出视频" },
   "export_source_res": { "message": "分辨率" },

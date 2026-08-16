@@ -26,6 +26,12 @@ class FakeWorker extends EventTarget {
     this.onmessage?.(event)
     this.dispatchEvent(event)
   }
+
+  fail(message = 'Failed to load worker module') {
+    const event = Object.assign(new Event('error'), { message }) as ErrorEvent
+    this.onerror?.(event)
+    this.dispatchEvent(event)
+  }
 }
 
 beforeEach(() => {
@@ -107,5 +113,50 @@ describe('ExportManager memory trim contract', () => {
     manager.cancelExport()
     worker.emit({ type: 'cancelled', data: {} })
     await expect(pending).rejects.toMatchObject({ code: 'EXPORT_CANCELLED' })
+  })
+})
+
+describe('ExportManager worker availability', () => {
+  it.each(['mp4', 'webm', 'gif'] as const)(
+    'reports a stable unavailable error when the %s worker cannot start',
+    async (format) => {
+      const manager = new ExportManager()
+      const pending = manager.exportEditedVideo(
+        [{ data: new Uint8Array([1]), timestamp: 0, type: 'key', size: 1 }],
+        { format, quality: 'high' } as any
+      )
+      const worker = FakeWorker.instances[0]
+
+      worker.fail()
+
+      await expect(pending).rejects.toMatchObject({
+        name: 'ExportWorkerUnavailableError',
+        code: 'EXPORT_WORKER_UNAVAILABLE',
+        format
+      })
+      expect(worker.terminated).toBe(true)
+    }
+  )
+
+  it('keeps a runtime worker crash distinct after export progress has started', async () => {
+    const manager = new ExportManager()
+    const pending = manager.exportEditedVideo(
+      [{ data: new Uint8Array([1]), timestamp: 0, type: 'key', size: 1 }],
+      { format: 'webm', quality: 'high' } as any
+    )
+    const worker = FakeWorker.instances[0]
+
+    worker.emit({
+      type: 'progress',
+      data: { stage: 'encoding', progress: 1, currentFrame: 1, totalFrames: 10 }
+    })
+    worker.fail('Encoder crashed')
+
+    await expect(pending).rejects.toMatchObject({
+      message: 'WebM export worker failed'
+    })
+    await expect(pending).rejects.not.toMatchObject({
+      code: 'EXPORT_WORKER_UNAVAILABLE'
+    })
   })
 })
