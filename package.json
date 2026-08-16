@@ -1,7 +1,7 @@
 {
 	"name": "screen-recorder-studio",
 	"private": true,
-	"version": "0.6.11",
+	"version": "0.6.12",
 	"type": "module",
 	"description": "A Chrome extension for recording tabs, windows, screens, page regions, and elements",
 	"scripts": {
@@ -10,7 +10,10 @@
 		"preview": "pnpm --filter extension preview",
 		"check": "pnpm --filter extension check",
 		"check:watch": "pnpm --filter extension check:watch",
+		"test": "pnpm --filter extension test",
+		"test:watch": "pnpm --filter extension test:watch",
 		"build:extension": "pnpm --filter extension build:extension",
+		"build:extension:debug": "pnpm --filter extension build:extension:debug",
 		"package:extension": "pnpm --filter extension package:extension"
 	},
 	"pnpm": {

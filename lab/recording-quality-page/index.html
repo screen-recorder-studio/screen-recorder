@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>Recording Quality Test Card</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="status-bar">
+      <div>
+        <p class="eyebrow">SCREEN RECORDING LAB</p>
+        <h1>录制质量测试卡</h1>
+      </div>
+
+      <div class="meters" aria-live="polite">
+        <div class="meter">
+          <span>计时器</span>
+          <strong id="elapsed">00:00:00.000</strong>
+        </div>
+        <div class="meter">
+          <span>总帧数</span>
+          <strong id="frame-count">0</strong>
+        </div>
+        <div class="meter">
+          <span>页面 FPS</span>
+          <strong id="fps">0.0</strong>
+        </div>
+        <button id="toggle-motion" type="button" aria-pressed="false">
+          暂停动画
+        </button>
+        <button id="toggle-freeze" type="button" aria-pressed="false">
+          冻结画面
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel static-panel" aria-labelledby="static-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">STATIC REFERENCE</p>
+            <h2 id="static-title">静态场景与形变基准</h2>
+          </div>
+          <span class="state-chip">STATIC</span>
+        </div>
+
+        <div class="shape-grid" aria-label="圆形、正方形和一像素细线">
+          <figure>
+            <div class="perfect-circle"></div>
+            <figcaption>正圆 · 120 × 120</figcaption>
+          </figure>
+          <figure>
+            <div class="perfect-square"></div>
+            <figcaption>正方形 · 120 × 120</figcaption>
+          </figure>
+          <figure class="hairline-card">
+            <div class="hairline horizontal"></div>
+            <div class="hairline vertical"></div>
+            <figcaption>原生 1px 线 · 无 transform</figcaption>
+          </figure>
+        </div>
+
+        <div class="reference-layouts">
+          <figure>
+            <div class="aspect-frame aspect-16-9">
+              <span>16:9</span>
+              <i class="safe-area"></i>
+              <i class="crosshair"></i>
+            </div>
+            <figcaption>16:9 参考框与 90% 安全区</figcaption>
+          </figure>
+          <figure>
+            <div class="aspect-frame aspect-1-1">
+              <span>1:1</span>
+              <i class="safe-area"></i>
+              <i class="crosshair"></i>
+            </div>
+            <figcaption>1:1 参考框与中心线</figcaption>
+          </figure>
+        </div>
+
+        <div class="grid-reference">
+          <span>24px 网格 · 检查缩放、拉伸与莫尔纹</span>
+        </div>
+
+        <div class="swatches" aria-label="颜色和灰阶测试条">
+          <div class="color-bar">
+            <i style="--swatch: #ff334f"></i>
+            <i style="--swatch: #ffb000"></i>
+            <i style="--swatch: #f5ef45"></i>
+            <i style="--swatch: #31d87c"></i>
+            <i style="--swatch: #00c2ff"></i>
+            <i style="--swatch: #4f64ff"></i>
+            <i style="--swatch: #b63cff"></i>
+            <i style="--swatch: #ff4fc0"></i>
+          </div>
+          <div class="gray-bar">
+            <i style="--gray: #000"></i>
+            <i style="--gray: #242424"></i>
+            <i style="--gray: #484848"></i>
+            <i style="--gray: #6d6d6d"></i>
+            <i style="--gray: #929292"></i>
+            <i style="--gray: #b7b7b7"></i>
+            <i style="--gray: #dbdbdb"></i>
+            <i style="--gray: #fff"></i>
+          </div>
+        </div>
+
+        <div class="text-reference">
+          <p class="text-xs">12px — 屏幕录制 Screen Recording 0123456789</p>
+          <p class="text-sm">16px — 细节清晰度 Detail &amp; Sharpness</p>
+          <p class="text-lg">28px — 中英文边缘与字重 Aa 中</p>
+          <p class="text-outline">OUTLINE / 轮廓文字</p>
+        </div>
+      </section>
+
+      <section class="panel motion-panel" aria-labelledby="motion-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">MOTION REFERENCE</p>
+            <h2 id="motion-title">运动、旋转与 CSS Transform</h2>
+          </div>
+          <span id="motion-state" class="state-chip motion-chip">RUNNING</span>
+        </div>
+
+        <article class="motion-test">
+          <div class="test-label">
+            <strong>匀速运动</strong>
+            <span>6s · linear · 检查跳帧与拖影</span>
+          </div>
+          <div class="track track-slow">
+            <div class="runner runner-slow"><i></i></div>
+            <div class="track-ticks"></div>
+          </div>
+        </article>
+
+        <article class="motion-test">
+          <div class="test-label">
+            <strong>快速运动</strong>
+            <span>1.2s · linear · 检查块效应与撕裂</span>
+          </div>
+          <div class="track track-fast">
+            <div class="runner runner-fast"><i></i></div>
+            <div class="track-ticks"></div>
+          </div>
+        </article>
+
+        <div class="transform-tests">
+          <article>
+            <div class="test-label">
+              <strong>连续旋转</strong>
+              <span>3s / 圈</span>
+            </div>
+            <div class="rotation-stage">
+              <div class="rotation-wheel">
+                <i></i><i></i><i></i><i></i>
+              </div>
+            </div>
+          </article>
+
+          <article>
+            <div class="test-label">
+              <strong>CSS Transform</strong>
+              <span>translate · scale · skew</span>
+            </div>
+            <div class="transform-stage">
+              <div class="transform-card">
+                <span>CSS</span>
+                <i></i>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <article class="edge-test">
+          <div class="test-label">
+            <strong>运动边缘与细线</strong>
+            <span>对比静态 1px 线与旋转后的亚像素边缘</span>
+          </div>
+          <div class="edge-stage">
+            <div class="native-lines" aria-label="静态一像素横竖线">
+              <i></i><i></i><i></i><i></i><i></i>
+            </div>
+            <div class="diagonal-lines" aria-label="旋转运动细线">
+              <i></i><i></i><i></i><i></i><i></i>
+            </div>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <footer>
+      <span>建议以浏览器 100% 缩放录制</span>
+      <span id="viewport-size">Viewport —</span>
+      <span>所有动画均为本地 CSS，无网络请求</span>
+    </footer>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

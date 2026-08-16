@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import { onMount, tick } from "svelte";
   import { HardDrive, Video, Github, MessageCircle, BookOpen, Sparkles } from "@lucide/svelte";
 
   import { recordingStore } from "$lib/stores/recording.svelte";
@@ -18,6 +18,60 @@
   import type { RecordingSummary } from "$lib/types/recordings";
   import { backgroundConfigStore } from "$lib/stores/background-config.svelte";
   import { getWallpaperById } from "$lib/data/wallpaper-presets";
+  import { emitJourneyEvent } from "$lib/observability/journey-events";
+  import { createOnceReporter } from "$lib/observability/once-reporter";
+  import { createFirstFrameGate } from "$lib/studio/first-frame-gate";
+  import {
+    ReaderRequestCoordinator,
+    type ReaderRequestPurpose,
+    type TaggedReaderRequestContext
+  } from "$lib/studio/window-request-routing";
+
+  const STUDIO_FIRST_FRAME_TIMEOUT_MS = 15_000
+  let isWaitingForFirstFrame = $state(true)
+
+  const dataReadyReporter = createOnceReporter(() => {
+    emitJourneyEvent({ name: 'studio.data_ready', context: 'studio' })
+  })
+  const firstFrameReporter = createOnceReporter(() => {
+    emitJourneyEvent({ name: 'studio.first_frame_visible', context: 'studio' })
+  })
+
+  function handleStudioLoadFailure(errorCode: string) {
+    emitJourneyEvent({
+      name: 'studio.load_failed',
+      context: 'studio',
+      attributes: { outcome: 'failure', errorCode }
+    })
+    showEmptyState = true
+    emptyStateReason = errorCode === 'STUDIO_INVALID_RECORDING' ? 'invalid-recording' : 'load-failed'
+    isResolvingInitialRecording = false
+
+    const failedWorker = workerCurrentWorker
+    try { failedWorker?.postMessage({ type: "close" }) } catch {}
+    failedWorker?.terminate?.()
+    if (workerCurrentWorker === failedWorker) workerCurrentWorker = null
+  }
+
+  const firstFrameGate = createFirstFrameGate({
+    timeoutMs: STUDIO_FIRST_FRAME_TIMEOUT_MS,
+    setWaiting: (waiting) => { isWaitingForFirstFrame = waiting },
+    afterUpdate: tick,
+    onVisible: () => { firstFrameReporter.report() },
+    onFailure: handleStudioLoadFailure
+  })
+
+  function isReaderRequestPurpose(value: unknown): value is ReaderRequestPurpose {
+    return value === 'main' || value === 'prefetch' || value === 'single-frame'
+  }
+
+  function handleFirstFrameVisible() {
+    void firstFrameGate.markVisible()
+  }
+
+  function handlePreviewLoadError(errorCode: string) {
+    firstFrameGate.fail(errorCode)
+  }
 
   // Extension version
   let extensionVersion = $state('')
@@ -43,19 +97,37 @@
 
   // Worker 录制数据收集
   let workerEncodedChunks = $state<any[]>([]);
+  // Monotonic identity for the window currently owned by the preview pipeline.
+  // Reader request ids are scoped to a worker, while this survives worker reloads.
+  let windowGeneration = $state(0);
   let workerCurrentWorker: Worker | null = null;
 
-  // 预取控制：拦截一次 range 回复供预取使用
-  let isPrefetchingRange = false;
-  let prefetchRangeResolver:
-    | null
-    | ((res: { start: number; chunks: any[] }) => void) = null;
+  const readerRequests = new ReaderRequestCoordinator();
+  let pendingPrefetch: null | {
+    request: TaggedReaderRequestContext;
+    timer: number;
+    resolve: (res: { chunks: any[]; windowStartIndex: number }) => void;
+  } = null;
+  let pendingSingleFrame: null | {
+    request: TaggedReaderRequestContext;
+    targetFrame: number;
+    timer: number;
+    resolve: (res: { chunks: any[]; targetIndexInGOP: number } | null) => void;
+  } = null;
 
-  // 🆕 Single-frame GOP preview control
-  let isFetchingSingleFrameGOP = false;
-  let singleFrameGOPResolver:
-    | null
-    | ((res: { chunks: any[]; targetIndexInGOP: number } | null) => void) = null;
+  function settlePendingReaderRequests() {
+    if (pendingPrefetch) {
+      clearTimeout(pendingPrefetch.timer);
+      pendingPrefetch.resolve({ chunks: [], windowStartIndex: 0 });
+      pendingPrefetch = null;
+    }
+    if (pendingSingleFrame) {
+      clearTimeout(pendingSingleFrame.timer);
+      pendingSingleFrame.resolve(null);
+      pendingSingleFrame = null;
+    }
+    readerRequests.reset();
+  }
 
   // 时间轴与窗口（毫秒）
   let durationMs = $state(0);
@@ -64,12 +136,11 @@
   // 全局帧数与窗口起始全局索引
   let globalTotalFrames = $state(0);
   let windowStartIndex = $state(0);
-  // Derived source FPS based on global total frames and duration
-  const sourceFps = $derived(
-    globalTotalFrames > 0 && durationMs > 0
-      ? Math.max(1, Math.round(globalTotalFrames / (durationMs / 1000)))
-      : 30,
-  );
+  let windowDecodeStartIndex = $state(0);
+  // Nominal capture FPS is metadata, not average encoded-frame density.
+  let sourceFps = $state(30);
+  let timelineSampleTimestampsMs = $state<number[]>([]);
+  let timelineFirstTimestampUs = $state(0);
 
   // 关键帧与窗口计算相关类型
   type KeyframeInfo = {
@@ -233,16 +304,73 @@
   // 🔧 智能窗口管理：关键帧信息
   let keyframeInfo = $state<KeyframeInfo>(null);
 
+  function postReaderRequest(
+    purpose: TaggedReaderRequestContext['purpose'],
+    payload: Record<string, unknown>,
+  ): TaggedReaderRequestContext | null {
+    if (!workerCurrentWorker) return null;
+    const request = readerRequests.issue(purpose);
+    try {
+      workerCurrentWorker.postMessage({ ...payload, ...request });
+    } catch (error) {
+      readerRequests.cancel(request);
+      console.warn('[Studio] Failed to post reader request', { request, error });
+      return null;
+    }
+    return request;
+  }
+
+  function applyMainWindow(chunks: any[], decodeStart: number, requestedRetainStart = decodeStart) {
+    const normalizedDecodeStart = Math.max(0, Math.floor(decodeStart));
+    const normalizedRetainStart = Math.max(0, Math.floor(requestedRetainStart));
+    const decodedEndExclusive = normalizedDecodeStart + chunks.length;
+    const retainStart = normalizedRetainStart >= normalizedDecodeStart
+      && normalizedRetainStart < decodedEndExclusive
+      ? normalizedRetainStart
+      : normalizedDecodeStart;
+
+    windowGeneration += 1;
+    workerEncodedChunks = chunks;
+    windowDecodeStartIndex = normalizedDecodeStart;
+    windowStartIndex = retainStart;
+    windowStartMs = timelineSampleTimestampsMs[windowStartIndex]
+      ?? Math.round(((chunks[0]?.timestamp ?? 0) - timelineFirstTimestampUs) / 1000);
+    windowEndMs = timelineSampleTimestampsMs[normalizedDecodeStart + chunks.length - 1]
+      ?? Math.round(((chunks[chunks.length - 1]?.timestamp ?? 0) - timelineFirstTimestampUs) / 1000);
+
+    dataReadyReporter.report()
+    recordingStore.updateStatus("completed");
+    recordingStore.setEngine("webcodecs");
+    isResolvingInitialRecording = false
+    applyDefaultWallpaperEnhancement()
+  }
+
   // 主窗口请求处理：统一走 computeFrameWindow，支持连续播放 / Seek
   function handleWindowRequest(args: {
     centerMs: number;
     beforeMs: number;
     afterMs: number;
+    prefetchedWindow?: { chunks: any[]; windowStartIndex: number };
   }) {
-    const { centerMs, beforeMs, afterMs } = args;
+    const { centerMs, beforeMs, afterMs, prefetchedWindow } = args;
+
+    if (prefetchedWindow?.chunks?.length) {
+      applyMainWindow(prefetchedWindow.chunks, prefetchedWindow.windowStartIndex)
+      return
+    }
 
     if (!workerCurrentWorker) {
       console.warn("[progress] No worker available for window request");
+      return;
+    }
+
+    if (timelineSampleTimestampsMs.length === globalTotalFrames) {
+      postReaderRequest('main', {
+        type: "getWindowByTime",
+        centerMs,
+        beforeMs,
+        afterMs,
+      });
       return;
     }
 
@@ -263,13 +391,13 @@
     }
 
     if (frameCount > 0 && startFrame < globalTotalFrames) {
-      workerCurrentWorker?.postMessage({
+      postReaderRequest('main', {
         type: "getRange",
         start: startFrame,
         count: frameCount,
       });
     } else {
-      workerCurrentWorker?.postMessage({
+      postReaderRequest('main', {
         type: "getWindowByTime",
         centerMs,
         beforeMs,
@@ -326,6 +454,11 @@
    * Extracted so it can be called from onMount *and* from the drawer switch.
    */
   function loadRecordingById(dirId: string) {
+    dataReadyReporter.reset()
+    firstFrameReporter.reset()
+    firstFrameGate.dispose()
+    isWaitingForFirstFrame = false
+    settlePendingReaderRequests()
     // Clean up previous worker
     try { workerCurrentWorker?.postMessage({ type: "close" }) } catch {}
     workerCurrentWorker?.terminate?.()
@@ -334,16 +467,17 @@
     // Reset state
     isResolvingInitialRecording = true
     workerEncodedChunks = []
+    windowGeneration += 1
     durationMs = 0
     windowStartMs = 0
     windowEndMs = 0
     globalTotalFrames = 0
+    sourceFps = 30
+    timelineSampleTimestampsMs = []
+    timelineFirstTimestampUs = 0
     windowStartIndex = 0
+    windowDecodeStartIndex = 0
     keyframeInfo = null
-    isPrefetchingRange = false
-    prefetchRangeResolver = null
-    isFetchingSingleFrameGOP = false
-    singleFrameGOPResolver = null
 
     opfsDirId = dirId
     currentRecordingId = dirId
@@ -354,14 +488,26 @@
       return
     }
 
-    const readerWorker = new Worker(
-      new URL("$lib/workers/opfs-reader-worker.ts", import.meta.url),
-      { type: "module" },
-    );
+    firstFrameGate.start()
+    emitJourneyEvent({ name: 'studio.load_started', context: 'studio' })
+
+    let readerWorker: Worker
+    try {
+      readerWorker = new Worker(
+        new URL("$lib/workers/opfs-reader-worker.ts", import.meta.url),
+        { type: "module" },
+      );
+    } catch (error) {
+      console.error("❌ [OPFSReader] Failed to start worker:", error)
+      firstFrameGate.fail('STUDIO_READER_WORKER_START_FAILED')
+      return
+    }
 
     workerCurrentWorker = readerWorker;
 
     readerWorker.onmessage = (ev: MessageEvent<any>) => {
+      if (workerCurrentWorker !== readerWorker) return
+
       const {
         type,
         summary,
@@ -369,78 +515,115 @@
         chunks,
         code,
         message,
+        requestId,
+        purpose,
+        targetFrame,
+        targetIndex,
         keyframeInfo: receivedKeyframeInfo,
       } = ev.data || {};
-
-      if (isPrefetchingRange && type === "range") {
-        isPrefetchingRange = false;
-        prefetchRangeResolver?.({ start, chunks });
-        prefetchRangeResolver = null;
-        return;
-      }
-
-      if (isFetchingSingleFrameGOP && type === "singleFrameGOP") {
-        const { targetIndexInGOP, chunks: gopChunks } = ev.data;
-        isFetchingSingleFrameGOP = false;
-        singleFrameGOPResolver?.({
-          chunks: gopChunks || [],
-          targetIndexInGOP: targetIndexInGOP ?? 0,
-        });
-        singleFrameGOPResolver = null;
-        return;
-      }
 
       if (type === "ready") {
         if (summary?.durationMs) durationMs = summary.durationMs;
         if (summary?.totalChunks) globalTotalFrames = summary.totalChunks;
+        if (Number(summary?.fps) > 0) sourceFps = Number(summary.fps);
+        if (Array.isArray(summary?.timeline?.sampleTimestampsMs)) {
+          timelineSampleTimestampsMs = summary.timeline.sampleTimestampsMs;
+        }
+        timelineFirstTimestampUs = Number(summary?.timeline?.firstTimestampUs) || 0;
         if (receivedKeyframeInfo) keyframeInfo = receivedKeyframeInfo;
 
         const initialFrameCount = Math.min(90, globalTotalFrames);
-        readerWorker.postMessage({
+        postReaderRequest('main', {
           type: "getRange",
           start: 0,
           count: initialFrameCount,
         });
       } else if (type === "range") {
+        const route = readerRequests.consume({ requestId, purpose });
+        if (route === 'resolve-prefetch') {
+          const pending = pendingPrefetch;
+          if (pending && pending.request.requestId === requestId) {
+            clearTimeout(pending.timer);
+            pendingPrefetch = null;
+            pending.resolve({ chunks: chunks || [], windowStartIndex: start ?? 0 });
+          }
+          return;
+        }
+        if (route !== 'accept-main') {
+          console.debug('[Studio] Ignoring stale or untracked range response', {
+            requestId,
+            purpose,
+            route,
+          });
+          return;
+        }
         if (Array.isArray(chunks) && chunks.length > 0) {
-          workerEncodedChunks = chunks;
-          windowStartIndex = typeof start === "number" ? start : 0;
-
-          const firstGlobalTimestamp =
-            summary?.firstTimestamp || chunks[0]?.timestamp || 0;
-          const windowStartTimestamp = chunks[0]?.timestamp || 0;
-          const windowEndTimestamp =
-            chunks[chunks.length - 1]?.timestamp || 0;
-
-          windowStartMs = Math.round(
-            (windowStartTimestamp - firstGlobalTimestamp) / 1000,
-          );
-          windowEndMs = Math.round(
-            (windowEndTimestamp - firstGlobalTimestamp) / 1000,
-          );
-
-          recordingStore.updateStatus("completed");
-          recordingStore.setEngine("webcodecs");
-          isResolvingInitialRecording = false
-
-          // Async Layer 2: upgrade default gradient to wallpaper (once per session)
-          applyDefaultWallpaperEnhancement()
+          const decodeStart = typeof start === "number" ? start : 0
+          applyMainWindow(
+            chunks,
+            decodeStart,
+            typeof targetIndex === "number" ? targetIndex : decodeStart
+          )
         } else {
           console.warn("⚠️ [OPFSReader] Empty range received");
-          isResolvingInitialRecording = false
+          firstFrameGate.fail('STUDIO_EMPTY_RANGE')
         }
+      } else if (type === "singleFrameGOP") {
+        const route = readerRequests.consume({ requestId, purpose });
+        if (route !== 'resolve-single-frame') return;
+        const pending = pendingSingleFrame;
+        if (!pending || pending.request.requestId !== requestId || pending.targetFrame !== targetFrame) return;
+        clearTimeout(pending.timer);
+        pendingSingleFrame = null;
+        pending.resolve({
+          chunks: chunks || [],
+          targetIndexInGOP: ev.data?.targetIndexInGOP ?? 0,
+        });
       } else if (type === "error") {
+        const hasRequestContext = Number.isInteger(requestId) && isReaderRequestPurpose(purpose);
+        const route = hasRequestContext
+          ? readerRequests.consume({ requestId, purpose })
+          : 'accept-main';
+        if (route === 'resolve-prefetch') {
+          const pending = pendingPrefetch;
+          if (pending && pending.request.requestId === requestId) {
+            clearTimeout(pending.timer);
+            pendingPrefetch = null;
+            pending.resolve({ chunks: [], windowStartIndex: 0 });
+          }
+          return;
+        }
+        if (route === 'resolve-single-frame') {
+          const pending = pendingSingleFrame;
+          if (pending && pending.request.requestId === requestId) {
+            clearTimeout(pending.timer);
+            pendingSingleFrame = null;
+            pending.resolve(null);
+          }
+          return;
+        }
+        if (route !== 'accept-main') return;
         console.error("❌ [OPFSReader] Error:", code, message);
         // Heuristic: classify as invalid-recording when the error relates to
         // data integrity (e.g. parse failures, missing index/meta). The worker
         // only sends a generic READER_ERROR code, so we inspect the message.
         const errMsg = typeof message === 'string' ? message.toLowerCase() : ''
         const isInvalidData = errMsg.includes('parse') || errMsg.includes('index') || errMsg.includes('meta') || errMsg.includes('invalid') || errMsg.includes('corrupt')
-        showEmptyState = true
-        emptyStateReason = isInvalidData ? 'invalid-recording' : 'load-failed'
-        isResolvingInitialRecording = false
+        firstFrameGate.fail(isInvalidData ? 'STUDIO_INVALID_RECORDING' : 'STUDIO_LOAD_FAILED')
       }
     };
+
+    readerWorker.onerror = (error) => {
+      if (workerCurrentWorker !== readerWorker) return
+      console.error("❌ [OPFSReader] Worker error:", error)
+      firstFrameGate.fail('STUDIO_READER_WORKER_ERROR')
+    }
+
+    readerWorker.onmessageerror = (error) => {
+      if (workerCurrentWorker !== readerWorker) return
+      console.error("❌ [OPFSReader] Worker message error:", error)
+      firstFrameGate.fail('STUDIO_READER_MESSAGE_ERROR')
+    }
 
     readerWorker.postMessage({ type: "open", dirId });
   }
@@ -569,6 +752,8 @@
     })()
 
     return () => {
+      firstFrameGate.dispose()
+      settlePendingReaderRequests()
       try {
         workerCurrentWorker?.postMessage({ type: "close" });
       } catch {}
@@ -590,72 +775,60 @@
       );
       return { chunks: [], windowStartIndex: 0 };
     }
-    if (isPrefetchingRange) {
+    if (pendingPrefetch) {
       console.warn(
         "[prefetch] Already building; skip duplicate prefetch request",
       );
       return { chunks: [], windowStartIndex: 0 };
     }
 
-    const { startFrame, frameCount } = computeFrameWindow({
-      centerMs,
-      beforeMs,
-      afterMs,
-      fps: sourceFps,
-      totalFrames: globalTotalFrames,
-      keyframeInfo,
-      currentWindowStartIndex: windowStartIndex,
-      mode: "prefetch",
-    });
-
-    if (frameCount <= 0 || startFrame >= globalTotalFrames) {
-      console.warn(
-        "[prefetch] Computed empty window for prefetch, skipping request",
-        {
+    let payload: Record<string, unknown>;
+    if (timelineSampleTimestampsMs.length === globalTotalFrames) {
+      payload = { type: "getWindowByTime", centerMs, beforeMs, afterMs };
+    } else {
+      const { startFrame, frameCount } = computeFrameWindow({
+        centerMs,
+        beforeMs,
+        afterMs,
+        fps: sourceFps,
+        totalFrames: globalTotalFrames,
+        keyframeInfo,
+        currentWindowStartIndex: windowStartIndex,
+        mode: "prefetch",
+      });
+      if (frameCount <= 0 || startFrame >= globalTotalFrames) {
+        console.warn("[prefetch] Computed empty window for prefetch, skipping request", {
           centerMs,
           beforeMs,
           afterMs,
           startFrame,
           frameCount,
           totalFrames: globalTotalFrames,
-        },
-      );
-      return { chunks: [], windowStartIndex: 0 };
+        });
+        return { chunks: [], windowStartIndex: 0 };
+      }
+      payload = { type: "getRange", start: startFrame, count: frameCount };
     }
 
     return new Promise((resolve) => {
-      isPrefetchingRange = true;
-      let settled = false;
-      prefetchRangeResolver = ({ start, chunks }) => {
-        if (settled) return;
-        settled = true;
-        resolve({ chunks: chunks || [], windowStartIndex: start ?? 0 });
-      };
-
+      const request = readerRequests.issue('prefetch');
+      const timer = window.setTimeout(() => {
+        if (pendingPrefetch?.request.requestId !== request.requestId) return;
+        console.warn("[prefetch] Prefetch timeout, returning empty");
+        readerRequests.cancel(request);
+        pendingPrefetch = null;
+        resolve({ chunks: [], windowStartIndex: 0 });
+      }, 4000);
+      pendingPrefetch = { request, timer, resolve };
       try {
-        workerCurrentWorker!.postMessage({
-          type: "getRange",
-          start: startFrame,
-          count: frameCount,
-        });
+        workerCurrentWorker!.postMessage({ ...payload, ...request });
       } catch (err) {
         console.warn("[prefetch] Failed to post prefetch request:", err);
-        isPrefetchingRange = false;
-        prefetchRangeResolver = null;
+        clearTimeout(timer);
+        readerRequests.cancel(request);
+        pendingPrefetch = null;
         resolve({ chunks: [], windowStartIndex: 0 });
-        return;
       }
-
-      // 超时保护，防止卡死
-      setTimeout(() => {
-        if (!settled) {
-          console.warn("[prefetch] Prefetch timeout, returning empty");
-          settled = true;
-          isPrefetchingRange = false;
-          prefetchRangeResolver = null;
-          resolve({ chunks: [], windowStartIndex: 0 });
-        }
-      }, 4000);
     });
   }
 
@@ -668,10 +841,6 @@
       console.warn("[preview] No reader worker; returning null");
       return null;
     }
-    if (isFetchingSingleFrameGOP) {
-      console.warn("[preview] Already fetching single frame GOP; skip");
-      return null;
-    }
     if (targetFrame < 0 || targetFrame >= globalTotalFrames) {
       console.warn("[preview] Target frame out of range:", {
         targetFrame,
@@ -680,45 +849,38 @@
       return null;
     }
 
-    return new Promise((resolve) => {
-      isFetchingSingleFrameGOP = true;
-      let settled = false;
-      singleFrameGOPResolver = (res) => {
-        if (settled) return;
-        settled = true;
-        resolve(res);
-      };
+    if (pendingSingleFrame) {
+      clearTimeout(pendingSingleFrame.timer);
+      readerRequests.cancel(pendingSingleFrame.request);
+      pendingSingleFrame.resolve(null);
+      pendingSingleFrame = null;
+    }
 
+    return new Promise((resolve) => {
+      const request = readerRequests.issue('single-frame');
+      const timer = window.setTimeout(() => {
+        if (pendingSingleFrame?.request.requestId !== request.requestId) return;
+        console.warn("[preview] Single frame GOP timeout, returning null");
+        readerRequests.cancel(request);
+        pendingSingleFrame = null;
+        resolve(null);
+      }, 2000);
+      pendingSingleFrame = { request, targetFrame, timer, resolve };
       try {
         workerCurrentWorker!.postMessage({
           type: "getSingleFrameGOP",
           targetFrame,
+          ...request,
         });
       } catch (err) {
         console.warn("[preview] Failed to post single frame GOP request:", err);
-        isFetchingSingleFrameGOP = false;
-        singleFrameGOPResolver = null;
+        clearTimeout(timer);
+        readerRequests.cancel(request);
+        pendingSingleFrame = null;
         resolve(null);
-        return;
       }
-
-      // Timeout protection (shorter since this is a preview operation)
-      setTimeout(() => {
-        if (!settled) {
-          console.warn("[preview] Single frame GOP timeout, returning null");
-          settled = true;
-          isFetchingSingleFrameGOP = false;
-          singleFrameGOPResolver = null;
-          resolve(null);
-        }
-      }, 2000);
     });
   }
-
-  // 组件销毁时清理
-  onDestroy(() => {
-    // cleanup
-  });
 
 </script>
 
@@ -813,7 +975,7 @@
       {:else}
         <!-- Using new VideoPreviewComposite component -->
         <div
-          class="flex-1 min-h-0 flex items-stretch justify-center"
+          class="relative flex-1 min-h-0 flex items-stretch justify-center"
           bind:this={previewContainerEl}
         >
           <VideoPreviewComposite
@@ -825,23 +987,37 @@
             showControls={true}
             showTimeline={true}
             {durationMs}
+            sourceFps={sourceFps}
+            timelineTimestampsMs={timelineSampleTimestampsMs}
             {windowStartMs}
             {windowEndMs}
             totalFramesAll={globalTotalFrames}
             {windowStartIndex}
+            {windowDecodeStartIndex}
+            {windowGeneration}
             {keyframeInfo}
             onRequestWindow={handleWindowRequest}
+            onFirstFrameVisible={handleFirstFrameVisible}
+            onLoadError={handlePreviewLoadError}
             {fetchWindowData}
             {fetchSingleFrameGOP}
             className="worker-video-preview w-full h-full"
           />
+          {#if isWaitingForFirstFrame}
+            <div class="absolute inset-0 z-10 flex items-center justify-center bg-white/90">
+              <div class="text-center">
+                <div class="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                <p class="text-sm text-gray-500">{t('studio_loading')}</p>
+              </div>
+            </div>
+          {/if}
         </div>
       {/if}
     </div>
   </div>
 
   <!-- Right editing panel - allows scrolling -->
-  {#if !showEmptyState && !isResolvingInitialRecording}
+  {#if !showEmptyState && !isResolvingInitialRecording && !isWaitingForFirstFrame}
   <div class="w-100 bg-white border-l border-gray-200 flex flex-col h-full">
     <!-- Right panel header: Drive button + Export button -->
     <div class="flex-shrink-0 px-4 py-2">
@@ -863,6 +1039,8 @@
           totalFramesAll={globalTotalFrames}
           {opfsDirId}
           {sourceFps}
+          sourceDurationMs={durationMs}
+          sourceTimestampsMs={timelineSampleTimestampsMs}
           licenseTier="pro-trial"
           showLicenseBadge={false}
         />

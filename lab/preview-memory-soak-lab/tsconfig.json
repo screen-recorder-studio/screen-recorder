@@ -1,0 +1,17 @@
+{
+  "extends": "../../packages/extension/tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "../../packages/extension/src",
+    "paths": {
+      "$lib/*": ["lib/*"]
+    },
+    "typeRoots": ["../../packages/extension/node_modules/@types"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker"],
+    "skipLibCheck": true
+  },
+  "include": [
+    "app.ts",
+    "memory-soak-fixture.ts",
+    "preview-memory-bootstrap-worker.ts"
+  ]
+}

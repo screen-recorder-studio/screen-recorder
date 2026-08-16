@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Preview Memory Soak Lab</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main>
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Production composite-worker</p>
+          <h1>Preview Memory Soak Lab</h1>
+          <p>追踪 main、next、hover 三条解码帧所有权，并把代理预览与源帧理论内存分开计量。</p>
+        </div>
+        <span id="status" class="status idle">WAITING</span>
+      </header>
+
+      <section class="controls" aria-label="Lab controls">
+        <label>
+          Source scenario
+          <select id="scenario"></select>
+        </label>
+        <button id="run-selected" type="button">Run selected · 9s</button>
+        <button id="run-matrix" class="secondary" type="button">Run 1080p + 4K</button>
+      </section>
+
+      <section class="progress-section" aria-live="polite">
+        <div id="progress-label">等待运行</div>
+        <progress id="progress" max="100" value="0"></progress>
+      </section>
+
+      <section class="preview-panel">
+        <div>
+          <h2>640×360 composite output</h2>
+          <p>缓存帧尺寸由 production bounded preview plan 决定；4K 场景应启用代理。</p>
+        </div>
+        <canvas id="preview" width="640" height="360" aria-label="Latest production composite worker frame"></canvas>
+      </section>
+
+      <section id="results" class="results" aria-live="polite"></section>
+
+      <section class="timeline-panel">
+        <h2>Ownership timeline</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Phase</th>
+                <th>Main</th>
+                <th>Next</th>
+                <th>Hover</th>
+                <th>Theoretical alive</th>
+                <th>Evidence</th>
+              </tr>
+            </thead>
+            <tbody id="timeline"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <details>
+        <summary>Raw telemetry</summary>
+        <pre id="raw-output"></pre>
+      </details>
+
+      <aside class="boundary">
+        <strong>证据边界</strong>
+        <span>切窗、hover、queue watermark 与 dispose 来自真实 production worker；<code>labCleanup</code> 只作测试兜底，不计入通过。</span>
+      </aside>
+    </main>
+    <script type="module" src="./app.ts"></script>
+  </body>
+</html>

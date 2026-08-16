@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Slice Decode Lane Lab</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">VIDEO PREVIEW / SINGLE DECODER LANE</p>
+      <h1>Slice 预取并发竞态 Lab</h1>
+      <p class="intro">模拟 4K 当前窗口尚未 flush 时，下一窗口预取已经到达的确定性事件顺序。</p>
+
+      <section class="controls" aria-label="Race inputs">
+        <label>当前窗口帧数 <input id="mainFrames" type="number" min="1" value="30" /></label>
+        <label>预取触发前已输出 <input id="outputsBeforePrefetch" type="number" min="0" value="1" /></label>
+        <button id="run" type="button">运行竞态验证</button>
+      </section>
+
+      <p id="result" class="result" role="status"></p>
+      <section class="comparison">
+        <article class="old">
+          <p>旧策略</p>
+          <h2>回调时读取全局 target</h2>
+          <dl>
+            <div><dt>当前窗口保留</dt><dd id="oldCurrent"></dd></div>
+            <div><dt>误投到预取</dt><dd id="oldMisrouted"></dd></div>
+            <div><dt>可连续播放</dt><dd id="oldPlayable"></dd></div>
+          </dl>
+        </article>
+        <article class="fixed">
+          <p>修复策略</p>
+          <h2>主 flush 前延迟预取</h2>
+          <dl>
+            <div><dt>当前窗口保留</dt><dd id="fixedCurrent"></dd></div>
+            <div><dt>预取启动时机</dt><dd id="fixedStart"></dd></div>
+            <div><dt>输出归属</dt><dd id="fixedOwner"></dd></div>
+          </dl>
+        </article>
+      </section>
+      <ol id="events" class="events"></ol>
+    </main>
+    <script type="module" src="./app.ts"></script>
+  </body>
+</html>

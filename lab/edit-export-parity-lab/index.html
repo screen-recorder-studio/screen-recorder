@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Edit / Export Parity Lab</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">SLICE · CROP · ZOOM · MEDIABUNNY 1.35</p>
+        <h1>编辑与导出像素一致性 Lab</h1>
+        <p class="lede">
+          同一份稀疏 WebCodecs 素材走生产 Composite Worker：Preview 使用源时间，
+          Export 使用 Trim 相对时间和重基后的 Zoom。随后生成 MP4，并从文件中回读时长、尺寸与关键帧像素。
+        </p>
+      </header>
+
+      <section class="controls">
+        <button id="run" type="button">运行完整验证</button>
+        <a id="download" hidden download="edit-export-parity.mp4">下载本次 MP4</a>
+        <span id="environment"></span>
+      </section>
+
+      <section class="status" aria-live="polite">
+        <strong id="status">等待运行</strong>
+        <div class="progress"><i id="progress"></i></div>
+      </section>
+
+      <section class="summary" aria-label="Acceptance summary">
+        <article data-check="source"><span>01</span><h2>稀疏源素材</h2><p>等待 WebCodecs 编码</p></article>
+        <article data-check="raw-parity"><span>02</span><h2>Preview = Export</h2><p>等待生产 Worker 像素对比</p></article>
+        <article data-check="legacy"><span>03</span><h2>未重基必须失配</h2><p>等待时间契约反证</p></article>
+        <article data-check="mp4"><span>04</span><h2>MP4 回读</h2><p>等待 Mediabunny / Video 验证</p></article>
+      </section>
+
+      <section class="media-grid">
+        <article>
+          <div class="card-title"><span>PREVIEW</span><small>全局时间</small></div>
+          <canvas id="preview-canvas" width="640" height="360"></canvas>
+        </article>
+        <article>
+          <div class="card-title"><span>EXPORT</span><small>相对时间 + Zoom 重基</small></div>
+          <canvas id="export-canvas" width="640" height="360"></canvas>
+        </article>
+        <article class="danger-card">
+          <div class="card-title"><span>UNREBASED BASELINE</span><small>相对时间 + 未重基 Zoom</small></div>
+          <canvas id="legacy-canvas" width="640" height="360"></canvas>
+        </article>
+        <article>
+          <div class="card-title"><span>MP4 PLAYBACK</span><small>HTMLVideoElement 回读</small></div>
+          <video id="result-video" controls muted playsinline></video>
+        </article>
+      </section>
+
+      <section class="results">
+        <div class="section-heading">
+          <div><p class="eyebrow">CHECKPOINT MATRIX</p><h2>逐检查点证据</h2></div>
+          <p>MAE 为 RGB 平均绝对误差；Raw 应近似 0，MP4 允许有损编码误差。</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Export t</th><th>Source t</th><th>源帧</th><th>Zoom</th>
+                <th>Raw MAE</th><th>MP4 / MB MAE</th><th>MP4 / Video MAE</th><th>Baseline MAE</th><th>结论</th>
+              </tr>
+            </thead>
+            <tbody id="checkpoint-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="contract">
+        <div>
+          <p class="eyebrow">TIME CONTRACT</p>
+          <h2>同一编辑意图，两套坐标</h2>
+        </div>
+        <pre id="contract-output">Preview: sourceTimeMs
+Export: sourceTimeMs - trim.startMs
+Export Zoom intervals: interval - trim.startMs</pre>
+        <dl id="metadata"></dl>
+      </section>
+    </main>
+    <script type="module" src="./app.ts"></script>
+  </body>
+</html>

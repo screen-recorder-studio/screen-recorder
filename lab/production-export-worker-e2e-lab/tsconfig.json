@@ -1,0 +1,13 @@
+{
+  "extends": "../../packages/extension/tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "../../packages/extension/src",
+    "paths": {
+      "$lib/*": ["lib/*"]
+    },
+    "typeRoots": ["../../packages/extension/node_modules/@types"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true
+  },
+  "include": ["app.ts", "export-e2e-fixture.ts"]
+}

@@ -1,10 +1,14 @@
 // WebM encoding strategy with optional OPFS streaming support
 import { Output, WebMOutputFormat, BufferTarget, CanvasSource, StreamTarget } from 'mediabunny'
 import type { EncoderStrategy } from './mp4'
+import { readOpfsResultInfo } from './opfs-result'
 
 export class WebmStrategy implements EncoderStrategy {
+  private opfsDirectoryHandle: FileSystemDirectoryHandle | null = null
   private opfsFileHandle: FileSystemFileHandle | null = null
+  private opfsFileName: string | null = null
   private opfsWritable: any | null = null
+  private partialCleanupPromise: Promise<void> | null = null
 
   async preflight(_videoInfo?: { width: number; height: number; frameRate: number }, _options?: any) {
     // Keep behavior unchanged: WebM path does not require preflight checks currently.
@@ -20,6 +24,8 @@ export class WebmStrategy implements EncoderStrategy {
       const fileName = (options as any).opfsFileName || `export-${Date.now()}.webm`
       const root = await (self as any).navigator.storage.getDirectory()
       const dir = await (root as any).getDirectoryHandle(dirId, { create: false })
+      this.opfsDirectoryHandle = dir
+      this.opfsFileName = fileName
       this.opfsFileHandle = await (dir as any).getFileHandle(fileName, { create: true })
       this.opfsWritable = await (this.opfsFileHandle as any).createWritable()
 
@@ -51,7 +57,45 @@ export class WebmStrategy implements EncoderStrategy {
 
   async finalize(output: any) {
     await output.finalize()
-    try { if (this.opfsWritable) { await this.opfsWritable.close() } } catch {}
+    this.opfsWritable = null
+  }
+
+  discardPartialOutput(): Promise<void> {
+    if (this.partialCleanupPromise) return this.partialCleanupPromise
+
+    const cleanup = this.performPartialOutputCleanup()
+    this.partialCleanupPromise = cleanup
+    void cleanup.then(
+      () => {
+        if (this.partialCleanupPromise === cleanup) this.partialCleanupPromise = null
+      },
+      () => {
+        if (this.partialCleanupPromise === cleanup) this.partialCleanupPromise = null
+      }
+    )
+    return cleanup
+  }
+
+  private async performPartialOutputCleanup(): Promise<void> {
+    const writable = this.opfsWritable
+    if (writable) {
+      this.opfsWritable = null
+      try { await writable.abort?.() } catch {}
+    }
+
+    const directory = this.opfsDirectoryHandle
+    const fileName = this.opfsFileName
+    if (directory && fileName) {
+      try {
+        await directory.removeEntry(fileName)
+      } catch (error: any) {
+        if (error?.name !== 'NotFoundError') throw error
+      }
+    }
+
+    this.opfsFileHandle = null
+    this.opfsDirectoryHandle = null
+    this.opfsFileName = null
   }
 
   closeVideoSource(source: any) {
@@ -59,17 +103,9 @@ export class WebmStrategy implements EncoderStrategy {
     try { if (source && typeof source.destroy === 'function') source.destroy() } catch {}
   }
 
-  async getOpfsResultInfo(_options: any): Promise<{ bytes: number; fileName: string }> {
-    let bytes = 0
-    let fileName = 'export.webm'
-    try {
-      const file = await (this.opfsFileHandle as any)?.getFile()
-      if (file) {
-        bytes = file.size
-        fileName = (file as any).name || fileName
-      }
-    } catch {}
-    return { bytes, fileName }
+  async getOpfsResultInfo(options: any): Promise<{ bytes: number; fileName: string }> {
+    const fallbackFileName = options?.opfsFileName || 'export.webm'
+    return readOpfsResultInfo(this.opfsFileHandle as any, fallbackFileName)
   }
 }
 

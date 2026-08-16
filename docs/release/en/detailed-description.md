@@ -21,9 +21,9 @@ Screen Recorder Studio is a powerful Chrome extension that lets you create high-
     *   **GIF:** Lightweight animated images, ideal for quick previews and social media sharing.
 
 *   **Intelligent Quality Optimization:**
-    *   **Adaptive Bitrate:** Automatically adjusts quality based on content and resolution (1-50 Mbps).
-    *   **Multi-Resolution Support:** Record in resolutions from SD to 4K (3840×2160).
-    *   **Frame Rate Optimization:** Supports 24/30/60 FPS for a smooth playback experience.
+    *   **Reliable Balanced Capture:** Balanced recording up to 1920×1080 at 30 FPS keeps capture responsive across more computers.
+    *   **Flexible Export Resolution:** Export resolutions up to 4K, including Full HD, HD, and SD presets.
+    *   **Frame Rate Options:** Video exports support 24/30/60 FPS; GIF exports support up to 30 FPS.
     *   **Text Clarity Optimization:** Specially optimized for on-screen text to ensure it remains sharp and readable.
 
 ### 🔧 Advanced Technical Features
@@ -47,7 +47,7 @@ Screen Recorder Studio is a powerful Chrome extension that lets you create high-
 ### ✨ Core Advantages
 
 *   **Privacy-First, Local Processing:** By default, all recording and video processing happens locally in your browser. Your data never leaves your computer without your permission.
-*   **Professional-Grade Quality:** Supports up to 4K resolution with smart bitrate adjustment, ensuring your videos meet commercial standards.
+*   **Professional-Grade Quality:** Records with a reliable Full HD balanced profile and can export edited compositions at resolutions up to 4K.
 *   **Zero Learning Curve:** An intuitive user interface designed for immediate use without requiring professional video editing skills.
 *   **Efficient Workflow:** A seamless one-stop solution from recording to export, significantly boosting your content creation productivity.
 *   **Cross-Platform Compatibility:** Generated video files are compatible with all major players and platforms.

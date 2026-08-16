@@ -211,6 +211,7 @@
   "export_quality_best_desc": { "message": "最高畫質，速度最慢" },
   "export_label_resolution": { "message": "匯出解析度" },
   "export_res_source": { "message": "原始畫質 ($WIDTH$×$HEIGHT$)", "placeholders": { "width": { "content": "$1" }, "height": { "content": "$2" } } },
+  "export_res_canvas": { "message": "符合畫布 ($WIDTH$×$HEIGHT$)", "placeholders": { "width": { "content": "$1" }, "height": { "content": "$2" } } },
   "export_label_framerate": { "message": "幀率" },
   "export_fps_source": { "message": "$FPS$ fps (來源)", "placeholders": { "fps": { "content": "$1" } } },
   "export_label_bitrate": { "message": "位元率" },

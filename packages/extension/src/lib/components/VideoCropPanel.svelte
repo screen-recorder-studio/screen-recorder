@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Check, X, RotateCcw, Crop, Lock, Unlock } from '@lucide/svelte'
   import { videoCropStore } from '$lib/stores/video-crop.svelte'
+  import { resolveInitialCropBox } from '$lib/studio/crop-box'
   
   interface Props {
     // 当前帧的 ImageBitmap
@@ -60,8 +61,8 @@
   let cropBox = $state({
     x: 0,
     y: 0,
-    width: videoWidth,
-    height: videoHeight
+    width: 1,
+    height: 1
   })
 
   // 辅助状态
@@ -181,23 +182,18 @@
   
   // 初始化裁剪框（如果已有裁剪配置）
   $effect(() => {
-    if (videoCropStore.enabled && videoCropStore.mode === 'percentage') {
-      cropBox = {
-        x: Math.round(videoCropStore.xPercent * videoWidth),
-        y: Math.round(videoCropStore.yPercent * videoHeight),
-        width: Math.round(videoCropStore.widthPercent * videoWidth),
-        height: Math.round(videoCropStore.heightPercent * videoHeight)
-      }
-    } else {
-      // 默认：居中 80% 区域
-      const margin = 0.1
-      cropBox = {
-        x: Math.round(videoWidth * margin),
-        y: Math.round(videoHeight * margin),
-        width: Math.round(videoWidth * 0.8),
-        height: Math.round(videoHeight * 0.8)
-      }
-    }
+    cropBox = resolveInitialCropBox(videoWidth, videoHeight, {
+      enabled: videoCropStore.enabled,
+      mode: videoCropStore.mode,
+      xPercent: videoCropStore.xPercent,
+      yPercent: videoCropStore.yPercent,
+      widthPercent: videoCropStore.widthPercent,
+      heightPercent: videoCropStore.heightPercent,
+      x: videoCropStore.x,
+      y: videoCropStore.y,
+      width: videoCropStore.width,
+      height: videoCropStore.height
+    })
   })
   
   // 绘制裁剪框覆盖层

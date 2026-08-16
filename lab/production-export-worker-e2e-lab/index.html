@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Production Export Worker E2E Lab</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">REAL EXPORT WORKER · MEMORY SOURCE · FILE ROUNDTRIP</p>
+        <h1>生产导出 Worker 端到端 Lab</h1>
+        <p class="lede">
+          浏览器直接调用工程真实 ExportManager；完整 WebCodecs chunks 经生产 Slice plan、真实 Export Worker 与 Composite Worker，
+          Mediabunny 编码与文件回读，再与源时间轴上的 Preview checkpoint 做像素比较。
+        </p>
+      </header>
+
+      <section class="toolbar">
+        <label>格式
+          <select id="format">
+            <option value="mp4">MP4 / H.264（已验证路径）</option>
+            <option value="webm">WebM / VP9（同一入口）</option>
+            <option value="gif" disabled>GIF（需要主线程编码桥）</option>
+          </select>
+        </label>
+        <button id="run" type="button">运行真实导出</button>
+        <a id="download" hidden>下载产物</a>
+        <span id="environment"></span>
+      </section>
+      <section class="status"><strong id="status">等待运行</strong><div><i id="progress"></i></div></section>
+
+      <section id="matrix" class="matrix" aria-label="Export format matrix"></section>
+
+      <section class="visuals">
+        <article>
+          <div class="card-heading"><strong>PREVIEW EXPECTED</strong><span>生产 Composite Worker · 源时间</span></div>
+          <canvas id="preview" width="640" height="360"></canvas>
+        </article>
+        <article>
+          <div class="card-heading"><strong>EXPORTED FILE</strong><span>Mediabunny 文件回读</span></div>
+          <canvas id="exported" width="640" height="360"></canvas>
+        </article>
+      </section>
+
+      <section class="evidence">
+        <div class="section-heading">
+          <div><p class="eyebrow">PRODUCTION EVIDENCE</p><h2>端到端验收</h2></div>
+          <p>Slice 1.100–4.100s · delta 起点 + keyframe preroll · Crop 80% · 两段 Zoom · 640×360</p>
+        </div>
+        <div id="acceptance" class="acceptance"></div>
+        <table>
+          <thead><tr><th>Export t</th><th>Source t</th><th>源帧</th><th>编辑状态</th><th>文件 MAE</th><th>结论</th></tr></thead>
+          <tbody id="checkpoints"></tbody>
+        </table>
+      </section>
+
+      <section class="notes">
+        <div><p class="eyebrow">BOUNDARY</p><h2>证据覆盖到哪里</h2></div>
+        <pre>App → real export-worker → real composite-worker
+    → Mediabunny CanvasSource → MP4/WebM Blob
+    → Mediabunny Input / VideoSampleSink → pixels
+
+GIF: export-worker 可达，但还需要 ExportManager 的主线程 GifEncoder 握手。
+OPFS: 本页刻意使用 memory source；旧 timeline 和窗口/keyframe 回退另列 E2E。</pre>
+        <dl id="metadata"></dl>
+      </section>
+    </main>
+    <script type="module" src="./app.ts"></script>
+  </body>
+</html>

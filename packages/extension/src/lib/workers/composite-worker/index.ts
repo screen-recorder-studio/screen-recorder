@@ -4,18 +4,60 @@
 
 // 导入类型定义
 import type { BackgroundConfig, GradientConfig, GradientStop, ImageBackgroundConfig } from '../../types/background'
+import {
+  WindowProcessingGenerationGate,
+  isExpectedDecoderCancellation
+} from '../../studio/window-processing-generation'
+import {
+  resolvePreviewPresentationTimeMs
+} from '../../studio/preview-playback-scheduler'
+import {
+  classifyPreviewDecodedOutput,
+  planBoundedPreviewDecodeWindow,
+  type BoundedPreviewDecodeWindow
+} from '../../studio/preview-decode-window'
+import {
+  createPreviewMemoryTelemetry,
+  planPreviewMemoryBudget,
+  type PreviewMemoryBudgetPlan
+} from '../../studio/preview-memory-budget'
+import {
+  beginMainDecode,
+  createPreviewDecodeLane,
+  finishMainDecode,
+  finishPrefetchDecode,
+  requestPrefetchDecode,
+  type PreviewDecodeLane
+} from '../../studio/preview-decode-lane'
+import {
+  mapSourceCropToPreview,
+  resolveFocusWithinSourceCrop,
+  type PreviewRect
+} from '../../studio/preview-proxy-geometry'
+import { classifyHoverDecodedFrame } from '../../studio/preview-hover-frame'
+import { previewDecodeBackpressureState } from '../../studio/preview-decode-backpressure'
+import { closeReplacedPreviewConfigBitmaps } from '../../studio/preview-owned-bitmaps'
+import { resolveCompositionSize } from '../../export/export-dimensions'
 
 interface CompositeMessage {
-  type: 'init' | 'process' | 'play' | 'pause' | 'seek' | 'config' | 'appendWindow' | 'decodeSingleFrame' | 'preview-frame' | 'getCurrentFrameBitmap' | 'getSourceFrameBitmap';
+  type: 'init' | 'process' | 'play' | 'pause' | 'seek' | 'renderAtTime' | 'config' | 'appendWindow' | 'decodeSingleFrame' | 'preview-frame' | 'getCurrentFrameBitmap' | 'getSourceFrameBitmap' | 'dispose';
   data: {
     chunks?: any[];
     backgroundConfig?: BackgroundConfig;
     timestamp?: number;
     frameIndex?: number;
     startGlobalFrame?: number; // 新增：窗口全局起点（用于C-2复用判断）
+    decodeStartGlobalFrame?: number;
+    retainStartGlobalFrame?: number;
+    retainedFrameCount?: number;
+    windowGeneration?: number;
     frameRate?: number; // 🆕 视频帧率
     targetIndexInGOP?: number; // 🆕 单帧预览：目标帧在 GOP 中的索引
     globalFrameIndex?: number; // 🆕 单帧预览：全局帧索引
+    presentationTimeMs?: number;
+    requestId?: number;
+    previewMemoryPolicy?: 'bounded' | 'full-fidelity';
+    deviceMemoryGB?: number;
   };
 }
 
@@ -35,13 +77,37 @@ let decodedFrames: VideoFrame[] = [];
 let currentConfig: BackgroundConfig | null = null;
 // 下一窗口后台解码帧缓冲（C-2）
 let nextDecoded: VideoFrame[] = []
-let nextMeta: { start: number | null; codec: string | null } | null = null
+let nextMeta: {
+  start: number | null
+  codec: string | null
+  expectedFrames: number
+  codedWidth: number
+  codedHeight: number
+  proxyWidth: number
+  proxyHeight: number
+} | null = null
 // 解码输出目标：当前窗口 or 下一窗口
 let outputTarget: 'current' | 'next' = 'current'
+let currentDecodePlan: BoundedPreviewDecodeWindow | null = null
+let currentDecodedOutputIndex = 0
+let nextDecodePlan: BoundedPreviewDecodeWindow | null = null
+let nextDecodedOutputIndex = 0
+let previewDecodeLane: PreviewDecodeLane = createPreviewDecodeLane()
+let deferredAppendWindow: {
+  data: CompositeMessage['data']
+  generation: number
+} | null = null
 
 let isPlaying = false;
 let isDecoding = false; // streaming decode in progress
+const windowGenerationGate = new WindowProcessingGenerationGate();
 let pendingSeekIndex: number | null = null; // seek request waiting for frames
+let pendingTimelineRender: {
+  frameIndex: number;
+  presentationTimeMs: number;
+  requestId: number;
+  windowGeneration: number;
+} | null = null;
 let currentFrameIndex = 0;
 let animationId: number | null = null;
 
@@ -138,6 +204,12 @@ let lastBufferWarningTime = 0;
 let fixedVideoLayout: VideoLayout | null = null;
 let videoInfo: { width: number; height: number } | null = null;
 let displaySizeLocked = false;
+let activePreviewMemoryPlan: PreviewMemoryBudgetPlan | null = null;
+let previewDeviceMemoryGB: number | undefined;
+let previewProxyCanvas: OffscreenCanvas | null = null;
+let previewProxyContext: OffscreenCanvasRenderingContext2D | null = null;
+let decodeQueueHighWatermark = 8
+let decodeQueueLowWatermark = 4
 // 🆕 窗口信息（用于计算时间）
 let windowStartFrameIndex: number = 0;  // 窗口起始帧索引（全局）
 let videoFrameRate: number = 30;  // 视频帧率（默认 30fps）
@@ -145,11 +217,91 @@ let videoFrameRate: number = 30;  // 视频帧率（默认 30fps）
 // 🆕 Dedicated preview decoder (independent from main playback decoder)
 let previewDecoder: VideoDecoder | null = null;
 let previewDecoderCodec: string | null = null;
-let previewDecodedFrames: VideoFrame[] = [];
-let previewTargetIndex: number = 0;  // 目标帧在 previewDecodedFrames 中的索引
-let previewGlobalFrameIndex: number = 0;  // 目标帧的全局索引
-let previewDecodeComplete: boolean = false;
 let isPreviewDecoding: boolean = false;
+interface HoverDecodeRequest {
+  requestId: number
+  windowGeneration: number
+  presentationTimeMs: number
+  globalFrameIndex: number
+  targetIndex: number
+  outputIndex: number
+  targetFrame: VideoFrame | null
+  decoder: VideoDecoder
+}
+let activeHoverDecode: HoverDecodeRequest | null = null
+
+function closeFrames(frames: VideoFrame[]) {
+  for (const frame of frames) {
+    try { frame.close() } catch {}
+  }
+  frames.length = 0
+}
+
+function disposeHoverDecode(request: HoverDecodeRequest | null) {
+  if (!request) return
+  if (request.targetFrame) {
+    try { request.targetFrame.close() } catch {}
+    request.targetFrame = null
+  }
+  if (request.decoder.state !== 'closed') {
+    try { request.decoder.reset() } catch {}
+    try { request.decoder.close() } catch {}
+  }
+  if (activeHoverDecode === request) activeHoverDecode = null
+  if (previewDecoder === request.decoder) {
+    previewDecoder = null
+    previewDecoderCodec = null
+  }
+}
+
+function disposeWorkerResources() {
+  if (animationId !== null) {
+    try { self.cancelAnimationFrame(animationId) } catch {}
+    animationId = null
+  }
+  isPlaying = false
+  pendingSeekIndex = null
+  pendingTimelineRender = null
+  deferredAppendWindow = null
+  closeFrames(decodedFrames)
+  closeFrames(nextDecoded)
+  disposeHoverDecode(activeHoverDecode)
+  for (const decoder of [videoDecoder, previewDecoder]) {
+    if (!decoder || decoder.state === 'closed') continue
+    try { decoder.reset() } catch {}
+    try { decoder.close() } catch {}
+  }
+  videoDecoder = null
+  previewDecoder = null
+  videoDecoderCodec = null
+  previewDecoderCodec = null
+  previewProxyCanvas = null
+  previewProxyContext = null
+  activePreviewMemoryPlan = null
+  closeReplacedPreviewConfigBitmaps({ previous: currentConfig, next: null })
+  currentConfig = null
+}
+
+function failMainDecodeSession(message: string) {
+  if (pendingTimelineRender) {
+    rejectTimelineRender(pendingTimelineRender, 'decode-complete-without-frame')
+    pendingTimelineRender = null
+  }
+  closeFrames(decodedFrames)
+  closeFrames(nextDecoded)
+  nextMeta = null
+  nextDecodePlan = null
+  currentDecodePlan = null
+  if (videoDecoder && videoDecoder.state !== 'closed') {
+    try { videoDecoder.reset() } catch {}
+    try { videoDecoder.close() } catch {}
+  }
+  videoDecoder = null
+  videoDecoderCodec = null
+  previewDecodeLane = createPreviewDecodeLane(windowGenerationGate.activeGeneration)
+  syncPreviewDecodeLaneState()
+  self.postMessage({ type: 'error', data: message })
+}
 
 // 初始化 OffscreenCanvas
 function initializeCanvas(width: number, height: number) {
@@ -175,34 +327,9 @@ function initializeCanvas(width: number, height: number) {
 }
 
 // 计算输出尺寸
-function calculateOutputSize(config: BackgroundConfig, sourceWidth: number, sourceHeight: number) {
-  let outputWidth: number, outputHeight: number;
-
-
-  if (config.outputRatio === 'custom') {
-    outputWidth = config.customWidth || 1920;
-    outputHeight = config.customHeight || 1080;
-  } else {
-    // 平台标准输出分辨率（与 UI 显示一致），优先保证编码兼容性
-    const standardSizes: Record<BackgroundConfig['outputRatio'], { width: number; height: number }> = {
-      '16:9': { width: 1920, height: 1080 },
-      '1:1': { width: 1080, height: 1080 },
-      '9:16': { width: 1080, height: 1920 },
-      '4:5': { width: 1080, height: 1350 },
-      'custom': { width: 1920, height: 1080 }
-    };
-
-    const target = standardSizes[config.outputRatio] || standardSizes['16:9'];
-    outputWidth = target.width;
-    outputHeight = target.height;
-
-    // 记录选择结果
-
-    // 说明：padding/inset 仅影响视频布局（calculateVideoLayout），不再放大画布，
-    // 以避免 16:9 因 padding 导致分辨率超过常见 H.264 Level 限制而报错。
-  }
-
-  return { outputWidth, outputHeight };
+function calculateOutputSize(config: BackgroundConfig, _sourceWidth: number, _sourceHeight: number) {
+  const { width, height } = resolveCompositionSize(config)
+  return { outputWidth: width, outputHeight: height }
 }
 
 // 计算视频布局
@@ -265,6 +392,89 @@ function calculateVideoLayout(
     width: layoutWidth,
     height: layoutHeight
   };
+}
+
+function resolveSourceCropRect(
+  config: BackgroundConfig,
+  sourceWidth: number,
+  sourceHeight: number
+): PreviewRect {
+  const crop = config.videoCrop
+  if (!crop?.enabled) return { x: 0, y: 0, width: sourceWidth, height: sourceHeight }
+  if (crop.mode === 'percentage') {
+    return {
+      x: Math.floor(crop.xPercent * sourceWidth),
+      y: Math.floor(crop.yPercent * sourceHeight),
+      width: Math.floor(crop.widthPercent * sourceWidth),
+      height: Math.floor(crop.heightPercent * sourceHeight)
+    }
+  }
+  return { x: crop.x, y: crop.y, width: crop.width, height: crop.height }
+}
+
+function createRetainedPreviewFrame(frame: VideoFrame): VideoFrame | null {
+  const plan = activePreviewMemoryPlan
+  if (!plan?.usesProxy) return frame
+  try {
+    if (
+      !previewProxyCanvas
+      || previewProxyCanvas.width !== plan.previewWidth
+      || previewProxyCanvas.height !== plan.previewHeight
+    ) {
+      previewProxyCanvas = new OffscreenCanvas(plan.previewWidth, plan.previewHeight)
+      previewProxyContext = previewProxyCanvas.getContext('2d', {
+        alpha: false,
+        desynchronized: true
+      })
+    }
+    if (!previewProxyContext || !previewProxyCanvas) {
+      throw new Error('PREVIEW_PROXY_CONTEXT_UNAVAILABLE')
+    }
+
+    previewProxyContext.drawImage(frame, 0, 0, plan.previewWidth, plan.previewHeight)
+    const proxy = new VideoFrame(previewProxyCanvas, {
+      timestamp: frame.timestamp,
+      ...(frame.duration == null ? {} : { duration: frame.duration })
+    })
+    try { frame.close() } catch {}
+    return proxy
+  } catch (error) {
+    try { frame.close() } catch {}
+    self.postMessage({
+      type: 'error',
+      data: error instanceof Error ? error.message : 'PREVIEW_PROXY_CREATION_FAILED'
+    })
+    return null
+  }
+}
+
+function updateDecodeQueueBudget(sourceWidth: number, sourceHeight: number) {
+  if (!activePreviewMemoryPlan) {
+    decodeQueueHighWatermark = 8
+    decodeQueueLowWatermark = 4
+    return
+  }
+  const bytesPerSourceFrame = Math.max(1, sourceWidth * sourceHeight * 4)
+  decodeQueueHighWatermark = Math.max(
+    1,
+    Math.min(8, Math.floor(activePreviewMemoryPlan.transientHeadroomBytes / bytesPerSourceFrame))
+  )
+  decodeQueueLowWatermark = Math.max(0, Math.floor(decodeQueueHighWatermark / 2))
+}
+
+function publishPreviewMemoryPlan(sourceDisplayWidth: number, sourceDisplayHeight: number) {
+  if (!activePreviewMemoryPlan) return
+  self.postMessage({
+    type: 'previewMemoryPlan',
+    data: createPreviewMemoryTelemetry({
+      plan: activePreviewMemoryPlan,
+      sourceDisplayWidth,
+      sourceDisplayHeight,
+      decodeQueueHighWatermark,
+      decodeQueueLowWatermark,
+      windowGeneration: windowGenerationGate.activeGeneration
+    })
+  })
 }
 
 // 渲染背景
@@ -640,7 +850,13 @@ function calculateZoomScale(currentTimeMs: number, zoomConfig: any, debugLog: bo
 
 // 渲染合成帧（严格保持原始显示比例，支持可见区域裁剪）
 // frameIndex: 窗口内帧索引（用于计算 Zoom 时间）
-function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: BackgroundConfig, frameIndex: number = currentFrameIndex) {
+function renderCompositeFrame(
+  frame: VideoFrame,
+  layout: VideoLayout,
+  config: BackgroundConfig,
+  frameIndex: number = currentFrameIndex,
+  presentationTimeMs?: number
+) {
   if (!ctx || !offscreenCanvas) {
     console.error('❌ [COMPOSITE-WORKER] Canvas not initialized');
     return null;
@@ -651,9 +867,14 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
     ctx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
 
     // 🆕 计算当前时间的 Zoom 缩放比例（包含缓动）- 移到背景渲染之前以支持 syncBackground
-    // 使用帧索引计算时间（而不是 frame.timestamp，因为它可能是系统时间戳）
-    const globalFrameIndex = windowStartFrameIndex + frameIndex  // 使用传入的 frameIndex
-    const currentTimeMs = (globalFrameIndex / videoFrameRate) * 1000
+    // Timeline playback supplies canonical display time. Legacy callers keep the
+    // frame-index fallback until their contracts are migrated.
+    const currentTimeMs = resolvePreviewPresentationTimeMs({
+      presentationTimeMs,
+      windowStartFrameIndex,
+      frameIndex,
+      nominalFps: videoFrameRate
+    })
 
     // 🔍 每 30 帧启用详细调试
     const shouldDebug = frameIndex % 30 === 0 && config.videoZoom?.enabled
@@ -711,30 +932,19 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
           fx = clamp01(active.focusX)
           fy = clamp01(active.focusY)
         } else {
-          // source 空间：需要考虑裁剪把源坐标映射到当前 layout 归一化
-          const crop: any = (config as any).videoCrop
-          const vw = frame.codedWidth
-          const vh = frame.codedHeight
-          let cropX = 0, cropY = 0, cropW = vw, cropH = vh
-          if (crop?.enabled) {
-            if (crop.mode === 'percentage') {
-              cropX = Math.floor((crop.xPercent ?? 0) * vw)
-              cropY = Math.floor((crop.yPercent ?? 0) * vh)
-              cropW = Math.floor((crop.widthPercent ?? 1) * vw)
-              cropH = Math.floor((crop.heightPercent ?? 1) * vh)
-            } else {
-              cropX = crop.x ?? 0
-              cropY = crop.y ?? 0
-              cropW = crop.width ?? vw
-              cropH = crop.height ?? vh
-            }
-          }
-          const srcPxX = clamp01(active.focusX) * vw
-          const srcPxY = clamp01(active.focusY) * vh
-          const denomW = Math.max(1, cropW)
-          const denomH = Math.max(1, cropH)
-          fx = clamp01((srcPxX - cropX) / denomW)
-          fy = clamp01((srcPxY - cropY) / denomH)
+          // Source-space focus remains expressed against the original capture
+          // even when retained preview frames are downscaled proxies.
+          const sourceWidth = videoInfo?.width ?? frame.displayWidth
+          const sourceHeight = videoInfo?.height ?? frame.displayHeight
+          const mappedFocus = resolveFocusWithinSourceCrop({
+            focusX: active.focusX,
+            focusY: active.focusY,
+            sourceWidth,
+            sourceHeight,
+            crop: resolveSourceCropRect(config, sourceWidth, sourceHeight)
+          })
+          fx = mappedFocus.x
+          fy = mappedFocus.y
         }
       }
 
@@ -853,47 +1063,18 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
       visibleRect: vr ? { x: vr.x, y: vr.y, width: vr.width, height: vr.height } : null
     };
 
-    // 🆕 计算源裁剪区域（用户自定义裁剪）
-    let srcX = 0, srcY = 0, srcWidth = frame.codedWidth, srcHeight = frame.codedHeight;
-
-    if (config.videoCrop?.enabled) {
-      const crop = config.videoCrop;
-
-      if (crop.mode === 'percentage') {
-        // 百分比模式：基于原始帧尺寸计算
-        srcX = Math.floor(crop.xPercent * frame.codedWidth);
-        srcY = Math.floor(crop.yPercent * frame.codedHeight);
-        srcWidth = Math.floor(crop.widthPercent * frame.codedWidth);
-        srcHeight = Math.floor(crop.heightPercent * frame.codedHeight);
-      } else {
-        // 像素模式：直接使用配置值
-        srcX = crop.x;
-        srcY = crop.y;
-        srcWidth = crop.width;
-        srcHeight = crop.height;
-      }
-
-      // 边界检查
-      srcX = Math.max(0, Math.min(srcX, frame.codedWidth));
-      srcY = Math.max(0, Math.min(srcY, frame.codedHeight));
-      srcWidth = Math.min(srcWidth, frame.codedWidth - srcX);
-      srcHeight = Math.min(srcHeight, frame.codedHeight - srcY);
-
-      // 检查裁剪区域是否有效
-      if (srcWidth <= 0 || srcHeight <= 0) {
-        console.error('❌ [COMPOSITE-WORKER] Invalid crop region after boundary check:', {
-          srcX, srcY, srcWidth, srcHeight,
-          frameSize: { width: frame.codedWidth, height: frame.codedHeight },
-          originalCrop: crop
-        });
-        // 回退到全屏
-        srcX = 0;
-        srcY = 0;
-        srcWidth = frame.codedWidth;
-        srcHeight = frame.codedHeight;
-      }
-
-    }
+    // Pixel crops are stored in original source coordinates. Map them onto a
+    // retained proxy frame without changing the visible composition.
+    const sourceWidth = videoInfo?.width ?? frame.displayWidth
+    const sourceHeight = videoInfo?.height ?? frame.displayHeight
+    const mappedCrop = mapSourceCropToPreview({
+      sourceWidth,
+      sourceHeight,
+      previewWidth: frame.displayWidth,
+      previewHeight: frame.displayHeight,
+      crop: resolveSourceCropRect(config, sourceWidth, sourceHeight)
+    })
+    const { x: srcX, y: srcY, width: srcWidth, height: srcHeight } = mappedCrop
 
     // 🆕 Zoom 现在通过放大 actualLayout 实现，不再修改源区域
 
@@ -940,44 +1121,102 @@ function renderCompositeFrame(frame: VideoFrame, layout: VideoLayout, config: Ba
   }
 }
 
-// 🆕 Render and send single-frame preview
-function renderAndSendPreviewFrame() {
-  if (previewDecodedFrames.length <= previewTargetIndex) {
-    console.error('❌ [COMPOSITE-WORKER] Preview frame not available');
-    self.postMessage({
-      type: 'singleFramePreview',
-      data: { success: false, error: 'Frame not available' }
-    });
-    return;
-  }
+function renderTimelineRequest(request: {
+  frameIndex: number;
+  presentationTimeMs: number;
+  requestId: number;
+  windowGeneration: number;
+}): boolean {
+  if (!windowGenerationGate.isCurrent(request.windowGeneration)) return false
+  if (!currentConfig || !fixedVideoLayout) return false
+  if (request.frameIndex < 0 || request.frameIndex >= decodedFrames.length) return false
 
-  const frame = previewDecodedFrames[previewTargetIndex];
+  const frame = decodedFrames[request.frameIndex]
+  const bitmap = renderCompositeFrame(
+    frame,
+    fixedVideoLayout,
+    currentConfig,
+    request.frameIndex,
+    request.presentationTimeMs
+  )
+  if (!bitmap) return false
+
+  currentFrameIndex = request.frameIndex
+  self.postMessage({
+    type: 'frame',
+    data: {
+      bitmap,
+      frameIndex: request.frameIndex,
+      timestamp: frame.timestamp,
+      presentationTimeMs: request.presentationTimeMs,
+      requestId: request.requestId,
+      windowStartFrameIndex,
+      windowGeneration: request.windowGeneration
+    }
+  }, { transfer: [bitmap] })
+  return true
+}
+
+function rejectTimelineRender(
+  request: NonNullable<typeof pendingTimelineRender>,
+  reason: 'frame-not-decoded' | 'decode-complete-without-frame'
+) {
+  self.postMessage({
+    type: 'renderUnavailable',
+    data: {
+      requestId: request.requestId,
+      frameIndex: request.frameIndex,
+      presentationTimeMs: request.presentationTimeMs,
+      reason,
+      windowStartFrameIndex,
+      windowGeneration: request.windowGeneration
+    }
+  })
+}
+
+// 🆕 Render and send single-frame preview
+function renderAndSendPreviewFrame(request: HoverDecodeRequest) {
+  if (activeHoverDecode !== request || !request.targetFrame) return
+  const frame = request.targetFrame
+  request.targetFrame = null
+  const responseBase = {
+    requestId: request.requestId,
+    windowGeneration: request.windowGeneration,
+    presentationTimeMs: request.presentationTimeMs,
+    globalFrameIndex: request.globalFrameIndex
+  }
   
   try {
     // 使用当前配置和布局渲染预览帧
     if (currentConfig && fixedVideoLayout) {
       // 计算预览帧的时间相关参数（用于 Zoom 等效果）
-      const bitmap = renderCompositeFrame(frame, fixedVideoLayout, currentConfig, 0);
+      const bitmap = renderCompositeFrame(
+        frame,
+        fixedVideoLayout,
+        currentConfig,
+        request.targetIndex,
+        request.presentationTimeMs
+      );
       
       if (bitmap) {
         self.postMessage({
           type: 'singleFramePreview',
           data: {
+            ...responseBase,
             success: true,
-            bitmap,
-            globalFrameIndex: previewGlobalFrameIndex
+            bitmap
           }
         }, { transfer: [bitmap] });
       } else {
         self.postMessage({
           type: 'singleFramePreview',
-          data: { success: false, error: 'Render returned null' }
+          data: { ...responseBase, success: false, error: 'Render returned null' }
         });
       }
     } else {
       // 没有配置/布局，返回源帧的简单位图
-      const w = (frame as any).codedWidth ?? (frame as any).displayWidth ?? 1;
-      const h = (frame as any).codedHeight ?? (frame as any).displayHeight ?? 1;
+      const w = (frame as any).displayWidth ?? (frame as any).codedWidth ?? 1;
+      const h = (frame as any).displayHeight ?? (frame as any).codedHeight ?? 1;
       const temp = new OffscreenCanvas(w, h);
       const tctx = temp.getContext('2d', { alpha: false })!;
       tctx.drawImage(frame as any, 0, 0, w, h);
@@ -986,9 +1225,9 @@ function renderAndSendPreviewFrame() {
       self.postMessage({
         type: 'singleFramePreview',
         data: {
+          ...responseBase,
           success: true,
-          bitmap,
-          globalFrameIndex: previewGlobalFrameIndex
+          bitmap
         }
       }, { transfer: [bitmap] });
     }
@@ -996,19 +1235,215 @@ function renderAndSendPreviewFrame() {
     console.error('❌ [COMPOSITE-WORKER] Preview render error:', error);
     self.postMessage({
       type: 'singleFramePreview',
-      data: { success: false, error: (error as Error).message }
+      data: { ...responseBase, success: false, error: (error as Error).message }
     });
+  } finally {
+    try { frame.close() } catch {}
+    disposeHoverDecode(request)
   }
-
-  // 清理预览帧以释放内存
-  for (const f of previewDecodedFrames) {
-    try { f.close(); } catch {}
-  }
-  previewDecodedFrames = [];
 }
 
 // 基础流式解码：开始提交块并在后台flush，边解边播
-function startStreamingDecode(chunks: any[]) {
+function syncPreviewDecodeLaneState() {
+  outputTarget = previewDecodeLane.outputTarget
+  // renderAtTime only cares whether a requested current-window frame can still
+  // arrive. Background prefetch must never keep or clear this flag.
+  isDecoding = previewDecodeLane.currentInFlight
+}
+
+function beginCurrentDecode(processingGeneration: number) {
+  const transition = beginMainDecode(previewDecodeLane, processingGeneration)
+  previewDecodeLane = transition.state
+  deferredAppendWindow = null
+  syncPreviewDecodeLaneState()
+}
+
+function settleCurrentDecode(processingGeneration: number) {
+  const transition = finishMainDecode(previewDecodeLane, processingGeneration)
+  previewDecodeLane = transition.state
+  syncPreviewDecodeLaneState()
+
+  if (transition.effect !== 'start-prefetch' || !deferredAppendWindow) return
+  const pending = deferredAppendWindow
+  deferredAppendWindow = null
+  startAppendWindowDecode(pending.data, pending.generation)
+}
+
+function settlePrefetchDecode(processingGeneration: number) {
+  const transition = finishPrefetchDecode(previewDecodeLane, processingGeneration)
+  previewDecodeLane = transition.state
+  syncPreviewDecodeLaneState()
+
+  if (transition.effect !== 'start-prefetch' || !deferredAppendWindow) return
+  const pending = deferredAppendWindow
+  deferredAppendWindow = null
+  startAppendWindowDecode(pending.data, pending.generation)
+}
+
+async function submitDecoderChunksWithBackpressure(
+  decoder: VideoDecoder,
+  chunks: any[],
+  processingGeneration: number
+): Promise<boolean> {
+  let wasWaiting = false
+  for (const chunk of chunks) {
+    while (previewDecodeBackpressureState(
+      decoder.decodeQueueSize,
+      wasWaiting,
+      decodeQueueHighWatermark,
+      decodeQueueLowWatermark
+    ) === 'wait') {
+      wasWaiting = true
+      await waitForDecoderDequeue(decoder)
+      if (
+        !windowGenerationGate.isCurrent(processingGeneration)
+        || decoder !== videoDecoder
+        || decoder.state === 'closed'
+      ) return false
+    }
+    wasWaiting = false
+    const data = chunk.data instanceof ArrayBuffer ? new Uint8Array(chunk.data) : chunk.data
+    decoder.decode(new EncodedVideoChunk({
+      type: chunk.type === 'key' ? 'key' : 'delta',
+      timestamp: chunk.timestamp,
+      data
+    }))
+  }
+  return true
+}
+
+async function submitHoverChunksWithBackpressure(
+  request: HoverDecodeRequest,
+  chunks: any[]
+): Promise<boolean> {
+  let wasWaiting = false
+  for (const chunk of chunks) {
+    while (previewDecodeBackpressureState(
+      request.decoder.decodeQueueSize,
+      wasWaiting,
+      decodeQueueHighWatermark,
+      decodeQueueLowWatermark
+    ) === 'wait') {
+      wasWaiting = true
+      await waitForDecoderDequeue(request.decoder)
+      if (activeHoverDecode !== request || request.decoder.state === 'closed') return false
+    }
+    wasWaiting = false
+    const data = chunk.data instanceof ArrayBuffer ? new Uint8Array(chunk.data) : chunk.data
+    request.decoder.decode(new EncodedVideoChunk({
+      type: chunk.type === 'key' ? 'key' : 'delta',
+      timestamp: chunk.timestamp,
+      data
+    }))
+  }
+  return true
+}
+
+function waitForDecoderDequeue(decoder: VideoDecoder): Promise<void> {
+  return new Promise((resolve) => {
+    let settled = false
+    const finish = () => {
+      if (settled) return
+      settled = true
+      try { decoder.removeEventListener('dequeue', finish) } catch {}
+      resolve()
+    }
+    try { decoder.addEventListener('dequeue', finish, { once: true }) } catch {}
+    setTimeout(finish, 16)
+  })
+}
+
+function requestAppendWindowDecode(data: CompositeMessage['data'], processingGeneration: number) {
+  const targetGlobalFrame = Math.max(
+    0,
+    Math.floor(data.retainStartGlobalFrame ?? data.startGlobalFrame ?? 0)
+  )
+  const transition = requestPrefetchDecode(previewDecodeLane, {
+    generation: processingGeneration,
+    targetGlobalFrame
+  })
+  previewDecodeLane = transition.state
+  syncPreviewDecodeLaneState()
+
+  if (transition.effect === 'defer-prefetch') {
+    // Keep only the newest prefetch intent. ArrayBuffers have already been
+    // transferred into this worker, so retaining the message is safe.
+    deferredAppendWindow = { data, generation: processingGeneration }
+    return
+  }
+  if (transition.effect === 'start-prefetch') {
+    startAppendWindowDecode(data, processingGeneration)
+  }
+}
+
+function startAppendWindowDecode(data: CompositeMessage['data'], processingGeneration: number) {
+  if (!data.chunks?.length || !windowGenerationGate.isCurrent(processingGeneration)) {
+    settlePrefetchDecode(processingGeneration)
+    return
+  }
+
+  // Decode may start at an earlier keyframe. Only frames at/after the playback
+  // boundary are retained as the next visible window.
+  const decodeStart = Math.max(0, Math.floor(data.startGlobalFrame ?? 0))
+  const retainStart = Math.max(
+    decodeStart,
+    Math.floor(data.retainStartGlobalFrame ?? decodeStart)
+  )
+  const requestedRetainedFrames = Math.max(
+    0,
+    Math.floor(data.retainedFrameCount ?? data.chunks.length)
+  )
+  const plannedNextWindow = planBoundedPreviewDecodeWindow({
+    decodeStartGlobalFrame: decodeStart,
+    retainStartGlobalFrame: retainStart,
+    decodedChunkCount: Math.min(
+      data.chunks.length,
+      (retainStart - decodeStart) + requestedRetainedFrames
+    ),
+    capacity: FRAME_BUFFER_LIMITS.maxNextDecoded
+  })
+  if (!plannedNextWindow) {
+    console.warn('[COMPOSITE-WORKER] appendWindow: invalid bounded decode window')
+    settlePrefetchDecode(processingGeneration)
+    return
+  }
+  if (nextMeta?.start === plannedNextWindow.retainStartGlobalFrame) {
+    if (nextDecoded.length === nextMeta.expectedFrames) {
+      self.postMessage({
+        type: 'prefetchReady',
+        data: {
+          startGlobalFrame: nextMeta.start,
+          totalFrames: nextDecoded.length,
+          windowGeneration: windowGenerationGate.activeGeneration
+        }
+      })
+    }
+    settlePrefetchDecode(processingGeneration)
+    return
+  }
+  if (nextMeta && nextMeta.start !== plannedNextWindow.retainStartGlobalFrame && nextDecoded.length > 0) {
+    for (const frame of nextDecoded) { try { frame.close() } catch {} }
+    nextDecoded = []
+  }
+  nextMeta = {
+    start: plannedNextWindow.retainStartGlobalFrame,
+    codec: videoDecoderCodec,
+    expectedFrames: plannedNextWindow.retainedFrameCount,
+    codedWidth: Number(data.chunks[0]?.codedWidth) || 0,
+    codedHeight: Number(data.chunks[0]?.codedHeight) || 0,
+    proxyWidth: activePreviewMemoryPlan?.previewWidth || 0,
+    proxyHeight: activePreviewMemoryPlan?.previewHeight || 0
+  }
+  nextDecodePlan = plannedNextWindow
+  nextDecodedOutputIndex = 0
+
+  appendStreamingDecode(
+    data.chunks.slice(0, plannedNextWindow.decodeFrameCount),
+    processingGeneration
+  )
+}
+
+function startStreamingDecode(chunks: any[], processingGeneration: number) {
   if (!chunks || chunks.length === 0) {
     throw new Error('No video chunks provided');
   }
@@ -1035,13 +1470,19 @@ function startStreamingDecode(chunks: any[]) {
   const codec = firstChunk.codec || 'vp8';
 
   // 🔧 修复：reset 后需要重新 configure，所以总是需要重新创建或配置
-  const needRecreate = !videoDecoder || videoDecoderCodec !== codec || videoDecoder.state === 'unconfigured';
+  const needRecreate = !videoDecoder
+    || videoDecoderCodec !== codec
+    || videoDecoder.state === 'unconfigured'
+    || videoDecoder.state === 'closed';
   if (needRecreate) {
 
     videoDecoder = new VideoDecoder({
       output: (frame: VideoFrame) => {
         const targetBuf = (outputTarget === 'next') ? nextDecoded : decodedFrames;
-        const maxSize = (outputTarget === 'next') ? FRAME_BUFFER_LIMITS.maxNextDecoded : FRAME_BUFFER_LIMITS.maxDecodedFrames;
+        const decodePlan = outputTarget === 'next' ? nextDecodePlan : currentDecodePlan
+        const decodedOutputIndex = outputTarget === 'next'
+          ? nextDecodedOutputIndex++
+          : currentDecodedOutputIndex++
 
         // 🔧 Use decoded frame display size to correct aspect ratio (avoids non-square pixel stretching)
         const displayWidth = frame.displayWidth ?? frame.codedWidth ?? 0;
@@ -1054,32 +1495,45 @@ function startStreamingDecode(chunks: any[]) {
             // Recompute layout to keep the correct aspect ratio
             calculateAndCacheLayout();
             displaySizeLocked = true;
-            // 根据实际分辨率重新计算帧缓冲上限
-            FRAME_BUFFER_LIMITS = computeDynamicBufferLimits(displayWidth, displayHeight);
+            if (activePreviewMemoryPlan) {
+              const decodedPlan = planPreviewMemoryBudget({
+                sourceWidth: displayWidth,
+                sourceHeight: displayHeight,
+                fps: videoFrameRate,
+                deviceMemoryGB: previewDeviceMemoryGB,
+                nextRunwaySeconds: 2
+              })
+              if (!decodedPlan) {
+                try { frame.close() } catch {}
+                self.postMessage({ type: 'error', data: 'INVALID_DECODED_PREVIEW_MEMORY_PLAN' })
+                return
+              }
+              activePreviewMemoryPlan = decodedPlan
+              FRAME_BUFFER_LIMITS = {
+                maxDecodedFrames: activePreviewMemoryPlan.mainFrameCapacity,
+                maxNextDecoded: activePreviewMemoryPlan.nextFrameCapacity,
+                warningThreshold: FRAME_BUFFER_DEFAULTS.warningThreshold
+              }
+              updateDecodeQueueBudget(displayWidth, displayHeight)
+              publishPreviewMemoryPlan(displayWidth, displayHeight)
+            } else {
+              FRAME_BUFFER_LIMITS = computeDynamicBufferLimits(displayWidth, displayHeight);
+            }
           }
         }
 
-        // 🚀 P1 优化：帧缓冲限制
-        if (targetBuf.length >= maxSize) {
-          const bufferName = (outputTarget === 'next') ? 'nextDecoded' : 'decodedFrames';
-          console.warn(`⚠️ [COMPOSITE-WORKER] Buffer full (${bufferName}: ${targetBuf.length}/${maxSize}), dropping oldest frame`);
-
-          const oldest = targetBuf.shift();
-          try {
-            oldest?.close();
-          } catch (e) {
-            console.warn('[COMPOSITE-WORKER] Failed to close dropped frame:', e);
-          }
-
-          droppedFramesCount++;
-
-          // 每10个丢帧或每5秒报告一次
-          const now = Date.now();
-          if (droppedFramesCount % 10 === 0 || now - lastBufferWarningTime > 5000) {
-            console.warn(`⚠️ [COMPOSITE-WORKER] Total frames dropped: ${droppedFramesCount}`);
-            lastBufferWarningTime = now;
-          }
+        if (!decodePlan) {
+          try { frame.close() } catch {}
+          return
         }
+        const decision = classifyPreviewDecodedOutput(decodePlan, decodedOutputIndex)
+        if (decision.action !== 'retain') {
+          try { frame.close() } catch {}
+          if (decision?.action === 'discard-overflow') droppedFramesCount++
+          return
+        }
+
+        const maxSize = decodePlan.retainedFrameCount
 
         // 缓冲区接近满时警告
         if (targetBuf.length >= maxSize * FRAME_BUFFER_LIMITS.warningThreshold) {
@@ -1091,10 +1545,19 @@ function startStreamingDecode(chunks: any[]) {
           }
         }
 
-        targetBuf.push(frame);
+        const retainedFrame = createRetainedPreviewFrame(frame)
+        if (!retainedFrame) return
+        targetBuf.push(retainedFrame);
 
         // 仅当输出到当前窗口时，才执行日志与 pending seek 渲染
         if (outputTarget !== 'next') {
+          if (
+            pendingTimelineRender
+            && decodedFrames.length > pendingTimelineRender.frameIndex
+            && renderTimelineRequest(pendingTimelineRender)
+          ) {
+            pendingTimelineRender = null
+          }
           if (decodedFrames.length % 60 === 0) {
           }
           if (pendingSeekIndex !== null && decodedFrames.length > pendingSeekIndex) {
@@ -1109,7 +1572,8 @@ function startStreamingDecode(chunks: any[]) {
                       bitmap,
                       frameIndex: pendingSeekIndex,
                       timestamp: f.timestamp,
-                      windowStartFrameIndex
+                      windowStartFrameIndex,
+                      windowGeneration: windowGenerationGate.activeGeneration
                     }
                   }, { transfer: [bitmap] });
                   currentFrameIndex = pendingSeekIndex;
@@ -1132,7 +1596,7 @@ function startStreamingDecode(chunks: any[]) {
       },
       error: (error: Error) => {
         console.error('❌ [COMPOSITE-WORKER] Decoder error (stream):', error);
-        self.postMessage({ type: 'error', data: error.message });
+        failMainDecodeSession(error.message)
       }
     });
 
@@ -1147,8 +1611,9 @@ function startStreamingDecode(chunks: any[]) {
   } else {
   }
 
-  // 开始流式解码
-  isDecoding = true;
+  // Start a new exclusive main lane. Any prefetch from the previous window is
+  // invalidated before decoder callbacks can be routed.
+  beginCurrentDecode(processingGeneration)
 
   // 🔧 诊断：检查 chunks 中的关键帧分布
   const keyframeIndices: number[] = []
@@ -1177,43 +1642,46 @@ function startStreamingDecode(chunks: any[]) {
     console.error('❌ [DIAGNOSTIC] First chunk is NOT a keyframe! type:', chunks[0]?.type, 'First keyframe at index:', keyframeIndices[0])
   }
 
-  try {
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
-      const data = chunk.data instanceof ArrayBuffer ? new Uint8Array(chunk.data) : chunk.data;
-      const chunkType = chunk.type === 'key' ? 'key' : 'delta';
-
-      // 🔧 诊断：记录第一个 chunk 的详细信息
-      if (i === 0) {
+  const decoder = videoDecoder!
+  // Submit in bounded batches. Ready remains non-blocking, while the decoder
+  // queue no longer receives an entire 140-chunk GOP in one task.
+  void (async () => {
+    try {
+      const submitted = await submitDecoderChunksWithBackpressure(
+        decoder,
+        chunks,
+        processingGeneration
+      )
+      if (!submitted) return
+      await decoder.flush()
+      if (windowGenerationGate.isCurrent(processingGeneration)) {
+        settleCurrentDecode(processingGeneration)
+        if (pendingTimelineRender) {
+          const request = pendingTimelineRender
+          pendingTimelineRender = null
+          rejectTimelineRender(request, 'decode-complete-without-frame')
+        }
       }
-
-      const encodedChunk = new EncodedVideoChunk({
-        type: chunkType,
-        timestamp: chunk.timestamp,
-        data
-      });
-      videoDecoder!.decode(encodedChunk);
-      if ((i + 1) % 10 === 0) {
+    } catch (error: any) {
+      if (windowGenerationGate.isCurrent(processingGeneration)) {
+        settleCurrentDecode(processingGeneration)
+      }
+      if (!isExpectedDecoderCancellation({
+        activeGeneration: windowGenerationGate.activeGeneration,
+        settledGeneration: processingGeneration,
+        errorName: error?.name
+      })) {
+        console.error('[progress] VideoComposite - decoder flush error (stream):', error)
       }
     }
-  } catch (error) {
-    console.error('[progress] VideoComposite - error during streaming decode submit:', error);
-    throw error;
-  }
-
-  // 后台flush，不阻塞ready/播放
-  videoDecoder!.flush().then(() => {
-    isDecoding = false;
-  }).catch((error) => {
-    console.error('[progress] VideoComposite - decoder flush error (stream):', error);
-    isDecoding = false;
-  });
+  })()
 }
 
 // 追加解码：在现有解码器与帧缓冲基础上追加下一窗口的编码块
-function appendStreamingDecode(chunks: any[]) {
+function appendStreamingDecode(chunks: any[], processingGeneration: number) {
   if (!chunks || chunks.length === 0) {
     console.warn('[COMPOSITE-WORKER] appendStreamingDecode: no chunks');
+    settlePrefetchDecode(processingGeneration)
     return;
   }
   const firstChunk = chunks[0];
@@ -1221,40 +1689,51 @@ function appendStreamingDecode(chunks: any[]) {
 
   if (!videoDecoder) {
     console.warn('[COMPOSITE-WORKER] appendStreamingDecode: decoder not initialized, ignoring');
+    settlePrefetchDecode(processingGeneration)
     return;
   }
   if (videoDecoderCodec !== codec) {
     console.warn('[COMPOSITE-WORKER] appendStreamingDecode: codec mismatch, expected', videoDecoderCodec, 'got', codec);
+    settlePrefetchDecode(processingGeneration)
     return;
   }
 
-  isDecoding = true;
-  try {
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
-      const data = chunk.data instanceof ArrayBuffer ? new Uint8Array(chunk.data) : chunk.data;
-      const encodedChunk = new EncodedVideoChunk({
-        type: chunk.type === 'key' ? 'key' : 'delta',
-        timestamp: chunk.timestamp,
-        data
-      });
-      videoDecoder!.decode(encodedChunk);
-      if ((i + 1) % 10 === 0) {
+  const decoder = videoDecoder
+  void (async () => {
+    try {
+      const submitted = await submitDecoderChunksWithBackpressure(
+        decoder,
+        chunks,
+        processingGeneration
+      )
+      if (!submitted) return
+      await decoder.flush()
+      if (windowGenerationGate.isCurrent(processingGeneration)) {
+        if (nextMeta && nextDecoded.length === nextMeta.expectedFrames) {
+          self.postMessage({
+            type: 'prefetchReady',
+            data: {
+              startGlobalFrame: nextMeta.start,
+              totalFrames: nextDecoded.length,
+              windowGeneration: processingGeneration
+            }
+          })
+        }
+        settlePrefetchDecode(processingGeneration)
+      }
+    } catch (error: any) {
+      if (windowGenerationGate.isCurrent(processingGeneration)) {
+        settlePrefetchDecode(processingGeneration)
+      }
+      if (!isExpectedDecoderCancellation({
+        activeGeneration: windowGenerationGate.activeGeneration,
+        settledGeneration: processingGeneration,
+        errorName: error?.name
+      })) {
+        console.error('[progress] VideoComposite - decoder flush error (append):', error)
       }
     }
-  } catch (error) {
-    console.error('[progress] VideoComposite - error during append decode submit:', error);
-    return;
-  }
-
-  videoDecoder!.flush().then(() => {
-    isDecoding = false;
-    outputTarget = 'current';
-  }).catch((error) => {
-    console.error('[progress] VideoComposite - decoder flush error (append):', error);
-    isDecoding = false;
-    outputTarget = 'current';
-  });
+  })()
 }
 
 
@@ -1323,7 +1802,11 @@ function startPlayback() {
       if (currentFrameIndex >= boundary) {
         self.postMessage({
           type: 'windowComplete',
-          data: { totalFrames: boundary, lastFrameIndex: Math.max(0, currentFrameIndex - 1) }
+          data: {
+            totalFrames: boundary,
+            lastFrameIndex: Math.max(0, currentFrameIndex - 1),
+            windowGeneration: windowGenerationGate.activeGeneration
+          }
         });
         isPlaying = false;
         // 🔧 修复：重置 currentFrameIndex，确保下次播放从头开始
@@ -1345,7 +1828,8 @@ function startPlayback() {
               bitmap,
               frameIndex: currentFrameIndex,
               timestamp: frame.timestamp,
-              windowStartFrameIndex
+              windowStartFrameIndex,
+              windowGeneration: windowGenerationGate.activeGeneration
             }
           }, { transfer: [bitmap] }); // 转移 ImageBitmap 所有权
         }
@@ -1371,7 +1855,8 @@ function startPlayback() {
               decoded: decodedFrames.length,
               currentIndex: currentFrameIndex,
               config: BUFFER_CONFIG,
-              isDecoding
+              isDecoding,
+              windowGeneration: windowGenerationGate.activeGeneration
             }
           });
           criticalWatermarkNotified = true;
@@ -1385,7 +1870,8 @@ function startPlayback() {
               decoded: decodedFrames.length,
               currentIndex: currentFrameIndex,
               config: BUFFER_CONFIG,
-              isDecoding
+              isDecoding,
+              windowGeneration: windowGenerationGate.activeGeneration
             }
           });
           lowWatermarkNotified = true;
@@ -1401,7 +1887,8 @@ function startPlayback() {
               decoded: decodedFrames.length,
               currentIndex: currentFrameIndex,
               config: BUFFER_CONFIG,
-              isDecoding
+              isDecoding,
+              windowGeneration: windowGenerationGate.activeGeneration
             }
           });
           lowWatermarkNotified = false;
@@ -1421,7 +1908,8 @@ function startPlayback() {
                 decoded: decodedFrames.length,
                 currentIndex: currentFrameIndex,
                 config: BUFFER_CONFIG,
-                isDecoding
+                isDecoding,
+                windowGeneration: windowGenerationGate.activeGeneration
               }
             });
             criticalWatermarkNotified = true;
@@ -1433,7 +1921,8 @@ function startPlayback() {
             type: 'windowComplete',
             data: {
               totalFrames: decodedFrames.length,
-              lastFrameIndex: currentFrameIndex - 1
+              lastFrameIndex: currentFrameIndex - 1,
+              windowGeneration: windowGenerationGate.activeGeneration
             }
           });
           // 暂停播放，等待新窗口数据
@@ -1463,11 +1952,28 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         });
         break;
 
+      case 'dispose':
+        disposeWorkerResources()
+        self.postMessage({
+          type: 'disposed',
+          data: { retainedFrames: 0 }
+        })
+        break;
+
       case 'process':
 
         if (!data.chunks || !data.backgroundConfig) {
           throw new Error('Missing chunks or background config');
         }
+
+        const processingGeneration = windowGenerationGate.resolveIncoming(data.windowGeneration);
+        if (!windowGenerationGate.activate(processingGeneration)) {
+          break;
+        }
+        pendingTimelineRender = null;
+        previewDecodeLane = createPreviewDecodeLane(processingGeneration)
+        deferredAppendWindow = null
+        syncPreviewDecodeLaneState()
 
         // 🔧 重置播放状态 - 处理新窗口数据
         isPlaying = false;
@@ -1495,11 +2001,8 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
 
         // 重置水位提示状态，确保每个窗口都会重新发出 low/critical 事件
 
-        // 记录本窗口边界帧数（用于按窗口触发 windowComplete）
-        windowBoundaryFrames = data.chunks.length;
-
-        // 🆕 存储窗口起始帧索引和帧率（用于计算时间）
-        windowStartFrameIndex = data.startGlobalFrame ?? 0;
+        // The visible window boundary is resolved after keyframe preroll and
+        // the dynamic decoded-frame capacity are known.
         if (data.frameRate) {
           videoFrameRate = data.frameRate;
         }
@@ -1507,6 +2010,7 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         lowWatermarkNotified = false;
         criticalWatermarkNotified = false;
 
+        closeReplacedPreviewConfigBitmaps({ previous: currentConfig, next: data.backgroundConfig })
         currentConfig = data.backgroundConfig;
 
         // 🚀 P1 优化：报告缓冲区状态
@@ -1517,10 +2021,72 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         const firstChunk = data.chunks[0];
         const sourceWidth = firstChunk.codedWidth || 1920;
         const sourceHeight = firstChunk.codedHeight || 1080;
+        previewDeviceMemoryGB = Number.isFinite(data.deviceMemoryGB)
+          ? data.deviceMemoryGB
+          : undefined
+        activePreviewMemoryPlan = data.previewMemoryPolicy === 'bounded'
+          ? planPreviewMemoryBudget({
+              sourceWidth,
+              sourceHeight,
+              fps: videoFrameRate,
+              deviceMemoryGB: previewDeviceMemoryGB,
+              nextRunwaySeconds: 2
+            })
+          : null
+        if (data.previewMemoryPolicy === 'bounded' && !activePreviewMemoryPlan) {
+          throw new Error('INVALID_PREVIEW_MEMORY_PLAN')
+        }
+        FRAME_BUFFER_LIMITS = activePreviewMemoryPlan
+          ? {
+              maxDecodedFrames: activePreviewMemoryPlan.mainFrameCapacity,
+              maxNextDecoded: activePreviewMemoryPlan.nextFrameCapacity,
+              warningThreshold: FRAME_BUFFER_DEFAULTS.warningThreshold
+            }
+          : computeDynamicBufferLimits(sourceWidth, sourceHeight)
+        if (!activePreviewMemoryPlan?.usesProxy) {
+          previewProxyCanvas = null
+          previewProxyContext = null
+        }
+        updateDecodeQueueBudget(sourceWidth, sourceHeight)
+        publishPreviewMemoryPlan(sourceWidth, sourceHeight)
+
+        const decodeStartGlobalFrame = Math.max(
+          0,
+          Math.floor(data.decodeStartGlobalFrame ?? data.startGlobalFrame ?? 0)
+        )
+        const retainStartGlobalFrame = Math.max(
+          decodeStartGlobalFrame,
+          Math.floor(data.retainStartGlobalFrame ?? data.startGlobalFrame ?? decodeStartGlobalFrame)
+        )
+        const plannedCurrentWindow = planBoundedPreviewDecodeWindow({
+          decodeStartGlobalFrame,
+          retainStartGlobalFrame,
+          decodedChunkCount: data.chunks.length,
+          capacity: FRAME_BUFFER_LIMITS.maxDecodedFrames
+        })
+        if (!plannedCurrentWindow) {
+          throw new Error('INVALID_PREVIEW_DECODE_WINDOW')
+        }
+        currentDecodePlan = plannedCurrentWindow
+        currentDecodedOutputIndex = 0
+        outputTarget = 'current'
+        windowStartFrameIndex = plannedCurrentWindow.retainStartGlobalFrame
+        windowBoundaryFrames = plannedCurrentWindow.retainedFrameCount
 
         const requestedStart = (data.startGlobalFrame ?? null) as number | null
         const incomingCodec = (firstChunk.codec || 'vp8') as string
-        const canReuse = !!(nextMeta && requestedStart !== null && nextMeta.start === requestedStart && videoDecoder && videoDecoderCodec === incomingCodec && nextDecoded.length > 0)
+        const canReuse = !!(
+          nextMeta
+          && requestedStart !== null
+          && nextMeta.start === requestedStart
+          && nextDecoded.length === nextMeta.expectedFrames
+          && videoDecoder
+          && videoDecoderCodec === incomingCodec
+          && nextMeta.codedWidth === (Number(firstChunk.codedWidth) || 0)
+          && nextMeta.codedHeight === (Number(firstChunk.codedHeight) || 0)
+          && nextMeta.proxyWidth === (activePreviewMemoryPlan?.previewWidth || 0)
+          && nextMeta.proxyHeight === (activePreviewMemoryPlan?.previewHeight || 0)
+        )
         if (canReuse) {
           // 关闭旧的当前窗口帧
           if (decodedFrames.length > 0) {
@@ -1532,6 +2098,7 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
           videoInfo = { width: sourceWidth, height: sourceHeight };
 
           nextMeta = null
+          nextDecodePlan = null
 
           // 确认边界并进入就绪态
           windowBoundaryFrames = decodedFrames.length
@@ -1547,11 +2114,20 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
               totalFrames: windowBoundaryFrames,
               outputSize: { width: outputWidth, height: outputHeight },
               videoLayout: fixedVideoLayout,
-              windowStartFrameIndex
+              previewMemoryPlan: activePreviewMemoryPlan,
+              windowStartFrameIndex,
+              windowGeneration: windowGenerationGate.activeGeneration
             }
           });
           break;
         }
+
+        if (nextDecoded.length > 0) {
+          for (const frame of nextDecoded) { try { frame.close() } catch {} }
+          nextDecoded = []
+        }
+        nextMeta = null
+        nextDecodePlan = null
 
 
 
@@ -1574,7 +2150,13 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         initializeCanvas(outputWidth, outputHeight);
 
         // 启动流式解码（不阻塞ready）
-        startStreamingDecode(data.chunks);
+        // Reader ranges include a long post-target tail for other consumers.
+        // Decoding that tail cannot add addressable preview frames once the
+        // bounded cache is full, and stalls 4K window cutovers.
+        startStreamingDecode(
+          data.chunks.slice(0, plannedCurrentWindow.decodeFrameCount),
+          processingGeneration
+        );
 
         // 计算固定布局
         calculateAndCacheLayout();
@@ -1582,10 +2164,12 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         self.postMessage({
           type: 'ready',
           data: {
-            totalFrames: data.chunks.length,
+            totalFrames: plannedCurrentWindow.retainedFrameCount,
             outputSize: { width: outputWidth, height: outputHeight },
             videoLayout: fixedVideoLayout,
-            windowStartFrameIndex
+            previewMemoryPlan: activePreviewMemoryPlan,
+            windowStartFrameIndex,
+            windowGeneration: windowGenerationGate.activeGeneration
           }
         });
         break;
@@ -1603,21 +2187,42 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         break;
 
       case 'appendWindow':
+        if (data.windowGeneration !== undefined && !windowGenerationGate.isCurrent(data.windowGeneration)) {
+          break;
+        }
         if (data.chunks && data.chunks.length > 0) {
-          // 记录下一窗口元数据，清理不匹配的遗留
-          const start = (data.startGlobalFrame ?? null) as number | null
-          if (start !== null && nextMeta && nextMeta.start !== start && nextDecoded.length > 0) {
-            for (const f of nextDecoded) { try { f.close() } catch {} }
-            nextDecoded = []
-          }
-          nextMeta = { start, codec: videoDecoderCodec }
-
-          // 将解码输出切换到 nextDecoded
-          outputTarget = 'next'
-          appendStreamingDecode(data.chunks)
-          // flush 完成后会在 appendStreamingDecode 内部复位 outputTarget
+          requestAppendWindowDecode(data, windowGenerationGate.activeGeneration)
         } else {
           console.warn('[COMPOSITE-WORKER] appendWindow: missing chunks')
+        }
+        break;
+
+      case 'renderAtTime':
+        if (
+          data.frameIndex === undefined
+          || data.presentationTimeMs === undefined
+          || data.requestId === undefined
+        ) {
+          break;
+        }
+        if (data.windowGeneration !== undefined && !windowGenerationGate.isCurrent(data.windowGeneration)) {
+          break;
+        }
+        {
+          const request = {
+            frameIndex: Math.max(0, Math.floor(data.frameIndex)),
+            presentationTimeMs: Math.max(0, data.presentationTimeMs),
+            requestId: data.requestId,
+            windowGeneration: data.windowGeneration ?? windowGenerationGate.activeGeneration
+          }
+          if (!renderTimelineRequest(request)) {
+            if (isDecoding) {
+              // Keep only the newest requested display time while decode catches up.
+              pendingTimelineRender = request
+            } else {
+              rejectTimelineRender(request, 'frame-not-decoded')
+            }
+          }
         }
         break;
 
@@ -1637,7 +2242,8 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
                     bitmap,
                     frameIndex: currentFrameIndex,
                     timestamp: frame.timestamp,
-                    windowStartFrameIndex
+                    windowStartFrameIndex,
+                    windowGeneration: windowGenerationGate.activeGeneration
                   }
                 }, { transfer: [bitmap] });
               } else {
@@ -1667,7 +2273,8 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
                     bitmap,
                     frameIndex: last,
                     timestamp: frame.timestamp,
-                    windowStartFrameIndex
+                    windowStartFrameIndex,
+                    windowGeneration: windowGenerationGate.activeGeneration
                   }
                 }, { transfer: [bitmap] });
               }
@@ -1690,7 +2297,11 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
             if (bitmap) {
               self.postMessage({
                 type: 'preview-frame',
-                data: { bitmap, frameIndex: previewFrameIndex }
+                data: {
+                  bitmap,
+                  frameIndex: previewFrameIndex,
+                  windowGeneration: windowGenerationGate.activeGeneration
+                }
               }, { transfer: [bitmap] });
 
             }
@@ -1763,8 +2374,12 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
         break;
 
       case 'config':
+        if (data.windowGeneration !== undefined && !windowGenerationGate.isCurrent(data.windowGeneration)) {
+          break;
+        }
         if (data.backgroundConfig) {
           const oldConfig = currentConfig;
+          closeReplacedPreviewConfigBitmaps({ previous: oldConfig, next: data.backgroundConfig })
           currentConfig = data.backgroundConfig;
 
           // 🔧 修复：更新窗口信息，确保 Zoom 时间计算正确
@@ -1801,7 +2416,8 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
               type: 'sizeChanged',
               data: {
                 outputSize: { width: outputWidth, height: outputHeight },
-                outputRatio: currentConfig.outputRatio
+                outputRatio: currentConfig.outputRatio,
+                windowGeneration: windowGenerationGate.activeGeneration
               }
             });
           }
@@ -1824,7 +2440,8 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
                   bitmap,
                   frameIndex: currentFrameIndex,
                   timestamp: frame.timestamp,
-                  windowStartFrameIndex
+                  windowStartFrameIndex,
+                  windowGeneration: windowGenerationGate.activeGeneration
                 }
               }, { transfer: [bitmap] });
             } else {
@@ -1838,136 +2455,130 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
 
       // 🆕 Single-frame preview: decode minimal GOP and return target frame bitmap
       // Uses independent decoder, does not interfere with main player
-      case 'decodeSingleFrame':
+      case 'decodeSingleFrame': {
+        const requestId = Number(data.requestId)
+        const requestGeneration = Number(data.windowGeneration)
+        const presentationTimeMs = Number(data.presentationTimeMs)
+        if (
+          !data.chunks?.length
+          || !Number.isFinite(requestId)
+          || !Number.isFinite(requestGeneration)
+          || !Number.isFinite(presentationTimeMs)
+        ) break
 
-        if (!data.chunks || data.chunks.length === 0) {
-          console.warn('⚠️ [COMPOSITE-WORKER] decodeSingleFrame: no chunks provided');
-          self.postMessage({
-            type: 'singleFramePreview',
-            data: { success: false, error: 'No chunks provided' }
-          });
-          break;
-        }
-
-        // 清理之前的预览解码帧
-        for (const frame of previewDecodedFrames) {
-          try { frame.close(); } catch {}
-        }
-        previewDecodedFrames = [];
-        previewDecodeComplete = false;
-
-        previewTargetIndex = data.targetIndexInGOP ?? 0;
-        previewGlobalFrameIndex = data.globalFrameIndex ?? 0;
-
-        const previewFirstChunk = data.chunks[0];
-        const previewCodec = previewFirstChunk.codec || 'vp8';
-        const previewSourceWidth = previewFirstChunk.codedWidth || 1920;
-        const previewSourceHeight = previewFirstChunk.codedHeight || 1080;
-
-        // 确保有配置和画布
-        if (!currentConfig) {
-          console.warn('⚠️ [COMPOSITE-WORKER] decodeSingleFrame: no config available, using defaults');
-        }
-
-        // 如果预览解码器不存在或 codec 不匹配，创建新的
-        const needNewPreviewDecoder = !previewDecoder || previewDecoderCodec !== previewCodec || previewDecoder.state === 'closed';
-        if (needNewPreviewDecoder) {
-          // 关闭旧解码器
-          if (previewDecoder && previewDecoder.state !== 'closed') {
-            try { previewDecoder.close(); } catch {}
-          }
-
-
-          previewDecoder = new VideoDecoder({
-            output: (frame: VideoFrame) => {
-              previewDecodedFrames.push(frame);
-
-              // 检查是否达到目标帧
-              if (previewDecodeComplete && previewDecodedFrames.length > previewTargetIndex) {
-                renderAndSendPreviewFrame();
+        disposeHoverDecode(activeHoverDecode)
+        const targetIndex = Math.max(0, Math.floor(data.targetIndexInGOP ?? 0))
+        const globalFrameIndex = Math.max(0, Math.floor(data.globalFrameIndex ?? 0))
+        const previewCodec = data.chunks[0].codec || 'vp8'
+        let request!: HoverDecodeRequest
+        const decoder = new VideoDecoder({
+          output: (frame: VideoFrame) => {
+            if (activeHoverDecode !== request) {
+              try { frame.close() } catch {}
+              return
+            }
+            const decision = classifyHoverDecodedFrame(request.outputIndex++, request.targetIndex)
+            if (decision === 'retain-target') {
+              if (request.targetFrame) {
+                try { request.targetFrame.close() } catch {}
               }
-            },
-            error: (error: Error) => {
-              console.error('❌ [COMPOSITE-WORKER] Preview decoder error:', error);
-              isPreviewDecoding = false;
-              self.postMessage({
-                type: 'singleFramePreview',
-                data: { success: false, error: error.message }
-              });
-            }
-          });
-
-          try {
-            previewDecoder.configure({ codec: previewCodec } as VideoDecoderConfig);
-            previewDecoderCodec = previewCodec;
-          } catch (error) {
-            console.error('❌ [COMPOSITE-WORKER] Preview decoder configure failed:', error);
-            self.postMessage({
-              type: 'singleFramePreview',
-              data: { success: false, error: (error as Error).message }
-            });
-            break;
-          }
-        } else {
-          // 重置现有解码器
-          try {
-            previewDecoder!.reset();
-            previewDecoder!.configure({ codec: previewCodec } as VideoDecoderConfig);
-          } catch (error) {
-            console.error('❌ [COMPOSITE-WORKER] Preview decoder reset failed:', error);
-          }
-        }
-
-        isPreviewDecoding = true;
-
-        // 提交所有 GOP 帧进行解码
-        try {
-          for (let i = 0; i < data.chunks.length; i++) {
-            const chunk = data.chunks[i];
-            const chunkData = chunk.data instanceof ArrayBuffer ? new Uint8Array(chunk.data) : chunk.data;
-            const encodedChunk = new EncodedVideoChunk({
-              type: chunk.type === 'key' ? 'key' : 'delta',
-              timestamp: chunk.timestamp,
-              data: chunkData
-            });
-            previewDecoder!.decode(encodedChunk);
-          }
-
-          // Flush 并等待完成
-          previewDecoder!.flush().then(() => {
-            previewDecodeComplete = true;
-            isPreviewDecoding = false;
-
-            // 渲染并发送预览帧
-            if (previewDecodedFrames.length > previewTargetIndex) {
-              renderAndSendPreviewFrame();
+              request.targetFrame = frame
             } else {
-              console.error('❌ [COMPOSITE-WORKER] Preview target frame not available:', {
-                targetIndex: previewTargetIndex,
-                decodedCount: previewDecodedFrames.length
-              });
-              self.postMessage({
-                type: 'singleFramePreview',
-                data: { success: false, error: 'Target frame not decoded' }
-              });
+              try { frame.close() } catch {}
             }
-          }).catch((error) => {
-            console.error('❌ [COMPOSITE-WORKER] Preview decode flush error:', error);
-            isPreviewDecoding = false;
+          },
+          error: (error: Error) => {
+            if (activeHoverDecode !== request) return
+            isPreviewDecoding = false
             self.postMessage({
               type: 'singleFramePreview',
-              data: { success: false, error: (error as Error).message }
-            });
-          });
+              data: {
+                success: false,
+                error: error.message,
+                requestId,
+                windowGeneration: requestGeneration,
+                presentationTimeMs,
+                globalFrameIndex
+              }
+            })
+            disposeHoverDecode(request)
+          }
+        })
+        request = {
+          requestId,
+          windowGeneration: requestGeneration,
+          presentationTimeMs: Math.max(0, presentationTimeMs),
+          globalFrameIndex,
+          targetIndex,
+          outputIndex: 0,
+          targetFrame: null,
+          decoder
+        }
+        activeHoverDecode = request
+        previewDecoder = decoder
+        previewDecoderCodec = previewCodec
+        isPreviewDecoding = true
+
+        try {
+          decoder.configure({ codec: previewCodec } as VideoDecoderConfig)
         } catch (error) {
-          console.error('❌ [COMPOSITE-WORKER] Preview decode submit error:', error);
-          isPreviewDecoding = false;
           self.postMessage({
             type: 'singleFramePreview',
-            data: { success: false, error: (error as Error).message }
-          });
+            data: {
+              success: false,
+              error: (error as Error).message,
+              requestId,
+              windowGeneration: requestGeneration,
+              presentationTimeMs,
+              globalFrameIndex
+            }
+          })
+          disposeHoverDecode(request)
+          break
         }
-        break;
+
+        void (async () => {
+          try {
+            const submitted = await submitHoverChunksWithBackpressure(request, data.chunks!)
+            if (!submitted) return
+            await decoder.flush()
+            if (activeHoverDecode !== request) return
+            isPreviewDecoding = false
+            if (request.targetFrame) {
+              renderAndSendPreviewFrame(request)
+            } else {
+              self.postMessage({
+                type: 'singleFramePreview',
+                data: {
+                  success: false,
+                  error: 'Target frame not decoded',
+                  requestId,
+                  windowGeneration: requestGeneration,
+                  presentationTimeMs,
+                  globalFrameIndex
+                }
+              })
+              disposeHoverDecode(request)
+            }
+          } catch (error: any) {
+            if (activeHoverDecode !== request) return
+            isPreviewDecoding = false
+            self.postMessage({
+              type: 'singleFramePreview',
+              data: {
+                success: false,
+                error: error?.message || String(error),
+                requestId,
+                windowGeneration: requestGeneration,
+                presentationTimeMs,
+                globalFrameIndex
+              }
+            })
+            disposeHoverDecode(request)
+          }
+        })()
+        break
+      }
 
       default:
         console.warn('⚠️ [COMPOSITE-WORKER] Unknown message type:', type);
@@ -1981,4 +2592,3 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
   }
 
 };
-

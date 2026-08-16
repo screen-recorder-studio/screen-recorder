@@ -1588,7 +1588,7 @@
 
       // After user grants capture (stream available), open centralized countdown via background
       const requestedCountdown = (window as any).__mcpRequestedCountdown;
-      const totalCountdown = (typeof requestedCountdown === 'number' && requestedCountdown >= 1 && requestedCountdown <= 5) ? requestedCountdown : 3;
+      const totalCountdown = (typeof requestedCountdown === 'number' && requestedCountdown >= 0 && requestedCountdown <= 5) ? requestedCountdown : 3;
       // Include mode in meta for focus management
       const contentMode = state.mode === 'region' ? 'area' : (state.mode === 'element' ? 'element' : 'tab');
       try { chrome.runtime.sendMessage({ type: 'STREAM_META', meta: { preparing: true, countdown: totalCountdown, mode: contentMode } }); } catch {}

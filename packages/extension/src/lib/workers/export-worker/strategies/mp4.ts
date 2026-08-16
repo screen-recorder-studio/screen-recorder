@@ -1,5 +1,7 @@
 // MP4 encoding strategy (extracted from original mp4-export-worker.ts)
 import { Output, Mp4OutputFormat, BufferTarget, CanvasSource, StreamTarget } from 'mediabunny'
+import { readOpfsResultInfo } from './opfs-result'
+import { H264_PROBE_CODECS, normalizeH264Dimensions } from '../../../utils/h264-export-config'
 
 export interface EncoderStrategy {
   preflight(videoInfo?: { width: number; height: number; frameRate: number }, options?: any): Promise<void>
@@ -8,6 +10,7 @@ export interface EncoderStrategy {
   start(output: any): Promise<void>
   finalize(output: any): Promise<void>
   closeVideoSource?(source: any): void
+  discardPartialOutput?(): Promise<void>
   getOpfsResultInfo?(options: any): Promise<{ bytes: number; fileName: string }>
 }
 
@@ -23,32 +26,10 @@ function checkMediabunnyStatus(): { available: boolean; reason: string } {
   }
 }
 
-function validateAndFixH264Dimensions(width: number, height: number): { width: number; height: number; modified: boolean } {
-  const originalWidth = width
-  const originalHeight = height
-  if (width % 2 !== 0) width += 1
-  if (height % 2 !== 0) height += 1
-  const W16 = Math.ceil(width / 16) * 16
-  const H16 = Math.ceil(height / 16) * 16
-  let modified = false
-  if (W16 !== width) { width = W16; modified = true }
-  if (H16 !== height) { height = H16; modified = true }
-  if (modified) {
-  }
-  return { width, height, modified }
-}
-
 async function checkH264SupportWithDims(width: number, height: number): Promise<{ supported: boolean; reason?: string }> {
   try {
-    const dims = validateAndFixH264Dimensions(width, height)
-    const codecs = [
-      'avc1.64001f', // High@3.1
-      'avc1.4d401f', // Main@3.1
-      'avc1.42E01E', // Baseline@3.0
-      'avc1.4d401e', // Main@3.0
-      'avc1.64001e'  // High@3.0
-    ]
-    for (const codec of codecs) {
+    const dims = normalizeH264Dimensions(width, height)
+    for (const codec of H264_PROBE_CODECS) {
       try {
         const support = await (VideoEncoder as any).isConfigSupported({
           codec,
@@ -69,8 +50,11 @@ async function checkH264SupportWithDims(width: number, height: number): Promise<
 }
 
 export class Mp4Strategy implements EncoderStrategy {
+  private opfsDirectoryHandle: FileSystemDirectoryHandle | null = null
   private opfsFileHandle: FileSystemFileHandle | null = null
+  private opfsFileName: string | null = null
   private opfsWritable: any | null = null
+  private partialCleanupPromise: Promise<void> | null = null
 
   async preflight(videoInfo?: { width: number; height: number; frameRate: number }) {
     const mediabunnyStatus = checkMediabunnyStatus()
@@ -95,6 +79,8 @@ export class Mp4Strategy implements EncoderStrategy {
       const fileName = (options as any).opfsFileName || `export-${Date.now()}.mp4`
       const root = await (self as any).navigator.storage.getDirectory()
       const dir = await (root as any).getDirectoryHandle(dirId, { create: false })
+      this.opfsDirectoryHandle = dir
+      this.opfsFileName = fileName
       this.opfsFileHandle = await (dir as any).getFileHandle(fileName, { create: true })
       this.opfsWritable = await (this.opfsFileHandle as any).createWritable()
 
@@ -131,12 +117,49 @@ export class Mp4Strategy implements EncoderStrategy {
   async finalize(output: any) {
     try {
       await output.finalize()
+      this.opfsWritable = null
     } catch (finalizeError: any) {
       console.error('❌ [MP4-Export-Worker] Failed to finalize Mediabunny output:', finalizeError)
       throw new Error(`Mediabunny 输出完成失败: ${finalizeError?.message || finalizeError}`)
-    } finally {
-      try { if (this.opfsWritable) { await this.opfsWritable.close() } } catch {}
     }
+  }
+
+  discardPartialOutput(): Promise<void> {
+    if (this.partialCleanupPromise) return this.partialCleanupPromise
+
+    const cleanup = this.performPartialOutputCleanup()
+    this.partialCleanupPromise = cleanup
+    void cleanup.then(
+      () => {
+        if (this.partialCleanupPromise === cleanup) this.partialCleanupPromise = null
+      },
+      () => {
+        if (this.partialCleanupPromise === cleanup) this.partialCleanupPromise = null
+      }
+    )
+    return cleanup
+  }
+
+  private async performPartialOutputCleanup(): Promise<void> {
+    const writable = this.opfsWritable
+    if (writable) {
+      this.opfsWritable = null
+      try { await writable.abort?.() } catch {}
+    }
+
+    const directory = this.opfsDirectoryHandle
+    const fileName = this.opfsFileName
+    if (directory && fileName) {
+      try {
+        await directory.removeEntry(fileName)
+      } catch (error: any) {
+        if (error?.name !== 'NotFoundError') throw error
+      }
+    }
+
+    this.opfsFileHandle = null
+    this.opfsDirectoryHandle = null
+    this.opfsFileName = null
   }
 
   closeVideoSource(source: any) {
@@ -144,17 +167,8 @@ export class Mp4Strategy implements EncoderStrategy {
     try { if (source && typeof source.destroy === 'function') source.destroy() } catch {}
   }
 
-  async getOpfsResultInfo(_options: any): Promise<{ bytes: number; fileName: string }> {
-    let bytes = 0
-    let fileName = 'export.mp4'
-    try {
-      const file = await (this.opfsFileHandle as any)?.getFile()
-      if (file) {
-        bytes = file.size
-        fileName = (file as any).name || fileName
-      }
-    } catch {}
-    return { bytes, fileName }
+  async getOpfsResultInfo(options: any): Promise<{ bytes: number; fileName: string }> {
+    const fallbackFileName = options?.opfsFileName || 'export.mp4'
+    return readOpfsResultInfo(this.opfsFileHandle as any, fallbackFileName)
   }
 }
-

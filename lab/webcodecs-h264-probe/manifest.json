@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "WebCodecs H.264 Dimension Probe",
+  "version": "0.1.0",
+  "description": "Checks Chrome H.264 VideoEncoder support and performs a real 1920x1080 encode.",
+  "action": {
+    "default_title": "Run H.264 probe",
+    "default_popup": "index.html"
+  }
+}

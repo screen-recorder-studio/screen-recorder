@@ -11,18 +11,23 @@
     Info,
     Clock,
     TriangleAlert,
-    HardDrive
+    HardDrive,
+    RefreshCw
   } from '@lucide/svelte'
   import { trimStore } from '$lib/stores/trim.svelte'
+  import { estimateGifSizeRange } from '$lib/export/gif-export-estimate'
   import { _t as t } from '$lib/utils/i18n'
 
   interface Props {
     open: boolean
     onClose: () => void
+    onCancel?: () => void
     onExport: (format: ExportFormat, options: VideoExportOptions | GifExportOptions) => void
     onOpenDrive?: () => void
+    onReloadStudio?: () => void
     sourceInfo: SourceVideoInfo
     sourceFps?: number
+    selectedSourceFrameCount?: number
     isExporting?: boolean
     exportProgress?: {
       stage: string
@@ -35,21 +40,26 @@
     errorMessage?: string
     errorHint?: string
     showOpenDriveAction?: boolean
+    showReloadStudioAction?: boolean
   }
 
   let {
     open = $bindable(),
     onClose,
+    onCancel,
     onExport,
     onOpenDrive,
+    onReloadStudio,
     sourceInfo,
     sourceFps = 30,
+    selectedSourceFrameCount,
     isExporting = false,
     exportProgress = null,
     hasBackground = false,
     errorMessage = '',
     errorHint = '',
-    showOpenDriveAction = false
+    showOpenDriveAction = false,
+    showReloadStudioAction = false
   }: Props = $props()
 
   // Types
@@ -116,7 +126,24 @@
 
   // Resolution options
   const resolutionOptions = $derived([
-    { value: 'source', label: t('export_res_source', [String(sourceInfo.width), String(sourceInfo.height)]), width: sourceInfo.width, height: sourceInfo.height },
+    {
+      value: 'source',
+      label: t(
+        'export_res_canvas',
+        [String(sourceInfo.width), String(sourceInfo.height)],
+        {
+          export_res_canvas: {
+            message: 'Match Canvas ($WIDTH$×$HEIGHT$)',
+            placeholders: {
+              width: { content: '$1' },
+              height: { content: '$2' }
+            }
+          }
+        }
+      ),
+      width: sourceInfo.width,
+      height: sourceInfo.height
+    },
     { value: '2160p', label: '2160p (4K)', width: 3840, height: 2160 },
     { value: '1440p', label: '1440p (2K)', width: 2560, height: 1440 },
     { value: '1080p', label: '1080p (Full HD)', width: 1920, height: 1080 },
@@ -187,7 +214,9 @@
   const outputHeight = $derived(selectedResolution.height)
 
   const displayFrameCount = $derived(
-    trimStore.enabled ? trimStore.trimFrameCount : sourceInfo.frameCount
+    trimStore.enabled && selectedSourceFrameCount !== undefined
+      ? selectedSourceFrameCount
+      : sourceInfo.frameCount
   )
 
   const displayDuration = $derived(
@@ -235,12 +264,18 @@
   // GIF estimates
   const gifOutputWidth = $derived(Math.floor(sourceInfo.width * (gifScale / 100)))
   const gifOutputHeight = $derived(Math.floor(sourceInfo.height * (gifScale / 100)))
-  const gifEstimatedFrames = $derived(Math.ceil(displayFrameCount / Math.max(1, Math.round(sourceFps / gifFps))))
-  const gifEstimatedSize = $derived.by(() => {
-    const pixels = gifOutputWidth * gifOutputHeight
-    const baseSize = (pixels * gifEstimatedFrames * (21 - gifQuality)) / 1000
-    return baseSize
-  })
+  const gifEstimatedFrames = $derived(Math.ceil(displayDuration * gifFps))
+  const gifEstimatedSizeRange = $derived.by(() => estimateGifSizeRange({
+    width: gifOutputWidth,
+    height: gifOutputHeight,
+    frameCount: gifEstimatedFrames,
+    quality: gifQuality
+  }))
+
+  const formatSizeRange = (minBytes: number, maxBytes: number): string => {
+    if (minBytes === maxBytes) return formatFileSize(minBytes)
+    return `${formatFileSize(minBytes)}–${formatFileSize(maxBytes)}`
+  }
 
   // Handle export
   function handleExport() {
@@ -274,6 +309,10 @@
     if (!isExporting) {
       onClose()
     }
+  }
+
+  function handleCancel() {
+    if (isExporting) onCancel?.()
   }
 
   // Format tabs config
@@ -359,10 +398,18 @@
               </div>
             {/if}
 
-            <!-- Cancel hint -->
-            <p class="text-center text-xs text-gray-400">
-              {t('export_progress_hint')}
-            </p>
+            <div class="flex flex-col items-center gap-2">
+              <p class="text-center text-xs text-gray-400">
+                {t('export_progress_hint')}
+              </p>
+              <button
+                type="button"
+                class="px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100"
+                onclick={handleCancel}
+              >
+                {t('export_btn_cancel')}
+              </button>
+            </div>
           </div>
         </div>
       {/if}
@@ -655,7 +702,7 @@
               </div>
               <div>
                 <span class="text-gray-500 block">{t('export_est_size')}</span>
-                <span class="font-medium text-gray-900">~{formatFileSize(gifEstimatedSize)}</span>
+                <span class="font-medium text-gray-900">~{formatSizeRange(gifEstimatedSizeRange.minBytes, gifEstimatedSizeRange.maxBytes)}</span>
               </div>
             </div>
           </div>
@@ -679,6 +726,17 @@
             >
               <HardDrive class="h-3.5 w-3.5" />
               {t('studio_emptyOpenDrive')}
+            </button>
+          {/if}
+          {#if showReloadStudioAction && onReloadStudio}
+            <button
+              class="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-100"
+              onclick={onReloadStudio}
+            >
+              <RefreshCw class="h-3.5 w-3.5" />
+              {t('export_error_reload_action', undefined, {
+                export_error_reload_action: 'Reload Studio'
+              })}
             </button>
           {/if}
         </div>

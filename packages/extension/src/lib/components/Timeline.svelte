@@ -2,6 +2,16 @@
 <script lang="ts">
   import { onDestroy } from 'svelte'
   import { X, Crosshair } from '@lucide/svelte'
+  import {
+    clampTrimEnd,
+    clampTrimStart,
+    parseTrimSecondsInput,
+    resolveTrimKeyboardValue
+  } from '$lib/studio/trim-boundary'
+  import {
+    resolvePaddedTimelinePositionCss,
+    TIMELINE_CONTENT_INSET_REM
+  } from '$lib/studio/timeline-coordinate'
 
   // Props Interface
   interface Props {
@@ -133,8 +143,12 @@
     return (ms / timelineMaxMs) * 100
   })
 
+  const effectiveTrimEndMs = $derived(trimEndMs > 0 ? trimEndMs : timelineMaxMs)
+
   // 🆕 计算预览位置百分比
   const hoverPreviewPercent = $derived(timelineMaxMs > 0 ? (hoverPreviewTimeMs / timelineMaxMs) * 100 : 0)
+  const playheadLeft = $derived(resolvePaddedTimelinePositionCss(playheadPercent, TIMELINE_CONTENT_INSET_REM))
+  const hoverPreviewLeft = $derived(resolvePaddedTimelinePositionCss(hoverPreviewPercent, TIMELINE_CONTENT_INSET_REM))
 
   // 🆕 Zoom 是否激活（基于区间列表）
   const hasZoomIntervals = $derived(zoomIntervals.length > 0)
@@ -562,7 +576,7 @@
       // Apply constraints
       // Min: 0
       // Max: currentEndMs - 100 (min duration)
-      newStartMs = Math.max(0, Math.min(newStartMs, currentEndMs - 100))
+      newStartMs = clampTrimStart(newStartMs, currentEndMs, timelineMaxMs)
       
       // Update local state for smooth UI
       draggingTrimStartMs = newStartMs
@@ -616,7 +630,7 @@
       // Apply constraints
       // Min: currentStartMs + 100 (min duration)
       // Max: timelineMaxMs
-      newEndMs = Math.min(timelineMaxMs, Math.max(newEndMs, currentStartMs + 100))
+      newEndMs = clampTrimEnd(newEndMs, currentStartMs, timelineMaxMs)
       
       // Update local state for smooth UI
       draggingTrimEndMs = newEndMs
@@ -645,40 +659,54 @@
   // 🆕 Keyboard Nudge for Trim Handles
   function handleTrimStartKeydown(e: KeyboardEvent) {
     if (isProcessing) return
-    
-    let step = 0
-    if (e.key === 'ArrowLeft') step = -1000 / frameRate // -1 frame
-    else if (e.key === 'ArrowRight') step = 1000 / frameRate // +1 frame
-    
-    if (step !== 0) {
-      e.preventDefault()
-      e.stopPropagation()
-      
-      if (e.shiftKey) step *= 10 // Shift = 10 frames
-      
-      const newStartMs = Math.max(0, Math.min(trimStartMs + step, trimEndMs - 100))
-      onTrimStartChange?.(newStartMs)
-      onSeek?.(newStartMs)
-    }
+    const newStartMs = resolveTrimKeyboardValue({
+      boundary: 'start',
+      key: e.key,
+      currentMs: trimStartMs,
+      otherMs: effectiveTrimEndMs,
+      timelineMaxMs,
+      frameRate,
+      shiftKey: e.shiftKey
+    })
+    if (newStartMs === null) return
+    e.preventDefault()
+    e.stopPropagation()
+    onTrimStartChange?.(newStartMs)
+    onSeek?.(newStartMs)
   }
 
   function handleTrimEndKeydown(e: KeyboardEvent) {
     if (isProcessing) return
-    
-    let step = 0
-    if (e.key === 'ArrowLeft') step = -1000 / frameRate // -1 frame
-    else if (e.key === 'ArrowRight') step = 1000 / frameRate // +1 frame
-    
-    if (step !== 0) {
-      e.preventDefault()
-      e.stopPropagation()
-      
-      if (e.shiftKey) step *= 10 // Shift = 10 frames
-      
-      const newEndMs = Math.min(timelineMaxMs, Math.max(trimEndMs + step, trimStartMs + 100))
-      onTrimEndChange?.(newEndMs)
-      onSeek?.(newEndMs)
-    }
+    const newEndMs = resolveTrimKeyboardValue({
+      boundary: 'end',
+      key: e.key,
+      currentMs: effectiveTrimEndMs,
+      otherMs: trimStartMs,
+      timelineMaxMs,
+      frameRate,
+      shiftKey: e.shiftKey
+    })
+    if (newEndMs === null) return
+    e.preventDefault()
+    e.stopPropagation()
+    onTrimEndChange?.(newEndMs)
+    onSeek?.(newEndMs)
+  }
+
+  function handleTrimStartInput(e: Event) {
+    const valueMs = parseTrimSecondsInput((e.currentTarget as HTMLInputElement).valueAsNumber)
+    if (valueMs === null) return
+    const newStartMs = clampTrimStart(valueMs, effectiveTrimEndMs, timelineMaxMs)
+    onTrimStartChange?.(newStartMs)
+    onSeek?.(newStartMs)
+  }
+
+  function handleTrimEndInput(e: Event) {
+    const valueMs = parseTrimSecondsInput((e.currentTarget as HTMLInputElement).valueAsNumber)
+    if (valueMs === null) return
+    const newEndMs = clampTrimEnd(valueMs, trimStartMs, timelineMaxMs)
+    onTrimEndChange?.(newEndMs)
+    onSeek?.(newEndMs)
   }
 
   // ========== Zoom 功能 ==========
@@ -975,7 +1003,14 @@
 </script>
 
 <!-- Timeline Container -->
-<div class="timeline-container" role="region" aria-label="Timeline area" onmousemove={handleContainerMouseMove} onmouseleave={handleContainerMouseLeave}>
+<div
+  class="timeline-container"
+  style={`--timeline-content-inset: ${TIMELINE_CONTENT_INSET_REM}rem`}
+  role="region"
+  aria-label="Timeline area"
+  onmousemove={handleContainerMouseMove}
+  onmouseleave={handleContainerMouseLeave}
+>
   <!-- 主时间轴区域 -->
   <div class="timeline-main">
     <!-- 时间刻度 -->
@@ -1040,6 +1075,12 @@
           style="left: {trimStartPercent}%"
           onmousedown={handleTrimStartDrag}
           onkeydown={handleTrimStartKeydown}
+          role="slider"
+          aria-orientation="horizontal"
+          aria-valuemin="0"
+          aria-valuemax={Math.max(0, effectiveTrimEndMs - 100)}
+          aria-valuenow={Math.round(trimStartMs)}
+          aria-valuetext={`Trim start ${formatTimeSec(trimStartMs / 1000)}`}
           aria-label="Trim start"
           title="Drag to set trim start"
         ></button>
@@ -1051,18 +1092,55 @@
           style="left: {trimEndPercent}%"
           onmousedown={handleTrimEndDrag}
           onkeydown={handleTrimEndKeydown}
+          role="slider"
+          aria-orientation="horizontal"
+          aria-valuemin={Math.min(timelineMaxMs, trimStartMs + 100)}
+          aria-valuemax={timelineMaxMs}
+          aria-valuenow={Math.round(effectiveTrimEndMs)}
+          aria-valuetext={`Trim end ${formatTimeSec(effectiveTrimEndMs / 1000)}`}
           aria-label="Trim end"
           title="Drag to set trim end"
         ></button>
       {/if}
     </div>
+
+    {#if trimEnabled}
+      <div class="trim-value-controls" aria-label="Trim range values">
+        <label>
+          <span>Start</span>
+          <input
+            type="number"
+            min="0"
+            max={Math.max(0, (effectiveTrimEndMs - 100) / 1000)}
+            step="0.01"
+            value={(trimStartMs / 1000).toFixed(2)}
+            aria-label="Trim start time in seconds"
+            onchange={handleTrimStartInput}
+          />
+          <span>s</span>
+        </label>
+        <label>
+          <span>End</span>
+          <input
+            type="number"
+            min={Math.min(timelineMaxMs, trimStartMs + 100) / 1000}
+            max={timelineMaxMs / 1000}
+            step="0.01"
+            value={(effectiveTrimEndMs / 1000).toFixed(2)}
+            aria-label="Trim end time in seconds"
+            onchange={handleTrimEndInput}
+          />
+          <span>s</span>
+        </label>
+      </div>
+    {/if}
   </div>
 
   <!-- 🆕 预览竖线（灰色） - 在播放头之前渲染 -->
   {#if isHoveringTimeline && !isDraggingPlayhead && !isDraggingTrimStart && !isDraggingTrimEnd}
     <div
       class="preview-line-container"
-      style="left: {hoverPreviewPercent}%"
+      style="left: {hoverPreviewLeft}"
     >
       <div class="preview-line"></div>
       <div class="preview-tooltip">
@@ -1185,7 +1263,7 @@
   <!-- 播放头竖线 - 覆盖整个时间轴包括 zoom 区 -->
   <div
     class="playhead-container"
-    style="left: {playheadPercent}%"
+    style="left: {playheadLeft}"
   >
     <!-- 竖线 -->
     <div
@@ -1210,7 +1288,7 @@
   .timeline-container {
     position: relative;
     width: 100%;
-    padding: 1rem;
+    padding: var(--timeline-content-inset);
     background: linear-gradient(to bottom, #1f2937, #111827); /* 深色渐变背景 */
     border-radius: 0.5rem;
     box-shadow:
@@ -1302,6 +1380,37 @@
     box-shadow:
       inset 0 2px 4px rgba(0, 0, 0, 0.4),
       inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .trim-value-controls {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+    color: #d1d5db;
+    font-size: 0.75rem;
+  }
+
+  .trim-value-controls label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .trim-value-controls input {
+    width: 5.5rem;
+    border: 1px solid #4b5563;
+    border-radius: 0.375rem;
+    background: #111827;
+    padding: 0.25rem 0.4rem;
+    color: #f9fafb;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .trim-value-controls input:focus {
+    border-color: #60a5fa;
+    outline: 2px solid rgba(96, 165, 250, 0.35);
+    outline-offset: 1px;
   }
 
   /* ========== 裁剪遮罩 ========== */

@@ -3,7 +3,28 @@
 import type { EncodedChunk, ExportOptions, BackgroundConfig, GradientConfig, ImageBackgroundConfig } from '../../types/background'
 import { Mp4Strategy } from './strategies/mp4'
 import { WebmStrategy } from './strategies/webm'
+import { addVideoTrackWithTiming } from './video-track-metadata'
 import { GifStrategy, type GifFrameData } from './strategies/gif'
+import { ExportCancellationController, type ActiveExportResource } from './export-cancellation-controller'
+import { buildPresentationSchedule, type PresentationScheduleEntry } from '../../recording/recording-timeline'
+import {
+  createExportCompositeRenderRequest,
+  isSourceFrameInLoadedWindow,
+  writePresentationSchedule
+} from '../../export/presentation-schedule-export'
+import {
+  hasUsableExportTimeline,
+  hasTimeVaryingEditEffects,
+  rebaseZoomForTrim
+} from '../../export/edit-export-parity'
+import { createStaticHoldPlan } from '../../recording/static-hold-plan'
+import { writeStaticHoldVideoSample } from '../../export/static-hold-export'
+import {
+  createMemoryExportCompositeRenderRequest,
+  getMemoryVisibleFrameCount,
+  type MemoryChunkVisibleRange
+} from '../../export/memory-trim-export'
+import { H264_PROBE_CODECS, normalizeH264Dimensions } from '../../utils/h264-export-config'
 
 import { Output, Mp4OutputFormat, BufferTarget, CanvasSource } from 'mediabunny'
 
@@ -35,6 +56,8 @@ let exportBgColor: string = '#000000'
 let currentBackgroundConfig: BackgroundConfig | null = null
 // 当前导出格式，用于控制进度更新逻辑
 let currentExportFormat: string = ''
+const exportCancellation = new ExportCancellationController()
+let cancellationTask: Promise<void> | null = null
 
 // ---- OPFS data processing utilities ----
 function onceFromWorker<T = any>(worker: Worker, type: string, timeoutMs = 30000): Promise<T> {
@@ -66,18 +89,20 @@ let opfsWindowSize = 90
 
 let totalOpfsFrames = 0
 let consumedGlobalFrames = 0
+let currentWindowStart = -1
 let currentWindowFrames = 0
 let lastEmittedGlobalEnd = 0
 let warnedCanvasSizeMismatch = false
+let compositeRenderRequestId = 0
 
 let isOpfsMode = false
 
 // 裁剪参数
-let trimStartFrame = 0
-let trimEndFrame = Number.MAX_SAFE_INTEGER
+let trimStartMs = 0
+let trimEndMs = Number.MAX_SAFE_INTEGER
 let isTrimEnabled = false
 
-async function initializeOpfsReader(dirId: string, windowSize?: number, trimOptions?: { startFrame: number, endFrame: number }): Promise<void> {
+async function initializeOpfsReader(dirId: string, windowSize?: number, trimOptions?: { startMs: number, endMs: number }): Promise<void> {
   try {
 
     opfsReader = new Worker(new URL('../opfs-reader-worker.ts', import.meta.url), { type: 'module' })
@@ -93,12 +118,12 @@ async function initializeOpfsReader(dirId: string, windowSize?: number, trimOpti
     // ✂️ 应用裁剪范围
     if (trimOptions) {
       isTrimEnabled = true
-      trimStartFrame = Math.max(0, trimOptions.startFrame)
-      trimEndFrame = Math.min(totalOpfsFrames - 1, trimOptions.endFrame)
-      totalOpfsFrames = Math.max(0, trimEndFrame - trimStartFrame + 1)
+      trimStartMs = Math.max(0, trimOptions.startMs)
+      trimEndMs = Math.max(trimStartMs, trimOptions.endMs)
     }
 
     consumedGlobalFrames = 0
+    currentWindowStart = -1
     lastEmittedGlobalEnd = 0
     isOpfsMode = true
 
@@ -114,25 +139,11 @@ async function loadOpfsWindow(start: number, count: number): Promise<{ chunks: a
     throw new Error('OPFS reader not initialized')
   }
 
-  // ✂️ 应用裁剪偏移：将逻辑帧索引转换为物理帧索引
-  let physicalStart = start
-  let physicalCount = count
-
-  if (isTrimEnabled) {
-    physicalStart = trimStartFrame + start
-    // 确保不超出裁剪结束位置
-    const maxCount = Math.max(0, trimEndFrame - physicalStart + 1)
-    physicalCount = Math.min(count, maxCount)
-
-  }
-
-
-  opfsReader.postMessage({ type: 'getRange', start: physicalStart, count: physicalCount })
+  opfsReader.postMessage({ type: 'getRange', start, count })
   const range: any = await onceFromWorker(opfsReader, 'range')
 
   const chunks = range?.chunks || []
-  // 返回逻辑帧索引（相对于裁剪区间的偏移）
-  const actualStart = isTrimEnabled ? Number(range?.start ?? physicalStart) - trimStartFrame : Number(range?.start ?? start)
+  const actualStart = Number(range?.start ?? start)
   const actualCount = Number(range?.count ?? chunks.length ?? 0)
 
 
@@ -154,42 +165,38 @@ function cleanupOpfsReader(): void {
   totalOpfsFrames = 0
 
   consumedGlobalFrames = 0
+  currentWindowStart = -1
   lastEmittedGlobalEnd = 0
   isOpfsMode = false
 
   // ✂️ 重置裁剪参数
   isTrimEnabled = false
-  trimStartFrame = 0
-  trimEndFrame = Number.MAX_SAFE_INTEGER
+  trimStartMs = 0
+  trimEndMs = Number.MAX_SAFE_INTEGER
+}
+
+function getOpfsPresentationSchedule(targetFps: number): PresentationScheduleEntry[] | null {
+  if (!isOpfsMode) return null
+  if (!hasUsableExportTimeline(opfsSummary?.timeline, totalOpfsFrames)) return null
+  const sampleTimestampsMs = opfsSummary.timeline.sampleTimestampsMs
+  const durationMs = Number(opfsSummary?.timeline?.durationMs ?? opfsSummary?.durationMs)
+  if (!Array.isArray(sampleTimestampsMs) || sampleTimestampsMs.length !== totalOpfsFrames) return null
+  return buildPresentationSchedule({
+    sourceTimestampsMs: sampleTimestampsMs,
+    durationMs,
+    targetFps,
+    startMs: isTrimEnabled ? trimStartMs : undefined,
+    endMs: isTrimEnabled ? trimEndMs : undefined
+  })
 }
 // ---- end OPFS data processing utilities ----
-
-// 调整 Zoom 区间以适配裁剪（trim）：将区间整体左移 trim.startMs 并裁剪到导出时长
-function adjustZoomForTrim(bg: any, trim?: { enabled?: boolean; startMs: number; endMs: number }) {
-  try {
-    if (!bg || !bg.videoZoom || !Array.isArray(bg.videoZoom.intervals)) return bg
-    if (!trim?.enabled) return bg
-    const start = Math.max(0, trim.startMs || 0)
-    const end = Math.max(start, trim.endMs || start)
-    const dur = Math.max(0, end - start)
-    const intervals = bg.videoZoom.intervals
-      .map((it: any) => ({ startMs: (it.startMs || 0) - start, endMs: (it.endMs || 0) - start }))
-      .map((it: any) => ({
-        startMs: Math.max(0, Math.min(it.startMs, dur)),
-        endMs: Math.max(0, Math.min(it.endMs, dur))
-      }))
-      .filter((it: any) => it.endMs > it.startMs)
-    return { ...bg, videoZoom: { ...bg.videoZoom, intervals, enabled: intervals.length > 0 } }
-  } catch {
-    return bg
-  }
-}
-
 
 // 合成状态
 let totalFrames = 0
 let processedFrames = 0
 let videoInfo: { width: number, height: number, frameRate: number } | null = null
+let memoryChunkVisibleRange: MemoryChunkVisibleRange | null = null
+let memoryOutputFrameRate = 30
 
 // 创建渐变对象
 function createGradient(gradientConfig: GradientConfig, width: number, height: number): CanvasGradient | null {
@@ -434,7 +441,7 @@ self.onmessage = async (event) => {
         break
 
       case 'cancel':
-        handleCancel()
+        await handleCancel()
         break
 
       default:
@@ -460,6 +467,7 @@ async function handleExport(exportData: ExportData) {
 
   isExporting = true
   shouldCancel = false
+  exportCancellation.reset()
 
   try {
     const { chunks, options } = exportData
@@ -467,10 +475,13 @@ async function handleExport(exportData: ExportData) {
     // 记录当前导出格式
     currentExportFormat = options?.format || ''
 
-    // ✂️ 将 Zoom 区间与裁剪时间对齐：平移并裁剪到导出区间
-    try {
-      (options as any).backgroundConfig = adjustZoomForTrim((options as any).backgroundConfig, (options as any).trim)
-    } catch {}
+    // The compositor evaluates an output-relative clock during export. Rebase
+    // the edit intervals without dropping interval-level focus/easing data or
+    // clamping away a transition already in progress at the trim boundary.
+    ;(options as any).backgroundConfig = rebaseZoomForTrim(
+      (options as any).backgroundConfig,
+      (options as any).trim
+    )
 
 
     // 分支：WebM 兼容路径（保持原 webm-export-worker 行为：不使用 OPFS 窗口/流式）
@@ -487,8 +498,8 @@ async function handleExport(exportData: ExportData) {
       if ((options as any)?.source === 'opfs' && (options as any)?.opfsDirId) {
         // ✂️ 准备裁剪参数
         const trimOptions = options.trim?.enabled ? {
-          startFrame: options.trim.startFrame,
-          endFrame: options.trim.endFrame
+          startMs: options.trim.startMs,
+          endMs: options.trim.endMs
         } : undefined
         await initializeOpfsReader((options as any).opfsDirId, (options as any).windowSize, trimOptions)
         const { chunks: firstChunks, actualStart } = await loadOpfsWindow(0, opfsWindowSize)
@@ -524,8 +535,8 @@ async function handleExport(exportData: ExportData) {
       // 2) 处理视频合成
       if ((options as any)?.source === 'opfs' && (options as any)?.opfsDirId) {
         const trimOptions = options.trim?.enabled ? {
-          startFrame: options.trim.startFrame,
-          endFrame: options.trim.endFrame
+          startMs: options.trim.startMs,
+          endMs: options.trim.endMs
         } : undefined
         await initializeOpfsReader((options as any).opfsDirId, (options as any).windowSize, trimOptions)
         const { chunks: firstChunks, actualStart } = await loadOpfsWindow(0, opfsWindowSize)
@@ -549,8 +560,8 @@ async function handleExport(exportData: ExportData) {
     if ((options as any)?.source === 'opfs' && (options as any)?.opfsDirId) {
       // ✂️ 准备裁剪参数
       const trimOptions = options.trim?.enabled ? {
-        startFrame: options.trim.startFrame,
-        endFrame: options.trim.endFrame
+        startMs: options.trim.startMs,
+        endMs: options.trim.endMs
       } : undefined
       await initializeOpfsReader((options as any).opfsDirId, (options as any).windowSize, trimOptions)
     }
@@ -597,6 +608,14 @@ async function handleExport(exportData: ExportData) {
     }
 
   } catch (error) {
+    if (shouldCancel) {
+      try { await exportCancellation.request() } catch {}
+      return
+    }
+
+    try { await exportCancellation.request() } catch (cleanupError) {
+      console.error('❌ [Export-Worker] Failed to clean up output after export error:', cleanupError)
+    }
     console.error('❌ [Export-Worker] Export failed:', error)
     self.postMessage({
       type: 'error',
@@ -630,7 +649,9 @@ async function createCompositeWorker(): Promise<void> {
             break
 
           case 'ready':
-            totalFrames = data.totalFrames
+            totalFrames = !isOpfsMode && memoryChunkVisibleRange
+              ? getMemoryVisibleFrameCount(memoryChunkVisibleRange)
+              : data.totalFrames
             if (!videoInfo) {
               videoInfo = {
                 width: data.outputSize.width,
@@ -690,10 +711,7 @@ async function createCompositeWorker(): Promise<void> {
  */
 function createOffscreenCanvas(width: number, height: number) {
   // 🔧 确保 Canvas 尺寸符合 H.264 要求
-  const { width: h264Width, height: h264Height, modified } = validateAndFixH264Dimensions(width, height)
-
-  if (modified) {
-  }
+  const { width: h264Width, height: h264Height, modified } = normalizeH264Dimensions(width, height)
 
   offscreenCanvas = new OffscreenCanvas(h264Width, h264Height)
   canvasCtx = offscreenCanvas.getContext('2d')
@@ -719,6 +737,13 @@ async function processVideoComposition(chunks: EncodedChunk[], options: ExportOp
     currentBackgroundConfig = options.backgroundConfig || null
     exportBgColor = options.backgroundConfig?.color || exportBgColor
   } catch {}
+
+  memoryChunkVisibleRange = (options as ExportOptions & {
+    memoryChunkVisibleRange?: MemoryChunkVisibleRange
+  }).memoryChunkVisibleRange ?? null
+  memoryOutputFrameRate = Number(options.framerate) > 0
+    ? Number(options.framerate)
+    : 30
 
   return new Promise((resolve, reject) => {
     if (!compositeWorker) {
@@ -834,6 +859,7 @@ async function processVideoCompositionOpfs(wireChunks: any[], options: ExportOpt
       })
     }
 
+    currentWindowStart = startGlobalFrame
     const transferable = wireChunks.map((c: any) => ({
       data: c.data as ArrayBuffer,
       timestamp: c.timestamp,
@@ -927,7 +953,7 @@ function handleCompositeFrame(bitmap: ImageBitmap, frameIndex: number) {
       canvasCtx.fillRect(0, 0, canvasWidth, canvasHeight)
     }
 
-    // 🔧 智能适配：尽量避免因 H.264 对齐(例如 1080→1088)带来的缩放
+    // 🔧 智能适配：避免因 H.264 偶数补齐（例如 1079→1080）带来的缩放
     const bitmapWidth = bitmap.width
     const bitmapHeight = bitmap.height
 
@@ -1055,37 +1081,6 @@ function checkMediabunnyStatus(): { available: boolean; reason: string } {
 }
 
 /**
- * 验证和修复 H.264 兼容的尺寸
- */
-function validateAndFixH264Dimensions(width: number, height: number): { width: number; height: number; modified: boolean } {
-  const originalWidth = width
-  const originalHeight = height
-
-  // 确保尺寸是偶数（H.264 要求）
-  let fixedWidth = width % 2 === 0 ? width : width + 1
-  let fixedHeight = height % 2 === 0 ? height : height + 1
-
-  // 确保最小尺寸（16×16）
-  fixedWidth = Math.max(fixedWidth, 16)
-  fixedHeight = Math.max(fixedHeight, 16)
-
-  // 推荐：调整为 16 的倍数以获得最佳性能
-  const alignedWidth = Math.ceil(fixedWidth / 16) * 16
-  const alignedHeight = Math.ceil(fixedHeight / 16) * 16
-
-  const modified = (alignedWidth !== originalWidth) || (alignedHeight !== originalHeight)
-
-  if (modified) {
-  }
-
-  return {
-    width: alignedWidth,
-    height: alignedHeight,
-    modified
-  }
-}
-
-/**
  * 检查 H.264 编码器支持
  */
 async function checkH264Support(): Promise<{ supported: boolean; reason: string }> {
@@ -1098,20 +1093,10 @@ async function checkH264Support(): Promise<{ supported: boolean; reason: string 
     // 获取并验证视频尺寸
     const originalWidth = videoInfo?.width || 1920
     const originalHeight = videoInfo?.height || 1080
-    const { width, height, modified } = validateAndFixH264Dimensions(originalWidth, originalHeight)
-
-    if (modified) {
-    }
+    const { width, height } = normalizeH264Dimensions(originalWidth, originalHeight)
 
     // 测试 H.264 编码器配置
-    const testConfigs = [
-      'avc1.42001e',  // Baseline Profile Level 3.0
-      'avc1.42E01E',  // Baseline Profile Level 3.0 (alternative)
-      'avc1.4D001E',  // Main Profile Level 3.0
-      'avc1.640028'   // High Profile Level 4.0
-    ]
-
-    for (const codec of testConfigs) {
+    for (const codec of H264_PROBE_CODECS) {
       try {
         const config = {
           codec,
@@ -1147,6 +1132,7 @@ async function exportToMP4(options: ExportOptions): Promise<any> {
     throw new Error('Canvas or video info not available')
   }
 
+  let activeResource: ActiveExportResource | null = null
 
   try {
     // 🔧 首先检查 Mediabunny 库状态
@@ -1162,6 +1148,7 @@ async function exportToMP4(options: ExportOptions): Promise<any> {
     if (!h264Support.supported) {
       throw new Error(`H.264 编码器不支持: ${h264Support.reason}。请尝试导出为 WebM 格式。`)
     }
+    if (shouldCancel || exportCancellation.isRequested) return null
 
     const strategy = new Mp4Strategy()
 
@@ -1176,18 +1163,39 @@ async function exportToMP4(options: ExportOptions): Promise<any> {
     // 创建 Mediabunny 输出（使用策略，支持 OPFS 流式写入）
 
     const useOpfsStream = Boolean((options as any)?.saveToOpfs && (options as any)?.opfsDirId)
-    const { output } = await strategy.createOutput(useOpfsStream, options)
+    const outputPromise = strategy.createOutput(useOpfsStream, options).then(({ output }) => output)
+    let videoSource: any = null
+    const closeVideoSource = () => {
+      const source = videoSource
+      videoSource = null
+      if (source) strategy.closeVideoSource?.(source)
+    }
+    activeResource = {
+      output: outputPromise,
+      closeVideoSource,
+      discardPartialOutput: () => strategy.discardPartialOutput()
+    }
+    const pendingCancellation = exportCancellation.register(activeResource)
+    const output = await outputPromise
+    if (pendingCancellation || shouldCancel || exportCancellation.isRequested) {
+      await (pendingCancellation ?? exportCancellation.request())
+      return null
+    }
 
     // 创建 CanvasSource（通过策略）
+    videoSource = strategy.createVideoSource(offscreenCanvas, { bitrate: options.bitrate || 8000000 })
 
-    const videoSource = strategy.createVideoSource(offscreenCanvas, { bitrate: options.bitrate || 8000000 })
+    const frameRate = (options as any)?.framerate || videoInfo?.frameRate || 30
 
-
-    // 添加视频轨道
-    output.addVideoTrack(videoSource)
+    // 声明轨道帧率，确保容器可以恢复最后一个样本的持续时间。
+    addVideoTrackWithTiming(output, videoSource, frameRate)
 
     // 启动输出（交由策略处理）
     await strategy.start(output)
+    if (shouldCancel || exportCancellation.isRequested) {
+      await exportCancellation.request()
+      return null
+    }
 
     // 更新进度：封装阶段
     updateProgress({
@@ -1198,7 +1206,6 @@ async function exportToMP4(options: ExportOptions): Promise<any> {
     })
 
     // 计算帧参数（OPFS 模式下 videoInfo 可能尚未通过 ready 返回，优先使用 options 或默认值）
-    const frameRate = (options as any)?.framerate || videoInfo?.frameRate || 30
     const totalTargetFrames = isOpfsMode ? totalOpfsFrames : totalFrames
     const duration = totalTargetFrames / frameRate
     const frameDuration = 1 / frameRate
@@ -1208,6 +1215,11 @@ async function exportToMP4(options: ExportOptions): Promise<any> {
     const addedFrames = isOpfsMode
       ? await renderFramesForExportOpfs(videoSource, frameDuration, options)
       : await renderFramesForExport(videoSource, frameDuration)
+
+    if (shouldCancel || exportCancellation.isRequested) {
+      await exportCancellation.request()
+      return null
+    }
 
     // 🔧 修复：更宽松的错误检查，与 WebM Worker 保持一致
     if (addedFrames === 0) {
@@ -1228,11 +1240,16 @@ async function exportToMP4(options: ExportOptions): Promise<any> {
 
     // 完成输出（交由策略处理），并关闭视频源
     await strategy.finalize(output)
-    try { if (videoSource) { strategy.closeVideoSource?.(videoSource) } } catch {}
+    closeVideoSource()
+    if (shouldCancel || exportCancellation.isRequested) {
+      await exportCancellation.request()
+      return null
+    }
 
     // 获取结果
     if (useOpfsStream) {
-      const info = (await (strategy.getOpfsResultInfo?.(options as any) || Promise.resolve({ bytes: 0, fileName: (options as any).opfsFileName || 'export.mp4' }))) as { bytes: number; fileName: string }
+      if (!strategy.getOpfsResultInfo) throw new Error('OPFS_EXPORT_RESULT_UNAVAILABLE')
+      const info = await strategy.getOpfsResultInfo(options as any)
 
 
       // 最终进度
@@ -1244,6 +1261,11 @@ async function exportToMP4(options: ExportOptions): Promise<any> {
         fileSize: info.bytes
       })
 
+      if (shouldCancel || exportCancellation.isRequested) {
+        await exportCancellation.request()
+        return null
+      }
+      exportCancellation.release(activeResource)
       return { savedToOpfs: { dirId: (options as any).opfsDirId, fileName: info.fileName, bytesWritten: info.bytes } }
     } else {
       const buffer = output.target.buffer
@@ -1277,10 +1299,22 @@ async function exportToMP4(options: ExportOptions): Promise<any> {
         fileSize: buffer.byteLength
       })
 
+      if (shouldCancel || exportCancellation.isRequested) {
+        await exportCancellation.request()
+        return null
+      }
+      exportCancellation.release(activeResource)
       return mp4Blob
     }
 
   } catch (error) {
+    const cancellationWasRequested = shouldCancel || exportCancellation.isRequested
+    if (activeResource) {
+      try { await exportCancellation.request() } catch (cleanupError) {
+        console.error('❌ [MP4-Export-Worker] Failed to clean up output after error:', cleanupError)
+      }
+    }
+    if (cancellationWasRequested) return null
     console.error('❌ [MP4-Export-Worker] MP4 export failed:', error)
     throw new Error(`MP4 export failed: ${(error as Error).message}`)
   }
@@ -1357,7 +1391,10 @@ async function renderFramesForExport(videoSource: any, frameDuration: number): P
 /**
  * 请求 composite worker 渲染指定帧
  */
-async function requestCompositeFrame(frameIndex: number): Promise<void> {
+async function requestCompositeFrame(
+  frameIndex: number,
+  scheduleEntry?: PresentationScheduleEntry
+): Promise<void> {
   return new Promise((resolve, reject) => {
     if (!compositeWorker) {
       reject(new Error('Composite worker not available'))
@@ -1365,6 +1402,20 @@ async function requestCompositeFrame(frameIndex: number): Promise<void> {
     }
 
     // 设置临时消息处理器等待帧渲染完成
+    const requestId = ++compositeRenderRequestId
+    const compositeRequest = !isOpfsMode && memoryChunkVisibleRange
+      ? createMemoryExportCompositeRenderRequest({
+          outputFrameIndex: frameIndex,
+          outputFrameRate: memoryOutputFrameRate,
+          requestId,
+          visibleRange: memoryChunkVisibleRange
+        })
+      : createExportCompositeRenderRequest({
+          frameIndex,
+          requestId,
+          scheduleEntry
+        })
+    const decodeFrameIndex = compositeRequest.data.frameIndex
     const originalOnMessage = compositeWorker.onmessage
     const timeout = setTimeout(() => {
       console.error(`⏰ [MP4-Export-Worker] Frame ${frameIndex} rendering timeout (5s)`)
@@ -1375,7 +1426,10 @@ async function requestCompositeFrame(frameIndex: number): Promise<void> {
     compositeWorker.onmessage = (event) => {
       const { type, data } = event.data
 
-      if (type === 'frame' && data.frameIndex === frameIndex) {
+      const matchesScheduledRequest = compositeRequest.type === 'renderAtTime'
+        ? data?.requestId === requestId
+        : true
+      if (type === 'frame' && data.frameIndex === decodeFrameIndex && matchesScheduledRequest) {
         // 恢复原始消息处理器
         compositeWorker!.onmessage = originalOnMessage
         clearTimeout(timeout)
@@ -1401,11 +1455,7 @@ async function requestCompositeFrame(frameIndex: number): Promise<void> {
       }
     }
 
-    // 请求渲染指定帧
-    compositeWorker.postMessage({
-      type: 'seek',
-      data: { frameIndex }
-    })
+    compositeWorker.postMessage(compositeRequest)
   })
 }
 
@@ -1422,9 +1472,29 @@ function updateProgress(progress: ProgressData) {
 /**
  * 处理取消请求
  */
-function handleCancel() {
+async function handleCancel(): Promise<void> {
   shouldCancel = true
-  cleanup()
+  if (cancellationTask) return cancellationTask
+
+  cancellationTask = (async () => {
+    // Stop frame production first, then wait for the output target and partial file cleanup.
+    cleanup()
+    try {
+      await exportCancellation.request()
+      cleanup()
+      self.postMessage({ type: 'cancelled', data: {} })
+    } catch (error) {
+      console.error('❌ [Export-Worker] Cancellation cleanup failed:', error)
+      self.postMessage({
+        type: 'error',
+        data: { error: 'EXPORT_CANCEL_CLEANUP_FAILED' }
+      })
+    }
+  })().finally(() => {
+    cancellationTask = null
+  })
+
+  return cancellationTask
 }
 
 /**
@@ -1449,8 +1519,10 @@ function cleanup() {
   totalFrames = 0
   processedFrames = 0
   videoInfo = null
-  isExporting = false
   currentExportFormat = ''
+  compositeRenderRequestId = 0
+  memoryChunkVisibleRange = null
+  memoryOutputFrameRate = 30
 }
 
 // Worker 初始化检查
@@ -1475,6 +1547,72 @@ async function renderFramesForExportOpfs(videoSource: any, frameDuration: number
   }
 
   let addedCount = 0
+
+  const targetFps = Number((options as any)?.framerate) > 0
+    ? Number((options as any).framerate)
+    : 1 / frameDuration
+  const presentationSchedule = getOpfsPresentationSchedule(targetFps)
+  if (presentationSchedule) {
+    let loadedWindowStart = currentWindowStart
+    let loadedWindowCount = currentWindowFrames
+
+    const renderSourceFrame = async (
+      sourceFrameIndex: number,
+      entry: PresentationScheduleEntry
+    ) => {
+      const isLoaded = isSourceFrameInLoadedWindow({
+        start: loadedWindowStart,
+        count: loadedWindowCount
+      }, sourceFrameIndex)
+      if (!isLoaded) {
+        const { chunks, actualStart, actualCount } = await loadOpfsWindow(sourceFrameIndex, opfsWindowSize)
+        if (actualCount <= 0 || chunks.length === 0) {
+          throw new Error(`OPFS timeline frame ${sourceFrameIndex} is unavailable`)
+        }
+        loadedWindowStart = actualStart
+        loadedWindowCount = actualCount
+        await processVideoCompositionOpfs(chunks, options, actualStart)
+      }
+
+      const localFrameIndex = sourceFrameIndex - loadedWindowStart
+      if (localFrameIndex < 0 || localFrameIndex >= loadedWindowCount) {
+        throw new Error(`OPFS timeline frame ${sourceFrameIndex} is outside the decoded window`)
+      }
+      await requestCompositeFrame(localFrameIndex, entry)
+      lastEmittedGlobalEnd = Math.max(lastEmittedGlobalEnd, sourceFrameIndex + 1)
+    }
+
+    return writePresentationSchedule({
+      schedule: presentationSchedule,
+      hasTimeVaryingEffects: hasTimeVaryingEditEffects(options.backgroundConfig),
+      renderSourceFrame,
+      videoSource,
+      onSampleWritten: (writtenCount) => {
+        const progress = 80 + (writtenCount / presentationSchedule.length) * 15
+        updateProgress({
+          stage: 'muxing',
+          progress,
+          currentFrame: writtenCount,
+          totalFrames: presentationSchedule.length
+        })
+      }
+    })
+  }
+
+  const legacyStaticHoldPlan = createStaticHoldPlan({
+    sourceFrameCount: totalOpfsFrames,
+    durationMs: Number(opfsSummary?.durationMs) || 0
+  })
+  if (!isTrimEnabled && legacyStaticHoldPlan) {
+    const { chunks, actualStart, actualCount } = await loadOpfsWindow(0, 1)
+    if (actualCount <= 0 || chunks.length === 0) return 0
+    await processVideoCompositionOpfs(chunks, options, actualStart)
+    return writeStaticHoldVideoSample({
+      plan: legacyStaticHoldPlan,
+      render: () => requestCompositeFrame(0),
+      videoSource
+    })
+  }
 
   // 自适应回看边际，初始保守，遇到缺口自动增大，遇到重叠适度减小
   let adaptiveBacktrack = Math.min(30, Math.floor(opfsWindowSize / 2))
@@ -1612,21 +1750,44 @@ async function exportToWEBMCompat(options: ExportOptions): Promise<any> {
   // 编码阶段进度
   updateProgress({ stage: 'encoding', progress: 75, currentFrame: 0, totalFrames: 100 })
 
+  if (shouldCancel || exportCancellation.isRequested) return null
+
   const strategy = new WebmStrategy()
 
   const useOpfsStream = Boolean((options as any)?.saveToOpfs && (options as any)?.opfsDirId)
-  const { output } = await strategy.createOutput(useOpfsStream, options)
+  const outputPromise = strategy.createOutput(useOpfsStream, options).then(({ output }) => output)
+  let videoSource: any = null
+  const closeVideoSource = () => {
+    const source = videoSource
+    videoSource = null
+    if (source) strategy.closeVideoSource?.(source)
+  }
+  const activeResource: ActiveExportResource = {
+    output: outputPromise,
+    closeVideoSource,
+    discardPartialOutput: () => strategy.discardPartialOutput()
+  }
+  const pendingCancellation = exportCancellation.register(activeResource)
+  const output = await outputPromise
+  if (pendingCancellation || shouldCancel || exportCancellation.isRequested) {
+    await (pendingCancellation ?? exportCancellation.request())
+    return null
+  }
 
   // 创建 CanvasSource（vp9，默认 8Mbps）
-  const videoSource = strategy.createVideoSource(offscreenCanvas, { bitrate: options.bitrate || 8_000_000 })
-  output.addVideoTrack(videoSource)
+  videoSource = strategy.createVideoSource(offscreenCanvas, { bitrate: options.bitrate || 8_000_000 })
+  const frameRate = (options as any)?.framerate || videoInfo.frameRate
+  addVideoTrackWithTiming(output, videoSource, frameRate)
 
   await strategy.start(output)
+  if (shouldCancel || exportCancellation.isRequested) {
+    await exportCancellation.request()
+    return null
+  }
 
   // 封装阶段进度
   updateProgress({ stage: 'muxing', progress: 80, currentFrame: 0, totalFrames })
 
-  const frameRate = (options as any)?.framerate || videoInfo.frameRate
   const frameDuration = 1 / frameRate
 
 
@@ -1635,16 +1796,30 @@ async function exportToWEBMCompat(options: ExportOptions): Promise<any> {
     ? await renderFramesForExportOpfs(videoSource, frameDuration, options)
     : await renderFramesForExportWebm(videoSource, frameDuration)
 
+  if (shouldCancel || exportCancellation.isRequested) {
+    await exportCancellation.request()
+    return null
+  }
+
   // 完成输出
   updateProgress({ stage: 'finalizing', progress: 95, currentFrame: totalFrames, totalFrames })
 
   await strategy.finalize(output)
+  closeVideoSource()
+  if (shouldCancel || exportCancellation.isRequested) {
+    await exportCancellation.request()
+    return null
+  }
 
   if (useOpfsStream) {
-    const info = (await (strategy.getOpfsResultInfo?.(options as any) || Promise.resolve({ bytes: 0, fileName: (options as any).opfsFileName || 'export.webm' }))) as { bytes: number; fileName: string }
+    if (!strategy.getOpfsResultInfo) throw new Error('OPFS_EXPORT_RESULT_UNAVAILABLE')
+    const info = await strategy.getOpfsResultInfo(options as any)
     updateProgress({ stage: 'finalizing', progress: 100, currentFrame: totalFrames, totalFrames, fileSize: info.bytes })
-    // 资源清理（最佳努力）
-    try { strategy.closeVideoSource?.(videoSource) } catch {}
+    if (shouldCancel || exportCancellation.isRequested) {
+      await exportCancellation.request()
+      return null
+    }
+    exportCancellation.release(activeResource)
     return { savedToOpfs: { dirId: (options as any).opfsDirId, fileName: info.fileName, bytesWritten: info.bytes } }
   }
 
@@ -1656,9 +1831,11 @@ async function exportToWEBMCompat(options: ExportOptions): Promise<any> {
   // 最终进度
   updateProgress({ stage: 'finalizing', progress: 100, currentFrame: totalFrames, totalFrames, fileSize: buffer.byteLength })
 
-  // 资源清理（最佳努力）
-  try { strategy.closeVideoSource?.(videoSource) } catch {}
-
+  if (shouldCancel || exportCancellation.isRequested) {
+    await exportCancellation.request()
+    return null
+  }
+  exportCancellation.release(activeResource)
   return webmBlob
 }
 
@@ -1679,7 +1856,9 @@ async function exportToGIF(options: ExportOptions): Promise<Blob> {
   // 以源帧率为时间基，按 gif fps 抽帧，保证时间轴一致
   const sourceFps = videoInfo?.frameRate || 30
   const stride = Math.max(1, Math.round(sourceFps / fps))
-  const expectedFrames = isOpfsMode ? Math.ceil(totalOpfsFrames / stride) : Math.ceil(totalFrames / stride)
+  const gifPresentationSchedule = isOpfsMode ? getOpfsPresentationSchedule(fps) : null
+  const expectedFrames = gifPresentationSchedule?.length
+    ?? (isOpfsMode ? Math.ceil(totalOpfsFrames / stride) : Math.ceil(totalFrames / stride))
 
   // 计算输出尺寸
   const outputWidth = Math.floor(offscreenCanvas.width * scale)
@@ -1702,7 +1881,15 @@ async function exportToGIF(options: ExportOptions): Promise<Blob> {
   const frameDelay = 1000 / fps // 毫秒
 
   // 流式 GIF 编码：边解码边编码，避免将所有帧存入内存
-  const gifBlob = await streamGifEncode(gifStrategy, options, frameDelay, scale, stride, expectedFrames)
+  const gifBlob = await streamGifEncode(
+    gifStrategy,
+    options,
+    frameDelay,
+    scale,
+    stride,
+    expectedFrames,
+    gifPresentationSchedule
+  )
 
   // 清理
   gifStrategy.cleanup()
@@ -1724,7 +1911,8 @@ async function streamGifEncode(
   frameDelay: number,
   scale: number,
   stride: number,
-  expectedFrames: number
+  expectedFrames: number,
+  presentationSchedule: readonly PresentationScheduleEntry[] | null
 ): Promise<Blob> {
   // 1) 初始化主线程 GIF 编码器并等待 ready
   await initGifEncoderOnMainThread(gifStrategy.getOptions(), expectedFrames)
@@ -1732,7 +1920,14 @@ async function streamGifEncode(
   // 2) 边解码边发送帧（流式）
   let sentFrames = 0
   if (isOpfsMode) {
-    sentFrames = await streamFramesOpfs(gifStrategy, frameDelay, scale, stride, expectedFrames)
+    sentFrames = await streamFramesOpfs(
+      gifStrategy,
+      frameDelay,
+      scale,
+      stride,
+      expectedFrames,
+      presentationSchedule
+    )
   } else {
     sentFrames = await streamFramesMemory(gifStrategy, frameDelay, scale, stride, expectedFrames)
   }
@@ -1893,8 +2088,52 @@ async function streamFramesOpfs(
   frameDelay: number,
   scale: number,
   stride: number,
-  expectedFrames: number
+  expectedFrames: number,
+  presentationSchedule: readonly PresentationScheduleEntry[] | null
 ): Promise<number> {
+  if (presentationSchedule) {
+    let sentFrames = 0
+    let loadedWindowStart = currentWindowStart
+    let loadedWindowCount = currentWindowFrames
+
+    for (const entry of presentationSchedule) {
+      if (shouldCancel) break
+      const sourceFrameIndex = entry.sourceFrameIndex
+      if (!isSourceFrameInLoadedWindow({ start: loadedWindowStart, count: loadedWindowCount }, sourceFrameIndex)) {
+        const window = await loadOpfsWindow(sourceFrameIndex, opfsWindowSize)
+        if (window.actualCount <= 0 || window.chunks.length === 0) break
+        loadedWindowStart = window.actualStart
+        loadedWindowCount = window.actualCount
+        await processVideoCompositionOpfs(
+          window.chunks,
+          { backgroundConfig: currentBackgroundConfig } as any,
+          window.actualStart
+        )
+      }
+
+      const localFrameIndex = sourceFrameIndex - loadedWindowStart
+      await requestCompositeFrame(localFrameIndex, entry)
+      const imageData = extractCurrentFrameImageData(gifStrategy, scale)
+      if (!imageData) continue
+      await sendFrameToMainThread(
+        imageData,
+        Math.max(1, entry.durationSeconds * 1000),
+        2,
+        sentFrames,
+        expectedFrames
+      )
+      sentFrames++
+      updateProgress({
+        stage: 'encoding',
+        progress: 5 + (sentFrames / expectedFrames) * 35,
+        currentFrame: sentFrames,
+        totalFrames: expectedFrames
+      })
+    }
+
+    return sentFrames
+  }
+
   let sentFrames = 0
   let nextRequestStart = 0
 

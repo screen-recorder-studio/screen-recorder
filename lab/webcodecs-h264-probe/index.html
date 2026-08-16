@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>H.264 VideoEncoder Probe</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header>
+      <p class="eyebrow">WEBCODECS LAB</p>
+      <h1>H.264 尺寸与实编探针</h1>
+      <p class="intro">固定使用 High Profile @ Level 4.0（<code>avc1.640028</code>），8 Mbps / 30 fps / Annex B。</p>
+    </header>
+
+    <main>
+      <div class="actions">
+        <button id="run" type="button">运行全部测试</button>
+        <button id="copy" class="secondary" type="button" disabled>复制报告</button>
+      </div>
+
+      <section aria-labelledby="environment-title">
+        <h2 id="environment-title">运行环境</h2>
+        <dl id="environment">
+          <div><dt>状态</dt><dd>等待运行</dd></div>
+        </dl>
+      </section>
+
+      <section aria-labelledby="support-title">
+        <h2 id="support-title">isConfigSupported</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>输入尺寸</th>
+              <th>结果</th>
+              <th>Chrome 回报</th>
+            </tr>
+          </thead>
+          <tbody id="support-results">
+            <tr><td colspan="3" class="empty">尚未测试</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section aria-labelledby="encode-title">
+        <h2 id="encode-title">1920 × 1080 实际编码</h2>
+        <div id="encode-result" class="encode-result idle">尚未测试</div>
+        <ol id="encode-stages" class="stages"></ol>
+      </section>
+
+      <details>
+        <summary>原始 JSON 报告</summary>
+        <pre id="raw-report">{}</pre>
+      </details>
+    </main>
+
+    <script src="./probe.js"></script>
+  </body>
+</html>

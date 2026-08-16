@@ -1,11 +1,58 @@
 // 导出管理器 - 统一处理 WebM、MP4 和 GIF 导出
 import type { ExportOptions, ExportProgress, EncodedChunk } from '$lib/types/background'
+import { createMemoryTrimExportPlan } from '$lib/export/memory-trim-export'
 import { handleGifEncodeRequest, type GifFrameData } from './gif-encoder'
+
+export class ExportCancelledError extends Error {
+  readonly code = 'EXPORT_CANCELLED'
+
+  constructor() {
+    super('Export cancelled')
+    this.name = 'ExportCancelledError'
+  }
+}
+
+export class ExportWorkerUnavailableError extends Error {
+  readonly code = 'EXPORT_WORKER_UNAVAILABLE'
+  readonly cause: unknown
+
+  constructor(readonly format: ExportOptions['format'], cause?: unknown) {
+    super(`${format.toUpperCase()} export worker is unavailable`)
+    this.name = 'ExportWorkerUnavailableError'
+    this.cause = cause
+  }
+}
 
 export class ExportManager {
   private currentExportWorker: Worker | null = null
   private progressCallback: ((progress: ExportProgress) => void) | null = null
   private gifEncodeHandler: ((event: MessageEvent) => void) | null = null
+  private activeGifEncoder: any | null = null
+  private cancelRequested = false
+
+  private createExportWorker(format: ExportOptions['format']): Worker {
+    try {
+      return new Worker(
+        new URL('../workers/export-worker/index.ts', import.meta.url),
+        { type: 'module' }
+      )
+    } catch (error) {
+      throw new ExportWorkerUnavailableError(format, error)
+    }
+  }
+
+  private createWorkerFailure(
+    format: ExportOptions['format'],
+    workerResponded: boolean,
+    cause: unknown
+  ): Error {
+    if (!workerResponded) {
+      return new ExportWorkerUnavailableError(format, cause)
+    }
+
+    const label = format === 'webm' ? 'WebM' : format.toUpperCase()
+    return new Error(`${label} export worker failed`)
+  }
 
   /**
    * 导出编辑后的视频
@@ -44,7 +91,9 @@ export class ExportManager {
       }
 
     } catch (error) {
-      console.error(`❌ [ExportManager] ${options.format.toUpperCase()} export failed:`, error)
+      if (!(error instanceof ExportCancelledError)) {
+        console.error(`❌ [ExportManager] ${options.format.toUpperCase()} export failed:`, error)
+      }
       throw error
     } finally {
       this.cleanup()
@@ -67,24 +116,20 @@ export class ExportManager {
       codec: chunk.codec || 'vp8'
     }))
 
-    // 🔧 裁剪处理：根据时间戳过滤帧
+    let preparedOptions: ExportOptions & { memoryChunkVisibleRange?: unknown } = {
+      ...options
+    }
+
+    // Keep decoder preroll distinct from the strict output range. In
+    // particular, do not rebase decoder PTS: the worker maps output frame zero
+    // through memoryChunkVisibleRange instead.
     if (options.trim && options.trim.enabled) {
-
-      const firstTimestamp = standardChunks[0]?.timestamp || 0
-      const trimStartTimestamp = firstTimestamp + (options.trim.startMs * 1000) // 转换为微秒
-      const trimEndTimestamp = firstTimestamp + (options.trim.endMs * 1000)
-
-      // 过滤并调整时间戳
-      standardChunks = standardChunks
-        .filter(chunk => {
-          return chunk.timestamp >= trimStartTimestamp && chunk.timestamp <= trimEndTimestamp
-        })
-        .map((chunk, index) => ({
-          ...chunk,
-          // 重新计算时间戳，使其从 0 开始
-          timestamp: chunk.timestamp - trimStartTimestamp
-        }))
-
+      const plan = createMemoryTrimExportPlan(standardChunks, options.trim)
+      standardChunks = plan.decodeChunks
+      preparedOptions = {
+        ...preparedOptions,
+        memoryChunkVisibleRange: plan.visibleRange
+      }
     }
 
     // 根据质量级别映射比特率（当用户未显式指定 bitrate 时使用）
@@ -104,7 +149,7 @@ export class ExportManager {
 
     return {
       chunks: standardChunks,
-      options: { ...defaultOptions, ...options }
+      options: { ...defaultOptions, ...preparedOptions }
     }
   }
 
@@ -118,14 +163,13 @@ export class ExportManager {
 
 
     return new Promise((resolve, reject) => {
+      let workerResponded = false
       // 创建 WebM 导出 Worker（统一入口）
-      this.currentExportWorker = new Worker(
-        new URL('../workers/export-worker/index.ts', import.meta.url),
-        { type: 'module' }
-      )
+      this.currentExportWorker = this.createExportWorker('webm')
 
       // 设置消息处理
       this.currentExportWorker.onmessage = (event) => {
+        workerResponded = true
         const { type, data } = event.data
 
         switch (type) {
@@ -154,6 +198,11 @@ export class ExportManager {
             reject(new Error(data.error))
             break
 
+          case 'cancelled':
+            this.cleanupGifEncoder()
+            reject(new ExportCancelledError())
+            break
+
           default:
             console.warn('⚠️ [ExportManager] Unknown WebM worker message:', type)
         }
@@ -161,7 +210,7 @@ export class ExportManager {
 
       this.currentExportWorker.onerror = (error) => {
         console.error('❌ [ExportManager] WebM worker error:', error)
-        reject(new Error('WebM export worker failed'))
+        reject(this.createWorkerFailure('webm', workerResponded, error))
       }
 
       // 开始导出
@@ -182,14 +231,13 @@ export class ExportManager {
 
 
     return new Promise((resolve, reject) => {
+      let workerResponded = false
       // 创建 MP4 导出 Worker
-      this.currentExportWorker = new Worker(
-        new URL('../workers/export-worker/index.ts', import.meta.url),
-        { type: 'module' }
-      )
+      this.currentExportWorker = this.createExportWorker('mp4')
 
       // 设置消息处理
       this.currentExportWorker.onmessage = (event) => {
+        workerResponded = true
         const { type, data } = event.data
 
         switch (type) {
@@ -206,12 +254,21 @@ export class ExportManager {
             break
 
           case 'complete':
-            resolve(data.blob)
+            if (data && data.savedToOpfs) {
+              resolve({ savedToOpfs: data.savedToOpfs } as any)
+            } else {
+              resolve(data.blob)
+            }
             break
 
           case 'error':
             console.error('❌ [ExportManager] MP4 export error:', data.error)
             reject(new Error(data.error))
+            break
+
+          case 'cancelled':
+            this.cleanupGifEncoder()
+            reject(new ExportCancelledError())
             break
 
           default:
@@ -221,7 +278,7 @@ export class ExportManager {
 
       this.currentExportWorker.onerror = (error) => {
         console.error('❌ [ExportManager] MP4 worker error:', error)
-        reject(new Error('MP4 export worker failed'))
+        reject(this.createWorkerFailure('mp4', workerResponded, error))
       }
 
       // 开始导出
@@ -246,17 +303,25 @@ export class ExportManager {
   /**
    * 取消导出
    */
-  cancelExport(): void {
-    if (this.currentExportWorker) {
-      this.currentExportWorker.postMessage({ type: 'cancel' })
-      this.cleanup()
-    }
+  cancelExport(): boolean {
+    if (!this.currentExportWorker || this.cancelRequested) return false
+    this.cancelRequested = true
+    this.cleanupGifEncoder()
+    this.currentExportWorker.postMessage({ type: 'cancel' })
+    return true
+  }
+
+  private cleanupGifEncoder(): void {
+    const encoder = this.activeGifEncoder
+    this.activeGifEncoder = null
+    try { encoder?.cleanup?.() } catch {}
   }
 
   /**
    * 清理资源
    */
   private cleanup(): void {
+    this.cleanupGifEncoder()
     if (this.currentExportWorker) {
       // 移除 GIF 编码处理器
       if (this.gifEncodeHandler) {
@@ -268,6 +333,7 @@ export class ExportManager {
       this.currentExportWorker = null
     }
     this.progressCallback = null
+    this.cancelRequested = false
   }
 
   /**
@@ -275,29 +341,28 @@ export class ExportManager {
    */
   private async exportGIF(exportData: any, options: ExportOptions): Promise<Blob> {
     return new Promise((resolve, reject) => {
+      let workerResponded = false
       // 创建 Worker
-      this.currentExportWorker = new Worker(
-        new URL('../workers/export-worker/index.ts', import.meta.url),
-        { type: 'module' }
-      )
-
-      // GIF 编码器实例
-      let gifEncoder: any = null
+      this.currentExportWorker = this.createExportWorker('gif')
 
       // 设置 GIF 编码请求处理器（流式处理）
       this.gifEncodeHandler = async (event: MessageEvent) => {
         const { type, data } = event.data
+        if (this.cancelRequested) return
 
         try {
           if (type === 'gif-init') {
-            // 初始化 GIF 编码器
-
             const { GifEncoder } = await import('./gif-encoder')
-            gifEncoder = new GifEncoder(data.options)
-            await gifEncoder.initialize()
+            if (this.cancelRequested) return
 
-            // 不在这里更新进度，避免跳变
-            // 进度应该从帧收集开始平滑过渡
+            const encoder = new GifEncoder(data.options)
+            this.activeGifEncoder = encoder
+            await encoder.initialize()
+            if (this.cancelRequested || this.activeGifEncoder !== encoder) {
+              encoder.cleanup()
+              if (this.activeGifEncoder === encoder) this.activeGifEncoder = null
+              return
+            }
 
             // 通知 worker 编码器已准备好
             this.currentExportWorker?.postMessage({
@@ -307,11 +372,11 @@ export class ExportManager {
 
           } else if (type === 'gif-add-frame') {
             // 添加单帧
-            if (!gifEncoder) {
+            if (!this.activeGifEncoder) {
               throw new Error('GIF encoder not initialized')
             }
 
-            gifEncoder.addFrame(data.imageData, data.delay, data.dispose)
+            this.activeGifEncoder.addFrame(data.imageData, data.delay, data.dispose)
 
             // 更新进度：帧添加阶段占40%-60%
             const frameProgress = 40 + ((data.frameIndex + 1) / data.totalFrames) * 20
@@ -332,17 +397,17 @@ export class ExportManager {
 
           } else if (type === 'gif-render') {
             // 渲染 GIF
-            if (!gifEncoder) {
+            const encoder = this.activeGifEncoder
+            if (!encoder) {
               throw new Error('GIF encoder not initialized')
             }
 
             const totalFrames = data.totalFrames || 0
-            
-            const blob = await gifEncoder.render((progress: number) => {
-              // 直接更新进度，不通过 worker（因为这已经在主线程）
+            const blob = await encoder.render((progress: number) => {
+              if (this.cancelRequested || this.activeGifEncoder !== encoder) return
               // 计算实际的总进度：GIF渲染阶段占60%-100%
               const totalProgress = 60 + progress * 40
-              
+
               this.updateProgress({
                 type: 'gif',
                 stage: 'finalizing',
@@ -353,9 +418,11 @@ export class ExportManager {
               })
             })
 
-            // 清理编码器
-            gifEncoder.cleanup()
-            gifEncoder = null
+            if (this.cancelRequested || this.activeGifEncoder !== encoder) {
+              encoder.cleanup()
+              return
+            }
+            this.cleanupGifEncoder()
 
             // 发送编码完成消息回 worker
             this.currentExportWorker?.postMessage({
@@ -366,12 +433,8 @@ export class ExportManager {
 
         } catch (error) {
           console.error('❌ [ExportManager] GIF encoding error:', error)
-
-          // 清理编码器
-          if (gifEncoder) {
-            gifEncoder.cleanup()
-            gifEncoder = null
-          }
+          this.cleanupGifEncoder()
+          if (this.cancelRequested) return
 
           // 发送错误消息回 worker
           this.currentExportWorker?.postMessage({
@@ -383,6 +446,7 @@ export class ExportManager {
 
       // 监听 Worker 消息
       this.currentExportWorker.addEventListener('message', (event) => {
+        workerResponded = true
         const { type, data } = event.data
 
         switch (type) {
@@ -399,6 +463,11 @@ export class ExportManager {
             reject(new Error(data.error))
             break
 
+          case 'cancelled':
+            this.cleanupGifEncoder()
+            reject(new ExportCancelledError())
+            break
+
           case 'gif-init':
           case 'gif-add-frame':
           case 'gif-render':
@@ -413,7 +482,7 @@ export class ExportManager {
       // 监听 Worker 错误
       this.currentExportWorker.addEventListener('error', (error) => {
         console.error('❌ [ExportManager] Worker error:', error)
-        reject(error)
+        reject(this.createWorkerFailure('gif', workerResponded, error))
       })
 
       // 发送导出请求到 Worker

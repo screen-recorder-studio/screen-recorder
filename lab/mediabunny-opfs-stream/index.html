@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mediabunny OPFS StreamTarget lab</title>
+  <style>
+    body { max-width: 900px; margin: 2rem auto; padding: 0 1rem; font: 15px/1.5 system-ui, sans-serif; }
+    button { margin-right: .5rem; padding: .5rem .8rem; }
+    video { display: block; width: 640px; max-width: 100%; margin: 1rem 0; background: #111; }
+    pre { min-height: 16rem; padding: 1rem; overflow: auto; background: #111; color: #d7ffd7; }
+    code { background: #eee; padding: .1rem .25rem; }
+  </style>
+</head>
+<body>
+  <h1>Mediabunny OPFS StreamTarget lab</h1>
+  <p>Hypothesis: MP4 output can be streamed to OPFS without a complete in-memory buffer when every chunk is written at its declared byte position.</p>
+  <p>Run with <code>pnpm --dir packages/extension exec vite ../../lab/mediabunny-opfs-stream --host 127.0.0.1</code>, then open the printed localhost URL in Chrome.</p>
+  <button id="run">Generate 2-second MP4</button>
+  <button id="cleanup">Clean up</button>
+  <video id="video" controls></video>
+  <pre id="output">Waiting.</pre>
+  <script type="module" src="./index.js"></script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OPFS incremental index lab</title>
+  <style>
+    body { max-width: 900px; margin: 2rem auto; padding: 0 1rem; font: 15px/1.5 system-ui, sans-serif; }
+    button { margin-right: .5rem; padding: .5rem .8rem; }
+    pre { min-height: 18rem; padding: 1rem; overflow: auto; background: #111; color: #d7ffd7; }
+    code { background: #eee; padding: .1rem .25rem; }
+  </style>
+</head>
+<body>
+  <h1>OPFS incremental index lab</h1>
+  <p>Hypothesis: a Dedicated Worker can append JSONL batches without rewriting prior batches, flush them, close the handle, and read the same ordered lines back.</p>
+  <p>Serve this directory on localhost, then run both modes. Each run writes only under <code>lab-opfs-incremental-index</code> in this origin's OPFS.</p>
+  <button id="run-sync">Run SyncAccessHandle</button>
+  <button id="run-writable">Run long-lived writable</button>
+  <button id="cleanup">Clean up</button>
+  <pre id="output">Waiting.</pre>
+  <script type="module" src="./index.js"></script>
+</body>
+</html>

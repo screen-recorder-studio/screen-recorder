@@ -8,6 +8,7 @@
 
 import type { RecordingSummary } from '$lib/types/recordings'
 import { _t as t } from '$lib/utils/i18n'
+import { resolveRecordingDurationMs } from '$lib/workers/recording-meta-duration'
 
 // ---------------------------------------------------------------------------
 // Cache
@@ -163,12 +164,9 @@ async function createRecordingSummary(
   const lastTimestamp =
     typeof meta.lastTimestamp === 'number' ? Number(meta.lastTimestamp) : null
 
-  if (
-    firstTimestamp != null &&
-    lastTimestamp != null &&
-    lastTimestamp > firstTimestamp
-  ) {
-    duration = Math.round((lastTimestamp - firstTimestamp) / 1_000_000)
+  const resolvedDurationMs = resolveRecordingDurationMs(meta, firstTimestamp, lastTimestamp)
+  if (resolvedDurationMs > 0) {
+    duration = Math.max(1, Math.round(resolvedDurationMs / 1000))
   } else if (
     typeof meta.duration === 'number' &&
     !Number.isNaN(meta.duration)
