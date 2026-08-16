@@ -32,9 +32,10 @@
 | 操作系统 | macOS Stable 环境；Windows Stable 环境 | Picker、窗口源与编码器具有平台差异 |
 | 录制来源 | 当前标签页、浏览器标签页、窗口、整个屏幕 | 覆盖无 Picker 与系统 Picker 路径 |
 | 页面 | 普通 HTTPS 页面 | 主用户场景 |
-| 输出 | MP4，720p 与 1080p | 主导出路径 |
+| 输出 | MP4 与 WebM，720p 与 1080p | 两条主导出路径；WebM 不得只由共享 MP4 结果外推 |
 | 时长 | 30 秒质量卡；90 秒以上长录制 | 覆盖短链路与跨窗口读取 |
 | 时间模式 | 正常运动、动→静→动、暂停→恢复 | 覆盖 CFR-like、稀疏 VFR 和 active clock |
+| 性能 | 标准机 + 4 核/8GB Windows 低配机 | 验证实时录制、预览内存和导出 RTF |
 
 ### P1：重要版本或录制链路变化时覆盖
 
@@ -44,7 +45,7 @@
 | macOS | 单屏、双屏 | Picker 焦点和整屏尺寸不同 |
 | Windows | 100%、125%、150% 缩放 | 验证 DPR、窗口尺寸和像素对齐 |
 | 受限页面 | `chrome://extensions`、Chrome Web Store | 验证无法注入内容脚本时的降级路径 |
-| 输出 | WebM | 验证共享导出路径没有被 H.264 规则污染 |
+| 输出 | GIF | 若本版本发布 GIF，验证独立桥接与可变 delay |
 | 分辨率 | 原始画布、4K、720p、自定义偶数尺寸 | 验证导出选项真正接线 |
 | 压力 | CPU throttling 或 Lab pressure 场景 | 验证不追播过期帧 |
 
@@ -57,6 +58,16 @@
 | GIF | 默认与低帧率配置 | GIF 具有独立的可变延迟语义 |
 | 超长录制 | 10 分钟、30 分钟 | 内存、OPFS、窗口切换和 finalize 稳定性 |
 | 音频 | 无音频、麦克风、系统音频 | 音视频 active clock 与暂停同步 |
+
+## 2.1 性能设备分层
+
+| Tier | 最低代表环境 | 用途 | 发布要求 |
+| --- | --- | --- | --- |
+| Low | Windows Stable、4 logical cores、8GB RAM、集成显卡 | 老电脑真实下限；Screen/Window、software fallback | 本次性能专项 P1 必测 |
+| Standard | 8 logical cores、16GB RAM、主流集成/独立显卡 | 默认 1080p/30 主路径 | 每次发布必测 |
+| High | Apple Silicon/高端桌面、≥32GB RAM | 4K 输入、长录制、压力对照 | 不能代替 Low Tier |
+
+每个 Tier 至少记录：硬件加速、`navigator.hardwareConcurrency`、可用时的 `navigator.deviceMemory`、实际 encoder codec/profile、source/applied 尺寸、帧率、queue peak、RTF。`prefer-software` 只是压力代理，不能写成真实低配设备通过。
 
 ## 3. 标准测试素材
 
@@ -154,6 +165,25 @@ session end: 25000ms
 - 一段真正静态区域。
 - Trim 起止点附近可识别的计时或位置标记。
 
+### DATA-10：连续三轮资源回收
+
+同一扩展会话内依次执行：
+
+```text
+Screen 30s → WebM
+Screen 30s → MP4
+Screen 30s → WebM
+```
+
+三轮之间不重载扩展、不刷新后台；每轮记录 operationId、live track、Worker 数、VideoFrame ownership、OPFS 文件和导出 RTF，用于区分首次成功与长期资源泄漏。
+
+### DATA-11：性能 Soak
+
+- 每次发布：10 分钟 Balanced 1080p/30。
+- 周期执行：30 分钟与 60 分钟。
+- 每 2 分钟包含一段 10 秒静态、一次暂停/恢复、一次快速 Seek 和一次跨窗口播放。
+- 最终分别导出 WebM/MP4，记录真实 wall time、媒体时长、RTF、峰值/结束内存和 finalize 时间。
+
 ## 4. 输出验收工具
 
 | 工具 | 用途 | 必须记录 |
@@ -161,7 +191,10 @@ session end: 25000ms
 | Chrome Studio | 产品预览、编辑和导出 | 操作步骤、截图、Console 错误 |
 | Preview Playback Lab | 预览时钟、压力和 Seek | 样本数、p95 interval、p95/max drift、命中率 |
 | Recording Quality Page | 几何、清晰度、色彩和运动 | 录制来源、DPR、画面截图 |
+| Recording Start Latency Lab | 倒计时预热与正式首帧边界 | picker/encoder/storage/boundary/first-frame 时间、warm-up close 数 |
+| Recording Performance Lab | 录制/预览/导出吞吐 | applied plan、RTF、queue、drop、60 分钟投影 |
 | H.264 Probe | Chrome 对尺寸/level 的真实支持 | UA、支持矩阵、实际 chunk 数与字节数 |
+| Preview Memory Soak Lab | 缓存预算、所有权、切窗和 dispose | retained plan、lane peak、queue peak、cutover、alive bytes |
 | Mediabunny 回读 | 容器时长、轨道尺寸、编码和包统计 | duration、coded/display size、codec、packet rate |
 | Chrome DevTools | 错误、性能和内存 | Console 导出、Performance/Memory 证据 |
 
@@ -179,6 +212,15 @@ session end: 25000ms
 | 静态段 | 完整保留，无提前结束、黑帧或整体加速 |
 | Pause | 暂停时间不进入 active duration |
 | Console | 无未解释 error、解码失败或无限请求循环 |
+| 正式首帧延迟 | 当前 Stable ≤100ms；Low Tier ≤250ms（Picker 时间单列） |
+| 低配/标准录制 RTF | ≤1.0 |
+| 4K → Balanced 1080p 录制 RTF | ≤0.90 |
+| WebM/MP4 导出 RTF | ≤2.0 |
+| Preview cutover | ≤250ms |
+| Preview retained budget | unknown/≤4GB：≤256MiB；≥8GB：≤512MiB |
+| Preview transient headroom | ≤retained budget 的 25% |
+| 连续三轮性能退化 | 第三轮相对第一轮不超过 20% |
+| Production dispose | 所有 preview lane/frame/bytes 为 0 |
 
 ## 6. 证据命名
 

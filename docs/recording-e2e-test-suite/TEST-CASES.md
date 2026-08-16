@@ -5,6 +5,7 @@
 ### 1.1 前置条件
 
 - 使用待发布 commit 执行 `pnpm build:extension`，从 `build/` 加载 Unpacked 扩展。
+- 每次重建 `build/` 后必须在 `chrome://extensions` 重载扩展，并重新打开 Studio；若测试资源代次恢复，则按 EXPORT-011 专门构造，不能无意混入普通格式回归。
 - 关闭同 ID 的旧开发扩展，避免快捷键、Offscreen Document 和下载事件互相干扰。
 - 首轮保留旧 OPFS 数据验证兼容性；第二轮清理数据后验证全新安装路径。
 - 页面缩放默认 100%，记录 DPR、显示器和录制来源。
@@ -21,7 +22,9 @@
 - Seek 后先显示旧位置，且旧结果最终覆盖新目标。
 - Crop/Trim/Zoom 重新编辑时参数丢失或改变。
 - 导出 UI 的格式、分辨率、时长与实际文件不一致。
+- Worker 在首条消息前失败却只显示泛化的格式错误，或重载恢复后同一录制仍不可导出。
 - 静态区被删除、末帧提前结束、出现黑帧、几何拉伸或 1080→1088 黑边。
+- Balanced 录制 RTF 超过门槛、解码缓存超过预算、连续操作出现单调内存增长或资源未释放。
 - Console 出现未解释的无限循环、解码错误、detached frame 或未处理 Promise rejection。
 
 ### 1.3 Slice 术语
@@ -60,6 +63,13 @@
 - 优先级：P1
 - 步骤：核对根 `package.json`、扩展 `package.json`、Manifest 和发布包版本。
 - 预期：版本号、名称、权限和待发布变更一致；没有 Lab 权限进入生产 Manifest。
+
+### GATE-006：Release 日志与 Worker 资产完整性
+
+- 优先级：P0
+- 步骤：运行 release 构建；执行日志验证脚本；枚举 Studio 引用的 Export/Composite/Reader Worker URL 并确认文件存在；再运行 debug 构建确认诊断日志保留。
+- 预期：release bundle 无受控范围内的 console 调用；debug 构建保留诊断能力；所有哈希 Worker 与页面来自同一构建代次；静态 vendor 转换后仍可解析。
+- 证据：扫描 bundle 数、缺失 URL 数、release/debug 结果和 vendor smoke。
 
 ## 3. 录制入口与 Picker
 
@@ -112,6 +122,14 @@
 - 步骤：依次运行 Immediate、Microtask、Delay 0ms、Delay 1000ms。
 - 预期：Immediate 是生产依赖路径并成功；其余结果按目标 Chrome 真实行为记录，不将偶然成功外推为规范保证。
 
+### ENTRY-008：预热倒计时与正式首帧边界
+
+- 优先级：P0
+- 数据：`lab/recording-start-latency/`、DATA-01。
+- 步骤：分别用 Current Tab、Picker Tab、Window、Entire Screen 执行 `3s` 与 `Off/0s`；非零倒计时让测试面显示醒目标记；停止后检查 Studio 第一帧和 OPFS timestamp 0 keyframe。
+- 预期：编码器/OPFS 可在倒计时期间预热；Screen/Window 显示独立倒计时窗口并在零点前关闭；所有 warm-up 帧被 close；正式 reader 只在 warm-up owner 停止后创建；首帧不含倒计时标记。
+- 证据：pickerResolve、encoderReady、storageReady、captureBoundary、firstFormalFrame 时间；warm-up/frame close 计数；正式首帧截图。
+
 ## 4. 录制会话、暂停与恢复
 
 ### SESSION-001：状态机正常路径
@@ -163,6 +181,12 @@
 - 优先级：P0
 - 步骤：快速连续点击停止；在 Popup 和 Chrome Stop Sharing 近同时触发结束。
 - 预期：只 finalize 一次，只生成一个 owned download；OPFS meta/index 完整；UI 最终可返回 idle。
+
+### SESSION-009：连续录制资源释放
+
+- 优先级：P1
+- 步骤：不重载扩展，连续执行三轮 `Screen → 录制 30 秒 → Stop → Studio → 导出`；每轮记录 Offscreen、录制 Worker、live track 和内存基线。
+- 预期：每轮都只存在一个 live capture owner；停止后 track/reader/encoder 按契约关闭；下一轮不继承旧 operation；内存和 Worker 数量不单调增长；三轮导出均成功。
 
 ## 5. 时间线与 OPFS 数据正确性
 
@@ -286,6 +310,21 @@
 - 优先级：P1
 - 步骤：播放 10 分钟或循环执行 100 次 Seek；采集 Memory 和 Worker 日志。
 - 预期：已淘汰 VideoFrame 被 close；内存无持续线性增长；decoded buffer 不超过协商上限；无 detached bitmap/frame 错误。
+
+### PREVIEW-012：有界内存与所有权
+
+- 优先级：P1
+- 数据：`lab/preview-memory-soak-lab/`。
+- 步骤：分别运行 1080p 和 4K bounded 场景；至少 8 次 main/next cutover；期间执行 hover 单帧请求，最后发送 production dispose。
+- 预期：conservative retained budget ≤256MiB、standard ≤512MiB，另有 25% transient headroom；main/next 均保持至少 2 秒跑道；hover 响应后 live=0；`allocated-closed=alive`；dispose 后所有 lane/bytes 为 0。
+- 证据：previewMemoryPlan、lane peak/stable、queue peak/high watermark、cutover 间隙和 dispose snapshot。
+
+### PREVIEW-013：4K 代理帧几何一致性
+
+- 优先级：P1
+- 数据：4K 四角标记、正圆、5% Crop、1.1× Zoom。
+- 步骤：启用 bounded preview proxy；在 8 次切窗前后采集 9 个像素 checkpoint。
+- 预期：代理仅改变 retained frame 尺寸，不改变 canonical display geometry；四角标记 9/9 存在；圆形宽高比在 `0.92–1.08`；Crop/Zoom 坐标不漂移。
 
 ## 7. Crop 系统测试
 
@@ -435,7 +474,7 @@
 
 ### EXPORT-007：WebM 回归
 
-- 优先级：P1
+- 优先级：P0
 - 步骤：使用同一无编辑和组合编辑素材导出 WebM；回读和播放。
 - 预期：时长与尺寸契约同 MP4；不受 H.264 偶数/level 探针逻辑影响；无共享 canvas 1088 扩边。
 
@@ -450,6 +489,25 @@
 - 优先级：P1
 - 步骤：导出同时从其他页面下载文件；触发清理/取消。
 - 预期：只追踪和清理本次导出的 owned download；不删除或改名用户其他下载。
+
+### EXPORT-010：WebM 最后一帧持续时间
+
+- 优先级：P0
+- 步骤：导出普通 30fps、稀疏 VFR 和静态尾部 WebM；用 Mediabunny 回读 track/container duration 与最后 packet。
+- 预期：最后 sample 具有正 duration，`lastTimestamp + lastDuration` 与展示计划终点相差不超过一目标帧；文件不会比 Studio 少一帧或截掉静态尾部。
+
+### EXPORT-011：Studio 与 Worker 构建代次错配恢复
+
+- 优先级：P1
+- 步骤：加载 release A 并保持 Studio 打开；原地生成 hash 不同的 debug/release B，但不重载扩展；点击 MP4/WebM/GIF 任一导出；随后点击“重新加载 Studio”再导出同一录制。
+- 预期：首条 Worker 消息前的加载失败分类为 `EXPORT_WORKER_UNAVAILABLE`，明确提示 Studio 可能更新且录制安全；不得建议用户更换格式；重载后同一录制可以导出。已经返回 progress 后的编码崩溃不得误分类为版本错配。
+- 证据：A/B Worker URL、错误码、恢复 UI、重载前后结果和输出文件回读。
+
+### EXPORT-012：录制完成后立即连续导出
+
+- 优先级：P0
+- 步骤：全新 Screen 录制停止并自动进入 Studio；不额外等待，直接导出 WebM；不重载扩展再完成第二轮 Screen 录制并直接导出 MP4。
+- 预期：Studio 只在 OPFS finalized 后开放；两个格式均完成且可回读；第二轮不受上一轮 Worker/编码器资源影响；duration 与 Studio 相差不超过一目标帧。
 
 ## 11. 录制质量与视觉验收
 
@@ -545,7 +603,66 @@
 - 步骤：对 PREVIEW-009、PREVIEW-011 采集 Lab JSON、Performance 和 Memory。
 - 预期：报告可关联 commit、浏览器和场景；指标计算使用单调时钟；不能只用主观“看起来流畅”判定。
 
-## 14. 缺陷修正循环
+## 14. 性能与低配置设备
+
+### PERF-001：录制实时预算
+
+- 优先级：P1，录制管线或编码策略变化时为发布阻断。
+- 数据：`lab/recording-performance-lab/`。
+- 步骤：运行低配代理 `1080p source → 720p/24 + prefer-software`、标准 `1080p/30`、`4K source → Balanced 1080p/30`；保留 `4K/30 direct` 作为压力对照。
+- 预期：低配代理和标准 Capture RTF ≤1.0；4K Balanced Capture RTF ≤0.90；deterministic Lab dropped=0；encoder queue peak 不超过生产高水位；4K direct 失败只记录为非默认压力结果。
+- 证据：source/applied encode plan、wall time、media duration、RTF、attempted/encoded/dropped、queue peak。
+
+### PERF-002：正式录制启动延迟
+
+- 优先级：P1。
+- 步骤：使用 ENTRY-008 的四种来源，分别测 `3s` 与 `Off`；将 Picker 人工选择时间单独记录。
+- 预期：Picker 时间不计入产品启动 SLA；当前 Stable 的 `captureBoundary → firstFormalFrame` 目标 ≤100ms，低配实机 ≤250ms；倒计时期间 encoder/storage 准备尽量在边界前完成；任何超时必须显式失败，不能复用旧帧。
+
+### PERF-003：预览吞吐、切窗与 Seek
+
+- 优先级：P1。
+- 步骤：运行 PREVIEW-009、PREVIEW-012；在真实 1080p/30 长录制中连续播放跨 8 个窗口，并快速 Seek 100 次。
+- 预期：轻载 p95 display interval ≤25ms、p95 clock drift ≤34ms；单次 cutover ≤250ms；Seek 命中 100%，最终交互响应 ≤250ms；不追播过期帧。
+
+### PERF-004：预览内存预算
+
+- 优先级：P1。
+- 步骤：在 `deviceMemory` unknown/≤4GB 和 ≥8GB 两档运行 1080p、4K；记录 retained、transient、decoder queue 和最终 dispose。
+- 预期：unknown/低档 retained ≤256MiB，高档 ≤512MiB，transient headroom ≤retained 的 25%；稳定 main/next 不因切窗缩短到 1 秒；hover 只保留目标帧；dispose 后 alive=0。
+
+### PERF-005：WebM/MP4 导出 RTF
+
+- 优先级：P1。
+- 步骤：对低配代理、标准和 4K Balanced 素材分别导出 WebM 与 MP4；记录媒体时长、导出 wall time 和 60 分钟投影。
+- 预期：主格式 RTF ≤2.0；进度持续前进且估算不倒退；60 分钟投影不得达到小时级异常倍数；文件回读仍满足正确性门槛。
+
+### PERF-006：连续三轮录制与导出
+
+- 优先级：P1。
+- 步骤：执行 SESSION-009，格式顺序 WebM → MP4 → WebM；每轮前后采集进程、Worker、VideoFrame、OPFS 和 JS heap 代理指标。
+- 预期：三轮成功；每轮结束后 live track=0、preview dispose alive=0；第三轮性能不比第一轮恶化 20% 以上；无单调内存增长或 encoder exhaustion。
+
+### PERF-007：低配置 Windows 实机
+
+- 优先级：P1，本次性能专项发布前必须执行。
+- 环境：至少一台 4 logical cores、8GB RAM、集成显卡 Windows Stable；硬件加速开启，另做一次关闭后的降级冒烟。
+- 步骤：Current Tab、Window、Screen 各 30 秒；质量卡动→静→动；1080p Balanced 录制、预览、Seek、WebM/MP4 导出。
+- 预期：录制不因队列持续超限而系统性掉帧；预览无 >250ms 周期冻结；导出 RTF ≤2；无 OOM/页面崩溃；几何和时长正确。若 software path 不达标，产品必须明确降级到 720p/24 或阻止不可靠配置。
+
+### PERF-008：10/30/60 分钟 Soak
+
+- 优先级：P2；录制、OPFS、预览内存或导出架构变化时提升为 P1。
+- 步骤：10 分钟每次发布执行；30/60 分钟周期执行。覆盖录制、暂停/恢复、跨窗口预览、100 次 Seek、Crop/Zoom 和最终导出。
+- 预期：录制/导出时长准确；内存无持续线性增长；OPFS index/meta 可读；停止/finalize 有界完成；60 分钟导出投影与实测 RTF 一致。
+
+### PERF-009：硬件加速与编码器回退
+
+- 优先级：P2。
+- 步骤：硬件加速开/关，记录 `isConfigSupported`、实际 codec/profile、RTF、queue 和输出质量；分别运行 H.264、VP9。
+- 预期：hint 被浏览器忽略时仍能识别实际结果；无法实时的配置触发明确降级或失败，不静默生成严重掉帧视频。
+
+## 15. 缺陷修正循环
 
 任何 FAIL 按以下顺序处理：
 

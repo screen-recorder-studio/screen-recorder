@@ -4,7 +4,7 @@
 
 ## 文档导航
 
-- [OPTIMIZATION-JOURNEY.md](./OPTIMIZATION-JOURNEY.md)：问题背景、薄切片拆分、验证方式和已完成的提交。
+- [OPTIMIZATION-JOURNEY.md](./OPTIMIZATION-JOURNEY.md)：从录制入口到性能、资源恢复的薄切片拆分、验证方式和已完成提交。
 - [TEST-ENVIRONMENT-AND-DATA.md](./TEST-ENVIRONMENT-AND-DATA.md)：浏览器、操作系统、录制来源、测试素材和覆盖矩阵。
 - [TEST-CASES.md](./TEST-CASES.md)：按用户旅程编号的详细端到端测试用例。
 - [EXECUTION-REPORT-TEMPLATE.md](./EXECUTION-REPORT-TEMPLATE.md)：每轮发布的执行记录、证据和缺陷闭环模板。
@@ -17,7 +17,9 @@
 4. 预览播放时钟连续，跨读取窗口和快速 Seek 不显示过期帧，静态源上的 Zoom 等时间效果仍连续。
 5. Crop、Trim/Slice、Zoom 单独和组合使用时，参数、播放区间、画面几何和导出结果一致。
 6. 导出文件保持请求的时长、显示尺寸和时间效果；取消或失败不遗留错误状态和残缺文件。
-7. 发布构建通过自动化门禁，关键路径在真实 Chrome 中通过浏览器端测。
+7. 录制、预览和导出在 Balanced 1080p、4K 输入和低配代理环境下满足明确的实时、内存与 RTF 预算。
+8. 扩展更新或本地构建导致 Studio 与哈希 Worker 资源不一致时，用户能识别原因并安全恢复。
+9. 发布构建通过自动化门禁，关键路径在真实 Chrome 中通过浏览器端测。
 
 ## 测试分层
 
@@ -33,7 +35,7 @@
 
 1. 从 [TEST-ENVIRONMENT-AND-DATA.md](./TEST-ENVIRONMENT-AND-DATA.md) 选择本轮覆盖矩阵，记录 Chrome、OS、DPR 和扩展 commit。
 2. 执行发布门禁 `GATE-*`，确认测试基线可用。
-3. 依次执行 `ENTRY-*`、`SESSION-*`、`TIMELINE-*`、`PREVIEW-*`、`CROP-*`、`TRIM-*`、`ZOOM-*`、`EXPORT-*` 和 `QUALITY-*`。
+3. 依次执行 `ENTRY-*`、`SESSION-*`、`TIMELINE-*`、`PREVIEW-*`、`CROP-*`、`TRIM-*`、`ZOOM-*`、`EXPORT-*`、`QUALITY-*` 和 `PERF-*`。
 4. 任何疑似问题先按“实际结果、预期结果、最小复现、证据”记录，不用刷新或重装掩盖状态问题。
 5. 对浏览器或编解码器边界不明确的问题，先在对应 Lab 重现，再补失败测试，最后修改生产代码。
 6. 修复后重跑直接失败用例、同域回归、组合链路和全量发布门禁。
@@ -57,6 +59,8 @@
 - 录制、预览、编辑、主导出格式至少完成一次真实浏览器组合链路。
 - 时间线时长误差不超过一个目标输出帧；Seek 命中正确的 last-frame-hold 源帧。
 - 输出显示尺寸与用户选择一致，无拉伸、黑边或错误的 16 像素扩边。
+- Balanced 录制满足实时余量，预览缓存受确定性内存预算约束，连续录制/导出无单调资源增长。
+- 当前 Stable 的启动延迟、预览切窗和导出 RTF 达到 `TEST-CASES.md` 中的 P0/P1 门槛。
 - 全量测试、类型检查、扩展构建和 `git diff --check` 全部通过。
 - P2 遗留有明确影响面、回避方式和后续责任，不影响本次主路径。
 
@@ -75,7 +79,13 @@ git status --short
 Lab 启动方式和专属断言见各目录 README：
 
 - `lab/recording-entry-v2/`
+- `lab/recording-start-latency/`
+- `lab/recording-performance-lab/`
 - `lab/preview-playback-lab/`
+- `lab/preview-memory-soak-lab/`
 - `lab/recording-quality-page/`
 - `lab/webcodecs-h264-probe/`
 - `lab/mediabunny-opfs-stream/`
+- `lab/edit-export-parity-lab/`
+- `lab/production-export-worker-e2e-lab/`
+- `lab/release-log-policy/`

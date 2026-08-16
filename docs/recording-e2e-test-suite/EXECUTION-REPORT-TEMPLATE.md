@@ -33,6 +33,8 @@
 | 输出：MP4/WebM/GIF |  |  |
 | 尺寸：720p/1080p/高 DPR/自定义 |  |  |
 | 平台：macOS/Windows/Linux |  |  |
+| 性能：Low/Standard/High Tier、硬件加速开关 |  |  |
+| 稳定性：连续三轮、10/30/60 分钟 Soak |  |  |
 
 ## 4. 自动化门禁
 
@@ -61,6 +63,7 @@
 | QUALITY |  |  |  |  |  |
 | COMBO |  |  |  |  |  |
 | OBS |  |  |  |  |  |
+| PERF |  |  |  |  |  |
 
 ### 5.2 明细
 
@@ -74,12 +77,21 @@
 | --- | --- | --- | --- | --- |
 | Preview p95 display interval | ≤25ms |  |  |  |
 | Preview p95 clock drift | ≤34ms |  |  |  |
+| Capture boundary → first formal frame | Stable ≤100ms；Low Tier ≤250ms |  |  |  |
+| Standard capture RTF | ≤1.0 |  |  |  |
+| 4K → Balanced capture RTF | ≤0.90 |  |  |  |
+| WebM export RTF | ≤2.0 |  |  |  |
+| MP4 export RTF | ≤2.0 |  |  |  |
 | Pressure recovery max drift | ≤34ms |  |  |  |
+| Preview cutover max gap | ≤250ms |  |  |  |
 | Seek hit rate | 100% |  |  |  |
 | Studio vs session duration | ≤1 output frame |  |  |  |
 | Export vs requested duration | ≤1 output frame |  |  |  |
 | Output coded/display size | 等于格式契约 |  |  |  |
 | 10 分钟内存趋势 | 无持续线性增长 |  |  |  |
+| Preview retained budget | Low/unknown ≤256MiB；Standard ≤512MiB |  |  |  |
+| Preview dispose alive | 0 frames / 0 bytes |  |  |  |
+| 连续三轮性能退化 | 第三轮较第一轮 ≤20% |  |  |  |
 
 ## 7. 输出文件回读
 
@@ -148,6 +160,9 @@
 - Preview/Seek 错误率：
 - 导出成功率与取消率：
 - 各格式平均导出耗时：
+- 各设备 Tier 的录制 RTF、导出 RTF、drop 与 queue peak：
+- 启动边界延迟 p50/p95：
+- Preview 峰值 retained/transient bytes 与 dispose 失败率：
 - 卸载率及录制后留存变化：
 
 ### 回滚点
