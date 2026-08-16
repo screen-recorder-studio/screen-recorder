@@ -15,6 +15,7 @@
     RefreshCw
   } from '@lucide/svelte'
   import { trimStore } from '$lib/stores/trim.svelte'
+  import { estimateGifSizeRange } from '$lib/export/gif-export-estimate'
   import { _t as t } from '$lib/utils/i18n'
 
   interface Props {
@@ -264,11 +265,17 @@
   const gifOutputWidth = $derived(Math.floor(sourceInfo.width * (gifScale / 100)))
   const gifOutputHeight = $derived(Math.floor(sourceInfo.height * (gifScale / 100)))
   const gifEstimatedFrames = $derived(Math.ceil(displayDuration * gifFps))
-  const gifEstimatedSize = $derived.by(() => {
-    const pixels = gifOutputWidth * gifOutputHeight
-    const baseSize = (pixels * gifEstimatedFrames * (21 - gifQuality)) / 1000
-    return baseSize
-  })
+  const gifEstimatedSizeRange = $derived.by(() => estimateGifSizeRange({
+    width: gifOutputWidth,
+    height: gifOutputHeight,
+    frameCount: gifEstimatedFrames,
+    quality: gifQuality
+  }))
+
+  const formatSizeRange = (minBytes: number, maxBytes: number): string => {
+    if (minBytes === maxBytes) return formatFileSize(minBytes)
+    return `${formatFileSize(minBytes)}–${formatFileSize(maxBytes)}`
+  }
 
   // Handle export
   function handleExport() {
@@ -695,7 +702,7 @@
               </div>
               <div>
                 <span class="text-gray-500 block">{t('export_est_size')}</span>
-                <span class="font-medium text-gray-900">~{formatFileSize(gifEstimatedSize)}</span>
+                <span class="font-medium text-gray-900">~{formatSizeRange(gifEstimatedSizeRange.minBytes, gifEstimatedSizeRange.maxBytes)}</span>
               </div>
             </div>
           </div>
