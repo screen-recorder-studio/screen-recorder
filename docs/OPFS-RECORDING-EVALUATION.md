@@ -1,5 +1,8 @@
 # 视频录制和OPFS存储端到端评估报告
 
+> [!WARNING]
+> 本文是基于已退役 Element / Area 架构的历史评估，其中关于 popup 六种模式、Side Panel、web-accessible iframe sink 和 Element / Area 可用性的描述不再符合 0.6.12。2026-08-23 起，请以 [Element / Area 历史录制链路端到端评估](./ELEMENT-AREA-RECORDING-E2E-EVALUATION.md) 为准；本文仅保留作历史背景。
+
 ## 📋 概述
 
 本报告对视频录制系统的完整流程进行端到端评估，涵盖从用户界面到OPFS存储的所有关键环节。
@@ -538,4 +541,3 @@ console.log(`录制耗时: ${measure.duration}ms`);
 4. **性能监控**需要添加更多指标
 
 建议优先解决高优先级问题，然后逐步优化中低优先级问题。
-
