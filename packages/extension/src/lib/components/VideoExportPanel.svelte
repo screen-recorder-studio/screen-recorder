@@ -4,7 +4,7 @@
   import { ExportCancelledError, ExportManager } from '$lib/services/export-manager'
   import { classifyExportFailure } from '$lib/export/export-error'
   import { emitJourneyEvent } from '$lib/observability/journey-events'
-  import { withOpfsExportTarget } from '$lib/export/export-target'
+  import { createExportFilename, withOpfsExportTarget } from '$lib/export/export-target'
   import {
     createExportPreflightCancellation,
     type ExportPreflightCancellation
@@ -25,7 +25,9 @@
   } from './UnifiedExportDialog.svelte'
   import { extractSourceInfo, convertBackgroundConfigForExport } from '$lib/utils/export-utils'
   import { countSourceFramesInRange } from '$lib/recording/recording-timeline'
+  import { hasTimeVaryingEditEffects } from '$lib/export/edit-export-parity'
   import { _t as t } from '$lib/utils/i18n'
+  import { resolveStudioVisualAccent } from '$lib/studio/studio-theme'
 
   // License tier type
   export type LicenseTier = 'free' | 'pro' | 'pro-trial'
@@ -47,6 +49,8 @@
     sourceDurationMs?: number
     /** Normalized source PTS values used to report VFR trim coverage. */
     sourceTimestampsMs?: number[]
+    /** Recording-scoped default; users may still switch formats in the dialog. */
+    preferredFormat?: ExportFormat
     /**
      * Current license tier for the user
      */
@@ -67,6 +71,7 @@
     sourceFps = 30,
     sourceDurationMs = 0,
     sourceTimestampsMs = [],
+    preferredFormat = 'mp4',
     licenseTier = 'pro-trial',
     showLicenseBadge = true
   }: Props = $props()
@@ -103,6 +108,7 @@
 
   // Use global background configuration
   const backgroundConfig = $derived(backgroundConfigStore.config)
+  const hasTimeVaryingGifEffects = $derived(hasTimeVaryingEditEffects(backgroundConfig))
 
   // Export status
   let isExportingWebM = $state(false)
@@ -261,8 +267,7 @@
       emitJourneyEvent({ name: 'export.completed', context: 'export', attributes: { format: 'gif', outcome: 'success' } })
 
       // Download file
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-      const filename = `edited-video-${timestamp}.gif`
+      const filename = createExportFilename('gif')
 
       // 不要过早设置100%，让实际进度自然达到100%
       // setProgressTarget(100) // 移除这行，避免过早显示100%
@@ -751,7 +756,7 @@
 </script>
 
 <!-- Video export panel component - License badge + Export button -->
-<div class="{className} flex flex-col gap-2">
+<div class="{className} flex flex-col gap-2" data-accent={resolveStudioVisualAccent(preferredFormat)}>
   <div class="flex items-center justify-between gap-3">
     <!-- License tier badge (can be hidden when badge is placed elsewhere) -->
     {#if showLicenseBadge}
@@ -764,7 +769,7 @@
     <!-- Export button or warning -->
     {#if !isRecordingComplete || encodedChunks.length === 0}
       <button
-        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-100 text-gray-400 text-sm font-medium rounded-lg border border-gray-200 cursor-not-allowed"
+        class="inline-flex h-9 cursor-not-allowed items-center gap-1.5 rounded-lg border border-white/5 bg-zinc-800 px-3 text-xs font-semibold text-zinc-600"
         disabled
         title={!isRecordingComplete ? t('export_panel_tooltip_incomplete') : t('export_panel_tooltip_no_data')}
       >
@@ -773,7 +778,7 @@
       </button>
     {:else}
       <button
-        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        class="studio-primary-action inline-flex h-9 items-center gap-1.5 px-3 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
         disabled={isExporting}
         onclick={openExportDialog}
       >
@@ -790,17 +795,17 @@
 
   <!-- Export error banner -->
   {#if exportErrorMessage && !showExportDialog}
-    <div class="flex items-start gap-2 px-2.5 py-2 bg-red-50 border border-red-200 rounded-lg">
+    <div class="flex items-start gap-2 rounded-lg border border-red-400/20 bg-red-500/10 px-2.5 py-2">
       <TriangleAlert class="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
       <div class="flex-1 min-w-0">
-        <p class="text-xs text-red-700">{exportErrorMessage}</p>
+        <p class="text-xs text-red-300">{exportErrorMessage}</p>
         {#if exportErrorHint}
-          <p class="text-xs text-red-500 mt-0.5">{exportErrorHint}</p>
+          <p class="mt-0.5 text-xs text-red-400">{exportErrorHint}</p>
         {/if}
       </div>
       {#if exportErrorAction === 'open-drive'}
         <button
-          class="inline-flex items-center gap-1 rounded border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 flex-shrink-0"
+          class="inline-flex flex-shrink-0 items-center gap-1 rounded border border-red-400/20 bg-red-500/10 px-2 py-1 text-xs font-medium text-red-200 transition-colors hover:bg-red-500/20"
           onclick={openDriveFromExportError}
         >
           <HardDrive class="w-3 h-3" />
@@ -809,7 +814,7 @@
       {/if}
       {#if exportErrorAction === 'reload-studio'}
         <button
-          class="inline-flex items-center gap-1 rounded border border-red-200 bg-white px-2 py-1 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 flex-shrink-0"
+          class="inline-flex flex-shrink-0 items-center gap-1 rounded border border-red-400/20 bg-red-500/10 px-2 py-1 text-xs font-medium text-red-200 transition-colors hover:bg-red-500/20"
           onclick={reloadStudioFromExportError}
         >
           <RefreshCw class="w-3 h-3" />
@@ -817,11 +822,11 @@
         </button>
       {/if}
       <button
-        class="p-0.5 rounded hover:bg-red-100 transition-colors flex-shrink-0"
+        class="flex-shrink-0 rounded p-0.5 transition-colors hover:bg-red-500/20"
         onclick={clearExportError}
         title={t('common_close')}
       >
-        <span class="text-red-400 text-xs">✕</span>
+        <span class="text-xs text-red-300">✕</span>
       </button>
     </div>
   {/if}
@@ -838,6 +843,8 @@
   sourceInfo={sourceInfo}
   sourceFps={sourceFps}
   selectedSourceFrameCount={displayTotalFrames}
+  {hasTimeVaryingGifEffects}
+  {preferredFormat}
   isExporting={isExporting}
   errorMessage={exportErrorMessage}
   errorHint={exportErrorHint}

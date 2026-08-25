@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, tick } from "svelte";
-  import { HardDrive, Video, Github, MessageCircle, BookOpen, Sparkles } from "@lucide/svelte";
+  import { HardDrive, Video, Github, MessageCircle, BookOpen, Sparkles, FileImage } from "@lucide/svelte";
 
   import { recordingStore } from "$lib/stores/recording.svelte";
   import VideoPreviewComposite from "$lib/components/VideoPreviewComposite.svelte";
@@ -21,6 +21,7 @@
   import { emitJourneyEvent } from "$lib/observability/journey-events";
   import { createOnceReporter } from "$lib/observability/once-reporter";
   import { createFirstFrameGate } from "$lib/studio/first-frame-gate";
+  import { resolveStudioDeliveryProfile, type StudioDeliveryProfile } from "$lib/studio/delivery-profile";
   import {
     ReaderRequestCoordinator,
     type ReaderRequestPurpose,
@@ -78,6 +79,7 @@
 
   // 当前会话的 OPFS 目录 id（用于导出时触发只读日志）
   let opfsDirId = $state("");
+  let deliveryProfile = $state<StudioDeliveryProfile>('video');
 
   // Studio shell state: resolving → ready | empty | error
   let showEmptyState = $state(false)
@@ -453,7 +455,7 @@
    * Load a recording by its OPFS directory id.
    * Extracted so it can be called from onMount *and* from the drawer switch.
    */
-  function loadRecordingById(dirId: string) {
+  function loadRecordingById(dirId: string, urlIntentHint: string | null = null) {
     dataReadyReporter.reset()
     firstFrameReporter.reset()
     firstFrameGate.dispose()
@@ -478,6 +480,7 @@
     windowStartIndex = 0
     windowDecodeStartIndex = 0
     keyframeInfo = null
+    deliveryProfile = 'video'
 
     opfsDirId = dirId
     currentRecordingId = dirId
@@ -510,6 +513,7 @@
 
       const {
         type,
+        meta,
         summary,
         start,
         chunks,
@@ -523,6 +527,7 @@
       } = ev.data || {};
 
       if (type === "ready") {
+        deliveryProfile = resolveStudioDeliveryProfile({ meta, urlIntent: urlIntentHint })
         if (summary?.durationMs) durationMs = summary.durationMs;
         if (summary?.totalChunks) globalTotalFrames = summary.totalChunks;
         if (Number(summary?.fps) > 0) sourceFps = Number(summary.fps);
@@ -717,7 +722,7 @@
             // If listing fails, still attempt to load – worker will report errors
           }
           // isResolvingInitialRecording remains true; will be set false by worker callback
-          loadRecordingById(dirId)
+          loadRecordingById(dirId, params.get('intent'))
         } else {
           // Mode B: no id – try to find the latest usable recording
           try {
@@ -888,82 +893,89 @@
   <title>{t('studio_pageTitle')}</title>
 </svelte:head>
 
-<div class="flex h-screen bg-gray-50">
+<div
+  class="studio-theme flex h-screen overflow-hidden bg-zinc-950 text-zinc-300"
+  data-accent="blue"
+>
   <!-- Left main preview player - no scrolling, full height 100vh -->
-  <div class="flex-1 min-h-0 flex flex-col h-full overflow-hidden">
+  <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
     <!-- Preview area header -->
-    <div class="flex-shrink-0 px-4 py-2 border-b border-gray-200 bg-white">
-      <div class="flex items-center justify-between relative">
+    <header class="studio-header-surface relative z-20 grid flex-shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-4 px-6">
         <!-- Left title + license badge -->
-        <div class="flex items-center gap-2">
-          <Video class="w-6 h-6 text-blue-600" />
-          <h1 class="text-xl font-bold text-gray-800">
+        <div class="flex min-w-0 items-center gap-2.5">
+          <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-blue-400/20 bg-blue-500/10 text-blue-300">
+            <Video class="h-4 w-4" />
+          </div>
+          <h1 class="truncate text-sm font-bold tracking-tight text-zinc-100">
             {t('studio_headerTitle')}
-            {#if extensionVersion}<span class="text-xs font-normal text-gray-400 ml-1">v{extensionVersion}</span>{/if}
+            {#if extensionVersion}<span class="ml-1 text-xs font-medium text-zinc-400">v{extensionVersion}</span>{/if}
           </h1>
-          <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-md bg-blue-50 text-blue-600 border border-blue-200">
-            <Sparkles class="w-3 h-3" />
+          <span class="inline-flex shrink-0 items-center gap-1 rounded-full border-t border-amber-200/50 bg-gradient-to-b from-amber-300 via-amber-400 to-amber-500 px-2 py-0.5 text-xs font-black tracking-wider text-amber-950 shadow-[0_2px_10px_rgba(245,158,11,0.35)]">
+            <Sparkles class="h-3 w-3" />
             {t('export_panel_tier_trial')}
           </span>
+          {#if deliveryProfile === 'gif'}
+            <span class="inline-flex shrink-0 items-center gap-1 rounded-full border border-violet-400/40 bg-violet-500/10 px-2 py-0.5 text-xs font-bold text-violet-200">
+              <FileImage class="h-3 w-3" />
+              {t('studio_gifDelivery', undefined, { studio_gifDelivery: 'GIF delivery' })}
+            </span>
+          {/if}
         </div>
 
         <!-- Center video aspect ratio control -->
-        <div
-          class="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2"
-        >
+        <div class="justify-self-center">
           <AspectRatioControl />
         </div>
 
         <!-- Right action buttons -->
-        <div class="flex items-center gap-2">
+        <div class="flex items-center justify-end gap-1.5">
           <a
             href="https://github.com/screen-recorder-studio/screen-recorder"
             target="_blank"
             rel="noopener noreferrer"
-            class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-300 hover:border-blue-400 hover:bg-white/70 hover:shadow-sm transition-all duration-200 group text-sm"
+            class="studio-muted-action group flex h-9 items-center gap-1.5 px-2.5 text-xs"
             title={t('studio_githubTooltip')}
           >
             <Github
-              class="w-4 h-4 text-gray-600 group-hover:text-blue-600 transition-colors duration-200"
+              class="h-4 w-4 text-zinc-400 transition-colors group-hover:text-white"
             />
-            <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">{t('studio_githubText')}</span>
+            <span class="hidden 2xl:inline">{t('studio_githubText')}</span>
           </a>
           <a
             href="https://github.com/screen-recorder-studio/screen-recorder/issues"
             target="_blank"
             rel="noopener noreferrer"
-            class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-300 hover:border-blue-400 hover:bg-white/70 hover:shadow-sm transition-all duration-200 group text-sm"
+            class="studio-muted-action group flex h-9 items-center gap-1.5 px-2.5 text-xs"
             title={t('studio_feedbackTooltip')}
           >
             <MessageCircle
-              class="w-4 h-4 text-gray-600 group-hover:text-blue-600 transition-colors duration-200"
+              class="h-4 w-4 text-zinc-400 transition-colors group-hover:text-white"
             />
-            <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">{t('studio_feedbackText')}</span>
+            <span class="hidden 2xl:inline">{t('studio_feedbackText')}</span>
           </a>
           <a
             href="https://www.screenrecorder.studio/"
             target="_blank"
             rel="noopener noreferrer"
-            class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-300 hover:border-blue-400 hover:bg-white/70 hover:shadow-sm transition-all duration-200 group text-sm"
+            class="studio-muted-action group flex h-9 items-center gap-1.5 px-2.5 text-xs"
             title={t('studio_helpTooltip')}
           >
             <BookOpen
-              class="w-4 h-4 text-gray-600 group-hover:text-blue-600 transition-colors duration-200"
+              class="h-4 w-4 text-zinc-400 transition-colors group-hover:text-white"
             />
-            <span class="text-gray-600 group-hover:text-blue-600 transition-colors duration-200">{t('studio_helpText')}</span>
+            <span class="hidden 2xl:inline">{t('studio_helpText')}</span>
           </a>
         </div>
-      </div>
-    </div>
+    </header>
 
     <!-- Preview player content area -->
-    <div class="flex-1 min-h-0 flex flex-col relative">
+    <div class="relative flex min-h-0 flex-1 flex-col bg-zinc-950">
       {#if isResolvingInitialRecording}
         <!-- Loading state while resolving initial recording -->
-        <div class="flex-1 flex items-center justify-center">
+        <div class="flex flex-1 items-center justify-center" role="status" aria-live="polite">
           <div class="text-center">
-            <div class="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-            <p class="text-sm text-gray-500">{t('studio_loading')}</p>
+            <div class="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-blue-400 border-t-transparent"></div>
+            <p class="text-sm text-zinc-400">{t('studio_loading')}</p>
           </div>
         </div>
       {:else if showEmptyState}
@@ -1004,10 +1016,10 @@
             className="worker-video-preview w-full h-full"
           />
           {#if isWaitingForFirstFrame}
-            <div class="absolute inset-0 z-10 flex items-center justify-center bg-white/90">
+            <div class="absolute inset-0 z-10 flex items-center justify-center bg-zinc-950/90 backdrop-blur-sm" role="status" aria-live="polite">
               <div class="text-center">
-                <div class="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-                <p class="text-sm text-gray-500">{t('studio_loading')}</p>
+                <div class="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-blue-400 border-t-transparent"></div>
+                <p class="text-sm text-zinc-400">{t('studio_loading')}</p>
               </div>
             </div>
           {/if}
@@ -1018,17 +1030,17 @@
 
   <!-- Right editing panel - allows scrolling -->
   {#if !showEmptyState && !isResolvingInitialRecording && !isWaitingForFirstFrame}
-  <div class="w-100 bg-white border-l border-gray-200 flex flex-col h-full">
+  <aside class="studio-sidebar-surface z-10 flex h-full shrink-0 flex-col">
     <!-- Right panel header: Drive button + Export button -->
-    <div class="flex-shrink-0 px-4 py-2">
-      <div class="flex items-center justify-between gap-3">
+    <div class="flex h-14 flex-shrink-0 items-center border-b border-zinc-700 px-4">
+      <div class="flex w-full items-center justify-between gap-3">
         <!-- Drive button (replaces license badge position) -->
         <button
-          class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium rounded-lg border border-blue-200 bg-blue-50 text-blue-700 shadow-sm hover:border-blue-300 hover:bg-blue-100 hover:text-blue-800 transition-all duration-200 whitespace-nowrap"
+          class="studio-muted-action inline-flex h-9 items-center gap-1.5 whitespace-nowrap px-3 text-xs font-semibold"
           onclick={openDrawer}
           title={t('studio_driveTooltip')}
         >
-          <HardDrive class="w-4 h-4 text-blue-600" />
+          <HardDrive class="h-4 w-4 text-blue-300" />
           {t('studio_recentRecordings')}
         </button>
         <!-- Export button -->
@@ -1041,6 +1053,7 @@
           {sourceFps}
           sourceDurationMs={durationMs}
           sourceTimestampsMs={timelineSampleTimestampsMs}
+          preferredFormat={deliveryProfile === 'gif' ? 'gif' : 'mp4'}
           licenseTier="pro-trial"
           showLicenseBadge={false}
         />
@@ -1048,8 +1061,8 @@
     </div>
 
     <!-- Scrollable editing content area -->
-    <div class="flex-1 overflow-y-auto">
-      <div class="px-4 pt-1 pb-2 space-y-4">
+    <div class="studio-scrollbar flex-1 overflow-y-auto">
+      <div class="space-y-3 p-4">
         <!-- Video configuration blocks -->
 
         <!-- Background color selection -->
@@ -1078,7 +1091,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </aside>
   {/if}
 </div>
 
@@ -1108,21 +1121,4 @@
     }
   }
 
-  /* 优化滚动条样式 */
-  :global(.overflow-y-auto::-webkit-scrollbar) {
-    width: 6px;
-  }
-
-  :global(.overflow-y-auto::-webkit-scrollbar-track) {
-    background: transparent;
-  }
-
-  :global(.overflow-y-auto::-webkit-scrollbar-thumb) {
-    background: rgba(156, 163, 175, 0.5);
-    border-radius: 3px;
-  }
-
-  :global(.overflow-y-auto::-webkit-scrollbar-thumb:hover) {
-    background: rgba(156, 163, 175, 0.8);
-  }
 </style>

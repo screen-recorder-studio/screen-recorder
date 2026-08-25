@@ -87,23 +87,26 @@
 
 <div class="space-y-3">
   <!-- Category tabs -->
-  <div class="flex bg-gray-100 rounded p-0.5 gap-0.5">
+  <div class="studio-segmented flex gap-0.5 p-1">
     {#each categories as cat}
+      {@const categoryLabel = t(
+        cat.key === 'basic' ? 'color_tab_basic' :
+        cat.key === 'light' ? 'color_tab_light' :
+        cat.key === 'business' ? 'color_tab_business' :
+        'color_tab_creative'
+      )}
       <button
-        class="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs font-medium rounded transition-all
+        class="flex min-w-0 flex-1 items-center justify-center gap-1 rounded px-2 py-1 text-xs font-medium transition-all
           {activeCategory === cat.key
-            ? 'bg-white text-gray-800 shadow-sm'
-            : 'text-gray-600 hover:bg-gray-200'}"
+            ? 'bg-zinc-700 text-zinc-100 shadow-sm ring-1 ring-white/10'
+            : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'}"
         onclick={() => activeCategory = cat.key}
         type="button"
+        aria-label={categoryLabel}
+        title={categoryLabel}
       >
         <cat.icon class="w-3 h-3" />
-        <span>{t(
-          cat.key === 'basic' ? 'color_tab_basic' :
-          cat.key === 'light' ? 'color_tab_light' :
-          cat.key === 'business' ? 'color_tab_business' :
-          'color_tab_creative'
-        )}</span>
+        <span class={activeCategory === cat.key ? '' : 'sr-only'}>{categoryLabel}</span>
       </button>
     {/each}
   </div>
@@ -112,10 +115,10 @@
   <div class="grid grid-cols-8 gap-1.5">
     {#each activeCategoryColors as preset}
       <button
-        class="w-8 h-8 rounded-md border-2 cursor-pointer transition-all relative group
+        class="group relative aspect-square w-full cursor-pointer rounded-md border-2 transition-all
           {isSelected(preset)
-            ? 'border-blue-500 ring-2 ring-blue-200 scale-105'
-            : 'border-gray-300 hover:border-gray-400 hover:scale-105'}"
+            ? 'border-blue-400 ring-2 ring-blue-500/30 scale-105'
+            : 'border-zinc-500 hover:border-white/30 hover:scale-105'}"
         style="background-color: {preset.color}"
         title="{preset.name} ({preset.color})"
         onclick={() => selectPresetColor(preset)}
@@ -130,24 +133,24 @@
   </div>
 
   <!-- Custom color picker -->
-  <div class="flex items-center gap-2 pt-2 border-t border-gray-200">
-    <span class="text-xs text-gray-600">{t('color_custom')}</span>
+  <div class="flex items-center gap-2 border-t border-zinc-700 pt-2">
+    <span class="text-xs text-zinc-400">{t('color_custom')}</span>
     <input
       type="color"
-      class="w-7 h-7 border border-gray-300 rounded cursor-pointer"
+      class="h-7 w-7 cursor-pointer rounded border border-zinc-500 bg-zinc-950"
       value={customColorValue}
       onchange={handleColorPickerChange}
     />
     <input
       type="text"
-      class="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+      class="studio-field min-w-0 flex-1 px-2 py-1 text-xs"
       bind:value={customColorValue}
       placeholder="#ffffff"
       onchange={handleTextInputChange}
       onkeydown={handleTextKeydown}
     />
     <div
-      class="w-7 h-7 border border-gray-300 rounded"
+      class="h-7 w-7 rounded border border-zinc-500"
       style="background-color: {customColorValue}"
     ></div>
   </div>

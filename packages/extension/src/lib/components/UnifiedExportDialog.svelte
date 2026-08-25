@@ -15,7 +15,14 @@
     RefreshCw
   } from '@lucide/svelte'
   import { trimStore } from '$lib/stores/trim.svelte'
-  import { estimateGifSizeRange } from '$lib/export/gif-export-estimate'
+  import {
+    estimateGifPresentationFrameCount,
+    estimateGifSizeRange
+  } from '$lib/export/gif-export-estimate'
+  import { resolveGifDeliveryDefaults } from '$lib/export/gif-delivery-defaults'
+  import { deriveGifDeliveryAdvisory } from '$lib/export/gif-delivery-advisory'
+  import { resolveExportDialogHeading } from '$lib/export/export-dialog-presentation'
+  import { resolveStudioVisualAccent } from '$lib/studio/studio-theme'
   import { _t as t } from '$lib/utils/i18n'
 
   interface Props {
@@ -28,6 +35,8 @@
     sourceInfo: SourceVideoInfo
     sourceFps?: number
     selectedSourceFrameCount?: number
+    hasTimeVaryingGifEffects?: boolean
+    preferredFormat?: ExportFormat
     isExporting?: boolean
     exportProgress?: {
       stage: string
@@ -53,6 +62,8 @@
     sourceInfo,
     sourceFps = 30,
     selectedSourceFrameCount,
+    hasTimeVaryingGifEffects = false,
+    preferredFormat = 'mp4',
     isExporting = false,
     exportProgress = null,
     hasBackground = false,
@@ -117,8 +128,23 @@
   let gifDither = $state<string>('false')
   let gifTransparent = $state<string | null>(null)
 
-  // Reset framerate when dialog closes
+  let wasOpen = false
+  let dialogElement = $state<HTMLDivElement | null>(null)
+
+  // Apply the recording-scoped delivery default only when opening. Once open,
+  // the user remains free to switch formats and tune every setting.
   $effect(() => {
+    if (open && !wasOpen) {
+      selectedFormat = preferredFormat
+      if (preferredFormat === 'gif') {
+        const defaults = resolveGifDeliveryDefaults(sourceInfo.width)
+        gifFps = defaults.fps
+        gifScale = defaults.scalePercent
+        gifRepeat = defaults.repeat
+      }
+      requestAnimationFrame(() => dialogElement?.focus({ preventScroll: true }))
+    }
+    wasOpen = open
     if (!open) {
       framerate = sourceFps || 30
     }
@@ -264,13 +290,20 @@
   // GIF estimates
   const gifOutputWidth = $derived(Math.floor(sourceInfo.width * (gifScale / 100)))
   const gifOutputHeight = $derived(Math.floor(sourceInfo.height * (gifScale / 100)))
-  const gifEstimatedFrames = $derived(Math.ceil(displayDuration * gifFps))
+  const gifEstimatedFrames = $derived(estimateGifPresentationFrameCount({
+    durationSeconds: displayDuration,
+    targetFps: gifFps,
+    sourceFrameCount: displayFrameCount,
+    hasTimeVaryingEffects: hasTimeVaryingGifEffects
+  }))
   const gifEstimatedSizeRange = $derived.by(() => estimateGifSizeRange({
     width: gifOutputWidth,
     height: gifOutputHeight,
     frameCount: gifEstimatedFrames,
     quality: gifQuality
   }))
+  const gifDeliveryAdvisory = $derived(deriveGifDeliveryAdvisory(gifEstimatedSizeRange))
+  const dialogHeading = $derived(resolveExportDialogHeading(selectedFormat))
 
   const formatSizeRange = (minBytes: number, maxBytes: number): string => {
     if (minBytes === maxBytes) return formatFileSize(minBytes)
@@ -315,6 +348,30 @@
     if (isExporting) onCancel?.()
   }
 
+  function handleDialogKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      handleClose()
+      return
+    }
+    if (event.key !== 'Tab' || !dialogElement) return
+
+    const focusable = Array.from(dialogElement.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), select:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+    )).filter((element) => !element.hasAttribute('hidden'))
+    if (focusable.length === 0) return
+
+    const first = focusable[0]
+    const last = focusable.at(-1)!
+    if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogElement)) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
+  }
+
   // Format tabs config
   const formatTabs = $derived([
     { id: 'mp4' as ExportFormat, label: t('export_format_mp4'), icon: Film },
@@ -344,41 +401,45 @@
 {#if open}
   <!-- Backdrop -->
   <div
-    class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center"
+    class="studio-dialog-backdrop fixed inset-0 z-50 flex items-center justify-center p-4"
     onclick={handleClose}
-    onkeydown={(e) => e.key === 'Escape' && handleClose()}
-    role="dialog"
-    tabindex="-1"
+    role="presentation"
   >
     <!-- Dialog -->
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
-      class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col relative"
+      class="studio-dialog-panel studio-export-dialog relative flex max-h-[calc(100vh-2rem)] w-[720px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden"
+      data-accent={resolveStudioVisualAccent(selectedFormat)}
       onclick={(e) => e.stopPropagation()}
-      role="document"
+      onkeydown={handleDialogKeydown}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="export-dialog-title"
+      tabindex="-1"
+      bind:this={dialogElement}
     >
       <!-- Export Progress Overlay -->
       {#if isExporting && exportProgress}
-        <div class="absolute inset-0 bg-white/95 backdrop-blur-sm z-10 flex flex-col items-center justify-center p-8">
+        <div class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-zinc-950/95 p-8 backdrop-blur-sm">
           <div class="w-full max-w-md space-y-6">
             <!-- Progress Icon -->
             <div class="flex justify-center">
-              <div class="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center">
-                <LoaderCircle class="w-8 h-8 text-blue-600 animate-spin" />
+              <div class="studio-dialog-leading flex h-16 w-16 items-center justify-center rounded-2xl">
+                <LoaderCircle class="h-8 w-8 animate-spin" />
               </div>
             </div>
 
             <!-- Stage & Progress -->
             <div class="text-center">
-              <h3 class="text-lg font-semibold text-gray-900 mb-1">
+              <h3 class="mb-1 text-lg font-semibold text-zinc-100">
                 {stageLabels[exportProgress.stage] || exportProgress.stage}
               </h3>
-              <p class="text-3xl font-bold text-blue-600">{Math.round(exportProgress.progress)}%</p>
+              <p class="text-3xl font-bold text-blue-300">{Math.round(exportProgress.progress)}%</p>
             </div>
 
             <!-- Progress Bar -->
-            <div class="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+            <div class="h-3 w-full overflow-hidden rounded-full bg-zinc-800 ring-1 ring-white/5">
               <div
                 class="h-full bg-blue-600 rounded-full transition-all duration-300"
                 style="width: {exportProgress.progress}%"
@@ -387,7 +448,7 @@
 
             <!-- Frame Info -->
             {#if exportProgress.currentFrame > 0}
-              <div class="flex items-center justify-between text-sm text-gray-500">
+              <div class="flex items-center justify-between text-sm text-zinc-400">
                 <span>{t('export_progress_frame', [String(exportProgress.currentFrame), String(exportProgress.totalFrames)])}</span>
                 {#if exportProgress.estimatedTimeRemaining && exportProgress.estimatedTimeRemaining > 0}
                   <span class="flex items-center gap-1">
@@ -399,12 +460,12 @@
             {/if}
 
             <div class="flex flex-col items-center gap-2">
-              <p class="text-center text-xs text-gray-400">
+              <p class="text-center text-xs text-zinc-400">
                 {t('export_progress_hint')}
               </p>
               <button
                 type="button"
-                class="px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100"
+                class="rounded-lg border border-red-400/20 bg-red-500/10 px-3 py-1.5 text-sm font-medium text-red-300 hover:bg-red-500/20"
                 onclick={handleCancel}
               >
                 {t('export_btn_cancel')}
@@ -414,22 +475,28 @@
         </div>
       {/if}
       <!-- Header -->
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-        <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
-          <FileDown class="w-5 h-5" />
-          {t('export_dialog_title')}
-        </h2>
+      <div class="studio-dialog-header flex items-start gap-4 px-6 py-5">
+        <div class="studio-dialog-leading flex h-10 w-10 shrink-0 items-center justify-center">
+          <FileDown class="h-5 w-5" />
+        </div>
+        <div class="min-w-0 flex-1 pt-0.5">
+          <h2 id="export-dialog-title" class="text-lg font-semibold tracking-tight text-zinc-100">
+            {t(dialogHeading.key, undefined, { [dialogHeading.key]: dialogHeading.fallback })}
+          </h2>
+        </div>
         <button
-          class="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+          type="button"
+          class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-transparent text-zinc-400 transition-colors hover:border-zinc-500 hover:bg-white/5 hover:text-zinc-100"
           onclick={handleClose}
           disabled={isExporting}
+          aria-label={t('common_close')}
         >
-          <X class="w-5 h-5 text-gray-500" />
+          <X class="h-4 w-4" />
         </button>
       </div>
 
       <!-- Source Information (above tabs) -->
-      <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+      <div class="border-b border-zinc-700 bg-black/10 px-6 py-4">
         <div class="flex items-start justify-between">
           <div class="grid grid-cols-4 gap-6 text-sm flex-1">
             <div>
@@ -469,16 +536,18 @@
       </div>
 
       <!-- Format Tabs -->
-      <div class="flex gap-1 px-6 py-3 border-b border-gray-200">
+      <div class="flex gap-1 border-b border-zinc-700 bg-zinc-950/30 px-6 py-3">
         {#each formatTabs as tab}
           {@const isSelected = selectedFormat === tab.id}
           <button
+            type="button"
             class="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors
               {isSelected
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}"
+                ? selectedFormat === 'gif' ? 'bg-violet-500/15 text-violet-200 ring-1 ring-violet-400/30' : 'bg-blue-500/15 text-blue-200 ring-1 ring-blue-400/30'
+                : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'}"
             onclick={() => selectedFormat = tab.id}
             disabled={isExporting}
+            aria-pressed={isSelected}
           >
             <tab.icon class="w-4 h-4" />
             {tab.label}
@@ -487,7 +556,7 @@
       </div>
 
       <!-- Content (Scrollable) -->
-      <div class="flex-1 overflow-y-auto p-6 space-y-6">
+      <div class="studio-dialog-body studio-scrollbar flex-1 space-y-6 overflow-y-auto p-6">
         <!-- Video Settings (MP4/WebM) -->
         {#if selectedFormat === 'mp4' || selectedFormat === 'webm'}
           <!-- Quality Presets -->
@@ -547,12 +616,12 @@
               <div class="flex gap-2">
                 <button
                   class="px-3 py-1 text-xs rounded-md transition-colors
-                    {bitrateMode === 'auto' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}"
+                    {bitrateMode === 'auto' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}"
                   onclick={() => bitrateMode = 'auto'}
                 >{t('export_bitrate_auto')}</button>
                 <button
                   class="px-3 py-1 text-xs rounded-md transition-colors
-                    {bitrateMode === 'manual' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}"
+                    {bitrateMode === 'manual' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}"
                   onclick={() => bitrateMode = 'manual'}
                 >{t('export_bitrate_manual')}</button>
               </div>
@@ -670,19 +739,41 @@
             </div>
           </div>
 
-          <div>
-            <label for="gif-dither" class="block text-sm font-medium text-gray-700 mb-2">{t('export_label_dither')}</label>
-            <select
-              id="gif-dither"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-              bind:value={gifDither}
-            >
-              <option value="false">{t('export_dither_none')}</option>
-              <option value="FloydSteinberg">Floyd-Steinberg</option>
-              <option value="FalseFloydSteinberg">False Floyd-Steinberg</option>
-              <option value="Stucki">Stucki</option>
-              <option value="Atkinson">Atkinson</option>
-            </select>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label for="gif-dither" class="block text-sm font-medium text-gray-700 mb-2">{t('export_label_dither')}</label>
+              <select
+                id="gif-dither"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                bind:value={gifDither}
+              >
+                <option value="false">{t('export_dither_none')}</option>
+                <option value="FloydSteinberg">Floyd-Steinberg</option>
+                <option value="FalseFloydSteinberg">False Floyd-Steinberg</option>
+                <option value="Stucki">Stucki</option>
+                <option value="Atkinson">Atkinson</option>
+              </select>
+            </div>
+            <div>
+              <label for="gif-repeat" class="block text-sm font-medium text-gray-700 mb-2">
+                {t('export_label_loop', undefined, { export_label_loop: 'Loop' })}
+              </label>
+              <select
+                id="gif-repeat"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                bind:value={gifRepeat}
+              >
+                <option value={0}>{t('export_loop_forever', undefined, { export_loop_forever: 'Forever' })}</option>
+                {#each [1, 2, 3, 5] as repeat}
+                  <option value={repeat}>{t('export_loop_repeat', String(repeat), {
+                    export_loop_repeat: {
+                      message: 'Repeat $COUNT$ times',
+                      placeholders: { count: { content: '$1' } }
+                    }
+                  })}</option>
+                {/each}
+              </select>
+            </div>
           </div>
 
           <!-- GIF Estimated Output -->
@@ -706,22 +797,54 @@
               </div>
             </div>
           </div>
+
+          <div
+            class="flex items-start gap-3 rounded-lg border px-4 py-3"
+            class:border-emerald-900={gifDeliveryAdvisory.tone === 'good'}
+            class:bg-emerald-950={gifDeliveryAdvisory.tone === 'good'}
+            class:text-emerald-200={gifDeliveryAdvisory.tone === 'good'}
+            class:border-amber-900={gifDeliveryAdvisory.tone === 'caution'}
+            class:bg-amber-950={gifDeliveryAdvisory.tone === 'caution'}
+            class:text-amber-200={gifDeliveryAdvisory.tone === 'caution'}
+            class:border-red-900={gifDeliveryAdvisory.tone === 'warning'}
+            class:bg-red-950={gifDeliveryAdvisory.tone === 'warning'}
+            class:text-red-200={gifDeliveryAdvisory.tone === 'warning'}
+            role="status"
+          >
+            {#if gifDeliveryAdvisory.tone === 'warning'}
+              <TriangleAlert class="mt-0.5 h-4 w-4 flex-none" />
+            {:else}
+              <Info class="mt-0.5 h-4 w-4 flex-none" />
+            {/if}
+            <div class="min-w-0">
+              {#if gifDeliveryAdvisory.code === 'email-ready'}
+                <p class="text-sm font-semibold">{t('export_email_ready_title', undefined, { export_email_ready_title: 'Email-friendly estimate' })}</p>
+                <p class="mt-0.5 text-xs opacity-80">{t('export_email_ready_desc', undefined, { export_email_ready_desc: 'The full estimate stays within the 1 MB target.' })}</p>
+              {:else if gifDeliveryAdvisory.code === 'too-heavy'}
+                <p class="text-sm font-semibold">{t('export_email_heavy_title', undefined, { export_email_heavy_title: 'Likely too heavy for email' })}</p>
+                <p class="mt-0.5 text-xs opacity-80">{t('export_email_heavy_desc', undefined, { export_email_heavy_desc: 'Even the low estimate reaches 5 MB. Trim the clip or reduce FPS or scale.' })}</p>
+              {:else}
+                <p class="text-sm font-semibold">{t('export_email_review_title', undefined, { export_email_review_title: 'Review for email delivery' })}</p>
+                <p class="mt-0.5 text-xs opacity-80">{t('export_email_review_desc', undefined, { export_email_review_desc: 'The estimate can exceed 1 MB. Check the final file before adding it to an EDM.' })}</p>
+              {/if}
+            </div>
+          </div>
         {/if}
 
       </div>
 
       {#if errorMessage && !isExporting}
-        <div class="mx-6 mt-4 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+        <div class="mx-6 mt-4 flex items-start gap-3 rounded-lg border border-red-400/20 bg-red-500/10 px-4 py-3">
           <TriangleAlert class="mt-0.5 h-4 w-4 flex-shrink-0 text-red-500" />
           <div class="min-w-0 flex-1">
-            <p class="text-sm text-red-700">{errorMessage}</p>
+            <p class="text-sm text-red-300">{errorMessage}</p>
             {#if errorHint}
-              <p class="mt-1 text-xs text-red-600">{errorHint}</p>
+              <p class="mt-1 text-xs text-red-400">{errorHint}</p>
             {/if}
           </div>
           {#if showOpenDriveAction && onOpenDrive}
             <button
-              class="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-100"
+              class="inline-flex items-center gap-1.5 rounded-md border border-red-400/20 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-200 transition-colors hover:bg-red-500/20"
               onclick={onOpenDrive}
             >
               <HardDrive class="h-3.5 w-3.5" />
@@ -730,7 +853,7 @@
           {/if}
           {#if showReloadStudioAction && onReloadStudio}
             <button
-              class="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-100"
+              class="inline-flex items-center gap-1.5 rounded-md border border-red-400/20 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-200 transition-colors hover:bg-red-500/20"
               onclick={onReloadStudio}
             >
               <RefreshCw class="h-3.5 w-3.5" />
@@ -743,16 +866,18 @@
       {/if}
 
       <!-- Footer -->
-      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <div class="studio-dialog-footer flex items-center justify-end gap-3 px-6 py-4">
         <button
-          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          type="button"
+          class="studio-muted-action px-4 py-2 text-sm font-medium"
           onclick={handleClose}
           disabled={isExporting}
         >
           {t('export_btn_cancel')}
         </button>
         <button
-          class="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          type="button"
+          class="studio-primary-action flex items-center gap-2 px-6 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50"
           onclick={handleExport}
           disabled={isExporting}
         >

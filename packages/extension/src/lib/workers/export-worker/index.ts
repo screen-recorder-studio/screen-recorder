@@ -25,6 +25,8 @@ import {
   type MemoryChunkVisibleRange
 } from '../../export/memory-trim-export'
 import { H264_PROBE_CODECS, normalizeH264Dimensions } from '../../utils/h264-export-config'
+import { createGifFrameSchedule, type GifFrameScheduleEntry } from '../../export/gif-frame-schedule'
+import { assertGifExportWithinMemoryBudget, validateGifBlob } from '../../export/gif-export-preflight'
 
 import { Output, Mp4OutputFormat, BufferTarget, CanvasSource } from 'mediabunny'
 
@@ -1856,13 +1858,19 @@ async function exportToGIF(options: ExportOptions): Promise<Blob> {
   // 以源帧率为时间基，按 gif fps 抽帧，保证时间轴一致
   const sourceFps = videoInfo?.frameRate || 30
   const stride = Math.max(1, Math.round(sourceFps / fps))
-  const gifPresentationSchedule = isOpfsMode ? getOpfsPresentationSchedule(fps) : null
+  const rawGifPresentationSchedule = isOpfsMode ? getOpfsPresentationSchedule(fps) : null
+  const gifPresentationSchedule = rawGifPresentationSchedule
+    ? createGifFrameSchedule(rawGifPresentationSchedule, {
+        collapseRepeated: !hasTimeVaryingEditEffects(options.backgroundConfig)
+      }).frames
+    : null
   const expectedFrames = gifPresentationSchedule?.length
     ?? (isOpfsMode ? Math.ceil(totalOpfsFrames / stride) : Math.ceil(totalFrames / stride))
 
   // 计算输出尺寸
   const outputWidth = Math.floor(offscreenCanvas.width * scale)
   const outputHeight = Math.floor(offscreenCanvas.height * scale)
+  assertGifExportWithinMemoryBudget({ width: outputWidth, height: outputHeight, frameCount: expectedFrames })
 
   // 创建 GIF 策略（仅用于 extractImageData，不再收集帧）
   const gifStrategy = new GifStrategy({
@@ -1894,7 +1902,7 @@ async function exportToGIF(options: ExportOptions): Promise<Blob> {
   // 清理
   gifStrategy.cleanup()
 
-  return gifBlob
+  return validateGifBlob(gifBlob)
 }
 
 /**
@@ -1912,7 +1920,7 @@ async function streamGifEncode(
   scale: number,
   stride: number,
   expectedFrames: number,
-  presentationSchedule: readonly PresentationScheduleEntry[] | null
+  presentationSchedule: readonly GifFrameScheduleEntry[] | null
 ): Promise<Blob> {
   // 1) 初始化主线程 GIF 编码器并等待 ready
   await initGifEncoderOnMainThread(gifStrategy.getOptions(), expectedFrames)
@@ -1940,11 +1948,14 @@ async function streamGifEncode(
 /** 通知主线程初始化 GIF 编码器，等待 ready */
 function initGifEncoderOnMainThread(gifOptions: any, totalFrames: number): Promise<void> {
   return new Promise((resolve, reject) => {
+    let timer: ReturnType<typeof setTimeout>
     const handler = (event: MessageEvent) => {
       if (event.data?.type === 'gif-encoder-ready') {
+        clearTimeout(timer)
         self.removeEventListener('message', handler)
         resolve()
       } else if (event.data?.type === 'gif-encode-error') {
+        clearTimeout(timer)
         self.removeEventListener('message', handler)
         reject(new Error(event.data.data?.error || 'GIF encoder init failed'))
       }
@@ -1957,7 +1968,7 @@ function initGifEncoderOnMainThread(gifOptions: any, totalFrames: number): Promi
     })
 
     // 初始化超时
-    setTimeout(() => {
+    timer = setTimeout(() => {
       self.removeEventListener('message', handler)
       reject(new Error('GIF encoder initialization timeout'))
     }, GIF_OPERATION_TIMEOUT)
@@ -1967,24 +1978,27 @@ function initGifEncoderOnMainThread(gifOptions: any, totalFrames: number): Promi
 /** 发送单帧到主线程 GIF 编码器并等待确认（背压控制） */
 function sendFrameToMainThread(imageData: ImageData, delay: number, dispose: number, frameIndex: number, totalFrames: number): Promise<void> {
   return new Promise((resolve, reject) => {
+    let timer: ReturnType<typeof setTimeout>
     const handler = (event: MessageEvent) => {
       if (event.data?.type === 'gif-frame-added' && event.data.data?.frameIndex === frameIndex) {
+        clearTimeout(timer)
         self.removeEventListener('message', handler)
         resolve()
       } else if (event.data?.type === 'gif-encode-error') {
+        clearTimeout(timer)
         self.removeEventListener('message', handler)
         reject(new Error(event.data.data?.error || 'GIF frame add failed'))
       }
     }
     self.addEventListener('message', handler)
 
-    self.postMessage({
+    ;(self as any).postMessage({
       type: 'gif-add-frame',
       data: { imageData, delay, dispose, frameIndex, totalFrames }
-    })
+    }, [imageData.data.buffer])
 
     // 单帧超时
-    setTimeout(() => {
+    timer = setTimeout(() => {
       self.removeEventListener('message', handler)
       reject(new Error(`GIF frame ${frameIndex} add timeout`))
     }, GIF_OPERATION_TIMEOUT)
@@ -1994,11 +2008,14 @@ function sendFrameToMainThread(imageData: ImageData, delay: number, dispose: num
 /** 请求主线程渲染 GIF 并等待 blob 结果 */
 function requestGifRender(totalFrames: number): Promise<Blob> {
   return new Promise((resolve, reject) => {
+    let timer: ReturnType<typeof setTimeout>
     const handler = (event: MessageEvent) => {
       if (event.data?.type === 'gif-encode-complete') {
+        clearTimeout(timer)
         self.removeEventListener('message', handler)
         resolve(event.data.data.blob)
       } else if (event.data?.type === 'gif-encode-error') {
+        clearTimeout(timer)
         self.removeEventListener('message', handler)
         reject(new Error(event.data.data?.error || 'GIF rendering failed'))
       }
@@ -2011,7 +2028,7 @@ function requestGifRender(totalFrames: number): Promise<Blob> {
     })
 
     // 渲染超时
-    setTimeout(() => {
+    timer = setTimeout(() => {
       self.removeEventListener('message', handler)
       reject(new Error('GIF encoding timeout'))
     }, GIF_RENDER_TIMEOUT)
@@ -2073,7 +2090,7 @@ async function streamFramesMemory(
       })
 
     } catch (error) {
-      console.error(`❌ [GIF-Export-Worker] Failed to stream frame ${frameIndex}:`, error)
+      throw new Error(`GIF_FRAME_STREAM_FAILED:${frameIndex}`, { cause: error })
     }
   }
 
@@ -2089,7 +2106,7 @@ async function streamFramesOpfs(
   scale: number,
   stride: number,
   expectedFrames: number,
-  presentationSchedule: readonly PresentationScheduleEntry[] | null
+  presentationSchedule: readonly GifFrameScheduleEntry[] | null
 ): Promise<number> {
   if (presentationSchedule) {
     let sentFrames = 0
@@ -2101,7 +2118,9 @@ async function streamFramesOpfs(
       const sourceFrameIndex = entry.sourceFrameIndex
       if (!isSourceFrameInLoadedWindow({ start: loadedWindowStart, count: loadedWindowCount }, sourceFrameIndex)) {
         const window = await loadOpfsWindow(sourceFrameIndex, opfsWindowSize)
-        if (window.actualCount <= 0 || window.chunks.length === 0) break
+        if (window.actualCount <= 0 || window.chunks.length === 0) {
+          throw new Error(`GIF_SOURCE_FRAME_UNAVAILABLE:${sourceFrameIndex}`)
+        }
         loadedWindowStart = window.actualStart
         loadedWindowCount = window.actualCount
         await processVideoCompositionOpfs(
@@ -2114,10 +2133,10 @@ async function streamFramesOpfs(
       const localFrameIndex = sourceFrameIndex - loadedWindowStart
       await requestCompositeFrame(localFrameIndex, entry)
       const imageData = extractCurrentFrameImageData(gifStrategy, scale)
-      if (!imageData) continue
+      if (!imageData) throw new Error(`GIF_FRAME_RENDER_FAILED:${sourceFrameIndex}`)
       await sendFrameToMainThread(
         imageData,
-        Math.max(1, entry.durationSeconds * 1000),
+        entry.delayMs,
         2,
         sentFrames,
         expectedFrames
@@ -2179,7 +2198,7 @@ async function streamFramesOpfs(
         })
 
       } catch (error) {
-        console.error(`❌ [GIF-Export-Worker] Failed to stream OPFS frame ${globalFrameIndex}:`, error)
+        throw new Error(`GIF_OPFS_FRAME_STREAM_FAILED:${globalFrameIndex}`, { cause: error })
       }
     }
 

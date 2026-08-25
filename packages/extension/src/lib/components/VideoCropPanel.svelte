@@ -519,50 +519,50 @@
 
 <svelte:window onkeydown={handleKeyDown} onkeyup={handleKeyUp} onblur={handleBlur} />
 
-<div class="flex flex-col h-full bg-gray-900 rounded-lg overflow-hidden">
+<div class="flex h-full flex-col overflow-hidden rounded-xl border border-zinc-700 bg-zinc-950">
   <!-- Header -->
-  <div class="flex-shrink-0 flex justify-between items-center p-3 border-b border-gray-700 bg-gray-800">
+  <div class="flex flex-shrink-0 items-center justify-between border-b border-zinc-700 bg-zinc-900 p-3">
     <div class="flex items-center gap-2">
       <Crop class="w-4 h-4 text-blue-400" />
-      <span class="text-sm font-semibold text-gray-100">Crop Video</span>
-      <span class="text-xs text-gray-400">Drag, arrows to nudge (Shift=10px)</span>
+      <span class="text-sm font-semibold text-zinc-100">Crop Video</span>
+      <span class="text-xs text-zinc-400">Drag, arrows to nudge (Shift=10px)</span>
     </div>
     
     <!-- Current dimensions inputs -->
     <div class="flex items-center gap-2 text-xs">
-      <div class="flex items-center bg-black/20 rounded px-2 py-1 border border-gray-700 focus-within:border-blue-500">
-        <span class="text-gray-500 mr-1">X</span>
+      <div class="flex items-center rounded border border-zinc-500 bg-black/20 px-2 py-1 focus-within:border-blue-400">
+        <span class="mr-1 text-zinc-400">X</span>
         <input 
           type="number" 
-          class="bg-transparent text-gray-200 w-10 text-right outline-none appearance-none" 
+          class="w-10 appearance-none bg-transparent text-right text-zinc-200 outline-none"
           value={Math.round(cropBox.x)}
           oninput={(e) => handleInput('x', e.currentTarget.value)}
         />
       </div>
-      <div class="flex items-center bg-black/20 rounded px-2 py-1 border border-gray-700 focus-within:border-blue-500">
-        <span class="text-gray-500 mr-1">Y</span>
+      <div class="flex items-center rounded border border-zinc-500 bg-black/20 px-2 py-1 focus-within:border-blue-400">
+        <span class="mr-1 text-zinc-400">Y</span>
         <input 
           type="number" 
-          class="bg-transparent text-gray-200 w-10 text-right outline-none appearance-none" 
+          class="w-10 appearance-none bg-transparent text-right text-zinc-200 outline-none"
           value={Math.round(cropBox.y)}
           oninput={(e) => handleInput('y', e.currentTarget.value)}
         />
       </div>
-      <div class="w-px h-4 bg-gray-700 mx-1"></div>
-      <div class="flex items-center bg-black/20 rounded px-2 py-1 border border-gray-700 focus-within:border-blue-500">
-        <span class="text-gray-500 mr-1">W</span>
+      <div class="mx-1 h-4 w-px bg-zinc-700"></div>
+      <div class="flex items-center rounded border border-zinc-500 bg-black/20 px-2 py-1 focus-within:border-blue-400">
+        <span class="mr-1 text-zinc-400">W</span>
         <input 
           type="number" 
-          class="bg-transparent text-gray-200 w-10 text-right outline-none appearance-none" 
+          class="w-10 appearance-none bg-transparent text-right text-zinc-200 outline-none"
           value={Math.round(cropBox.width)}
           oninput={(e) => handleInput('width', e.currentTarget.value)}
         />
       </div>
-      <div class="flex items-center bg-black/20 rounded px-2 py-1 border border-gray-700 focus-within:border-blue-500">
-        <span class="text-gray-500 mr-1">H</span>
+      <div class="flex items-center rounded border border-zinc-500 bg-black/20 px-2 py-1 focus-within:border-blue-400">
+        <span class="mr-1 text-zinc-400">H</span>
         <input 
           type="number" 
-          class="bg-transparent text-gray-200 w-10 text-right outline-none appearance-none" 
+          class="w-10 appearance-none bg-transparent text-right text-zinc-200 outline-none"
           value={Math.round(cropBox.height)}
           oninput={(e) => handleInput('height', e.currentTarget.value)}
         />
@@ -649,32 +649,32 @@
   </div>
   
   <!-- Toolbar -->
-  <div class="flex-shrink-0 p-4 border-t border-gray-700 bg-gray-800">
+  <div class="flex-shrink-0 border-t border-zinc-700 bg-zinc-900 p-4">
     <div class="flex items-center justify-between gap-4">
       <!-- Aspect ratio presets -->
       <div class="flex items-center gap-2">
-        <span class="text-xs text-gray-400">Aspect Ratio:</span>
+        <span class="text-xs text-zinc-400">Aspect Ratio:</span>
         <div class="flex gap-1">
           <button 
-            class="px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition"
+            class="rounded bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200 transition hover:bg-zinc-700"
             onclick={() => applyPreset(16, 9)}
           >
             16:9
           </button>
           <button 
-            class="px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition"
+            class="rounded bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200 transition hover:bg-zinc-700"
             onclick={() => applyPreset(1, 1)}
           >
             1:1
           </button>
           <button 
-            class="px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition"
+            class="rounded bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200 transition hover:bg-zinc-700"
             onclick={() => applyPreset(4, 3)}
           >
             4:3
           </button>
           <button 
-            class="px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition"
+            class="rounded bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200 transition hover:bg-zinc-700"
             onclick={() => applyPreset(9, 16)}
           >
             9:16
@@ -686,7 +686,7 @@
       <div class="flex items-center gap-2">
         <!-- Reset -->
         <button 
-          class="px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-700 rounded transition flex items-center gap-1"
+          class="flex items-center gap-1 rounded px-3 py-1.5 text-sm text-zinc-400 transition hover:bg-zinc-800 hover:text-white"
           onclick={resetCrop}
         >
           <RotateCcw class="w-4 h-4" />
@@ -695,7 +695,7 @@
         
         <!-- Cancel -->
         <button 
-          class="px-4 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-white rounded transition flex items-center gap-1"
+          class="studio-muted-action flex items-center gap-1 px-4 py-1.5 text-sm"
           onclick={cancelCrop}
         >
           <X class="w-4 h-4" />
@@ -704,7 +704,7 @@
         
         <!-- Apply -->
         <button 
-          class="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition flex items-center gap-1"
+          class="studio-primary-action flex items-center gap-1 px-4 py-1.5 text-sm"
           onclick={applyCrop}
         >
           <Check class="w-4 h-4" />

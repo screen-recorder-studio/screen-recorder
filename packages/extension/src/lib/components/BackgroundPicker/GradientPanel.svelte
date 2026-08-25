@@ -54,23 +54,26 @@
 
 <div class="space-y-3">
   <!-- Category tabs -->
-  <div class="flex bg-gray-100 rounded p-0.5 gap-0.5">
+  <div class="studio-segmented flex gap-0.5 p-1">
     {#each categories as cat}
+      {@const categoryLabel = t(
+        cat.key === 'linear' ? 'gradient_tab_linear' :
+        cat.key === 'radial' ? 'gradient_tab_radial' :
+        cat.key === 'conic' ? 'gradient_tab_conic' :
+        'gradient_tab_multi'
+      )}
       <button
-        class="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs font-medium rounded transition-all
+        class="flex min-w-0 flex-1 items-center justify-center gap-1 rounded px-2 py-1 text-xs font-medium transition-all
           {activeCategory === cat.key
-            ? 'bg-white text-gray-800 shadow-sm'
-            : 'text-gray-600 hover:bg-gray-200'}"
+            ? 'bg-zinc-700 text-zinc-100 shadow-sm ring-1 ring-white/10'
+            : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'}"
         onclick={() => activeCategory = cat.key}
         type="button"
+        aria-label={categoryLabel}
+        title={categoryLabel}
       >
         <cat.icon class="w-3 h-3" />
-        <span>{t(
-          cat.key === 'linear' ? 'gradient_tab_linear' :
-          cat.key === 'radial' ? 'gradient_tab_radial' :
-          cat.key === 'conic' ? 'gradient_tab_conic' :
-          'gradient_tab_multi'
-        )}</span>
+        <span class={activeCategory === cat.key ? '' : 'sr-only'}>{categoryLabel}</span>
       </button>
     {/each}
   </div>
@@ -81,8 +84,8 @@
       <button
         class="w-full h-9 rounded-md border-2 cursor-pointer transition-all relative group
           {isSelected(preset)
-            ? 'border-blue-500 ring-2 ring-blue-200 scale-105'
-            : 'border-gray-300 hover:border-gray-400 hover:scale-105'}"
+            ? 'border-blue-400 ring-2 ring-blue-500/30 scale-105'
+            : 'border-zinc-500 hover:border-white/30 hover:scale-105'}"
         style="background: {preset.preview || 'linear-gradient(45deg, #f3f4f6, #e5e7eb)'}"
         title="{preset.name}"
         onclick={() => selectGradient(preset)}
@@ -96,18 +99,18 @@
   </div>
 
   <!-- Current gradient preview -->
-  <div class="flex items-center gap-2 pt-2 border-t border-gray-200">
-    <span class="text-xs text-gray-600">{t('gradient_current')}</span>
+  <div class="flex items-center gap-2 border-t border-zinc-700 pt-2">
+    <span class="text-xs text-zinc-400">{t('gradient_current')}</span>
     <div
-      class="flex-1 h-7 rounded border border-gray-300"
+      class="h-7 flex-1 rounded border border-zinc-500"
       style="background: {getCurrentGradientCSS()}"
     ></div>
     {#if currentType === 'gradient' && currentConfig.gradient}
-      <span class="text-xs text-gray-500">
+      <span class="text-xs text-zinc-400">
         {currentConfig.gradient.type} · {currentConfig.gradient.stops.length} {t('gradient_colors_suffix')}
       </span>
     {:else}
-      <span class="text-xs text-gray-400">{t('gradient_select_hint')}</span>
+      <span class="text-xs text-zinc-400">{t('gradient_select_hint')}</span>
     {/if}
   </div>
 </div>

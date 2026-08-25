@@ -68,18 +68,21 @@
 
 <div class="space-y-3">
   <!-- Category tabs -->
-  <div class="flex bg-gray-100 rounded p-0.5 gap-0.5 overflow-x-auto">
+  <div class="studio-segmented studio-scrollbar flex gap-0.5 overflow-x-auto p-1">
     {#each categories as cat}
+      {@const categoryLabel = t(cat.name)}
       <button
-        class="flex-1 min-w-fit flex items-center justify-center gap-1 px-2 py-1 text-xs font-medium rounded transition-all whitespace-nowrap
+        class="flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded px-2 py-1 text-xs font-medium transition-all
           {activeCategory === cat.key
-            ? 'bg-white text-gray-800 shadow-sm'
-            : 'text-gray-600 hover:bg-gray-200'}"
+            ? 'bg-zinc-700 text-zinc-100 shadow-sm ring-1 ring-white/10'
+            : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'}"
         onclick={() => activeCategory = cat.key}
         type="button"
+        aria-label={categoryLabel}
+        title={categoryLabel}
       >
         <cat.icon class="w-3 h-3" />
-        <span>{t(cat.name)}</span>
+        <span class={activeCategory === cat.key ? '' : 'sr-only'}>{categoryLabel}</span>
       </button>
     {/each}
   </div>
@@ -90,8 +93,8 @@
       <button
         class="w-full h-9 rounded-md border-2 cursor-pointer transition-all relative group overflow-hidden
           {isSelected(wallpaper)
-            ? 'border-blue-500 ring-2 ring-blue-200 scale-105'
-            : 'border-gray-300 hover:border-gray-400 hover:scale-105'}"
+            ? 'border-blue-400 ring-2 ring-blue-500/30 scale-105'
+            : 'border-zinc-500 hover:border-white/30 hover:scale-105'}"
         onclick={() => selectWallpaper(wallpaper)}
         type="button"
       >
@@ -110,13 +113,13 @@
 
   <!-- Error message -->
   {#if loadError}
-    <div class="text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
+    <div class="rounded border border-red-400/20 bg-red-500/10 px-2 py-1 text-xs text-red-300">
       {t('wallpaper_error')}
     </div>
   {/if}
 
   <!-- Stats -->
-  <div class="flex items-center justify-between text-xs text-gray-500 pt-1 border-t border-gray-200">
+  <div class="flex items-center justify-between border-t border-zinc-700 pt-1 text-xs text-zinc-400">
     <span>{t('wallpaper_stats', String(activeCategoryWallpapers.length))}</span>
     <span>{t('wallpaper_total', String(Object.values(WALLPAPER_CATEGORIES).reduce((t, c) => t + c.wallpapers.length, 0)))}</span>
   </div>

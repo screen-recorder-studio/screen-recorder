@@ -38,24 +38,24 @@
 </script>
 
 <!-- Video border radius configuration control -->
-<div class="p-4 border border-gray-200 rounded-lg bg-white">
+<div class="studio-panel-card p-4">
   <div class="flex items-center gap-2 mb-4">
-    <SlidersHorizontal class="w-4 h-4 text-gray-600" />
-    <h3 class="text-sm font-semibold text-gray-700">{t('radius_title')}</h3>
+    <SlidersHorizontal class="h-4 w-4 text-zinc-400" />
+    <h3 class="studio-section-heading">{t('radius_title')}</h3>
   </div>
 
   <!-- Slider control -->
   <div class="flex items-center gap-3 mb-4">
     <input
       type="range"
-      class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
+      class="slider-thumb h-1.5 flex-1 cursor-pointer appearance-none rounded-lg bg-zinc-700"
       min="0"
       max="100"
       step="2"
       value={currentRadius}
       oninput={handleSliderChange}
     />
-    <div class="min-w-[50px] text-center text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded">
+    <div class="min-w-[50px] rounded-md border border-blue-400/20 bg-blue-500/10 px-2 py-1 text-center text-xs font-semibold text-blue-300">
       {currentRadius}px
     </div>
   </div>
@@ -76,12 +76,13 @@
         class:border-blue-500={isPresetSelected(preset.value)}
         class:bg-blue-500={isPresetSelected(preset.value)}
         class:text-white={isPresetSelected(preset.value)}
-        class:border-gray-300={!isPresetSelected(preset.value)}
-        class:bg-white={!isPresetSelected(preset.value)}
-        class:text-gray-700={!isPresetSelected(preset.value)}
+        class:border-zinc-700={!isPresetSelected(preset.value)}
+        class:bg-zinc-900={!isPresetSelected(preset.value)}
+        class:text-zinc-400={!isPresetSelected(preset.value)}
         class:hover:border-blue-400={!isPresetSelected(preset.value)}
-        class:hover:bg-blue-50={!isPresetSelected(preset.value)}
+        class:hover:bg-blue-950={!isPresetSelected(preset.value)}
         onclick={() => handlePresetSelect(preset)}
+        aria-pressed={isPresetSelected(preset.value)}
         title="{label} ({preset.value}px)"
       >
         <IconComponent class="w-3 h-3" />

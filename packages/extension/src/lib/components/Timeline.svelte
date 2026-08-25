@@ -1289,12 +1289,12 @@
     position: relative;
     width: 100%;
     padding: var(--timeline-content-inset);
-    background: linear-gradient(to bottom, #1f2937, #111827); /* 深色渐变背景 */
+    background: linear-gradient(to bottom, #18181b, #09090b);
+    border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 0.5rem;
     box-shadow:
-      0 4px 6px -1px rgba(0, 0, 0, 0.3),
-      0 2px 4px -1px rgba(0, 0, 0, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05); /* 内部高光 */
+      0 12px 28px -12px rgba(0, 0, 0, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.035);
   }
 
   /* ========== 主时间轴区域 ========== */
@@ -1322,7 +1322,7 @@
   /* 主要刻度 */
   .marker.major {
     height: 0.5rem; /* h-2 */
-    border-left: 2px solid #9ca3af; /* 浅灰色，在深色背景下清晰 */
+    border-left: 2px solid #71717a;
   }
 
   .marker-label {
@@ -1335,7 +1335,7 @@
     font-size: 0.75rem; /* text-xs */
     font-family: ui-monospace, monospace; /* font-mono */
     font-weight: 500;
-    color: #d1d5db; /* 浅灰色文字，在深色背景下清晰 */
+    color: #a1a1aa;
     white-space: nowrap;
   }
 
@@ -1355,7 +1355,7 @@
   /* 次要刻度 */
   .marker:not(.major) {
     height: 0.25rem; /* h-1 */
-    border-left: 1px solid #6b7280; /* 中灰色 */
+    border-left: 1px solid #52525b;
   }
 
   /* ========== 时间轴轨道 ========== */
@@ -1363,8 +1363,8 @@
     position: relative;
     width: 100%;
     height: 2.25rem; /* Matched to zoom-mini-timeline height */
-    background: linear-gradient(to bottom, #374151, #1f2937);
-    border: 1px solid #4b5563;
+    background: linear-gradient(to bottom, #27272a, #18181b);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 0.375rem;
     cursor: pointer;
     overflow: visible;
@@ -1375,8 +1375,8 @@
   }
 
   .timeline-track:hover {
-    border-color: #6b7280;
-    background: linear-gradient(to bottom, #3f4a5a, #252f3f);
+    border-color: rgba(255, 255, 255, 0.18);
+    background: linear-gradient(to bottom, #3f3f46, #27272a);
     box-shadow:
       inset 0 2px 4px rgba(0, 0, 0, 0.4),
       inset 0 1px 0 rgba(255, 255, 255, 0.08);
@@ -1387,7 +1387,7 @@
     justify-content: flex-end;
     gap: 0.75rem;
     margin-top: 0.5rem;
-    color: #d1d5db;
+    color: #d4d4d8;
     font-size: 0.75rem;
   }
 
@@ -1399,11 +1399,11 @@
 
   .trim-value-controls input {
     width: 5.5rem;
-    border: 1px solid #4b5563;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 0.375rem;
-    background: #111827;
+    background: #09090b;
     padding: 0.25rem 0.4rem;
-    color: #f9fafb;
+    color: #f4f4f5;
     font-variant-numeric: tabular-nums;
   }
 
@@ -1522,8 +1522,8 @@
     position: relative;
     width: 100%;
     height: 2.25rem; /* Reduced height from 3rem */
-    background: linear-gradient(to bottom, #374151, #1f2937);
-    border: 1px solid #4b5563;
+    background: linear-gradient(to bottom, #27272a, #18181b);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 0.375rem;
     box-shadow:
       inset 0 2px 4px rgba(0, 0, 0, 0.3),
@@ -1534,7 +1534,7 @@
   .zoom-full-range {
     position: absolute;
     inset: 0;
-    background: linear-gradient(to bottom, #1f2937, #111827);
+    background: linear-gradient(to bottom, #18181b, #09090b);
     opacity: 0.5;
     border-radius: 0.375rem;
   }
@@ -1766,7 +1766,7 @@
     left: 50%;
     transform: translateX(-50%);
     padding: 0.375rem 0.625rem;
-    background: linear-gradient(135deg, #1f2937, #111827);
+    background: linear-gradient(135deg, #27272a, #09090b);
     color: white;
     font-size: 0.75rem;
     font-family: ui-monospace, monospace;
@@ -1797,7 +1797,7 @@
     left: 50%;
     transform: translateX(-50%);
     border: 4px solid transparent;
-    border-top-color: #111827;
+    border-top-color: #09090b;
   }
 
   /* ========== 动画 ========== */

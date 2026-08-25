@@ -71,34 +71,37 @@
 
 </script>
 
-<div class="p-4 border border-gray-200 rounded-lg bg-white flex flex-col gap-4">
+<div class="studio-panel-card flex flex-col gap-4 p-4">
   <!-- Header and Tab navigation -->
   <div class="flex flex-col gap-3">
     <div class="flex items-center gap-2">
-      <PaintBucket class="w-4 h-4 text-gray-600" />
-      <h3 class="text-sm font-semibold text-gray-700">{t('bg_title')}</h3>
+      <PaintBucket class="h-4 w-4 text-zinc-400" />
+      <h3 class="studio-section-heading">{t('bg_title')}</h3>
     </div>
-    <div class="flex bg-gray-100 rounded-md p-0.5 gap-0.5" role="tablist">
+    <div class="studio-segmented flex gap-0.5 p-1" role="tablist">
       {#each tabOptions as tab}
+        {@const tabLabel = t(
+          tab.value === 'wallpaper' ? 'bg_tab_wallpaper' :
+          tab.value === 'gradient' ? 'bg_tab_gradient' :
+          tab.value === 'solid-color' ? 'bg_tab_solid' :
+          'bg_tab_image'
+        )}
         <button
-          class="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-xs font-medium transition-all
+          class="flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded px-2 py-1.5 text-xs font-medium transition-all
             {activeTab === tab.value 
-              ? 'bg-white text-blue-600 shadow-sm' 
-              : 'text-gray-600 hover:bg-gray-200 hover:text-gray-700'}"
+              ? 'bg-zinc-700 text-blue-300 shadow-sm ring-1 ring-white/10'
+              : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'}"
           onclick={() => switchTab(tab.value)}
           onkeydown={handleTabKeydown}
           type="button"
           role="tab"
           aria-selected={activeTab === tab.value}
+          aria-label={tabLabel}
+          title={tabLabel}
           tabindex={activeTab === tab.value ? 0 : -1}
         >
           <tab.icon class="w-3.5 h-3.5" />
-          <span>{t(
-            tab.value === 'wallpaper' ? 'bg_tab_wallpaper' :
-            tab.value === 'gradient' ? 'bg_tab_gradient' :
-            tab.value === 'solid-color' ? 'bg_tab_solid' :
-            'bg_tab_image'
-          )}</span>
+          <span class={activeTab === tab.value ? '' : 'sr-only'}>{tabLabel}</span>
         </button>
       {/each}
     </div>

@@ -37,24 +37,24 @@
 </script>
 
 <!-- Padding configuration control -->
-<div class="p-4 border border-gray-200 rounded-lg bg-white">
+<div class="studio-panel-card p-4">
   <div class="flex items-center gap-2 mb-4">
-    <SlidersHorizontal class="w-4 h-4 text-gray-600" />
-    <h3 class="text-sm font-semibold text-gray-700">{t('padding_title')}</h3>
+    <SlidersHorizontal class="h-4 w-4 text-zinc-400" />
+    <h3 class="studio-section-heading">{t('padding_title')}</h3>
   </div>
 
   <!-- Slider control -->
   <div class="flex items-center gap-3 mb-4">
     <input
       type="range"
-      class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
+      class="slider-thumb h-1.5 flex-1 cursor-pointer appearance-none rounded-lg bg-zinc-700"
       min="0"
       max="200"
       step="5"
       value={currentPadding}
       oninput={handleSliderChange}
     />
-    <div class="min-w-[60px] text-center text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
+    <div class="min-w-[60px] rounded-md border border-blue-400/20 bg-blue-500/10 px-2 py-1 text-center text-xs font-semibold text-blue-300">
       {currentPadding}px
     </div>
   </div>
@@ -72,15 +72,16 @@
       )}
       <button
         class="flex items-center gap-1.5 px-3 py-2 text-xs border rounded-md cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50"
-        class:border-emerald-500={isPresetSelected(preset.value)}
-        class:bg-emerald-500={isPresetSelected(preset.value)}
+        class:border-blue-500={isPresetSelected(preset.value)}
+        class:bg-blue-500={isPresetSelected(preset.value)}
         class:text-white={isPresetSelected(preset.value)}
-        class:border-gray-300={!isPresetSelected(preset.value)}
-        class:bg-white={!isPresetSelected(preset.value)}
-        class:text-gray-700={!isPresetSelected(preset.value)}
-        class:hover:border-emerald-400={!isPresetSelected(preset.value)}
-        class:hover:bg-emerald-50={!isPresetSelected(preset.value)}
+        class:border-zinc-700={!isPresetSelected(preset.value)}
+        class:bg-zinc-900={!isPresetSelected(preset.value)}
+        class:text-zinc-400={!isPresetSelected(preset.value)}
+        class:hover:border-blue-400={!isPresetSelected(preset.value)}
+        class:hover:bg-blue-950={!isPresetSelected(preset.value)}
         onclick={() => handlePresetSelect(preset)}
+        aria-pressed={isPresetSelected(preset.value)}
         title="{label} ({preset.value}px)"
       >
         <IconComponent class="w-3 h-3" />
@@ -91,12 +92,12 @@
 </div>
 
 <style>
-  /* Custom slider styles - using green theme */
+  /* Shared Studio blue accent */
   .slider-thumb::-webkit-slider-thumb {
     appearance: none;
     width: 20px;
     height: 20px;
-    background: #10b981;
+    background: #3b82f6;
     border-radius: 50%;
     cursor: pointer;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -104,14 +105,14 @@
   }
 
   .slider-thumb::-webkit-slider-thumb:hover {
-    background: #059669;
+    background: #2563eb;
     transform: scale(1.1);
   }
 
   .slider-thumb::-moz-range-thumb {
     width: 20px;
     height: 20px;
-    background: #10b981;
+    background: #3b82f6;
     border-radius: 50%;
     cursor: pointer;
     border: none;
@@ -120,7 +121,7 @@
   }
 
   .slider-thumb::-moz-range-thumb:hover {
-    background: #059669;
+    background: #2563eb;
     transform: scale(1.1);
   }
 </style>

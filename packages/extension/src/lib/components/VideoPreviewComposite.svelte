@@ -2778,14 +2778,14 @@
 </script>
 
 <!-- Video preview container - optimized for full height layout -->
-<div class="flex flex-col h-full bg-gray-900 rounded-lg overflow-hidden {className}">
+<div class="flex h-full flex-col overflow-hidden bg-zinc-950 {className}">
   
   <!-- 🔧 普通预览模式区域 - 包含 Canvas 和时间轴 -->
   <!-- 在裁剪模式下整体隐藏，避免布局混乱 -->
   <div class:hidden={isCropMode || isFocusMode} class="flex-1 flex flex-col min-h-0">
     <!-- Canvas display area - takes remaining space -->
-    <div class="flex-1 flex items-center justify-center p-0 min-h-0">
-      <div class="relative bg-black flex items-center justify-center rounded overflow-hidden" style="width: {previewWidth}px; height: {previewHeight}px;">
+    <div class="flex min-h-0 flex-1 items-center justify-center bg-[radial-gradient(circle_at_center,rgba(63,63,70,0.35),transparent_68%)] p-4">
+      <div class="relative flex items-center justify-center overflow-hidden rounded-lg bg-black shadow-[0_24px_70px_rgba(0,0,0,0.45)] ring-1 ring-white/10" style="width: {previewWidth}px; height: {previewHeight}px;">
         <canvas
           bind:this={canvas}
           class="block rounded transition-opacity duration-300"
@@ -2812,7 +2812,7 @@
 
     <!-- Time axis with controls - using new Timeline component -->
     {#if showTimeline && timelineMaxMs > 0}
-    <div class="flex-shrink-0 px-6 py-3 bg-gray-800">
+    <div class="flex-shrink-0 border-t border-zinc-700 bg-zinc-900 px-6 py-3">
       <!-- 控制按钮和信息 - 三栏布局 -->
       <div class="flex justify-between items-center mb-3">
         <!-- 左侧：裁剪按钮和裁剪信息 -->
@@ -2824,11 +2824,11 @@
             class:border-blue-600={trimStore.enabled}
             class:text-white={trimStore.enabled}
             class:hover:bg-blue-600={trimStore.enabled}
-            class:bg-gray-700={!trimStore.enabled}
-            class:border-gray-600={!trimStore.enabled}
-            class:text-gray-200={!trimStore.enabled}
-            class:hover:bg-gray-600={!trimStore.enabled}
-            class:hover:border-gray-500={!trimStore.enabled}
+            class:bg-zinc-800={!trimStore.enabled}
+            class:border-zinc-700={!trimStore.enabled}
+            class:text-zinc-300={!trimStore.enabled}
+            class:hover:bg-zinc-700={!trimStore.enabled}
+            class:hover:border-zinc-600={!trimStore.enabled}
             onclick={() => trimStore.toggle()}
             disabled={isProcessing}
             title={trimStore.enabled ? 'Disable trim' : 'Enable trim'}
@@ -2846,7 +2846,7 @@
         </div>
 
         <!-- 中间：播放按钮 + 时间显示 - 带圆角矩形背景（毛玻璃效果） -->
-        <div class="flex items-center gap-3 flex-shrink-0 px-4 py-2 bg-gray-700/90 rounded-full border border-gray-500/50 shadow-lg backdrop-blur-lg">
+        <div class="flex flex-shrink-0 items-center gap-3 rounded-full border border-zinc-500 bg-zinc-950/80 px-4 py-2 shadow-lg backdrop-blur-lg">
           <!-- 播放/暂停按钮 -->
           <button
             class="flex items-center justify-center w-9 h-9 bg-blue-600 hover:bg-blue-500 text-white rounded-full shadow-md cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-600 hover:scale-105"
@@ -2862,18 +2862,18 @@
           </button>
 
           <!-- 时间显示 -->
-          <span class="font-mono text-sm text-gray-200 whitespace-nowrap tracking-tight">
-            {formatTimeSec(currentTimeMs / 1000)} <span class="text-gray-500">/</span> {formatTimeSec(uiDurationSec)}
+          <span class="whitespace-nowrap font-mono text-sm tracking-tight text-zinc-200">
+            {formatTimeSec(currentTimeMs / 1000)} <span class="text-zinc-400">/</span> {formatTimeSec(uiDurationSec)}
           </span>
         </div>
 
         <!-- 右侧：帧信息、分辨率和 Crop 按钮 -->
-        <div class="flex items-center justify-end gap-4 text-xs text-gray-400 flex-1">
+        <div class="flex flex-1 items-center justify-end gap-4 text-xs text-zinc-400">
           <span>Frame: {currentFrameNumber}/{totalFramesAll > 0 ? totalFramesAll : (totalFrames > 0 ? totalFrames : encodedChunks.length)}</span>
           <span>Resolution: {outputWidth}×{outputHeight}</span>
           <!-- Add Zoom 按钮 -->
           <button
-            class="flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600 hover:border-gray-500"
+            class="flex items-center justify-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 shadow-sm transition-all duration-200 hover:border-zinc-600 hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
             onclick={() => handleZoomChange(currentTimeMs, Math.min(currentTimeMs + 1500, timelineMaxMs))}
             disabled={isProcessing}
             title="Add zoom effect at current time"
@@ -2889,11 +2889,11 @@
             class:border-blue-600={videoCropStore.enabled}
             class:text-white={videoCropStore.enabled}
             class:hover:bg-blue-600={videoCropStore.enabled}
-            class:bg-gray-700={!videoCropStore.enabled}
-            class:border-gray-600={!videoCropStore.enabled}
-            class:text-gray-200={!videoCropStore.enabled}
-            class:hover:bg-gray-600={!videoCropStore.enabled}
-            class:hover:border-gray-500={!videoCropStore.enabled}
+            class:bg-zinc-800={!videoCropStore.enabled}
+            class:border-zinc-700={!videoCropStore.enabled}
+            class:text-zinc-300={!videoCropStore.enabled}
+            class:hover:bg-zinc-700={!videoCropStore.enabled}
+            class:hover:border-zinc-600={!videoCropStore.enabled}
             onclick={enterCropMode}
             disabled={isProcessing || !hasEverProcessed}
             title={videoCropStore.enabled ? 'Click to adjust crop area' : 'Crop video'}

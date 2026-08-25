@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'vitest'
-import { withOpfsExportTarget } from './export-target'
+import { createExportFilename, withOpfsExportTarget } from './export-target'
+
+describe('createExportFilename', () => {
+  it('uses a GIF-specific, user-facing filename for GIF delivery', () => {
+    expect(createExportFilename('gif', () => '2026-08-01T12-00-00-000Z')).toBe(
+      'screen-recording-gif-2026-08-01T12-00-00-000Z.gif'
+    )
+  })
+
+  it.each(['mp4', 'webm'] as const)('keeps the edited-video filename for %s', (format) => {
+    expect(createExportFilename(format, () => '2026-08-01T12-00-00-000Z')).toBe(
+      `edited-video-2026-08-01T12-00-00-000Z.${format}`
+    )
+  })
+})
 
 describe('withOpfsExportTarget', () => {
   it.each(['mp4', 'webm'] as const)('enables OPFS streaming for %s when a recording directory exists', (format) => {

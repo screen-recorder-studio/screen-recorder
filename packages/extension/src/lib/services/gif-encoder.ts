@@ -97,23 +97,12 @@ export class GifEncoder {
       throw new Error('GIF encoder not initialized')
     }
 
-    // 创建临时 canvas 来承载 ImageData
-    const canvas = document.createElement('canvas')
-    canvas.width = imageData.width
-    canvas.height = imageData.height
-    const ctx = canvas.getContext('2d')
-
-    if (!ctx) {
-      throw new Error('Failed to get 2D context')
-    }
-
-    ctx.putImageData(imageData, 0, 0)
-
-    // 添加到 GIF
-    this.gif.addFrame(canvas, {
+    // gif.js accepts ImageData directly. Keeping the transferred buffer avoids
+    // a temporary DOM canvas and an additional full-frame RGBA copy.
+    this.gif.addFrame(imageData, {
       delay,
       dispose: dispose ?? -1,
-      copy: true
+      copy: false
     })
 
   }
@@ -217,4 +206,3 @@ export async function handleGifEncodeRequest(
     encoder.cleanup()
   }
 }
-

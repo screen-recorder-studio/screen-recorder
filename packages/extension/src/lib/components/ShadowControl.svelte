@@ -128,11 +128,11 @@
 </script>
 
 <!-- Video shadow configuration control -->
-<div class="p-4 border border-gray-200 rounded-lg bg-white">
+<div class="studio-panel-card p-4">
   <div class="flex justify-between items-center mb-4">
     <div class="flex items-center gap-2">
-      <Zap class="w-4 h-4 text-gray-600" />
-      <h3 class="text-sm font-semibold text-gray-700">{t('shadow_title')}</h3>
+      <Zap class="h-4 w-4 text-zinc-400" />
+      <h3 class="studio-section-heading">{t('shadow_title')}</h3>
     </div>
     <label class="relative inline-block w-11 h-6">
       <input
@@ -141,8 +141,8 @@
         checked={isEnabled}
         onchange={toggleShadow}
       />
-      <span class="absolute cursor-pointer top-0 left-0 right-0 bottom-0 bg-gray-300 transition-all duration-300 rounded-full before:absolute before:content-[''] before:h-4 before:w-4 before:left-1 before:bottom-1 before:bg-white before:transition-all before:duration-300 before:rounded-full"
-            class:bg-amber-500={isEnabled}
+      <span class="absolute bottom-0 left-0 right-0 top-0 cursor-pointer rounded-full bg-zinc-700 transition-all duration-300 before:absolute before:bottom-1 before:left-1 before:h-4 before:w-4 before:rounded-full before:bg-white before:content-[''] before:transition-all before:duration-300"
+            class:bg-blue-500={isEnabled}
             class:before:translate-x-5={isEnabled}></span>
     </label>
   </div>
@@ -150,7 +150,7 @@
   {#if isEnabled}
     <!-- Preset shadow selection -->
     <div class="mb-4">
-      <h4 class="text-xs font-semibold text-gray-600 mb-3">{t('shadow_preset_title')}</h4>
+      <h4 class="mb-3 text-xs font-semibold text-zinc-400">{t('shadow_preset_title')}</h4>
       <div class="grid grid-cols-2 gap-2">
         {#each SHADOW_PRESETS as preset}
           {@const IconComponent = preset.icon}
@@ -161,21 +161,21 @@
             'shadow_distant'
           )}
           <button
-            class="flex flex-col items-center gap-2 p-3 border border-gray-300 rounded-md bg-white cursor-pointer transition-all duration-200 hover:border-amber-400 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-opacity-50"
+            class="flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-zinc-500 bg-zinc-900 p-3 transition-all duration-200 hover:border-blue-400 hover:bg-blue-500/10 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
             onclick={() => applyPreset(preset)}
             title={label}
           >
-            <div class="w-10 h-6 bg-gray-100 rounded flex items-center justify-center">
+            <div class="flex h-6 w-10 items-center justify-center rounded bg-zinc-800">
               <div
-                class="w-6 h-4 bg-amber-500 rounded-sm"
+                class="h-4 w-6 rounded-sm bg-blue-500"
                 style="
                   box-shadow: {preset.offsetX}px {preset.offsetY}px {preset.blur}px {hexToRgba(preset.color, preset.opacity)};
                 "
               ></div>
             </div>
             <div class="flex items-center gap-1">
-              <IconComponent class="w-3 h-3 text-gray-600" />
-              <span class="text-xs text-gray-700 font-medium">{label}</span>
+              <IconComponent class="h-3 w-3 text-zinc-400" />
+              <span class="text-xs font-medium text-zinc-300">{label}</span>
             </div>
           </button>
         {/each}
@@ -184,18 +184,18 @@
 
     <!-- Custom parameters -->
     <div class="mb-4">
-      <h4 class="text-xs font-semibold text-gray-600 mb-3">{t('shadow_custom_title')}</h4>
+      <h4 class="mb-3 text-xs font-semibold text-zinc-400">{t('shadow_custom_title')}</h4>
 
       <!-- X offset -->
       <div class="mb-3">
         <div class="flex items-center gap-2 mb-1">
-          <Move class="w-3 h-3 text-gray-600" />
-          <label class="text-xs text-gray-700 font-medium" for="shadow-offset-x">{t('shadow_offset_x')}: {offsetX}px</label>
+          <Move class="h-3 w-3 text-zinc-400" />
+          <label class="text-xs font-medium text-zinc-400" for="shadow-offset-x">{t('shadow_offset_x')}: {offsetX}px</label>
         </div>
         <input
           id="shadow-offset-x"
           type="range"
-          class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
+          class="slider-thumb h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-zinc-700"
           min="-20"
           max="20"
           step="1"
@@ -207,13 +207,13 @@
       <!-- Y offset -->
       <div class="mb-3">
         <div class="flex items-center gap-2 mb-1">
-          <Move class="w-3 h-3 text-gray-600 rotate-90" />
-          <label class="text-xs text-gray-700 font-medium" for="shadow-offset-y">{t('shadow_offset_y')}: {offsetY}px</label>
+          <Move class="h-3 w-3 rotate-90 text-zinc-400" />
+          <label class="text-xs font-medium text-zinc-400" for="shadow-offset-y">{t('shadow_offset_y')}: {offsetY}px</label>
         </div>
         <input
           id="shadow-offset-y"
           type="range"
-          class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
+          class="slider-thumb h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-zinc-700"
           min="-20"
           max="20"
           step="1"
@@ -225,13 +225,13 @@
       <!-- Blur radius -->
       <div class="mb-3">
         <div class="flex items-center gap-2 mb-1">
-          <Focus class="w-3 h-3 text-gray-600" />
-          <label class="text-xs text-gray-700 font-medium" for="shadow-blur">{t('shadow_blur')}: {blur}px</label>
+          <Focus class="h-3 w-3 text-zinc-400" />
+          <label class="text-xs font-medium text-zinc-400" for="shadow-blur">{t('shadow_blur')}: {blur}px</label>
         </div>
         <input
           id="shadow-blur"
           type="range"
-          class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
+          class="slider-thumb h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-zinc-700"
           min="0"
           max="40"
           step="1"
@@ -244,23 +244,23 @@
       <div class="flex gap-3">
         <div class="flex-1">
           <div class="flex items-center gap-2 mb-1">
-            <Palette class="w-3 h-3 text-gray-600" />
-            <label class="text-xs text-gray-700 font-medium" for="shadow-color">{t('shadow_color')}</label>
+            <Palette class="h-3 w-3 text-zinc-400" />
+            <label class="text-xs font-medium text-zinc-400" for="shadow-color">{t('shadow_color')}</label>
           </div>
           <input
             id="shadow-color"
             type="color"
-            class="w-full h-8 border border-gray-300 rounded cursor-pointer"
+            class="h-8 w-full cursor-pointer rounded border border-zinc-500 bg-zinc-950"
             bind:value={color}
             oninput={handleParameterChange}
           />
         </div>
         <div class="flex-2">
-          <label class="text-xs text-gray-700 font-medium block mb-1" for="shadow-opacity">{t('shadow_opacity')}: {Math.round(opacity * 100)}%</label>
+          <label class="mb-1 block text-xs font-medium text-zinc-400" for="shadow-opacity">{t('shadow_opacity')}: {Math.round(opacity * 100)}%</label>
           <input
             id="shadow-opacity"
             type="range"
-            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
+            class="slider-thumb h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-zinc-700"
             min="0"
             max="1"
             step="0.05"
@@ -271,19 +271,19 @@
       </div>
     </div>
   {:else}
-    <div class="text-center text-gray-600 text-xs p-6 bg-gray-50 rounded-md">
+    <div class="rounded-lg border border-dashed border-zinc-700 bg-zinc-950/40 p-6 text-center text-xs text-zinc-400">
       {t('shadow_empty_state')}
     </div>
   {/if}
 </div>
 
 <style>
-  /* Custom slider styles - using orange theme */
+  /* Shared Studio blue accent */
   .slider-thumb::-webkit-slider-thumb {
     appearance: none;
     width: 18px;
     height: 18px;
-    background: #f59e0b;
+    background: #3b82f6;
     border-radius: 50%;
     cursor: pointer;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -291,14 +291,14 @@
   }
 
   .slider-thumb::-webkit-slider-thumb:hover {
-    background: #d97706;
+    background: #2563eb;
     transform: scale(1.1);
   }
 
   .slider-thumb::-moz-range-thumb {
     width: 18px;
     height: 18px;
-    background: #f59e0b;
+    background: #3b82f6;
     border-radius: 50%;
     cursor: pointer;
     border: none;
@@ -307,7 +307,7 @@
   }
 
   .slider-thumb::-moz-range-thumb:hover {
-    background: #d97706;
+    background: #2563eb;
     transform: scale(1.1);
   }
 </style>

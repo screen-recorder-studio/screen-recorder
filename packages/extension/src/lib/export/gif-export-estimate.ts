@@ -11,6 +11,13 @@ export interface GifSizeEstimateRange {
   maxBytes: number
 }
 
+export interface GifPresentationFrameEstimateInput {
+  durationSeconds: number
+  targetFps: number
+  sourceFrameCount: number
+  hasTimeVaryingEffects: boolean
+}
+
 // GIF size depends heavily on pixel changes and palette reuse. Two production
 // exports of the quality test card measured 0.142 and 0.445 bytes/pixel/frame,
 // so a range is materially more honest than the former 0.011 point estimate.
@@ -41,4 +48,25 @@ export function estimateGifSizeRange(input: GifSizeEstimateInput): GifSizeEstima
     minBytes: Math.round(pixelFrames * MIN_BYTES_PER_PIXEL_FRAME * multiplier),
     maxBytes: Math.round(pixelFrames * MAX_BYTES_PER_PIXEL_FRAME * multiplier)
   }
+}
+
+/**
+ * The exporter collapses adjacent presentation samples that reference the
+ * same source frame unless an edit (for example an animated zoom) changes
+ * during that hold. Keep the dialog estimate aligned with that schedule.
+ */
+export function estimateGifPresentationFrameCount(input: GifPresentationFrameEstimateInput): number {
+  const durationSeconds = Number.isFinite(input.durationSeconds) && input.durationSeconds > 0
+    ? input.durationSeconds
+    : 0
+  const targetFps = Number.isFinite(input.targetFps) && input.targetFps > 0
+    ? input.targetFps
+    : 0
+  const targetFrameCount = Math.ceil(durationSeconds * targetFps)
+  if (targetFrameCount === 0 || input.hasTimeVaryingEffects) return targetFrameCount
+
+  const sourceFrameCount = positiveInteger(input.sourceFrameCount)
+  return sourceFrameCount > 0
+    ? Math.min(targetFrameCount, sourceFrameCount)
+    : targetFrameCount
 }

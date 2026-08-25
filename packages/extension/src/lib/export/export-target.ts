@@ -1,7 +1,16 @@
 export type StreamableExportFormat = 'mp4' | 'webm'
+export type ExportArtifactFormat = StreamableExportFormat | 'gif'
 
 function defaultTimestamp(): string {
   return new Date().toISOString().replace(/[:.]/g, '-')
+}
+
+export function createExportFilename(
+  format: ExportArtifactFormat,
+  createTimestamp: () => string = defaultTimestamp
+): string {
+  const prefix = format === 'gif' ? 'screen-recording-gif' : 'edited-video'
+  return `${prefix}-${createTimestamp()}.${format}`
 }
 
 export function withOpfsExportTarget<
@@ -17,6 +26,6 @@ export function withOpfsExportTarget<
   return {
     ...options,
     saveToOpfs: true,
-    opfsFileName: `edited-video-${createTimestamp()}.${format}`
+    opfsFileName: createExportFilename(format, createTimestamp)
   }
 }

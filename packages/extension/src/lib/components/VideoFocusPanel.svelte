@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import type { ZoomMode, ZoomEasing } from '$lib/stores/video-zoom.svelte'
+  import { nudgeFocusPoint } from '$lib/studio/focus-point'
 
   interface FocusPoint { x: number; y: number; space?: 'source' | 'layout' }
 
@@ -149,6 +150,21 @@
   function onPointerUp() {
     dragging = false
   }
+
+  function onFocusKeydown(e: KeyboardEvent) {
+    if (!e.key.startsWith('Arrow')) return
+    e.preventDefault()
+    const next = nudgeFocusPoint(focus, e.key, e.shiftKey)
+    focus.x = next.x
+    focus.y = next.y
+  }
+
+  function setFocusAxis(axis: 'x' | 'y', e: Event) {
+    const input = e.currentTarget as HTMLInputElement
+    const percentage = Number(input.value)
+    if (!Number.isFinite(percentage)) return
+    focus[axis] = clamp01(percentage / 100)
+  }
   function onStagePointerDown(e: PointerEvent) {
     // 允许点击舞台任意位置放置/移动焦点，解决在某些情况下初始焦点未显示导致无法拖拽的问题
     const rect = containerEl!.getBoundingClientRect()
@@ -190,7 +206,8 @@
     position: relative;
     flex: 1;
     min-height: 240px;
-    background: #0b1220;
+    background: #09090b;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 0.5rem;
     overflow: hidden;
   }
@@ -207,8 +224,8 @@
   }
   .focus-dot {
     position: absolute;
-    width: 24px;
-    height: 24px;
+    width: 32px;
+    height: 32px;
     border-radius: 999px;
     background: rgba(59, 130, 246, 0.08);
     border: 2px solid rgba(59, 130, 246, 0.95);
@@ -216,6 +233,10 @@
     transform: translate(-50%, -50%);
     cursor: grab;
     touch-action: none;
+  }
+  .focus-dot:focus-visible {
+    outline: 2px solid white;
+    outline-offset: 3px;
   }
   .focus-dot .cross {
     position: absolute;
@@ -254,9 +275,9 @@
     gap: 0.5rem;
     margin-top: 0.75rem;
     padding: 0.75rem;
-    background: #111827;
+    background: #18181b;
     border-radius: 0.5rem;
-    border: 1px solid #374151;
+    border: 1px solid rgba(255, 255, 255, 0.08);
   }
   .toolbar-row {
     display: flex;
@@ -268,7 +289,7 @@
     justify-content: space-between;
     margin-top: 0.25rem;
     padding-top: 0.5rem;
-    border-top: 1px solid #374151;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
   }
   .toolbar-buttons {
     display: flex;
@@ -280,7 +301,7 @@
     gap: 0.375rem;
   }
   .mode-hint {
-    color: #9ca3af;
+    color: #a1a1aa;
     font-size: 0.75rem;
     font-style: italic;
   }
@@ -293,10 +314,13 @@
     font-size: 0.875rem;
   }
   .btn-confirm { background: #2563eb; }
-  .btn-cancel { background: #374151; }
-  .opt-label { color: #9ca3af; font-size: 0.75rem; white-space: nowrap; }
-  .opt-select { background:#1f2937; color:#e5e7eb; border:1px solid #4b5563; border-radius:0.375rem; padding:0.25rem 0.5rem; font-size: 0.875rem; }
+  .btn-cancel { background: #3f3f46; }
+  .opt-label { color: #a1a1aa; font-size: 0.75rem; white-space: nowrap; }
+  .opt-select,
+  .coordinate-input { background:#09090b; color:#e4e4e7; border:1px solid #71717a; border-radius:0.5rem; padding:0.25rem 0.5rem; font-size: 0.875rem; }
   .opt-select:focus { outline: none; border-color: #3b82f6; }
+  .coordinate-input { width: 4.5rem; }
+  .coordinate-input:focus { outline: none; border-color: #60a5fa; box-shadow: 0 0 0 2px rgba(96,165,250,.2); }
 
   .btn:hover { opacity: 0.9 }
 
@@ -311,7 +335,7 @@
     align-items: center;
     gap: 0.25rem;
     font-size: 0.75rem;
-    color: #9ca3af;
+    color: #a1a1aa;
     cursor: pointer;
     user-select: none;
   }
@@ -325,21 +349,30 @@
 </style>
 
 <div class="panel">
-  <div class="stage" bind:this={containerEl} onpointerdown={onStagePointerDown} onpointermove={onPointerMove} onpointerup={onPointerUp}>
+  <div
+    class="stage"
+    bind:this={containerEl}
+    role="group"
+    aria-label="Focus point preview. Use the focus point button or X and Y fields for keyboard adjustment."
+    onpointerdown={onStagePointerDown}
+    onpointermove={onPointerMove}
+    onpointerup={onPointerUp}
+  >
     <div class="canvas-wrap" style={`width:${display.width}px;height:${display.height}px;left:${offset.x}px;top:${offset.y}px`}>
       <canvas bind:this={canvasEl}></canvas>
 
       {#if frameBitmap}
-        {#key `${focus.x}-${focus.y}-${display.width}-${display.height}-${offset.x}-${offset.y}`}
-          <div
-            class="focus-dot"
-            style={`left:${focus.x * display.width}px;top:${focus.y * display.height}px`}
-            onpointerdown={onPointerDown}
-            title={`(${focus.x.toFixed(3)}, ${focus.y.toFixed(3)})`}
-          >
-            <div class="cross"></div>
-          </div>
-        {/key}
+        <button
+          type="button"
+          class="focus-dot"
+          style={`left:${focus.x * display.width}px;top:${focus.y * display.height}px`}
+          onpointerdown={onPointerDown}
+          onkeydown={onFocusKeydown}
+          aria-label={`Focus point, X ${Math.round(focus.x * 100)} percent, Y ${Math.round(focus.y * 100)} percent. Use arrow keys to adjust; hold Shift for larger steps.`}
+          title={`(${focus.x.toFixed(3)}, ${focus.y.toFixed(3)})`}
+        >
+          <span class="cross" aria-hidden="true"></span>
+        </button>
       {/if}
     </div>
 
@@ -356,6 +389,34 @@
             <option value={opt.value}>{opt.label}</option>
           {/each}
         </select>
+      </div>
+
+      <div class="opt-group">
+        <label class="opt-label" for="focus-x-input">X %</label>
+        <input
+          id="focus-x-input"
+          class="coordinate-input"
+          type="number"
+          min="0"
+          max="100"
+          step="1"
+          value={Math.round(focus.x * 100)}
+          oninput={(event) => setFocusAxis('x', event)}
+        />
+      </div>
+
+      <div class="opt-group">
+        <label class="opt-label" for="focus-y-input">Y %</label>
+        <input
+          id="focus-y-input"
+          class="coordinate-input"
+          type="number"
+          min="0"
+          max="100"
+          step="1"
+          value={Math.round(focus.y * 100)}
+          oninput={(event) => setFocusAxis('y', event)}
+        />
       </div>
 
       <div class="opt-group">
@@ -409,4 +470,3 @@
     </div>
   </div>
 </div>
-

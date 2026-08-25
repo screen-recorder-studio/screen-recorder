@@ -76,7 +76,7 @@
   <!-- Upload area -->
   <div
     class="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors
-      {isUploading ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'}"
+      {isUploading ? 'border-blue-400 bg-blue-500/10' : 'border-zinc-500 bg-zinc-950/40 hover:border-white/30 hover:bg-white/5'}"
     onclick={triggerFileSelect}
     ondrop={handleDrop}
     ondragover={handleDragOver}
@@ -87,20 +87,20 @@
     {#if isUploading}
       <div class="flex flex-col items-center gap-2">
         <div class="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <span class="text-xs text-blue-600">{t('upload_processing')}</span>
+        <span class="text-xs text-blue-300">{t('upload_processing')}</span>
       </div>
     {:else}
       <div class="flex flex-col items-center gap-2">
-        <Upload class="w-6 h-6 text-gray-400" />
-        <div class="text-xs text-gray-700 font-medium">{t('upload_drop_hint')}</div>
-        <div class="text-xs text-gray-400">{t('upload_format_hint')}</div>
+        <Upload class="h-6 w-6 text-zinc-400" />
+        <div class="text-xs font-medium text-zinc-300">{t('upload_drop_hint')}</div>
+        <div class="text-xs text-zinc-400">{t('upload_format_hint')}</div>
       </div>
     {/if}
   </div>
 
   <!-- Error message -->
   {#if uploadError}
-    <div class="flex items-center gap-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+    <div class="flex items-center gap-2 rounded border border-red-400/20 bg-red-500/10 p-2 text-xs text-red-300">
       <CircleAlert class="w-3.5 h-3.5 flex-shrink-0" />
       <span>{t(uploadError === 'Please select an image file' ? 'upload_error_select' : 'upload_error_failed')}</span>
     </div>
@@ -108,14 +108,14 @@
 
   <!-- Current image preview -->
   {#if currentType === 'image' && currentConfig.image}
-    <div class="flex items-center gap-2 pt-2 border-t border-gray-200">
+    <div class="flex items-center gap-2 border-t border-zinc-700 pt-2">
       <div
-        class="w-12 h-8 border border-gray-300 rounded bg-cover bg-center flex-shrink-0"
+        class="h-8 w-12 flex-shrink-0 rounded border border-zinc-500 bg-cover bg-center"
         style="background-image: url({backgroundConfigStore.getCurrentBackgroundStyle().replace('url(', '').replace(')', '')});"
       ></div>
-      <div class="flex-1 text-xs text-gray-600 truncate">
+      <div class="flex-1 truncate text-xs text-zinc-400">
         <div>ID: {currentConfig.image.imageId}</div>
-        <div class="text-gray-400">{currentConfig.image.fit} · {currentConfig.image.position}</div>
+        <div class="text-zinc-400">{currentConfig.image.fit} · {currentConfig.image.position}</div>
       </div>
     </div>
   {/if}
