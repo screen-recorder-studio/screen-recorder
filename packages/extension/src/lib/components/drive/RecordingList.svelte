@@ -1,24 +1,11 @@
 <script lang="ts">
-  import { RefreshCw, Trash2, AlertTriangle, Folder } from '@lucide/svelte'
+  import { tick } from 'svelte'
+  import { AlertTriangle, CheckSquare, FolderOpen, RefreshCw, Trash2, Video } from '@lucide/svelte'
   import RecordingCard from './RecordingCard.svelte'
+  import { RECORDING_MANAGER_THEME_CONTRACT, resolveRecordingManagerMode } from '$lib/drive/recording-manager-theme'
   import { _t as t } from '$lib/utils/i18n'
+  import type { RecordingSummary } from '$lib/types/recordings'
 
-  // Recording summary type definition
-  interface RecordingSummary {
-    id: string
-    displayName: string
-    createdAt: number
-    duration: number
-    resolution: string
-    size: number
-    totalChunks: number
-    codec?: string
-    fps?: number
-    thumbnail?: string
-    meta?: any
-  }
-
-  // Props
   interface Props {
     recordings: RecordingSummary[]
     isLoading: boolean
@@ -30,60 +17,76 @@
     onClearError: () => void
   }
 
-  let { 
-    recordings, 
-    isLoading, 
-    errorMessage, 
+  let {
+    recordings,
+    isLoading,
+    errorMessage,
     onStartRecording,
-    onRefresh, 
-    onDeleteRecording, 
+    onRefresh,
+    onDeleteRecording,
     onDeleteSelected,
-    onClearError 
+    onClearError
   }: Props = $props()
 
-  // Local state management
   let selectedRecordings = $state<Set<string>>(new Set())
   let showDeleteConfirm = $state(false)
   let deleteTarget = $state<string | 'selected'>('')
+  let isDeleting = $state(false)
+  let listContentEl = $state<HTMLDivElement | null>(null)
+  let deleteDialogEl = $state<HTMLDivElement | null>(null)
+  let cancelDeleteEl = $state<HTMLButtonElement | null>(null)
+  let deleteTriggerEl: HTMLElement | null = null
 
-  // Toggle selection
+  const managerMode = $derived(resolveRecordingManagerMode(selectedRecordings.size))
+  const allSelected = $derived(recordings.length > 0 && selectedRecordings.size === recordings.length)
+  const partiallySelected = $derived(selectedRecordings.size > 0 && selectedRecordings.size < recordings.length)
+
   function toggleSelection(recordingId: string) {
     if (selectedRecordings.has(recordingId)) {
       selectedRecordings.delete(recordingId)
     } else {
       selectedRecordings.add(recordingId)
     }
-    selectedRecordings = new Set(selectedRecordings) // Trigger reactive update
+    selectedRecordings = new Set(selectedRecordings)
   }
 
-  // Select all/deselect all
   function toggleSelectAll() {
-    if (selectedRecordings.size === recordings.length) {
-      selectedRecordings = new Set()
-    } else {
-      selectedRecordings = new Set(recordings.map(r => r.id))
-    }
+    selectedRecordings = allSelected ? new Set() : new Set(recordings.map((recording) => recording.id))
   }
 
-  // Clear selection
   function clearSelection() {
     selectedRecordings = new Set()
   }
 
-  // Confirm delete
   function confirmDelete(target: string | 'selected') {
+    const activeElement = document.activeElement
+    deleteTriggerEl = activeElement instanceof HTMLElement ? activeElement : null
     deleteTarget = target
     showDeleteConfirm = true
+    void tick().then(() => cancelDeleteEl?.focus())
   }
 
-  // Execute delete
+  function closeDeleteConfirm() {
+    if (isDeleting) return
+    const trigger = deleteTriggerEl
+    showDeleteConfirm = false
+    deleteTarget = ''
+    deleteTriggerEl = null
+    void tick().then(() => {
+      if (trigger?.isConnected) trigger.focus()
+      else listContentEl?.focus()
+    })
+  }
+
   async function executeDelete() {
+    if (!deleteTarget || isDeleting) return
+    isDeleting = true
+
     try {
       if (deleteTarget === 'selected') {
-        const toDelete = Array.from(selectedRecordings)
-        await onDeleteSelected(toDelete)
+        await onDeleteSelected(Array.from(selectedRecordings))
         selectedRecordings = new Set()
-      } else if (typeof deleteTarget === 'string') {
+      } else {
         await onDeleteRecording(deleteTarget)
         selectedRecordings.delete(deleteTarget)
         selectedRecordings = new Set(selectedRecordings)
@@ -91,151 +94,225 @@
     } catch (error) {
       console.error('Delete failed:', error)
     } finally {
+      isDeleting = false
       showDeleteConfirm = false
       deleteTarget = ''
+      deleteTriggerEl = null
+      void tick().then(() => listContentEl?.focus())
     }
   }
 
-  // Clean up invalid selections when recording list changes
+  function handleDeleteDialogKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      closeDeleteConfirm()
+      return
+    }
+
+    if (event.key !== 'Tab' || !deleteDialogEl) return
+    const focusable = Array.from(deleteDialogEl.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), select:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+    ))
+    if (focusable.length === 0) return
+
+    const first = focusable[0]
+    const last = focusable.at(-1)!
+    if (event.shiftKey && (document.activeElement === first || document.activeElement === deleteDialogEl)) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
+  }
+
   $effect(() => {
-    const validIds = new Set(recordings.map(r => r.id))
-    const filteredSelection = new Set([...selectedRecordings].filter(id => validIds.has(id)))
+    const validIds = new Set(recordings.map((recording) => recording.id))
+    const filteredSelection = new Set([...selectedRecordings].filter((id) => validIds.has(id)))
     if (filteredSelection.size !== selectedRecordings.size) {
       selectedRecordings = filteredSelection
     }
   })
-
 </script>
 
-<div class="max-w-6xl mx-auto px-6 py-6">
-  <!-- Action bar -->
-  <div class="mb-6 flex items-center justify-between">
-    <div class="flex items-center gap-3">
+<div
+  bind:this={listContentEl}
+  class="mx-auto px-5 py-6 focus:outline-none sm:py-8"
+  style="max-width: var(--recording-manager-max-width)"
+  data-mode={managerMode}
+  aria-busy={isLoading}
+  aria-hidden={showDeleteConfirm ? 'true' : undefined}
+  inert={showDeleteConfirm}
+  tabindex="-1"
+>
+  <section class="studio-panel-card mb-5 flex min-h-14 flex-wrap items-center justify-between gap-3 px-3 py-2.5 sm:px-4">
+    <div class="flex min-w-0 flex-wrap items-center gap-2.5">
+      {#if recordings.length > 0}
+        <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-zinc-300 transition-colors hover:bg-white/5">
+          <input
+            type="checkbox"
+            checked={allSelected}
+            indeterminate={partiallySelected}
+            onchange={toggleSelectAll}
+            class="h-4 w-4 rounded border-white/20 bg-zinc-950 accent-blue-500"
+          />
+          <span>{t('drive_select_all', String(recordings.length))}</span>
+        </label>
+      {/if}
+
       {#if selectedRecordings.size > 0}
+        <span class="hidden h-5 w-px bg-white/10 sm:block"></span>
+        <span class="inline-flex items-center gap-1.5 rounded-lg border border-blue-400/20 bg-blue-500/10 px-2.5 py-1.5 text-xs font-medium text-blue-200">
+          <CheckSquare class="h-3.5 w-3.5" />
+          {selectedRecordings.size}
+        </span>
         <button
+          type="button"
           onclick={() => confirmDelete('selected')}
           disabled={isLoading}
-          class="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          class="inline-flex items-center gap-1.5 rounded-lg border border-red-400/20 bg-red-500/10 px-2.5 py-1.5 text-xs font-medium text-red-300 transition-colors hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          <Trash2 class="w-4 h-4" />
+          <Trash2 class="h-3.5 w-3.5" />
           {t('drive_delete_selected_btn', String(selectedRecordings.size))}
         </button>
         <button
+          type="button"
           onclick={clearSelection}
-          class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+          class="browser-muted-action px-2.5 py-1.5 text-xs font-medium"
         >
           {t('drive_clear_selection')}
         </button>
       {/if}
     </div>
-    
+
     <button
+      type="button"
       onclick={onRefresh}
       disabled={isLoading}
-      class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      class="browser-muted-action inline-flex items-center gap-2 px-3 py-2 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50"
     >
-      <RefreshCw class="w-4 h-4 {isLoading ? 'animate-spin' : ''}" />
+      <RefreshCw class="h-3.5 w-3.5 {isLoading ? 'animate-spin' : ''}" />
       {t('drive_refresh')}
     </button>
-  </div>
+  </section>
 
-  <!-- Error message -->
   {#if errorMessage}
-    <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-      <div class="flex items-center gap-2 text-red-800">
-        <AlertTriangle class="w-5 h-5" />
-        <span class="font-medium">{t('drive_error_title')}</span>
+    <section class="mb-5 rounded-xl border border-red-400/20 bg-red-500/10 p-4" role="alert">
+      <div class="flex items-center gap-2 text-red-200">
+        <AlertTriangle class="h-4 w-4" />
+        <span class="text-sm font-semibold">{t('drive_error_title')}</span>
       </div>
-      <p class="mt-1 text-red-700">{errorMessage}</p>
-      <button onclick={onClearError} class="mt-2 text-sm text-red-600 hover:text-red-800">{t('drive_close_error')}</button>
-    </div>
+      <p class="mt-1.5 text-sm text-red-300/80">{errorMessage}</p>
+      <button type="button" onclick={onClearError} class="mt-3 text-xs font-medium text-red-300 hover:text-red-100">
+        {t('drive_close_error')}
+      </button>
+    </section>
   {/if}
 
-  <!-- Loading state -->
   {#if isLoading}
-    <div class="flex items-center justify-center py-12">
-      <div class="flex items-center gap-3 text-gray-600">
-        <RefreshCw class="w-5 h-5 animate-spin" />
-        <span>{t('drive_loading')}</span>
+    <section class="studio-panel-card flex min-h-72 items-center justify-center" role="status">
+      <div class="flex flex-col items-center gap-3 text-zinc-500">
+        <div class="flex h-11 w-11 items-center justify-center rounded-xl border border-blue-400/20 bg-blue-500/10">
+          <RefreshCw class="h-5 w-5 animate-spin text-blue-300" />
+        </div>
+        <span class="text-sm text-zinc-500">{t('drive_loading')}</span>
       </div>
-    </div>
+    </section>
   {:else if recordings.length === 0}
-    <!-- Empty state -->
-    <div class="text-center py-12">
-      <Folder class="w-16 h-16 text-gray-300 mx-auto mb-4" />
-      <h3 class="text-lg font-medium text-gray-900 mb-2">{t('drive_empty_title')}</h3>
-      <p class="text-gray-500 mb-4">{t('drive_empty_desc1')}</p>
-      <p class="text-gray-500 mb-6">{t('drive_empty_desc2')}</p>
+    <section class="studio-panel-card flex min-h-[420px] flex-col items-center justify-center px-6 py-16 text-center">
+      <div class="studio-dialog-leading mb-5 flex h-16 w-16 items-center justify-center rounded-2xl">
+        <FolderOpen class="h-7 w-7" />
+      </div>
+      <h2 class="text-lg font-semibold text-zinc-100">{t('drive_empty_title')}</h2>
+      <p class="mt-2 max-w-md text-sm leading-6 text-zinc-400">{t('drive_empty_desc1')}</p>
+      <p class="max-w-md text-sm leading-6 text-zinc-400">{t('drive_empty_desc2')}</p>
       <button
         type="button"
-        class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        class="browser-primary-action mt-6 inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold"
         onclick={() => void onStartRecording()}
       >
+        <Video class="h-4 w-4" />
         {t('drive_start_recording_btn')}
       </button>
-    </div>
+    </section>
   {:else}
-    <!-- Recording list -->
-    <div class="mb-4 flex items-center justify-between">
-      <div class="flex items-center gap-4">
-        <label class="flex items-center gap-2 cursor-pointer">
-          <input 
-            type="checkbox" 
-            checked={selectedRecordings.size === recordings.length && recordings.length > 0}
-            indeterminate={selectedRecordings.size > 0 && selectedRecordings.size < recordings.length}
-            onchange={toggleSelectAll}
-            class="w-4 h-4"
-          />
-          <span class="text-gray-700">{t('drive_select_all', String(recordings.length))}</span>
-        </label>
-      </div>
-      <div class="text-sm text-gray-500">
-        {t('drive_sort_hint')}
-      </div>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    <section
+      class="grid gap-4"
+      aria-label={t('drive_headerTitle')}
+      style={`grid-template-columns: repeat(auto-fill, minmax(min(100%, ${RECORDING_MANAGER_THEME_CONTRACT.cardMinWidthPx}px), 1fr))`}
+    >
       {#each recordings as recording (recording.id)}
-        <RecordingCard 
+        <RecordingCard
           {recording}
           selected={selectedRecordings.has(recording.id)}
           onToggleSelect={() => toggleSelection(recording.id)}
           onDelete={() => confirmDelete(recording.id)}
         />
       {/each}
-    </div>
+    </section>
   {/if}
 </div>
 
-<!-- Delete confirmation dialog -->
 {#if showDeleteConfirm}
-  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
-      <div class="flex items-center gap-3 mb-4">
-        <AlertTriangle class="w-6 h-6 text-red-500" />
-        <h3 class="text-lg font-semibold text-gray-900">{t('drive_confirm_delete_title')}</h3>
+  <div class="studio-dialog-backdrop fixed inset-0 z-50 flex items-center justify-center p-4">
+    <button
+      type="button"
+      class="absolute inset-0 bg-transparent"
+      aria-label={t('drive_cancel')}
+      tabindex="-1"
+      onclick={closeDeleteConfirm}
+    ></button>
+
+    <div
+      bind:this={deleteDialogEl}
+      class="studio-dialog-panel relative w-full max-w-sm p-6"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="recording-manager-delete-title"
+      aria-describedby="recording-manager-delete-description"
+      tabindex="-1"
+      onkeydown={handleDeleteDialogKeydown}
+    >
+      <div class="flex items-start gap-3">
+        <div class="mt-0.5 rounded-xl border border-red-400/20 bg-red-500/10 p-2 text-red-300">
+          <AlertTriangle class="h-5 w-5" />
+        </div>
+        <div class="min-w-0 flex-1">
+          <h2 id="recording-manager-delete-title" class="text-base font-semibold text-zinc-100">
+            {t('drive_confirm_delete_title')}
+          </h2>
+          <p id="recording-manager-delete-description" class="mt-2 text-sm leading-6 text-zinc-400">
+            {#if deleteTarget === 'selected'}
+              {t('drive_confirm_delete_selected', String(selectedRecordings.size))}
+            {:else}
+              {t('drive_confirm_delete_single')}
+            {/if}
+            <span class="block text-zinc-400">{t('drive_action_undone')}</span>
+          </p>
+        </div>
       </div>
-      
-      <p class="text-gray-700 mb-6">
-        {#if deleteTarget === 'selected'}
-          {t('drive_confirm_delete_selected', String(selectedRecordings.size))}
-        {:else}
-          {t('drive_confirm_delete_single')}
-        {/if}
-        {t('drive_action_undone')}
-      </p>
-      
-      <div class="flex justify-end gap-3">
+
+      <div class="mt-6 flex justify-end gap-3">
         <button
-          onclick={() => showDeleteConfirm = false}
-          class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+          bind:this={cancelDeleteEl}
+          type="button"
+          onclick={closeDeleteConfirm}
+          class="browser-muted-action px-4 py-2 text-sm font-medium"
+          disabled={isDeleting}
         >
           {t('drive_cancel')}
         </button>
         <button
+          type="button"
           onclick={executeDelete}
-          class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+          class="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={isDeleting}
         >
+          {#if isDeleting}
+            <RefreshCw class="h-4 w-4 animate-spin" />
+          {:else}
+            <Trash2 class="h-4 w-4" />
+          {/if}
           {t('drive_delete')}
         </button>
       </div>

@@ -1,1 +1,466 @@
 @import "tailwindcss";
+
+.app-loading-surface {
+  color-scheme: light;
+  background: #f8fafc;
+  color: #475569;
+}
+
+.app-loading-label {
+  font: 500 0.875rem/1.5 ui-sans-serif, system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  .app-loading-surface {
+    color-scheme: dark;
+    background: #09090b;
+    color: #a1a1aa;
+  }
+}
+
+/*
+ * Studio visual system
+ * --------------------
+ * Mirrors the chrome-covers Studio hierarchy while keeping this project's
+ * recording/editor behavior independent from its presentation.
+ */
+.studio-theme {
+  --studio-shell: #09090b;
+  --studio-canvas: #18181b;
+  --studio-panel: #18181b;
+  --studio-panel-raised: #27272a;
+  --studio-control: #18181b;
+  --studio-control-hover: #27272a;
+  --studio-border: #3f3f46;
+  --studio-border-strong: #71717a;
+  --studio-text: #f4f4f5;
+  --studio-text-muted: #a1a1aa;
+  --studio-text-subtle: #a1a1aa;
+  --studio-accent: #2563eb;
+  --studio-accent-hover: #1d4ed8;
+  --studio-accent-soft: rgba(37, 99, 235, 0.16);
+  --studio-accent-border: rgba(96, 165, 250, 0.28);
+  color: var(--studio-text);
+  color-scheme: dark;
+  background: var(--studio-shell);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.studio-theme[data-accent="violet"],
+.studio-theme [data-accent="violet"] {
+  --studio-accent: #7c3aed;
+  --studio-accent-hover: #6d28d9;
+  --studio-accent-soft: rgba(124, 58, 237, 0.16);
+  --studio-accent-border: rgba(167, 139, 250, 0.28);
+}
+
+.studio-header-surface {
+  height: 3.5rem;
+  border-bottom: 1px solid var(--studio-border);
+  background: rgba(24, 24, 27, 0.72);
+  backdrop-filter: blur(12px);
+}
+
+.studio-sidebar-surface {
+  width: 20rem;
+  border-left: 1px solid var(--studio-border);
+  background: var(--studio-panel);
+}
+
+.studio-panel-card {
+  border: 1px solid var(--studio-border);
+  border-radius: 0.75rem;
+  background: rgba(39, 39, 42, 0.42);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.studio-section-heading {
+  color: #d4d4d8;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.studio-segmented {
+  border: 1px solid var(--studio-border);
+  border-radius: 0.625rem;
+  background: rgba(9, 9, 11, 0.72);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.studio-field {
+  border: 1px solid var(--studio-border-strong);
+  border-radius: 0.5rem;
+  background: #09090b;
+  color: #e4e4e7;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+}
+
+.studio-field:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.studio-field:focus,
+.studio-field:focus-visible {
+  border-color: var(--studio-accent);
+  box-shadow: 0 0 0 2px var(--studio-accent-soft);
+  outline: none;
+}
+
+.studio-muted-action {
+  border: 1px solid var(--studio-border-strong);
+  border-radius: 0.625rem;
+  background: rgba(39, 39, 42, 0.72);
+  color: #d4d4d8;
+  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+}
+
+.studio-muted-action:hover:not(:disabled) {
+  border-color: var(--studio-border-strong);
+  background: #3f3f46;
+  color: #fff;
+}
+
+.studio-primary-action {
+  border: 1px solid color-mix(in srgb, var(--studio-accent) 72%, white 8%);
+  border-radius: 0.625rem;
+  background: var(--studio-accent);
+  color: #fff;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--studio-accent) 22%, transparent);
+  transition: transform 150ms ease, background 150ms ease, box-shadow 150ms ease;
+}
+
+.studio-primary-action:hover:not(:disabled) {
+  background: var(--studio-accent-hover);
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--studio-accent) 30%, transparent);
+}
+
+.studio-primary-action:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.studio-dialog-backdrop {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+}
+
+.studio-dialog-panel {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  background: rgba(24, 24, 27, 0.96);
+  color: #f4f4f5;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(20px);
+}
+
+.studio-dialog-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.045), transparent);
+}
+
+.studio-dialog-leading {
+  border: 1px solid var(--studio-accent-border);
+  border-radius: 0.75rem;
+  background: var(--studio-accent-soft);
+  color: color-mix(in srgb, var(--studio-accent) 78%, white);
+}
+
+.studio-dialog-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.1);
+}
+
+/* Legacy export controls are behavior-rich; this scoped compatibility layer
+ * migrates their light utility palette without changing event wiring. */
+.studio-export-dialog :is(select, input[type="number"], input[type="text"]) {
+  border-color: var(--studio-border-strong) !important;
+  background: #09090b !important;
+  color: #e4e4e7 !important;
+}
+
+.studio-export-dialog option {
+  background: #18181b;
+  color: #e4e4e7;
+}
+
+.studio-export-dialog .bg-white {
+  background-color: #18181b !important;
+}
+
+.studio-export-dialog .bg-gray-50 {
+  background-color: rgba(9, 9, 11, 0.48) !important;
+}
+
+.studio-export-dialog .bg-gray-100 {
+  background-color: #27272a !important;
+}
+
+.studio-export-dialog .bg-gray-200 {
+  background-color: #3f3f46 !important;
+}
+
+.studio-export-dialog .bg-blue-50 {
+  background-color: rgba(59, 130, 246, 0.12) !important;
+}
+
+.studio-export-dialog .bg-emerald-100 {
+  background-color: rgba(16, 185, 129, 0.12) !important;
+}
+
+.studio-export-dialog .bg-orange-100 {
+  background-color: rgba(249, 115, 22, 0.12) !important;
+}
+
+.studio-export-dialog .text-emerald-700 {
+  color: #6ee7b7 !important;
+}
+
+.studio-export-dialog .text-orange-700 {
+  color: #fdba74 !important;
+}
+
+.studio-export-dialog .text-gray-900 {
+  color: #f4f4f5 !important;
+}
+
+.studio-export-dialog .text-gray-800,
+.studio-export-dialog .text-gray-700 {
+  color: #d4d4d8 !important;
+}
+
+.studio-export-dialog .text-gray-600,
+.studio-export-dialog .text-gray-500 {
+  color: #a1a1aa !important;
+}
+
+.studio-export-dialog .text-gray-400 {
+  color: #a1a1aa !important;
+}
+
+.studio-export-dialog .border-gray-300,
+.studio-export-dialog .border-gray-200 {
+  border-color: var(--studio-border-strong) !important;
+}
+
+.studio-export-dialog .ring-blue-200,
+.studio-export-dialog .ring-purple-200 {
+  --tw-ring-color: rgba(96, 165, 250, 0.22) !important;
+}
+
+.studio-theme :is(button, a, input, select):focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--studio-accent) 70%, white 10%);
+  outline-offset: 2px;
+}
+
+.studio-theme input[type="range"] {
+  accent-color: var(--studio-accent);
+}
+
+.studio-scrollbar {
+  scrollbar-color: #3f3f46 transparent;
+  scrollbar-width: thin;
+}
+
+.studio-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.studio-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.studio-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #71717a;
+}
+
+.studio-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #a1a1aa;
+}
+
+/* Browser-attached product surfaces are light-first because they sit beside
+ * Chrome UI. The same semantic tokens adapt to the user's OS preference. */
+.browser-surface {
+  --surface-shell: #f8fafc;
+  --surface-panel: #ffffff;
+  --surface-raised: #f1f5f9;
+  --surface-hover: #e2e8f0;
+  --surface-text: #0f172a;
+  --surface-muted: #475569;
+  --surface-subtle: #64748b;
+  --surface-border: #cbd5e1;
+  --surface-border-interactive: #64748b;
+  --surface-blue: #2563eb;
+  --surface-blue-hover: #1d4ed8;
+  --surface-violet: #7c3aed;
+  --surface-violet-hover: #6d28d9;
+  --surface-red: #dc2626;
+  --surface-red-hover: #b91c1c;
+  --surface-red-text: #991b1b;
+  --surface-red-soft: #fef2f2;
+  --surface-blue-soft: #eff6ff;
+  --surface-focus: #2563eb;
+  --tw-ring-offset-color: var(--surface-panel);
+  color: var(--surface-text);
+  color-scheme: light;
+  background: var(--surface-shell);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.browser-surface :is(button, a, input, select):focus-visible {
+  outline: 2px solid var(--surface-focus);
+  outline-offset: 2px;
+}
+
+.browser-surface :is(select, input) {
+  color-scheme: inherit;
+}
+
+.browser-surface.recording-entry-theme {
+  background: var(--surface-panel);
+  color: var(--surface-text);
+}
+
+.recording-entry-theme > header,
+.recording-entry-theme > footer {
+  border-color: var(--surface-border);
+  background: var(--surface-panel);
+}
+
+.recording-entry-theme > header {
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.browser-surface.recording-control-theme {
+  background: var(--surface-shell);
+}
+
+.recording-control-theme > div:first-child {
+  border-color: var(--surface-border);
+  background: linear-gradient(to bottom, var(--surface-panel), var(--surface-raised));
+}
+
+:is(.recording-entry-theme, .recording-control-theme) select,
+:is(.recording-entry-theme, .recording-control-theme) .bg-white {
+  border-color: var(--surface-border-interactive);
+  background-color: var(--surface-panel);
+  color: var(--surface-text);
+}
+
+:is(.recording-entry-theme, .recording-control-theme) :is(
+  [class~="bg-white/60"],
+  [class~="bg-white/70"],
+  [class~="bg-white/80"]
+) {
+  background-color: color-mix(in srgb, var(--surface-panel) 88%, transparent);
+}
+
+:is(.recording-entry-theme, .recording-control-theme) .bg-gray-50 { background-color: var(--surface-raised); }
+:is(.recording-entry-theme, .recording-control-theme) .bg-gray-100 { background-color: var(--surface-hover); }
+:is(.recording-entry-theme, .recording-control-theme) .bg-gray-200 { background-color: var(--surface-border); }
+:is(.recording-entry-theme, .recording-control-theme) .text-gray-900,
+:is(.recording-entry-theme, .recording-control-theme) .text-gray-800 { color: var(--surface-text); }
+:is(.recording-entry-theme, .recording-control-theme) .text-gray-700 { color: var(--surface-text); }
+:is(.recording-entry-theme, .recording-control-theme) .text-gray-600,
+:is(.recording-entry-theme, .recording-control-theme) .text-gray-500,
+:is(.recording-entry-theme, .recording-control-theme) .text-gray-400 { color: var(--surface-muted); }
+:is(.recording-entry-theme, .recording-control-theme) .border-gray-100 { border-color: var(--surface-border); }
+:is(.recording-entry-theme, .recording-control-theme) :is(.border-gray-200, .border-gray-300) { border-color: var(--surface-border-interactive); }
+
+.recording-manager-theme {
+  min-height: 100vh;
+  background: var(--surface-shell);
+  color: var(--surface-text);
+}
+
+.browser-header-surface {
+  height: 3.5rem;
+  border-bottom: 1px solid var(--surface-border);
+  background: color-mix(in srgb, var(--surface-panel) 92%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.recording-manager-theme .studio-panel-card {
+  border-color: var(--surface-border);
+  background: var(--surface-panel);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+}
+
+.recording-manager-theme .studio-dialog-panel {
+  border-color: var(--surface-border);
+  background: var(--surface-panel);
+  color: var(--surface-text);
+  box-shadow: 0 30px 90px rgba(15, 23, 42, 0.24);
+}
+
+.browser-primary-action {
+  border: 1px solid var(--surface-blue);
+  border-radius: 0.625rem;
+  background: var(--surface-blue);
+  color: #ffffff;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.16);
+  transition: background 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+}
+
+.browser-primary-action:hover:not(:disabled) {
+  background: var(--surface-blue-hover);
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.22);
+}
+
+.browser-muted-action {
+  border: 1px solid var(--surface-border-interactive);
+  border-radius: 0.625rem;
+  background: var(--surface-panel);
+  color: var(--surface-text);
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.browser-muted-action:hover:not(:disabled) {
+  border-color: var(--surface-blue);
+  background: var(--surface-raised);
+}
+
+.recording-manager-theme :is(.text-zinc-100, .text-zinc-200, .text-zinc-300) { color: var(--surface-text); }
+.recording-manager-theme :is(.text-zinc-400, .text-zinc-500, .text-zinc-600) { color: var(--surface-muted); }
+.recording-manager-theme :is([class~="bg-white/5"], [class~="hover:bg-white/5"]:hover) { background-color: var(--surface-raised); }
+.recording-manager-theme :is([class~="border-white/8"], [class~="border-white/10"], [class~="border-white/20"]) { border-color: var(--surface-border-interactive); }
+
+@media (prefers-color-scheme: dark) {
+  .browser-surface {
+    --surface-shell: #09090b;
+    --surface-panel: #18181b;
+    --surface-raised: #27272a;
+    --surface-hover: #3f3f46;
+    --surface-text: #f4f4f5;
+    --surface-muted: #a1a1aa;
+    --surface-subtle: #a1a1aa;
+    --surface-border: #3f3f46;
+    --surface-border-interactive: #71717a;
+    --surface-focus: #60a5fa;
+    --surface-red-text: #fecaca;
+    --surface-red-soft: #450a0a;
+    --surface-blue-soft: #172554;
+    color-scheme: dark;
+  }
+
+  :is(.recording-entry-theme, .recording-control-theme) .bg-blue-50 { background-color: #172554; }
+  :is(.recording-entry-theme, .recording-control-theme) .bg-red-50 { background-color: #450a0a; }
+  :is(.recording-entry-theme, .recording-control-theme) :is(.bg-violet-50, .bg-violet-100) { background-color: #2e1065; }
+  :is(.recording-entry-theme, .recording-control-theme) .bg-amber-50 { background-color: #451a03; }
+  :is(.recording-entry-theme, .recording-control-theme) .bg-orange-50 { background-color: #431407; }
+  :is(.recording-entry-theme, .recording-control-theme) :is(.text-blue-700, .text-blue-600) { color: #bfdbfe; }
+  :is(.recording-entry-theme, .recording-control-theme) :is(.text-violet-950, .text-violet-700, .text-violet-600) { color: #ddd6fe; }
+  :is(.recording-entry-theme, .recording-control-theme) :is(.text-red-800, .text-red-700, .text-red-600) { color: #fecaca; }
+  :is(.recording-entry-theme, .recording-control-theme) :is(.text-amber-800, .text-amber-700, .text-amber-600) { color: #fde68a; }
+  :is(.recording-entry-theme, .recording-control-theme) :is(.text-orange-700, .text-orange-600) { color: #fed7aa; }
+  .recording-manager-theme .studio-panel-card { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .browser-surface :is(.animate-spin, .animate-pulse) { animation: none; }
+  .browser-surface :is(button, a) { scroll-behavior: auto; }
+}

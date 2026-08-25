@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte'
+  import { onDestroy, onMount, tick } from 'svelte'
   import { X, HardDrive, ExternalLink, Trash2, LoaderCircle, Play, TriangleAlert } from '@lucide/svelte'
   import { _t as t } from '$lib/utils/i18n'
   import type { RecordingSummary } from '$lib/types/recordings'
@@ -27,6 +27,9 @@
   let deletingId = $state<string | null>(null)
   let confirmDeleteId = $state<string | null>(null)
   let panelEl = $state<HTMLDivElement | null>(null)
+  let confirmDialogEl = $state<HTMLDivElement | null>(null)
+  let cancelDeleteButtonEl = $state<HTMLButtonElement | null>(null)
+  let deleteTriggerEl: HTMLButtonElement | null = null
 
   // Thumbnail state per recording
   let thumbnails = $state<Record<string, { url: string | null; loading: boolean; error: boolean }>>({})
@@ -123,18 +126,43 @@
       }
 
       onClose()
+      return
+    }
+
+    if (event.key !== 'Tab') return
+    const scope = confirmDeleteId ? confirmDialogEl : panelEl
+    if (!scope) return
+
+    const focusable = Array.from(scope.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), select:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+    ))
+    if (focusable.length === 0) return
+
+    const first = focusable[0]
+    const last = focusable.at(-1)!
+    if (event.shiftKey && (document.activeElement === first || document.activeElement === scope)) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
     }
   }
 
   function requestDelete(e: Event, id: string) {
     e.stopPropagation()
     if (deletingId) return
+    deleteTriggerEl = e.currentTarget as HTMLButtonElement
     confirmDeleteId = id
+    void tick().then(() => cancelDeleteButtonEl?.focus())
   }
 
   function closeDeleteConfirm() {
     if (deletingId) return
+    const trigger = deleteTriggerEl
     confirmDeleteId = null
+    deleteTriggerEl = null
+    void tick().then(() => trigger?.focus())
   }
 
   async function handleDelete() {
@@ -147,6 +175,7 @@
     } finally {
       deletingId = null
       confirmDeleteId = null
+      deleteTriggerEl = null
     }
   }
 
@@ -359,13 +388,14 @@
 
 <!-- Backdrop -->
 <div
-  class="fixed inset-0 z-50 flex items-center justify-center"
+  class="studio-theme studio-dialog-backdrop fixed inset-0 z-50 flex items-center justify-center p-4"
+  data-accent="blue"
   role="presentation"
 >
   <!-- Overlay -->
   <button
     type="button"
-    class="absolute inset-0 bg-black/40"
+    class="absolute inset-0 bg-transparent"
     aria-label={t('common_close')}
     tabindex="-1"
     onclick={onClose}
@@ -374,27 +404,30 @@
   <!-- Floating panel -->
   <div
     bind:this={panelEl}
-    class="relative bg-white rounded-2xl shadow-2xl flex flex-col animate-overlay-in
-      w-[90vw] max-w-4xl max-h-[80vh] focus:outline-none"
+    class="studio-dialog-panel animate-overlay-in relative flex max-h-[min(84vh,760px)] w-[min(920px,calc(100vw-2rem))] flex-col overflow-hidden focus:outline-none"
     role="dialog"
     aria-modal="true"
     aria-labelledby="studio-drive-overlay-title"
+    aria-hidden={confirmDeleteId ? 'true' : undefined}
+    inert={Boolean(confirmDeleteId)}
     tabindex="-1"
     onkeydown={handlePanelKeydown}
   >
     <!-- Header -->
-    <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-200 flex-shrink-0">
+    <div class="studio-dialog-header flex flex-shrink-0 items-center justify-between px-6 py-5">
       <div class="flex items-center gap-2">
-        <HardDrive class="w-5 h-5 text-blue-600" />
-        <h2 id="studio-drive-overlay-title" class="text-base font-semibold text-gray-900">
+        <div class="studio-dialog-leading flex h-10 w-10 items-center justify-center">
+          <HardDrive class="h-5 w-5" />
+        </div>
+        <h2 id="studio-drive-overlay-title" class="text-lg font-semibold tracking-tight text-zinc-100">
           {t('drive_drawerTitle')}
         </h2>
-        <span class="text-xs text-gray-400">{recordings.length}</span>
+        <span class="rounded-full bg-white/5 px-2 py-0.5 text-xs text-zinc-400">{recordings.length}</span>
       </div>
       <div class="flex items-center gap-1.5">
         <button
           type="button"
-          class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+          class="studio-muted-action inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium"
           onclick={onOpenDriveFull}
           title={t('drive_drawerOpenFull')}
         >
@@ -403,7 +436,7 @@
         </button>
         <button
           type="button"
-          class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+          class="flex h-8 w-8 items-center justify-center rounded-lg border border-transparent text-zinc-400 transition-colors hover:border-zinc-500 hover:bg-white/5 hover:text-zinc-100"
           aria-label={t('common_close')}
           onclick={onClose}
         >
@@ -413,22 +446,22 @@
     </div>
 
     <!-- Content -->
-    <div class="flex-1 overflow-y-auto p-4">
+    <div class="studio-scrollbar flex-1 overflow-y-auto p-5">
       {#if isLoading}
         <div class="flex items-center justify-center py-16">
           <LoaderCircle class="w-7 h-7 text-blue-500 animate-spin" />
         </div>
       {:else if recordings.length === 0}
         <div class="flex flex-col items-center justify-center py-16 text-center">
-          <HardDrive class="w-10 h-10 text-gray-300 mb-3" />
-          <p class="text-sm text-gray-500">{t('drive_drawerEmpty')}</p>
+          <HardDrive class="mb-3 h-10 w-10 text-zinc-700" />
+          <p class="text-sm text-zinc-400">{t('drive_drawerEmpty')}</p>
         </div>
       {:else}
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {#each recordings as rec (rec.id)}
             <article
-              class="group relative rounded-xl border-2 cursor-pointer overflow-hidden transition-all duration-200 hover:shadow-md
-                {rec.id === selectedRecordingId ? 'border-blue-500 bg-blue-50/50 shadow-sm' : 'border-gray-200 hover:border-blue-300'}"
+              class="group relative cursor-pointer overflow-hidden rounded-xl border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/20
+                {rec.id === selectedRecordingId ? 'border-blue-400/60 bg-blue-500/10 shadow-sm' : 'border-zinc-500 bg-zinc-950/40 hover:border-blue-400/60'}"
             >
               <button
                 type="button"
@@ -437,7 +470,7 @@
                 onclick={() => onSelect(rec)}
               >
                 <!-- Thumbnail -->
-                <div class="aspect-video bg-gray-100 relative overflow-hidden">
+                <div class="relative aspect-video overflow-hidden bg-zinc-950">
                   {#if thumbnails[rec.id]?.url}
                     <img
                       src={thumbnails[rec.id].url}
@@ -446,23 +479,23 @@
                     />
                   {:else if thumbnails[rec.id]?.loading}
                     <div class="absolute inset-0 flex items-center justify-center">
-                      <LoaderCircle class="w-5 h-5 text-gray-300 animate-spin" />
+                      <LoaderCircle class="h-5 w-5 animate-spin text-zinc-400" />
                     </div>
                   {:else}
                     <div class="absolute inset-0 flex items-center justify-center">
-                      <Play class="w-6 h-6 text-gray-300" />
+                      <Play class="h-6 w-6 text-zinc-700" />
                     </div>
                   {/if}
 
                   <!-- Play overlay on hover -->
                   <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <div class="w-8 h-8 rounded-full bg-white/90 flex items-center justify-center shadow-sm">
-                      <Play class="w-4 h-4 text-gray-700 ml-0.5" />
+                    <div class="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100/90 shadow-sm">
+                      <Play class="ml-0.5 h-4 w-4 text-zinc-800" />
                     </div>
                   </div>
 
                   <!-- Duration badge -->
-                  <div class="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 bg-black/70 text-white text-[10px] font-medium rounded">
+                  <div class="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 bg-black/80 text-white text-xs font-medium rounded">
                     {formatDuration(rec.duration)}
                   </div>
 
@@ -474,8 +507,8 @@
 
                 <!-- Info -->
                 <div class="px-2.5 py-2">
-                  <p class="text-xs font-medium text-gray-800 truncate leading-tight">{rec.displayName}</p>
-                  <p class="text-[10px] text-gray-400 mt-0.5 truncate">
+                  <p class="truncate text-xs font-medium leading-tight text-zinc-200">{rec.displayName}</p>
+                  <p class="mt-0.5 truncate text-xs text-zinc-400">
                     {formatRelativeTime(rec.createdAt)} · {rec.resolution} · {formatSize(rec.size)}
                   </p>
                 </div>
@@ -484,7 +517,7 @@
               <!-- Delete button (appears on hover) -->
               <button
                 type="button"
-                class="absolute top-1.5 right-1.5 p-1 rounded-md bg-white/80 text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shadow-sm"
+                class="absolute right-1.5 top-1.5 rounded-md border border-zinc-500 bg-zinc-900/95 p-1 text-zinc-400 opacity-0 shadow-sm transition-all hover:border-red-400/60 hover:bg-red-500/10 hover:text-red-300 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100"
                 aria-label={t('drive_drawerDelete')}
                 onclick={(e) => requestDelete(e, rec.id)}
                 disabled={deletingId === rec.id}
@@ -507,29 +540,32 @@
     <div class="absolute inset-0 z-10 flex items-center justify-center p-4">
       <button
         type="button"
-        class="absolute inset-0 bg-black/30"
+        class="absolute inset-0 bg-black/50 backdrop-blur-sm"
         aria-label={t('drive_cancel')}
         onclick={closeDeleteConfirm}
       ></button>
 
       <div
-        class="relative w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl"
+        bind:this={confirmDialogEl}
+        class="studio-dialog-panel relative w-full max-w-sm p-6"
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="studio-drive-delete-title"
         aria-describedby="studio-drive-delete-description"
+        tabindex="-1"
+        onkeydown={handlePanelKeydown}
       >
         <div class="flex items-start gap-3">
-          <div class="mt-0.5 rounded-full bg-red-50 p-2 text-red-500">
+          <div class="mt-0.5 rounded-xl border border-red-400/20 bg-red-500/10 p-2 text-red-300">
             <TriangleAlert class="w-5 h-5" />
           </div>
           <div class="min-w-0 flex-1">
-            <h3 id="studio-drive-delete-title" class="text-base font-semibold text-gray-900">
+            <h3 id="studio-drive-delete-title" class="text-base font-semibold text-zinc-100">
               {t('drive_confirm_delete_title')}
             </h3>
-            <p id="studio-drive-delete-description" class="mt-2 text-sm text-gray-600">
+            <p id="studio-drive-delete-description" class="mt-2 text-sm text-zinc-400">
               {t('drive_confirm_delete_single')}
-              <span class="mt-1 block truncate font-medium text-gray-800">
+              <span class="mt-1 block truncate font-medium text-zinc-200">
                 {confirmDeleteRecording?.displayName}
               </span>
               <span class="mt-1 block">{t('drive_action_undone')}</span>
@@ -539,8 +575,9 @@
 
         <div class="mt-6 flex justify-end gap-3">
           <button
+            bind:this={cancelDeleteButtonEl}
             type="button"
-            class="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
+            class="studio-muted-action px-4 py-2 text-sm font-medium"
             onclick={closeDeleteConfirm}
             disabled={Boolean(deletingId)}
           >

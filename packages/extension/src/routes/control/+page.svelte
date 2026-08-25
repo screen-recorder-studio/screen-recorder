@@ -179,6 +179,7 @@
 
   // Listen for stream status from background/offscreen
   onMount(() => {
+    const runtimeMessages = globalThis.chrome?.runtime?.onMessage
     const handler = (msg: any) => {
       try {
         // BADGE_TICK: sync recording state, but respect user's stop request
@@ -274,8 +275,8 @@
         // ignore handler errors
       }
     }
-    chrome.runtime.onMessage.addListener(handler)
-    return () => chrome.runtime.onMessage.removeListener(handler)
+    runtimeMessages?.addListener(handler)
+    return () => runtimeMessages?.removeListener(handler)
   })
 
   onDestroy(() => {
@@ -386,7 +387,7 @@
   <title>Screen Recorder Control</title>
 </svelte:head>
 
-<div class="fixed inset-0 w-full h-full bg-white font-sans select-none flex flex-col overflow-auto">
+<div class="browser-surface recording-control-theme fixed inset-0 flex h-full w-full select-none flex-col overflow-auto font-sans" data-surface="browser">
   <!-- Header with close button -->
   <div class="flex-shrink-0 px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
     <div class="flex items-center justify-between">
@@ -559,9 +560,11 @@
           <p class="text-sm text-amber-800">{warningMessage}</p>
         </div>
         <button
-          class="p-0.5 rounded hover:bg-amber-100 transition-colors flex-shrink-0"
+          type="button"
+          class="flex h-8 w-8 items-center justify-center rounded hover:bg-amber-100 transition-colors flex-shrink-0"
           onclick={clearWarning}
-          title="Dismiss"
+          aria-label="Dismiss storage warning"
+          title="Dismiss storage warning"
         >
           <X class="w-3.5 h-3.5 text-amber-600" />
         </button>
@@ -577,9 +580,11 @@
           <p class="text-sm text-red-700">{errorMessage}</p>
         </div>
         <button
-          class="p-0.5 rounded hover:bg-red-100 transition-colors flex-shrink-0"
+          type="button"
+          class="flex h-8 w-8 items-center justify-center rounded hover:bg-red-100 transition-colors flex-shrink-0"
           onclick={clearError}
-          title="Dismiss"
+          aria-label="Dismiss recording error"
+          title="Dismiss recording error"
         >
           <X class="w-3.5 h-3.5 text-red-500" />
         </button>
@@ -639,11 +644,11 @@
         <button
           class="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
           class:bg-gradient-to-r={phase === 'idle'}
-          class:from-blue-500={phase === 'idle'}
-          class:to-blue-600={phase === 'idle'}
+          class:from-blue-600={phase === 'idle'}
+          class:to-blue-700={phase === 'idle'}
           class:text-white={phase === 'idle' || phase === 'preparing' || phase === 'countdown'}
-          class:hover:from-blue-600={phase === 'idle'}
-          class:hover:to-blue-700={phase === 'idle'}
+          class:hover:from-blue-700={phase === 'idle'}
+          class:hover:to-blue-800={phase === 'idle'}
           class:focus:ring-blue-500={phase === 'idle'}
           class:bg-slate-400={phase === 'preparing' || phase === 'countdown'}
           onclick={startRecording}

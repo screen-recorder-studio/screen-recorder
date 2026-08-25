@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { Edit, Trash2, Info } from '@lucide/svelte'
-  import VideoPreview from '$lib/components/VideoPreview.svelte'
   import { _t as t } from '$lib/utils/i18n'
 
   // New status: control metadata display (no longer needed, changed to hover display)
@@ -33,13 +32,8 @@
   let thumbnailLoaded = $state(false)
   let thumbnailError = $state(false)
   let isIncomplete = $state(false)  // Recording is incomplete (missing required files)
-  let showPreview = $state(false)
-  let previewComponent = $state<VideoPreview | null>(null)
-  // New: complete data and loading status required for preview
-  let encodedChunks = $state<any[]>([])
-  let isDecoding = $state(false)
-  let hasLoadedFullData = $state(false)
-  let loadError = $state<string | null>(null)
+  let cardEl = $state<HTMLElement | null>(null)
+  let cachedThumbnailObjectUrl: string | null = null
 
   // Format file size
   function formatBytes(bytes: number): string {
@@ -346,85 +340,6 @@
     }
   }
 
-  // Load full preview data (index.jsonl + data.bin)
-  async function loadFullData() {
-    if (hasLoadedFullData || isDecoding) return
-    try {
-      isDecoding = true
-      loadError = null
-
-      if (!navigator.storage?.getDirectory) {
-        throw new Error('Current environment does not support OPFS')
-      }
-
-      const root = await navigator.storage.getDirectory()
-      const recDir = await root.getDirectoryHandle(recording.id)
-
-      const [indexHandle, dataHandle] = await Promise.all([
-        recDir.getFileHandle('index.jsonl'),
-        recDir.getFileHandle('data.bin')
-      ])
-
-      const [indexFile, dataFile] = await Promise.all([
-        indexHandle.getFile(),
-        dataHandle.getFile()
-      ])
-
-      const [indexText, dataBuffer] = await Promise.all([
-        indexFile.text(),
-        dataFile.arrayBuffer()
-      ])
-
-      const lines = indexText.split('\n').filter(Boolean)
-      const entries = lines
-        .map((line, i) => {
-          try { return JSON.parse(line) } catch (e) { console.warn(`Failed to parse line ${i} in index.jsonl`, e); return null }
-        })
-        .filter(Boolean) as any[]
-
-      if (entries.length === 0) {
-        throw new Error('index.jsonl is empty')
-      }
-
-      const chunks = entries.map((ent: any) => {
-        const offset = Number(ent.offset) || 0
-        const size = Number(ent.size) || 0
-        const ts = Number(ent.timestamp) || 0
-        const slice = dataBuffer.slice(offset, offset + size)
-        return {
-          type: ent.type === 'key' ? 'key' : 'delta',
-          timestamp: ts,
-          data: slice,
-          codedWidth: ent.codedWidth || recording.meta?.width,
-          codedHeight: ent.codedHeight || recording.meta?.height,
-          codec: ent.codec || recording.codec || recording.meta?.codec
-        }
-      })
-
-      encodedChunks = chunks
-      hasLoadedFullData = true
-    } catch (e) {
-      console.error('Failed to load full data:', e)
-      loadError = e instanceof Error ? e.message : String(e)
-    } finally {
-      isDecoding = false
-    }
-  }
-
-  // Open preview
-  function openPreview() {
-    showPreview = true
-    if (!hasLoadedFullData) {
-      // Lazy load full data to avoid blocking first screen
-      loadFullData()
-    }
-  }
-
-  // Close preview
-  function closePreview() {
-    showPreview = false
-  }
-
   // Play recording -> changed to edit recording
   function editRecording() {
     // Navigate to studio page for editing
@@ -443,8 +358,8 @@
         try {
           const fh = await recDir.getFileHandle(name)
           const file = await fh.getFile()
-          const url = URL.createObjectURL(file)
-          return url
+          cachedThumbnailObjectUrl = URL.createObjectURL(file)
+          return cachedThumbnailObjectUrl
         } catch {}
       }
       return null
@@ -453,8 +368,7 @@
     }
   }
 
-  // Generate/read thumbnail on component mount (with OPFS cache)
-  onMount(async () => {
+  async function loadThumbnail() {
     try {
       // 1) First try to read cached cover from OPFS
       const cached = await readCachedCover()
@@ -488,25 +402,55 @@
       console.warn('Thumbnail generation failed:', error)
       thumbnailError = true
     }
+  }
+
+  // Large libraries must not read OPFS and construct VideoDecoders for every
+  // card at once. Load only when a card approaches the viewport.
+  onMount(() => {
+    if (!cardEl || typeof IntersectionObserver === 'undefined') {
+      void loadThumbnail()
+      return () => {
+        if (cachedThumbnailObjectUrl) URL.revokeObjectURL(cachedThumbnailObjectUrl)
+      }
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return
+      observer.disconnect()
+      void loadThumbnail()
+    }, { rootMargin: '240px 0px' })
+
+    observer.observe(cardEl)
+    return () => {
+      observer.disconnect()
+      if (cachedThumbnailObjectUrl) URL.revokeObjectURL(cachedThumbnailObjectUrl)
+    }
   })
 </script>
 
-<div class="recording-card" class:selected>
+<div bind:this={cardEl} class="recording-card" class:selected>
   <div class="card-header">
     <label class="checkbox-label">
       <input 
         type="checkbox" 
         checked={selected}
+        aria-label={t('card_select_recording', recording.displayName)}
         onchange={onToggleSelect}
         onclick={(e) => e.stopPropagation()}
       />
     </label>
     <div class="info-btn-container">
-      <button class="info-btn" onclick={(e) => { e.stopPropagation() }}>
+      <button
+        type="button"
+        class="info-btn"
+        aria-label={t('card_recording_info', recording.displayName)}
+        title={t('card_recording_info', recording.displayName)}
+        onclick={(e) => { e.stopPropagation() }}
+      >
         <Info class="w-4 h-4" />
       </button>
       <!-- Metadata Tooltip - show on hover over i icon -->
-      <div class="metadata-tooltip">
+      <div class="metadata-tooltip" role="tooltip">
         <div class="tooltip-content">
           <div class="meta-row">
             <span class="label">ID:</span>
@@ -553,7 +497,7 @@
     class="thumbnail-container"
     role="button"
     tabindex="0"
-    aria-label={`Play recording: ${recording.displayName}`}
+    aria-label={`${t('card_btn_edit')}: ${recording.displayName}`}
     onclick={editRecording}
     onkeydown={(e) => {
       if (e.key === 'Enter' || e.key === ' ') {
@@ -566,7 +510,7 @@
    {#if thumbnailLoaded && recording.thumbnail}
       <img
         src={recording.thumbnail}
-        alt="Recording thumbnail"
+        alt={recording.displayName}
         class="thumbnail"
       />
     {:else if isIncomplete}
@@ -588,7 +532,7 @@
     {/if}
     
     <div class="play-overlay">
-      <div class="play-button">▶️</div>
+      <div class="play-button"><Edit class="h-5 w-5" /></div>
     </div>
     
     <div class="duration-badge">
@@ -600,10 +544,18 @@
     <h3 class="recording-title" title={recording.displayName}>
       {recording.displayName}
     </h3>
+    <p class="recording-meta">
+      <span>{formatDate(recording.createdAt)}</span>
+      <span aria-hidden="true">·</span>
+      <span>{recording.resolution}</span>
+      <span aria-hidden="true">·</span>
+      <span>{formatBytes(recording.size)}</span>
+    </p>
   </div>
 
   <div class="card-actions">
     <button
+      type="button"
       class="btn btn-primary"
       onclick={editRecording}
       disabled={isIncomplete}
@@ -612,225 +564,343 @@
       <Edit class="w-4 h-4" />
       {t('card_btn_edit')}
     </button>
-    <button class="btn btn-danger" onclick={onDelete}>
+    <button type="button" class="btn btn-danger" onclick={onDelete}>
       <Trash2 class="w-4 h-4" />
       {t('card_btn_delete')}
     </button>
   </div>
 </div>
 
-{#if showPreview}
-  <div
-    class="preview-modal"
-    role="button"
-    tabindex="0"
-    aria-label="Close preview"
-    onclick={closePreview}
-    onkeydown={(e) => {
-      if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        closePreview();
-      }
-    }}
-  >
-    <div
-      class="preview-container"
-      role="dialog"
-      aria-modal="true"
-      onclick={(e) => e.stopPropagation()}
-      onkeydown={(e) => e.stopPropagation()}
-      tabindex="0"
-    >
-      <div class="preview-header">
-        <h3>{recording.displayName}</h3>
-        <button class="close-btn" onclick={closePreview}>✕</button>
-      </div>
-      <div class="preview-content">
-        {#if loadError}
-          <div class="error-banner">{t('card_preview_load_error', loadError)}</div>
-        {/if}
-        <VideoPreview 
-          bind:this={previewComponent}
-          showControls={true}
-          showTimeline={true}
-          {encodedChunks}
-          isDecoding={isDecoding}
-        />
-      </div>
-    </div>
-  </div>
-{/if}
-
 <style>
-  @reference "tailwindcss";
-  
   .recording-card {
-    @apply bg-white border-2 border-gray-200 rounded-xl overflow-hidden transition-all duration-200 cursor-pointer relative;
+    position: relative;
+    isolation: isolate;
+    overflow: visible;
+    border: 1px solid var(--surface-border);
+    border-radius: 0.875rem;
+    background: var(--surface-panel);
+    box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06);
+    transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
   }
 
-  .recording-card:hover {
-    @apply border-blue-500 shadow-lg;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+  .recording-card:hover,
+  .recording-card:focus-within {
+    z-index: 2;
+    border-color: var(--surface-blue);
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.14);
+    transform: translateY(-2px);
   }
 
   .recording-card.selected {
-    @apply border-blue-500 bg-blue-50;
+    border-color: var(--surface-blue);
+    background: var(--surface-blue-soft);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16), 0 18px 42px rgba(15, 23, 42, 0.14);
   }
 
   .card-header {
-    @apply absolute top-2 left-2 right-2 flex justify-between z-10;
+    position: absolute;
+    top: 0.625rem;
+    right: 0.625rem;
+    left: 0.625rem;
+    z-index: 10;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+
+  .checkbox-label,
+  .info-btn-container {
+    pointer-events: auto;
   }
 
   .checkbox-label {
-    @apply flex items-center bg-white/90 rounded-md p-1 backdrop-blur-sm;
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--surface-border-interactive);
+    border-radius: 0.5rem;
+    padding: 0.3rem;
+    background: color-mix(in srgb, var(--surface-panel) 90%, transparent);
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.14);
+    backdrop-filter: blur(10px);
   }
 
   .checkbox-label input[type="checkbox"] {
-    @apply w-4 h-4 cursor-pointer;
+    width: 1rem;
+    height: 1rem;
+    cursor: pointer;
+    accent-color: var(--surface-blue);
   }
 
   .info-btn-container {
-    @apply relative;
+    position: relative;
   }
 
   .info-btn {
-    @apply bg-blue-500/90 text-white border-none rounded-md px-2 py-1 cursor-pointer text-sm backdrop-blur-sm transition-colors duration-200;
+    display: flex;
+    width: 1.875rem;
+    height: 1.875rem;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--surface-border-interactive);
+    border-radius: 0.5rem;
+    background: color-mix(in srgb, var(--surface-panel) 90%, transparent);
+    color: var(--surface-muted);
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.14);
+    backdrop-filter: blur(10px);
+    transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
   }
 
-  .info-btn:hover {
-    @apply bg-blue-600/95;
+  .info-btn:hover,
+  .info-btn:focus-visible {
+    border-color: var(--surface-blue);
+    background: var(--surface-blue-soft);
+    color: var(--surface-blue);
   }
 
-  .info-btn-container .metadata-tooltip {
-    @apply absolute top-8 right-0 bg-white rounded-lg shadow-lg border border-gray-200 z-30 min-w-48 opacity-0 pointer-events-none transition-opacity duration-200;
+  .metadata-tooltip {
+    position: absolute;
+    top: 2.25rem;
+    right: 0;
+    z-index: 30;
+    width: min(15.5rem, calc(100vw - 3rem));
+    pointer-events: none;
+    opacity: 0;
+    border: 1px solid var(--surface-border-interactive);
+    border-radius: 0.75rem;
+    background: color-mix(in srgb, var(--surface-panel) 98%, transparent);
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
+    transform: translateY(-4px);
+    transition: opacity 150ms ease, transform 150ms ease;
+    backdrop-filter: blur(16px);
   }
 
-  .info-btn-container:hover .metadata-tooltip {
-    @apply opacity-100 pointer-events-auto;
+  .info-btn-container:hover .metadata-tooltip,
+  .info-btn-container:focus-within .metadata-tooltip {
+    pointer-events: auto;
+    opacity: 1;
+    transform: translateY(0);
   }
 
   .thumbnail-container {
-    @apply relative aspect-video bg-gray-100 overflow-hidden;
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+    cursor: pointer;
+    border-radius: 0.8rem 0.8rem 0 0;
+    background: #09090b;
   }
 
   .thumbnail {
-    @apply w-full h-full object-cover;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 
   .thumbnail-placeholder {
-    @apply w-full h-full flex flex-col items-center justify-center text-gray-500 gap-2;
+    display: flex;
+    width: 100%;
+    height: 100%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    color: #a1a1aa;
   }
 
   .thumbnail-placeholder.error {
-    @apply bg-red-50 text-red-600;
+    background: rgba(239, 68, 68, 0.08);
+    color: #fca5a5;
   }
 
   .thumbnail-placeholder.incomplete {
-    @apply bg-amber-50 text-amber-600;
+    background: rgba(245, 158, 11, 0.08);
+    color: #fcd34d;
   }
 
   .thumbnail-placeholder .icon {
-    @apply text-3xl;
+    font-size: 1.75rem;
   }
 
   .thumbnail-placeholder .text {
-    @apply text-sm font-medium;
+    font-size: 0.8rem;
+    font-weight: 600;
   }
 
   .thumbnail-placeholder .subtext {
-    @apply text-xs opacity-75;
+    font-size: 0.7rem;
+    opacity: 0.75;
   }
 
   .spinner {
-    @apply w-6 h-6 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin;
+    width: 1.5rem;
+    height: 1.5rem;
+    animation: spin 0.8s linear infinite;
+    border: 2px solid #71717a;
+    border-top-color: #60a5fa;
+    border-radius: 999px;
   }
 
   .play-overlay {
-    @apply absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 transition-opacity duration-200;
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.38);
+    opacity: 0;
+    transition: opacity 160ms ease;
   }
 
-  .recording-card:hover .play-overlay {
-    @apply opacity-100;
+  .recording-card:hover .play-overlay,
+  .thumbnail-container:focus-visible .play-overlay {
+    opacity: 1;
   }
 
   .play-button {
-    @apply bg-white/90 rounded-full w-12 h-12 flex items-center justify-center text-xl backdrop-blur-sm;
+    display: flex;
+    width: 2.75rem;
+    height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
+    background: rgba(244, 244, 245, 0.92);
+    color: #18181b;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(10px);
   }
 
   .duration-badge {
-    @apply absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs font-medium;
+    position: absolute;
+    right: 0.625rem;
+    bottom: 0.625rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.4rem;
+    padding: 0.2rem 0.45rem;
+    background: rgba(0, 0, 0, 0.76);
+    color: #fff;
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
   }
 
   .tooltip-content {
-    @apply p-3;
+    display: grid;
+    gap: 0.45rem;
+    padding: 0.875rem;
   }
 
   .card-content {
-    @apply p-4;
+    padding: 0.875rem 0.95rem 0.75rem;
   }
 
   .recording-title {
-    @apply m-0 mb-3 text-base font-semibold text-gray-800 whitespace-nowrap overflow-hidden text-ellipsis;
+    margin: 0;
+    overflow: hidden;
+    color: var(--surface-text);
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .recording-meta {
+    display: flex;
+    margin: 0.3rem 0 0;
+    overflow: hidden;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--surface-muted);
+    font-size: 0.75rem;
+    line-height: 1rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .meta-row {
-    @apply flex justify-between text-sm;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    color: var(--surface-muted);
+    font-size: 0.75rem;
   }
 
   .meta-row .label {
-    @apply text-gray-500 font-medium;
+    flex-shrink: 0;
+    color: var(--surface-muted);
+    font-weight: 500;
   }
 
   .meta-row .value {
-    @apply text-gray-700;
+    overflow: hidden;
+    color: var(--surface-text);
+    text-align: right;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .card-actions {
-    @apply px-4 pb-4 flex gap-2;
+    display: flex;
+    gap: 0.5rem;
+    border-top: 1px solid var(--surface-border);
+    padding: 0.7rem 0.8rem 0.8rem;
   }
 
   .btn {
-    @apply flex-1 px-3 py-2 border-none rounded-md text-sm font-medium cursor-pointer transition-all duration-200 flex items-center justify-center gap-1;
+    display: inline-flex;
+    min-width: 0;
+    flex: 1;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    border: 1px solid transparent;
+    border-radius: 0.55rem;
+    padding: 0.55rem 0.7rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
   }
 
   .btn-primary {
-    @apply bg-blue-500 text-white;
+    border-color: var(--surface-blue);
+    background: var(--surface-blue);
+    color: #fff;
   }
 
   .btn-primary:hover:not(:disabled) {
-    @apply bg-blue-600;
+    background: var(--surface-blue-hover);
   }
 
   .btn-primary:disabled {
-    @apply opacity-50 cursor-not-allowed;
+    cursor: not-allowed;
+    opacity: 0.45;
   }
 
-  /* Preview modal */
-  .preview-modal {
-    @apply fixed inset-0 bg-black/80 flex items-center justify-center z-50;
+  .btn-danger {
+    border-color: var(--surface-red);
+    background: var(--surface-red-soft);
+    color: var(--surface-red-text);
   }
 
-  .preview-container {
-    @apply bg-white rounded-xl max-w-[90vw] max-h-[90vh] overflow-hidden flex flex-col;
+  .btn-danger:hover:not(:disabled) {
+    border-color: var(--surface-red-hover);
+    background: color-mix(in srgb, var(--surface-red) 16%, var(--surface-panel));
+    color: var(--surface-red-text);
   }
 
-  .preview-header {
-    @apply flex justify-between items-center px-5 py-4 border-b border-gray-200;
+  @keyframes spin {
+    to { transform: rotate(360deg); }
   }
 
-  .preview-header h3 {
-    @apply m-0 text-lg font-semibold text-gray-800;
-  }
-
-  .close-btn {
-    @apply bg-transparent border-none text-xl cursor-pointer text-gray-500 p-0 w-6 h-6;
-  }
-
-  .preview-content {
-    @apply p-5 min-h-96;
-  }
-
-  .error-banner {
-    @apply mb-3 px-3 py-2 bg-red-50 text-red-700 border border-red-200 rounded-md text-sm;
+  @media (prefers-reduced-motion: reduce) {
+    .recording-card,
+    .metadata-tooltip,
+    .play-overlay {
+      transition: none;
+    }
   }
 </style>

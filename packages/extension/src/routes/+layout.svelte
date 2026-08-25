@@ -31,7 +31,7 @@
 	{@render children?.()}
 {:else}
 	<!-- Loading state while i18n initializes -->
-	<div class="min-h-screen bg-gray-50 flex items-center justify-center">
-		<div class="animate-pulse text-gray-400">Loading...</div>
-	</div>
+  <div class="app-loading-surface min-h-screen flex items-center justify-center" role="status">
+    <div class="app-loading-label">Loading…</div>
+  </div>
 {/if}

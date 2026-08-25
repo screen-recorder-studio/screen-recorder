@@ -25,33 +25,33 @@
 </script>
 
 <div class="flex-1 flex items-center justify-center p-8">
-  <div class="max-w-md w-full text-center">
+  <div class="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-900/40 p-8 text-center shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
     <!-- Icon -->
-    <div class="mx-auto w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center mb-6">
-      <Video class="w-10 h-10 text-blue-500" />
+    <div class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl border border-blue-400/20 bg-gradient-to-br from-blue-500/15 to-violet-500/10 shadow-inner">
+      <Video class="h-10 w-10 text-blue-300" />
     </div>
 
     <!-- Title -->
-    <h2 class="text-xl font-semibold text-gray-900 mb-2">
+    <h2 class="mb-2 text-xl font-semibold text-zinc-100">
       {t('studio_emptyTitle')}
     </h2>
 
     <!-- Description -->
-    <p class="text-sm text-gray-500 mb-8 leading-relaxed">
+    <p class="mb-8 text-sm leading-relaxed text-zinc-400">
       {reasonText()}
     </p>
 
     <!-- Action buttons -->
     <div class="flex items-center justify-center gap-3 mb-8">
       <button
-        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        class="studio-primary-action inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium"
         onclick={onStartRecording}
       >
         <CircleDot class="w-4 h-4" />
         {t('studio_emptyStartRecording')}
       </button>
       <button
-        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
+        class="studio-muted-action inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium"
         onclick={onOpenDrive}
       >
         <HardDrive class="w-4 h-4" />
@@ -60,7 +60,7 @@
     </div>
 
     <!-- Feature hints -->
-    <div class="flex items-center justify-center gap-6 text-xs text-gray-400">
+    <div class="flex items-center justify-center gap-6 text-xs text-zinc-400">
       <span class="flex items-center gap-1">
         <Sparkles class="w-3.5 h-3.5" />
         {t('studio_emptyFeaturePreview')}

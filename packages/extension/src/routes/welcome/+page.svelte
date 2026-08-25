@@ -459,11 +459,11 @@
           <div>
             <h1 class="text-lg font-bold text-slate-900 tracking-tight leading-none flex items-center gap-2">
               {t('appName')}
-              {#if extensionVersion}<span class="text-xs font-normal text-slate-400">v{extensionVersion}</span>{/if}
+              {#if extensionVersion}<span class="text-xs font-normal text-slate-500">v{extensionVersion}</span>{/if}
             </h1>
           </div>
         </div>
-        <div class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 rounded-full text-[10px] shadow-sm">
+        <div class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 rounded-full text-xs shadow-sm">
           <Sparkles class="w-3.5 h-3.5 text-amber-500" />
           <span class="bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent font-bold tracking-widest uppercase">{t('welcome_proTrialActive')}</span>
         </div>
@@ -592,7 +592,7 @@
                       class:bg-white={true}
                       class:text-blue-600={selectedMode === mode.id}
                       class:shadow-sm={selectedMode === mode.id}
-                      class:text-slate-400={selectedMode !== mode.id}
+                      class:text-slate-500={selectedMode !== mode.id}
                       class:group-hover:text-blue-500={selectedMode !== mode.id && !isRecording}>
                   <IconComponent class="w-5 h-5" />
                 </div>
@@ -606,9 +606,9 @@
                 </h4>
                 
                 <!-- Description -->
-                <p class="text-[11px] text-slate-500 mb-1.5 text-center leading-snug">{t(mode.descriptionKey)}</p>
+                <p class="text-xs text-slate-500 mb-1.5 text-center leading-snug">{t(mode.descriptionKey)}</p>
                 <div class="mt-auto pt-1.5 border-t border-slate-200/50 w-full text-center">
-                    <p class="text-[9px] font-medium text-slate-400 uppercase tracking-wide">{t(mode.detailKey)}</p>
+                    <p class="text-xs font-medium text-slate-500 uppercase tracking-wide">{t(mode.detailKey)}</p>
                 </div>
               </button>
             {/each}
@@ -823,7 +823,7 @@
         <div class="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-slate-500">
           <p>{t('welcome_footerHelp')}</p>
           <div class="flex items-center gap-6">
-            <span class="font-medium text-slate-400">{t('welcome_footerMeta')}</span>
+            <span class="font-medium text-slate-500">{t('welcome_footerMeta')}</span>
           </div>
         </div>
       </div>
