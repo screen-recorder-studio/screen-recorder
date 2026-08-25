@@ -25,6 +25,8 @@ interface InitMessage {
     width?: number
     height?: number
     fps?: number
+    intent?: 'video' | 'gif'
+    capture?: Record<string, unknown>
   }
 }
 
@@ -299,6 +301,8 @@ async function handleWriterMessage(event: MessageEvent<InitMessage | AppendMessa
         width: message.meta?.width,
         height: message.meta?.height,
         fps: message.meta?.fps,
+        intent: message.meta?.intent === 'gif' ? 'gif' : 'video',
+        ...(message.meta?.capture ? { capture: message.meta.capture } : {}),
         timelineVersion: 2,
         timestampBasis: 'recording-active-us'
       }

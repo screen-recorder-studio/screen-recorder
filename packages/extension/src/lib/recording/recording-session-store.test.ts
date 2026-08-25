@@ -23,6 +23,28 @@ class MemoryStorage implements StorageAreaLike {
 }
 
 describe('recording session store', () => {
+  it('restores an in-progress GIF area selection after a service-worker restart', async () => {
+    const storage = new MemoryStorage()
+    storage.data[RECORDING_SESSION_STORAGE_KEY] = {
+      phase: 'selecting',
+      operationId: 'op-area',
+      revision: 1,
+      mode: 'area',
+      intent: 'gif',
+      countdownRemaining: 0,
+      elapsedMs: 0,
+      errorCode: null,
+      updatedAt: 100
+    }
+
+    expect(await createRecordingSessionStore(storage).load()).toMatchObject({
+      phase: 'selecting',
+      mode: 'area',
+      intent: 'gif',
+      operationId: 'op-area'
+    })
+  })
+
   it('returns a fresh idle session when storage is empty or corrupted', async () => {
     const storage = new MemoryStorage()
     const store = createRecordingSessionStore(storage)
@@ -63,6 +85,7 @@ describe('recording session store', () => {
       operationId: 'op-1',
       revision: 3,
       mode: 'screen',
+      intent: 'video',
       countdownRemaining: 0,
       elapsedMs: 1200,
       errorCode: null,
@@ -78,6 +101,7 @@ describe('recording session store', () => {
       operationId: 'op-1',
       revision: 1,
       mode: 'window',
+      intent: 'video',
       countdownRemaining: 0,
       elapsedMs: 0,
       errorCode: null,

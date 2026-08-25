@@ -14,6 +14,50 @@ function apply(
 }
 
 describe('recording session reducer', () => {
+  it('models GIF area selection as a durable pre-capture phase', () => {
+    const selecting = reduceRecordingSession(
+      createIdleRecordingSession({ updatedAt: 100 }),
+      {
+        type: 'SELECTION_REQUESTED',
+        operationId: 'op-area',
+        revision: 1,
+        mode: 'area',
+        intent: 'gif',
+        updatedAt: 110
+      }
+    )
+
+    expect(selecting).toMatchObject({
+      phase: 'selecting',
+      operationId: 'op-area',
+      revision: 1,
+      mode: 'area',
+      intent: 'gif'
+    })
+
+    const requesting = reduceRecordingSession(selecting, {
+      type: 'SELECTION_CONFIRMED',
+      operationId: 'op-area',
+      revision: 2,
+      updatedAt: 120
+    })
+    expect(requesting).toMatchObject({ phase: 'requesting', intent: 'gif' })
+
+    const cancelled = reduceRecordingSession(selecting, {
+      type: 'SELECTION_CANCELLED',
+      operationId: 'op-area',
+      revision: 2,
+      updatedAt: 120
+    })
+    expect(cancelled).toMatchObject({
+      phase: 'idle',
+      operationId: 'op-area',
+      revision: 2,
+      mode: 'area',
+      intent: 'gif'
+    })
+  })
+
   it('models the complete successful lifecycle with one monotonic revision', () => {
     const initial = createIdleRecordingSession({ mode: 'tab', updatedAt: 100 })
     const state = apply(
@@ -34,6 +78,7 @@ describe('recording session reducer', () => {
       operationId: 'op-1',
       revision: 9,
       mode: 'tab',
+      intent: 'video',
       countdownRemaining: 0,
       elapsedMs: 2_000,
       errorCode: null,
@@ -140,6 +185,7 @@ describe('recording session reducer', () => {
       operationId: 'op-2',
       revision: 1,
       mode: 'screen',
+      intent: 'video',
       countdownRemaining: 0,
       elapsedMs: 0,
       errorCode: null,

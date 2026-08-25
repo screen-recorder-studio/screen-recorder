@@ -8,6 +8,7 @@ import { OwnedDownloadTracker } from '../lib/downloads/owned-download-tracker'
 import { isJourneyEventInput, type JourneyEventInput } from '../lib/observability/journey-events'
 import { createJourneyRecorder } from '../lib/observability/journey-recorder'
 import { RecordingCoordinator } from '../lib/recording/recording-coordinator'
+import { createAreaRecordingContextStore } from '../lib/recording/area-recording-context'
 import { createRecordingCountdownSurface } from '../lib/recording/recording-countdown-surface'
 import { createRecordingSessionStore } from '../lib/recording/recording-session-store'
 import {
@@ -20,6 +21,7 @@ const journeyRecorder = createJourneyRecorder(chrome.storage.session as any)
 const ownedDownloadTracker = new OwnedDownloadTracker(chrome.storage.session as any)
 const recordingSessionStore = createRecordingSessionStore(chrome.storage.session as any)
 const recordingCoordinator = new RecordingCoordinator(recordingSessionStore)
+const areaRecordingContextStore = createAreaRecordingContextStore(chrome.storage.session as any)
 const recordingCountdownSurface = createRecordingCountdownSurface({
   driver: {
     create: (data) => chrome.windows.create(data),
@@ -379,7 +381,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // 处理 lab 功能的消息类型
   if (message.type) {
     const tabId = sender.tab?.id ?? message.tabId;
-    const globalTypes = new Set(['REQUEST_START_RECORDING','REQUEST_STOP_RECORDING','REQUEST_RECORDING_STATE','REQUEST_RECORDING_SESSION','REQUEST_TOGGLE_PAUSE','SET_RECORDING_COUNTDOWN','OFFSCREEN_START_RECORDING','OFFSCREEN_STOP_RECORDING','REQUEST_OFFSCREEN_PING','GET_RECORDING_STATE','RECORDING_COMPLETE','OPFS_RECORDING_READY','STREAM_START','STREAM_META','STREAM_END','STREAM_ERROR','BADGE_TICK','OPEN_CONTROL_WINDOW','OPEN_DRIVE','OPEN_LATEST_RECORDING']);
+    const globalTypes = new Set(['REQUEST_START_RECORDING','REQUEST_GIF_AREA_SELECTION','REQUEST_CANCEL_AREA_SELECTION','AREA_SELECTION_CONFIRMED','AREA_SELECTION_CANCELLED','REQUEST_STOP_RECORDING','REQUEST_RECORDING_STATE','REQUEST_RECORDING_SESSION','REQUEST_TOGGLE_PAUSE','SET_RECORDING_COUNTDOWN','OFFSCREEN_START_RECORDING','OFFSCREEN_STOP_RECORDING','REQUEST_OFFSCREEN_PING','GET_RECORDING_STATE','RECORDING_COMPLETE','OPFS_RECORDING_READY','STREAM_START','STREAM_META','STREAM_END','STREAM_ERROR','BADGE_TICK','OPEN_CONTROL_WINDOW','OPEN_DRIVE','OPEN_LATEST_RECORDING']);
     let state: any;
     if (!globalTypes.has(message.type)) {
       if (!tabId) return;
@@ -523,6 +525,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         try {
           const id = message?.id
           const operationId = operationIdFromMessage(message) || currentRecording.operationId
+          const deliveryIntent = message?.intent === 'gif' || currentRecording.intent === 'gif'
+            ? 'gif'
+            : null
           if (operationId) {
             void publishRecordingTransition(recordingCoordinator.finalized(operationId))
               .then(() => {
@@ -544,11 +549,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             } catch {}
             // Close all control windows when recording completes to avoid stale windows
             void closeAllControlWindows()
-            const targetUrl = chrome.runtime.getURL(`studio.html?id=${encodeURIComponent(id)}`)
+            const intentQuery = deliveryIntent ? `&intent=${encodeURIComponent(deliveryIntent)}` : ''
+            const targetUrl = chrome.runtime.getURL(`studio.html?id=${encodeURIComponent(id)}${intentQuery}`)
             chrome.tabs.create({ url: targetUrl }, () => {
               const err = chrome.runtime.lastError
               if (err) console.error('[Background] Failed to open Studio tab:', err.message)
             })
+            if (operationId) void clearAreaRecordingContext(operationId, false)
           }
 
           if (currentRecording && currentRecording.isRecording) {
@@ -619,11 +626,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 await publishRecordingTransition(recordingCoordinator.countdownChanged(operationId, meta.countdown))
               }
 
-              // Action popups close when the system picker takes focus. Screen
-              // and Window capture therefore use a short-lived independent
-              // surface. The final zero tick waits for the window to close
-              // before the capture owner crosses the formal frame boundary.
-              if (operationId) {
+              // Area capture keeps its countdown in the injected selector and
+              // awaits the zero-tick dismissal ACK before formal frames begin.
+              // Other sources keep using the independent countdown surface.
+              if (operationId && currentRecording.mode === 'area') {
+                const context = await areaRecordingContextStore.load()
+                if (!context || context.operationId !== operationId) {
+                  throw createErrorWithCode('Area selection context was lost', 'AREA_CONTEXT_MISMATCH')
+                }
+                const response = await sendAreaSelectorMessage(context, {
+                  type: 'AREA_SELECTOR_COUNTDOWN',
+                  operationId,
+                  remaining: meta.countdown
+                })
+                if (response?.ok !== true || (meta.countdown <= 0 && response?.dismissed !== true)) {
+                  throw createErrorWithCode('Area selector did not dismiss before recording', 'AREA_SELECTOR_DISMISS_FAILED')
+                }
+              } else if (operationId) {
                 if (meta.countdown > 0) {
                   await recordingCountdownSurface.show({
                     operationId,
@@ -720,6 +739,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'STREAM_ERROR': {
         const operationId = operationIdFromMessage(message) || currentRecording.operationId
         void hideRecordingCountdownSurface(operationId)
+        void clearAreaRecordingContext(operationId, true)
         const errorCode = typeof message?.code === 'string' && message.code.trim()
           ? message.code
           : 'RECORDING_FAILED'
@@ -747,6 +767,173 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         try { sendResponse({ ok: true }); } catch (e) {}
         return true;
       }
+      case 'REQUEST_GIF_AREA_SELECTION': {
+        ;(async () => {
+          let operationId: string | null = null
+          try {
+            const targetTabId = resolveTabCaptureTargetId(message?.targetTabId, null)
+            if (targetTabId == null) {
+              throw createErrorWithCode('No active page is available for area selection', 'AREA_TARGET_UNAVAILABLE')
+            }
+            const capabilities = await computeCapabilities(targetTabId)
+            if (!capabilities.contentScriptAvailable) {
+              throw createErrorWithCode('This page does not allow area selection', 'AREA_SELECTION_UNAVAILABLE')
+            }
+
+            const selecting = await recordingCoordinator.requestSelection('area', 'gif')
+            if (!selecting.accepted || !selecting.state.operationId) {
+              sendResponse({
+                ok: false,
+                error: 'A recording is already in progress',
+                code: 'RECORDING_BUSY',
+                state: selecting.state
+              })
+              return
+            }
+            operationId = selecting.state.operationId
+            const now = Date.now()
+            const context = await areaRecordingContextStore.save({
+              version: 1,
+              operationId,
+              targetTabId,
+              targetDocumentId: null,
+              mode: 'area',
+              intent: 'gif',
+              countdown: normalizeRecordingCountdown(message?.countdown),
+              selection: null,
+              createdAt: now,
+              updatedAt: now
+            })
+
+            const injectionResults = await chrome.scripting.executeScript({
+              target: { tabId: targetTabId, frameIds: [0] },
+              files: ['area-selector.js']
+            })
+            const topFrame = injectionResults?.find((result) => result.frameId === 0)
+            const targetDocumentId = typeof topFrame?.documentId === 'string'
+              ? topFrame.documentId
+              : null
+            const durableContext = await areaRecordingContextStore.save({
+              ...context,
+              targetDocumentId,
+              updatedAt: Date.now()
+            })
+            const opened = await sendAreaSelectorMessage(durableContext, {
+              type: 'AREA_SELECTOR_OPEN',
+              operationId
+            })
+            if (opened?.ok !== true) {
+              throw createErrorWithCode(opened?.error || 'Failed to open area selector', 'AREA_SELECTOR_OPEN_FAILED')
+            }
+
+            broadcastRecordingSession(selecting.state)
+            recordJourneyEvent({
+              name: 'recording.requested',
+              context: 'background',
+              attributes: { mode: 'area', intent: 'gif' }
+            })
+            sendResponse({ ok: true, state: selecting.state })
+          } catch (error) {
+            if (operationId) await markRecordingFailed(operationId, error?.code || 'AREA_SELECTOR_FAILED').catch(() => null)
+            await areaRecordingContextStore.clear().catch(() => null)
+            sendResponse(toErrorResponse(error))
+          }
+        })()
+        return true
+      }
+
+      case 'AREA_SELECTION_CONFIRMED': {
+        ;(async () => {
+          const operationId = operationIdFromMessage(message)
+          try {
+            const context = await requireMatchingAreaContext(operationId, sender)
+            const saved = await areaRecordingContextStore.save({
+              ...context,
+              targetDocumentId: sender.documentId || context.targetDocumentId,
+              selection: message?.selection,
+              updatedAt: Date.now()
+            })
+            if (!saved.selection) throw createErrorWithCode('The selected area is invalid', 'AREA_SELECTION_INVALID')
+
+            const confirmed = await publishRecordingTransition(
+              recordingCoordinator.selectionConfirmed(saved.operationId)
+            )
+            if (!confirmed.accepted) {
+              throw createErrorWithCode('Area selection is no longer active', 'INVALID_RECORDING_STATE')
+            }
+
+            await startRecordingViaOffscreen({
+              mode: 'area',
+              intent: 'gif',
+              video: true,
+              audio: false,
+              countdown: saved.countdown,
+              targetTabId: saved.targetTabId,
+              areaSelection: saved.selection
+            }, saved.operationId)
+            sendResponse({ ok: true, state: await recordingCoordinator.getState() })
+          } catch (error) {
+            if (operationId) await markRecordingFailed(operationId, error?.code || 'AREA_RECORDING_FAILED').catch(() => null)
+            const context = await areaRecordingContextStore.load().catch(() => null)
+            if (context && (!operationId || context.operationId === operationId)) {
+              await sendAreaSelectorMessage(context, {
+                type: 'AREA_SELECTOR_ABORT',
+                operationId: context.operationId
+              }).catch(() => null)
+              await areaRecordingContextStore.clear().catch(() => null)
+            }
+            sendResponse(toErrorResponse(error))
+          }
+        })()
+        return true
+      }
+
+      case 'AREA_SELECTION_CANCELLED': {
+        ;(async () => {
+          const operationId = operationIdFromMessage(message)
+          try {
+            const context = await requireMatchingAreaContext(operationId, sender)
+            const cancelled = await publishRecordingTransition(
+              recordingCoordinator.selectionCancelled(context.operationId)
+            )
+            if (!cancelled.accepted) {
+              throw createErrorWithCode('Area selection is no longer active', 'INVALID_RECORDING_STATE')
+            }
+            await areaRecordingContextStore.clear()
+            sendResponse({ ok: true, state: cancelled.state })
+          } catch (error) {
+            sendResponse(toErrorResponse(error))
+          }
+        })()
+        return true
+      }
+
+      case 'REQUEST_CANCEL_AREA_SELECTION': {
+        ;(async () => {
+          try {
+            const session = await recordingCoordinator.getState()
+            const context = await areaRecordingContextStore.load()
+            if (session.phase !== 'selecting' || !session.operationId || !context
+              || context.operationId !== session.operationId) {
+              sendResponse({ ok: false, code: 'INVALID_RECORDING_STATE', state: session })
+              return
+            }
+            await sendAreaSelectorMessage(context, {
+              type: 'AREA_SELECTOR_ABORT',
+              operationId: context.operationId
+            }).catch(() => null)
+            const cancelled = await publishRecordingTransition(
+              recordingCoordinator.selectionCancelled(context.operationId)
+            )
+            await areaRecordingContextStore.clear()
+            sendResponse({ ok: cancelled.accepted, state: cancelled.state })
+          } catch (error) {
+            sendResponse(toErrorResponse(error))
+          }
+        })()
+        return true
+      }
+
       case 'REQUEST_START_RECORDING':
       case 'OFFSCREEN_START_RECORDING': {
         (async () => {
@@ -1296,6 +1483,7 @@ let currentRecording = {
   elapsedMs: 0,
   tabId: null as number | null,
   mode: null as string | null,
+  intent: null as string | null,
   operationId: null as string | null
 }
 
@@ -1320,6 +1508,39 @@ function operationIdFromMessage(message): string | null {
   return typeof message?.operationId === 'string' && message.operationId.trim()
     ? message.operationId
     : null
+}
+
+async function sendAreaSelectorMessage(context, message) {
+  const options = context.targetDocumentId
+    ? { documentId: context.targetDocumentId }
+    : { frameId: 0 }
+  return chrome.tabs.sendMessage(context.targetTabId, message, options)
+}
+
+async function requireMatchingAreaContext(operationId, sender) {
+  const context = await areaRecordingContextStore.load()
+  if (!operationId || !context || context.operationId !== operationId) {
+    throw createErrorWithCode('Area selection has expired', 'AREA_CONTEXT_MISMATCH')
+  }
+  if (sender?.tab?.id !== context.targetTabId || (sender?.frameId ?? 0) !== 0) {
+    throw createErrorWithCode('Area selection came from a different page', 'AREA_SENDER_MISMATCH')
+  }
+  if (context.targetDocumentId && sender?.documentId !== context.targetDocumentId) {
+    throw createErrorWithCode('The page changed during area selection', 'AREA_DOCUMENT_CHANGED')
+  }
+  return context
+}
+
+async function clearAreaRecordingContext(operationId, abortSelector = true) {
+  const context = await areaRecordingContextStore.load().catch(() => null)
+  if (!context || (operationId && context.operationId !== operationId)) return
+  if (abortSelector) {
+    await sendAreaSelectorMessage(context, {
+      type: 'AREA_SELECTOR_ABORT',
+      operationId: context.operationId
+    }).catch(() => null)
+  }
+  await areaRecordingContextStore.clear().catch(() => null)
 }
 
 async function markRecordingFinalizing(operationId: string | null) {
@@ -1425,12 +1646,15 @@ async function resolveTargetTabId(): Promise<number | null> {
 // Unified start/stop helpers for Offscreen recording
 async function startRecordingViaOffscreen(options, operationId: string) {
   try {
-    const mode = (options?.mode === 'tab' || options?.mode === 'window' || options?.mode === 'screen') ? options.mode : 'screen'
+    const mode = (options?.mode === 'tab' || options?.mode === 'window' || options?.mode === 'screen' || options?.mode === 'area') ? options.mode : 'screen'
+    const intent = options?.intent === 'gif' ? 'gif' : 'video'
     const normalizedOptions = {
       mode,
+      intent,
       video: options?.video ?? true,
       audio: options?.audio ?? false,
       countdown: normalizeRecordingCountdown(options?.countdown),
+      ...(mode === 'area' ? { areaSelection: options?.areaSelection } : {}),
       operationId
     }
 
@@ -1441,7 +1665,7 @@ async function startRecordingViaOffscreen(options, operationId: string) {
     }
 
     let targetTabId: number | null = null
-    if (mode === 'tab') {
+    if (mode === 'tab' || mode === 'area') {
       const invokingTabId = resolveTabCaptureTargetId(options?.targetTabId, null)
       const fallbackTabId = invokingTabId == null ? await resolveTargetTabId() : null
       targetTabId = resolveTabCaptureTargetId(invokingTabId, fallbackTabId)
@@ -1458,11 +1682,12 @@ async function startRecordingViaOffscreen(options, operationId: string) {
       elapsedMs: 0,
       tabId: targetTabId,
       mode,
+      intent,
       operationId
     }
 
     let tabStreamId: string | undefined
-    if (mode === 'tab') {
+    if (mode === 'tab' || mode === 'area') {
       // Chrome's supported MV3 path is: ensure the offscreen consumer, obtain a
       // one-time tabCapture id in the service worker, then consume it
       // immediately with getUserMedia in the offscreen document.

@@ -12,6 +12,7 @@
 		"check:watch": "pnpm --filter extension check:watch",
 		"test": "pnpm --filter extension test",
 		"test:watch": "pnpm --filter extension test:watch",
+		"lab:gif": "pnpm --filter extension lab:gif",
 		"build:extension": "pnpm --filter extension build:extension",
 		"build:extension:debug": "pnpm --filter extension build:extension:debug",
 		"package:extension": "pnpm --filter extension package:extension"

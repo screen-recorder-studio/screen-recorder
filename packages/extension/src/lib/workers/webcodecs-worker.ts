@@ -17,12 +17,15 @@ self.onmessage = async (event) => {
       break
 
     case 'encode':
-      if (encoder && frame) {
-        await encodeFrame(frame, keyFrame === true)
-      } else {
-        console.warn('⚠️ [WORKER] Cannot encode: encoder or frame missing')
-        // Close the frame to prevent resource leaks (e.g., during encoder reconfiguration)
-        if (frame) try { frame.close() } catch {}
+      try {
+        if (encoder && frame) {
+          await encodeFrame(frame, keyFrame === true)
+        } else {
+          console.warn('⚠️ [WORKER] Cannot encode: encoder or frame missing')
+          if (frame) try { frame.close() } catch {}
+        }
+      } finally {
+        self.postMessage({ type: 'frame-done' })
       }
       break
 
@@ -99,14 +102,12 @@ async function configureEncoder(config: any) {
 async function encodeFrame(frame: VideoFrame, forceKey: boolean = false) {
   try {
     if (!encoder) {
-      frame.close()
       throw new Error('Encoder not configured')
     }
 
     // ✅ 背压控制：如果队列过长则丢帧
     if (encoder.encodeQueueSize != null && encoder.encodeQueueSize > BACKPRESSURE_MAX) {
       console.warn(`⚠️ [WORKER] Backpressure: dropping frame (queue: ${encoder.encodeQueueSize})`)
-      frame.close()
       return
     }
 
@@ -127,15 +128,14 @@ async function encodeFrame(frame: VideoFrame, forceKey: boolean = false) {
     // 编码帧（与元素/区域策略一致：由调用方控制是否关键帧）
     encoder.encode(frame, { keyFrame: forceKey === true })
 
-    // 关闭帧以释放内存
-    frame.close()
-
   } catch (error) {
     console.error('❌ [WORKER] Frame encoding failed:', error)
     self.postMessage({
       type: 'error',
       data: (error as Error).message || 'Frame encoding failed'
     })
+  } finally {
+    try { frame.close() } catch {}
   }
 }
 
@@ -157,7 +157,7 @@ function handleEncodedChunk(chunk: EncodedVideoChunk, metadata?: any) {
     // ✅ 流式输出，不在 Worker 内累积
     // 直接发送给主线程，由 OPFS Writer 处理
     // 🔧 修复：使用 chunkType 变量确保类型正确传递
-    self.postMessage({
+    ;(self as any).postMessage({
       type: 'chunk',
       data: {
         data: data, // 实际的编码数据
@@ -170,7 +170,7 @@ function handleEncodedChunk(chunk: EncodedVideoChunk, metadata?: any) {
         codedHeight: currentEncoderConfig?.height || 1080,
         codec: (currentEncoderConfig as any)?.codec || 'auto'
       }
-    })
+    }, [data.buffer])
 
 
   } catch (error) {

@@ -1,15 +1,19 @@
-import type { RecordingPhase, RecordingSessionState } from './recording-session'
+import type { RecordingSessionState } from './recording-session'
 
-export type RecordingPopupAction = 'start' | 'retry' | 'pause' | 'resume' | 'none'
+export type RecordingPopupAction = 'start' | 'retry' | 'pause' | 'resume' | 'cancel-selection' | 'none'
 export type RecordingPopupTone = 'neutral' | 'busy' | 'live' | 'danger'
+export type RecordingPopupWorkflow = 'video' | 'gif-area'
 
 export interface RecordingPopupModel {
   canSelectMode: boolean
   canStart: boolean
   canTogglePause: boolean
   canStop: boolean
+  canCancelSelection: boolean
   primaryAction: RecordingPopupAction
   tone: RecordingPopupTone
+  showSetup: boolean
+  activeWorkflow: RecordingPopupWorkflow | null
 }
 export function deriveRecordingPopupModel(state: RecordingSessionState): RecordingPopupModel {
   switch (state.phase) {
@@ -17,12 +21,14 @@ export function deriveRecordingPopupModel(state: RecordingSessionState): Recordi
       return availableModel('start', 'neutral')
     case 'failed':
       return availableModel('retry', 'danger')
+    case 'selecting':
+      return selectionModel(state)
     case 'recording':
-      return liveModel('pause')
+      return liveModel('pause', state)
     case 'paused':
-      return liveModel('resume')
+      return liveModel('resume', state)
     default:
-      return busyModel(state.phase)
+      return busyModel(state)
   }
 }
 
@@ -41,31 +47,61 @@ function availableModel(
     canStart: true,
     canTogglePause: false,
     canStop: false,
+    canCancelSelection: false,
     primaryAction,
-    tone
+    tone,
+    showSetup: true,
+    activeWorkflow: null
   }
 }
 
-function liveModel(primaryAction: 'pause' | 'resume'): RecordingPopupModel {
+function liveModel(
+  primaryAction: 'pause' | 'resume',
+  state: RecordingSessionState
+): RecordingPopupModel {
   return {
     canSelectMode: false,
     canStart: false,
     canTogglePause: true,
     canStop: true,
+    canCancelSelection: false,
     primaryAction,
-    tone: 'live'
+    tone: 'live',
+    showSetup: false,
+    activeWorkflow: resolveActiveWorkflow(state)
   }
 }
 
-function busyModel(_phase: Exclude<RecordingPhase, 'idle' | 'failed' | 'recording' | 'paused'>): RecordingPopupModel {
+function selectionModel(state: RecordingSessionState): RecordingPopupModel {
   return {
     canSelectMode: false,
     canStart: false,
     canTogglePause: false,
     canStop: false,
-    primaryAction: 'none',
-    tone: 'busy'
+    canCancelSelection: true,
+    primaryAction: 'cancel-selection',
+    tone: 'busy',
+    showSetup: false,
+    activeWorkflow: resolveActiveWorkflow(state)
   }
+}
+
+function busyModel(state: RecordingSessionState): RecordingPopupModel {
+  return {
+    canSelectMode: false,
+    canStart: false,
+    canTogglePause: false,
+    canStop: false,
+    canCancelSelection: false,
+    primaryAction: 'none',
+    tone: 'busy',
+    showSetup: false,
+    activeWorkflow: resolveActiveWorkflow(state)
+  }
+}
+
+function resolveActiveWorkflow(state: RecordingSessionState): RecordingPopupWorkflow {
+  return state.mode === 'area' && state.intent === 'gif' ? 'gif-area' : 'video'
 }
 
 function normalizeCounter(value: number): number {

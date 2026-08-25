@@ -13,13 +13,17 @@ describe('recording popup view model', () => {
       canStart: true,
       canTogglePause: false,
       canStop: false,
-      primaryAction: 'start'
+      primaryAction: 'start',
+      showSetup: true,
+      activeWorkflow: null
     })
     expect(deriveRecordingPopupModel(session({ phase: 'failed', operationId: 'op-1', revision: 2, errorCode: 'CAPTURE_CANCELLED' }))).toMatchObject({
       canSelectMode: true,
       canStart: true,
       primaryAction: 'retry',
-      tone: 'danger'
+      tone: 'danger',
+      showSetup: true,
+      activeWorkflow: null
     })
   })
 
@@ -29,12 +33,16 @@ describe('recording popup view model', () => {
       canTogglePause: true,
       canStop: true,
       primaryAction: 'pause',
-      tone: 'live'
+      tone: 'live',
+      showSetup: false,
+      activeWorkflow: 'video'
     })
     expect(deriveRecordingPopupModel(session({ phase: 'paused', operationId: 'op-1', revision: 3 }))).toMatchObject({
       canTogglePause: true,
       canStop: true,
-      primaryAction: 'resume'
+      primaryAction: 'resume',
+      showSetup: false,
+      activeWorkflow: 'video'
     })
   })
 
@@ -45,7 +53,42 @@ describe('recording popup view model', () => {
         canStart: false,
         canTogglePause: false,
         canStop: false,
-        tone: 'busy'
+        tone: 'busy',
+        showSetup: false,
+        activeWorkflow: 'video'
+      })
+    }
+  })
+
+  it('lets the user cancel a page-area selection from the Action', () => {
+    expect(deriveRecordingPopupModel(session({
+      phase: 'selecting',
+      operationId: 'op-area',
+      revision: 1,
+      mode: 'area',
+      intent: 'gif'
+    }))).toMatchObject({
+      canSelectMode: false,
+      canStart: false,
+      canCancelSelection: true,
+      primaryAction: 'cancel-selection',
+      tone: 'busy',
+      showSetup: false,
+      activeWorkflow: 'gif-area'
+    })
+  })
+
+  it('keeps the GIF area identity through countdown, recording, and finalization', () => {
+    for (const phase of ['countdown', 'recording', 'paused', 'stopping', 'finalizing'] as const) {
+      expect(deriveRecordingPopupModel(session({
+        phase,
+        operationId: 'op-area',
+        revision: 2,
+        mode: 'area',
+        intent: 'gif'
+      }))).toMatchObject({
+        showSetup: false,
+        activeWorkflow: 'gif-area'
       })
     }
   })

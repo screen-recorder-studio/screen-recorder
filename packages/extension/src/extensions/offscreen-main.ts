@@ -5,6 +5,8 @@ import { emitJourneyEvent } from '../lib/observability/journey-events'
 import { classifyCaptureError } from '../lib/recording/capture-errors'
 import { resolveRecordingEncodePlan } from '../lib/recording/recording-encode-plan'
 import { createRecordingFrameCadence, sampleRecordingFrame } from '../lib/recording/recording-frame-cadence'
+import { mapAreaSelectionToSourceFrame, type AreaRect } from '../lib/recording/area-crop'
+import { transferFrameToEncoderWorker } from '../lib/recording/recording-frame-transfer'
 import { RecordingDurationTracker } from '../lib/recording/recording-duration-tracker'
 import {
   normalizeRecordingCountdown,
@@ -77,6 +79,8 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
   let wcReader: ReadableStreamDefaultReader<VideoFrame> | null = null
   let wcFrameLoopActive = false
   let wcWorkerPreloaded = false  // ✅ Track if worker was preloaded
+  let wcFramesInFlight = 0
+  const WC_MAX_FRAMES_IN_FLIGHT = 4
   let isStarting = false  // Guard against concurrent start requests
 
   // OPFS writer (side-write) state
@@ -152,6 +156,7 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
     try { stopBadgeTicker() } catch {}
     try { wcFrameLoopActive = false; wcWorker?.postMessage({ type: 'stop' }) } catch {}
     wcWorker = null
+    wcFramesInFlight = 0
     try { void wcReader?.cancel() } catch {}
     try { wcReader?.releaseLock() } catch {}
     wcReader = null
@@ -201,7 +206,14 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
     if (!m) return {} as any
     const metaW = (typeof m.width === 'number') ? m.width : (m.codedWidth)
     const metaH = (typeof m.height === 'number') ? m.height : (m.codedHeight)
-    return { codec: m.codec || 'vp8', width: metaW ?? 1920, height: metaH ?? 1080, fps: m.framerate || m.fps || 30 }
+    return {
+      codec: m.codec || 'vp8',
+      width: metaW ?? 1920,
+      height: metaH ?? 1080,
+      fps: m.framerate || m.fps || 30,
+      intent: m.intent === 'gif' ? 'gif' : 'video',
+      ...(m.capture ? { capture: m.capture } : {})
+    }
   }
 
   async function initOpfsWriter(meta?: any): Promise<void> {
@@ -237,6 +249,7 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
               type: 'OPFS_RECORDING_READY',
               id: `rec_${d?.id ?? id}`,
               meta: opfsLastMeta,
+              intent: opfsLastMeta?.intent,
               operationId: activeOperationId
             })
           } catch {}
@@ -273,8 +286,11 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
     if (!OPFS_WRITER_ENABLED) return
     if (!opfsWriter || !opfsWriterReady) {
       if (opfsPendingChunks.length >= OPFS_PENDING_CHUNKS_MAX) {
-        console.warn(`[Offscreen][OPFS] Pending chunks queue full (${OPFS_PENDING_CHUNKS_MAX}), dropping oldest chunk`)
-        opfsPendingChunks.shift()
+        handleOpfsWriterFatalError({
+          code: 'OPFS_BACKPRESSURE_OVERFLOW',
+          message: `Recording storage queue exceeded ${OPFS_PENDING_CHUNKS_MAX} chunks`
+        })
+        return
       }
       opfsPendingChunks.push(d); return
     }
@@ -298,7 +314,12 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
       }
 
       opfsWriter!.postMessage({ type: 'append', buffer: transferBuf, timestamp: d.timestamp || 0, chunkType, codedWidth: d.codedWidth || opfsLastMeta?.width, codedHeight: d.codedHeight || opfsLastMeta?.height, codec: d.codec || opfsLastMeta?.codec, isKeyframe }, [transferBuf])
-    } catch (e) { log('[Offscreen][OPFS] append failed', e) }
+    } catch (e) {
+      handleOpfsWriterFatalError({
+        code: 'OPFS_APPEND_FAILED',
+        message: getErrorMessage(e, 'Failed to append recording data')
+      })
+    }
   }
 
   async function finalizeOpfsWriter(wallClockDurationMs = 0) {
@@ -492,6 +513,8 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
     const timestamp = new Date().toISOString()
     let heldFirstFrame: VideoFrame | null = null
     let stopWarmup: (() => Promise<void>) | null = null
+    let areaCropRect: AreaRect | null = null
+    let areaSourceFrameSize: { width: number; height: number } | null = null
     log(`🎯 [${timestamp}] Starting recording directly in offscreen document...`, { options })
 
     // Guard against concurrent start requests
@@ -512,14 +535,15 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
       }
 
       // 提取录制模式，默认为 screen
-      const mode = options?.mode === 'tab' || options?.mode === 'window' || options?.mode === 'screen'
+      const mode = options?.mode === 'tab' || options?.mode === 'window' || options?.mode === 'screen' || options?.mode === 'area'
         ? options.mode
         : 'screen'
+      const intent = options?.intent === 'gif' ? 'gif' : 'video'
       log(`📺 Recording mode: ${mode}`)
 
       // Current-tab capture is a no-picker tabCapture stream. Window/screen
       // capture intentionally continue to use the system display picker.
-      const stream = mode === 'tab'
+      const stream = mode === 'tab' || mode === 'area'
         ? await getTabMediaStream(tabStreamId, options?.audio === true)
         : await getDisplayMediaStream(mode)
       currentStream = stream
@@ -569,6 +593,7 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
         log('⚡ Reusing preloaded WebCodecs Worker')
       }
       wcWorkerPreloaded = false  // Reset preload flag as we're now using it for recording
+      wcFramesInFlight = 0
 
       let configuredEncoderConfig: any = null
       let resolveConfigured: (() => void) | null = null
@@ -593,6 +618,9 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
             resolveConfigured = null
             rejectConfigured = null
             log('✅ WebCodecs worker configured:', config)
+            break
+          case 'frame-done':
+            wcFramesInFlight = Math.max(0, wcFramesInFlight - 1)
             break
           case 'chunk': {
             // track chunk meta count; avoid retaining big buffers here to save memory
@@ -706,7 +734,19 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
         prepareFromFrame: async (frame: VideoFrame) => {
           const firstFrameWidth = frame.displayWidth || frame.codedWidth || settings.width || 1920
           const firstFrameHeight = frame.displayHeight || frame.codedHeight || settings.height || 1080
-          const encodePlan = resolveRecordingEncodePlan(firstFrameWidth, firstFrameHeight, settings.frameRate || 30)
+          if (mode === 'area') {
+            areaCropRect = mapAreaSelectionToSourceFrame({
+              rectCss: options?.areaSelection?.rectCss,
+              viewportCss: options?.areaSelection?.viewportCss,
+              sourceFrame: { width: firstFrameWidth, height: firstFrameHeight }
+            })
+            areaSourceFrameSize = { width: firstFrameWidth, height: firstFrameHeight }
+          }
+          const encodePlan = resolveRecordingEncodePlan(
+            areaCropRect?.width || firstFrameWidth,
+            areaCropRect?.height || firstFrameHeight,
+            settings.frameRate || 30
+          )
           width = encodePlan.width
           height = encodePlan.height
           framerate = encodePlan.framerate
@@ -717,7 +757,25 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
           height = configuredEncoderConfig?.height || height
           framerate = configuredEncoderConfig?.framerate || framerate
           if (OPFS_WRITER_ENABLED) {
-            await initOpfsWriter({ codec: configuredEncoderConfig?.codec, width, height, framerate })
+            await initOpfsWriter({
+              codec: configuredEncoderConfig?.codec,
+              width,
+              height,
+              framerate,
+              intent,
+              ...(mode === 'area' && areaCropRect && areaSourceFrameSize ? {
+                capture: {
+                  mode: 'area',
+                  source: 'tab',
+                  intent: 'gif',
+                  mappingVersion: 2,
+                  requestedRectCss: options.areaSelection.rectCss,
+                  viewportCss: options.areaSelection.viewportCss,
+                  actualRectPx: areaCropRect,
+                  sourceFrameSize: areaSourceFrameSize
+                }
+              } : {})
+            })
           }
         }
       })
@@ -729,23 +787,25 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
       // The capture owner also owns the countdown. Action popups are disposable
       // and may close as soon as the browser source picker takes focus.
       const COUNTDOWN_SECONDS = normalizeRecordingCountdown(options?.countdown)
-      for (let remaining = COUNTDOWN_SECONDS; remaining > 0; remaining -= 1) {
+      const publishCountdown = async (remaining: number) => {
         try {
-          await chrome.runtime.sendMessage({
+          const response = await chrome.runtime.sendMessage({
             type: 'STREAM_META',
             operationId: activeOperationId,
             meta: { preparing: true, countdown: remaining, mode }
           })
-        } catch {}
+          if (mode === 'area' && response?.ok !== true) {
+            throw createErrorWithCode('Area selector countdown acknowledgement failed', 'AREA_SELECTOR_ACK_FAILED')
+          }
+        } catch (error) {
+          if (mode === 'area') throw error
+        }
+      }
+      for (let remaining = COUNTDOWN_SECONDS; remaining > 0; remaining -= 1) {
+        await publishCountdown(remaining)
         await new Promise((resolve) => setTimeout(resolve, 1000))
       }
-      try {
-        await chrome.runtime.sendMessage({
-          type: 'STREAM_META',
-          operationId: activeOperationId,
-          meta: { preparing: true, countdown: 0, mode }
-        })
-      } catch {}
+      await publishCountdown(0)
       // Extra guard to avoid capturing the last compositor frame of countdown window
       await new Promise((r) => setTimeout(r, 140));
 
@@ -802,13 +862,46 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
           return
         }
 
+        if (wcFramesInFlight >= WC_MAX_FRAMES_IN_FLIGHT) {
+          try { frame.close() } catch {}
+          return
+        }
+
         const keyFrame = frameIndex === 0 || (frameIndex % keyEvery === 0)
         const activeTimestampUs = candidateTimestampUs
-        const activeTimelineFrame = new VideoFrame(frame, { timestamp: activeTimestampUs })
-        lastActiveFrameTimestampUs = activeTimestampUs
-        try { frame.close() } catch {}
-        wcWorker?.postMessage({ type: 'encode', frame: activeTimelineFrame, keyFrame }, [activeTimelineFrame])
-        frameIndex++
+        let activeTimelineFrame: VideoFrame | null = null
+        try {
+          if (mode === 'area') {
+            if (!areaCropRect || !areaSourceFrameSize) {
+              throw createErrorWithCode('Area crop was not initialized', 'AREA_CROP_UNAVAILABLE')
+            }
+            const frameWidth = frame.displayWidth || frame.codedWidth
+            const frameHeight = frame.displayHeight || frame.codedHeight
+            if (frameWidth !== areaSourceFrameSize.width || frameHeight !== areaSourceFrameSize.height) {
+              throw createErrorWithCode('Captured page dimensions changed during area recording', 'AREA_SOURCE_SIZE_CHANGED')
+            }
+            activeTimelineFrame = new VideoFrame(frame, {
+              timestamp: activeTimestampUs,
+              visibleRect: areaCropRect,
+              displayWidth: width,
+              displayHeight: height
+            })
+          } else {
+            activeTimelineFrame = new VideoFrame(frame, { timestamp: activeTimestampUs })
+          }
+          try { frame.close() } catch {}
+          const worker = wcWorker
+          if (!worker) throw createErrorWithCode('Encoder worker is unavailable', 'ENCODER_UNAVAILABLE')
+          transferFrameToEncoderWorker(worker, activeTimelineFrame, keyFrame)
+          activeTimelineFrame = null
+          wcFramesInFlight++
+          lastActiveFrameTimestampUs = activeTimestampUs
+          frameIndex++
+        } catch (error) {
+          try { frame.close() } catch {}
+          try { activeTimelineFrame?.close() } catch {}
+          throw error
+        }
       }
 
       enqueueFrame(heldFirstFrame)
@@ -822,6 +915,10 @@ import { waitForOpfsFinalization } from '../lib/workers/opfs-finalize'
           }
         } catch (err) {
           log('❌ Frame loop error:', err)
+          const errorMessage = getErrorMessage(err, 'Area frame processing failed')
+          const code = typeof (err as any)?.code === 'string' ? (err as any).code : 'FRAME_PIPELINE_ERROR'
+          emitStreamError(errorMessage, code)
+          if (isRecording) stopRecordingInternal()
         }
       })()
 

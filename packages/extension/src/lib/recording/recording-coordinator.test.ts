@@ -34,6 +34,33 @@ function createCoordinator(store = createMemoryStore()) {
 }
 
 describe('RecordingCoordinator', () => {
+  it('owns the area-selection transition before capture is requested', async () => {
+    const coordinator = createCoordinator()
+
+    const selecting = await coordinator.requestSelection('area', 'gif')
+    const duplicate = await coordinator.requestStart('tab')
+    const confirmed = await coordinator.selectionConfirmed(selecting.state.operationId!)
+
+    expect(selecting).toMatchObject({
+      accepted: true,
+      state: { phase: 'selecting', mode: 'area', intent: 'gif' }
+    })
+    expect(duplicate).toEqual({ accepted: false, state: selecting.state })
+    expect(confirmed).toMatchObject({
+      accepted: true,
+      state: { phase: 'requesting', mode: 'area', intent: 'gif' }
+    })
+  })
+
+  it('can cancel selection without starting capture', async () => {
+    const coordinator = createCoordinator()
+    const selecting = await coordinator.requestSelection('area', 'gif')
+
+    const cancelled = await coordinator.selectionCancelled(selecting.state.operationId!)
+
+    expect(cancelled).toMatchObject({ accepted: true, state: { phase: 'idle' } })
+  })
+
   it('accepts one start and rejects a duplicate while capture is being requested', async () => {
     const coordinator = createCoordinator()
 

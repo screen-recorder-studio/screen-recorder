@@ -1,5 +1,6 @@
 export type RecordingPhase =
   | 'idle'
+  | 'selecting'
   | 'requesting'
   | 'countdown'
   | 'recording'
@@ -8,13 +9,15 @@ export type RecordingPhase =
   | 'finalizing'
   | 'failed'
 
-export type RecordingMode = 'tab' | 'window' | 'screen'
+export type RecordingMode = 'tab' | 'window' | 'screen' | 'area'
+export type RecordingIntent = 'video' | 'gif'
 
 export interface RecordingSessionState {
   phase: RecordingPhase
   operationId: string | null
   revision: number
   mode: RecordingMode
+  intent: RecordingIntent
   countdownRemaining: number
   elapsedMs: number
   errorCode: string | null
@@ -30,16 +33,26 @@ interface VersionedRecordingEvent {
 interface StartRequestedEvent extends VersionedRecordingEvent {
   type: 'START_REQUESTED'
   mode: RecordingMode
+  intent?: RecordingIntent
 }
 
 interface RetryRequestedEvent extends VersionedRecordingEvent {
   type: 'RETRY_REQUESTED'
   mode: RecordingMode
+  intent?: RecordingIntent
+}
+
+interface SelectionRequestedEvent extends VersionedRecordingEvent {
+  type: 'SELECTION_REQUESTED'
+  mode: 'area'
+  intent: RecordingIntent
 }
 
 export type RecordingSessionEvent =
   | StartRequestedEvent
   | RetryRequestedEvent
+  | SelectionRequestedEvent
+  | (VersionedRecordingEvent & { type: 'SELECTION_CONFIRMED' | 'SELECTION_CANCELLED' })
   | (VersionedRecordingEvent & {
       type: 'COUNTDOWN_STARTED' | 'COUNTDOWN_TICKED'
       countdownRemaining: number
@@ -54,6 +67,7 @@ export type RecordingSessionEvent =
 
 export interface CreateIdleRecordingSessionOptions {
   mode?: RecordingMode
+  intent?: RecordingIntent
   updatedAt?: number
 }
 
@@ -65,6 +79,7 @@ export function createIdleRecordingSession(
     operationId: null,
     revision: 0,
     mode: options.mode ?? 'tab',
+    intent: options.intent ?? 'video',
     countdownRemaining: 0,
     elapsedMs: 0,
     errorCode: null,
@@ -87,6 +102,14 @@ export function reduceRecordingSession(
     return beginOperation(event)
   }
 
+
+  if (event.type === 'SELECTION_REQUESTED') {
+    if ((state.phase !== 'idle' && state.phase !== 'failed') || event.operationId === state.operationId) {
+      return state
+    }
+    return beginSelection(event)
+  }
+
   if (event.type === 'RETRY_REQUESTED') {
     if (state.phase !== 'failed' || event.operationId === state.operationId) return state
     return beginOperation(event)
@@ -101,6 +124,20 @@ export function reduceRecordingSession(
   }
 
   switch (event.type) {
+    case 'SELECTION_CONFIRMED':
+      if (state.phase !== 'selecting') return state
+      return { ...base, phase: 'requesting' }
+
+    case 'SELECTION_CANCELLED':
+      if (state.phase !== 'selecting') return state
+      return {
+        ...base,
+        phase: 'idle',
+        countdownRemaining: 0,
+        elapsedMs: 0,
+        errorCode: null
+      }
+
     case 'COUNTDOWN_STARTED':
       if (state.phase !== 'requesting') return state
       return {
@@ -172,6 +209,21 @@ function beginOperation(event: StartRequestedEvent | RetryRequestedEvent): Recor
     operationId: event.operationId,
     revision: event.revision,
     mode: event.mode,
+    intent: event.intent ?? 'video',
+    countdownRemaining: 0,
+    elapsedMs: 0,
+    errorCode: null,
+    updatedAt: normalizeNonNegativeInteger(event.updatedAt)
+  }
+}
+
+function beginSelection(event: SelectionRequestedEvent): RecordingSessionState {
+  return {
+    phase: 'selecting',
+    operationId: event.operationId,
+    revision: event.revision,
+    mode: event.mode,
+    intent: event.intent,
     countdownRemaining: 0,
     elapsedMs: 0,
     errorCode: null,

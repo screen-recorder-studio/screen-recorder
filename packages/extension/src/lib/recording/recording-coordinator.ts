@@ -1,4 +1,5 @@
 import type {
+  RecordingIntent,
   RecordingMode,
   RecordingSessionEvent,
   RecordingSessionState
@@ -46,7 +47,10 @@ export class RecordingCoordinator {
     return this.enqueue(() => this.store.load())
   }
 
-  requestStart(mode: RecordingMode): Promise<RecordingTransitionResult> {
+  requestStart(
+    mode: RecordingMode,
+    intent: RecordingIntent = 'video'
+  ): Promise<RecordingTransitionResult> {
     return this.enqueue(async () => {
       const current = await this.store.load()
       if (current.phase !== 'idle' && current.phase !== 'failed') {
@@ -58,10 +62,45 @@ export class RecordingCoordinator {
         operationId: this.createOperationId(),
         revision: 1,
         mode,
+        intent,
         updatedAt: this.now()
       }
       return this.apply(current, event)
     })
+  }
+
+  requestSelection(
+    mode: 'area',
+    intent: RecordingIntent
+  ): Promise<RecordingTransitionResult> {
+    return this.enqueue(async () => {
+      const current = await this.store.load()
+      if (current.phase !== 'idle' && current.phase !== 'failed') {
+        return { accepted: false, state: current }
+      }
+
+      const event: RecordingSessionEvent = {
+        type: 'SELECTION_REQUESTED',
+        operationId: this.createOperationId(),
+        revision: 1,
+        mode,
+        intent,
+        updatedAt: this.now()
+      }
+      return this.apply(current, event)
+    })
+  }
+
+  selectionConfirmed(operationId: string): Promise<RecordingTransitionResult> {
+    return this.transition(operationId, (_state, revision, updatedAt) => ({
+      type: 'SELECTION_CONFIRMED', operationId, revision, updatedAt
+    }))
+  }
+
+  selectionCancelled(operationId: string): Promise<RecordingTransitionResult> {
+    return this.transition(operationId, (_state, revision, updatedAt) => ({
+      type: 'SELECTION_CANCELLED', operationId, revision, updatedAt
+    }))
   }
 
   countdownChanged(operationId: string, countdownRemaining: number): Promise<RecordingTransitionResult> {

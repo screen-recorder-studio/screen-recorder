@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <title>GIF Recording Lab</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="lab-header">
+      <div>
+        <p class="eyebrow">Screen Recorder Studio · deterministic fixture</p>
+        <h1>GIF Recording Lab</h1>
+        <p class="lede">Select the exact 640×360 test card. For end-to-end recording, Studio, and export acceptance, keep the default <strong>Cadence · motion gate</strong>. Geometry is intentionally static and only proves crop precision. After the recorder countdown disappears, press <kbd>R</kbd> to start a deterministic run.</p>
+      </div>
+      <div class="environment" aria-label="Lab environment">
+        <span id="ready-chip" class="chip">Starting…</span>
+        <span id="motion-chip" class="chip chip-muted">Checking motion…</span>
+        <span id="environment-chip" class="chip chip-muted"></span>
+      </div>
+    </header>
+
+    <nav class="lab-controls" aria-label="GIF Lab controls">
+      <label>
+        Scenario
+        <select id="case-select"></select>
+      </label>
+      <label>
+        Seed
+        <input id="seed-input" type="number" value="20260824" step="1" />
+      </label>
+      <button id="reset-button" type="button">Reset &amp; run <kbd>R</kbd></button>
+      <button id="pause-button" type="button">Pause <kbd>Space</kbd></button>
+      <button id="scroll-button" type="button">Scroll target into view</button>
+    </nav>
+
+    <main>
+      <section class="capture-column" aria-labelledby="capture-heading">
+        <div class="capture-heading-row">
+          <div>
+            <p class="section-kicker">Capture target</p>
+            <h2 id="capture-heading">Select outer cyan edge exactly</h2>
+          </div>
+          <output id="run-status" aria-live="polite">Paused at 00:00.0</output>
+        </div>
+
+        <div class="target-ruler target-ruler-top" aria-hidden="true"><span>0</span><span>160</span><span>320</span><span>480</span><span>640</span></div>
+        <div id="capture-target" data-gif-lab-target tabindex="0" aria-label="640 by 360 GIF Lab capture target">
+          <div id="scene" class="scene"></div>
+          <div class="target-meta target-meta-top">
+            <span id="case-label">SUITE</span>
+            <span id="phase-label">GEOMETRY</span>
+          </div>
+          <div class="target-meta target-meta-bottom">
+            <span id="frame-label">F0000</span>
+            <span id="time-label">00:00.0</span>
+            <span>640×360</span>
+          </div>
+          <div id="motion-banner" class="target-motion-banner" aria-live="polite"></div>
+        </div>
+        <div class="target-ruler target-ruler-bottom" aria-hidden="true"><span>640×360 CSS px</span><span>even-aligned target</span><span>no network assets</span></div>
+      </section>
+
+      <aside class="contract-panel" aria-labelledby="contract-heading">
+        <p class="section-kicker">Machine-readable oracle</p>
+        <h2 id="contract-heading">Expected contract</h2>
+        <dl id="case-summary"></dl>
+        <pre id="contract-output"></pre>
+        <p class="api-note">Available at <code>window.__GIF_LAB__</code>. Press <kbd>R</kbd> only after the area countdown reaches zero.</p>
+      </aside>
+    </main>
+
+    <section class="scenario-notes" aria-labelledby="notes-heading">
+      <p class="section-kicker">Acceptance coverage</p>
+      <h2 id="notes-heading">What this page proves</h2>
+      <div id="scenario-cards" class="scenario-grid"></div>
+    </section>
+
+    <div id="lifecycle-spacer" aria-hidden="true"></div>
+    <script type="module" src="/gif-lab.ts"></script>
+  </body>
+</html>

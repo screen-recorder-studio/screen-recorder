@@ -1,6 +1,7 @@
 import {
   createIdleRecordingSession,
   reduceRecordingSession,
+  type RecordingIntent,
   type RecordingMode,
   type RecordingPhase,
   type RecordingSessionEvent,
@@ -73,6 +74,7 @@ export function createRecordingSessionStore(storage: StorageAreaLike): Recording
 
 const RECORDING_PHASES = new Set<RecordingPhase>([
   'idle',
+  'selecting',
   'requesting',
   'countdown',
   'recording',
@@ -82,17 +84,21 @@ const RECORDING_PHASES = new Set<RecordingPhase>([
   'failed'
 ])
 
-const RECORDING_MODES = new Set<RecordingMode>(['tab', 'window', 'screen'])
+const RECORDING_MODES = new Set<RecordingMode>(['tab', 'window', 'screen', 'area'])
+const RECORDING_INTENTS = new Set<RecordingIntent>(['video', 'gif'])
 
 function normalizeRecordingSession(value: unknown): RecordingSessionState {
   if (!isRecord(value)) return createIdleRecordingSession()
 
   const phase = value.phase
   const mode = value.mode
+  const intent = value.intent === undefined ? 'video' : value.intent
   const revision = value.revision
   const operationId = normalizeOperationId(value.operationId)
 
-  if (!isRecordingPhase(phase) || !isRecordingMode(mode)) return createIdleRecordingSession()
+  if (!isRecordingPhase(phase) || !isRecordingMode(mode) || !isRecordingIntent(intent)) {
+    return createIdleRecordingSession()
+  }
   if (!Number.isSafeInteger(revision) || (revision as number) < 0) return createIdleRecordingSession()
   if (value.operationId !== null && operationId === null) return createIdleRecordingSession()
   if (phase !== 'idle' && (operationId === null || (revision as number) === 0)) {
@@ -107,6 +113,7 @@ function normalizeRecordingSession(value: unknown): RecordingSessionState {
     operationId,
     revision: revision as number,
     mode,
+    intent,
     countdownRemaining: phase === 'countdown' ? normalizeCounter(value.countdownRemaining) : 0,
     elapsedMs: normalizeCounter(value.elapsedMs),
     errorCode: phase === 'failed' ? errorCode : null,
@@ -124,6 +131,10 @@ function isRecordingPhase(value: unknown): value is RecordingPhase {
 
 function isRecordingMode(value: unknown): value is RecordingMode {
   return typeof value === 'string' && RECORDING_MODES.has(value as RecordingMode)
+}
+
+function isRecordingIntent(value: unknown): value is RecordingIntent {
+  return typeof value === 'string' && RECORDING_INTENTS.has(value as RecordingIntent)
 }
 
 function normalizeOperationId(value: unknown): string | null {
@@ -149,6 +160,7 @@ function statesEqual(left: RecordingSessionState, right: RecordingSessionState):
     && left.operationId === right.operationId
     && left.revision === right.revision
     && left.mode === right.mode
+    && left.intent === right.intent
     && left.countdownRemaining === right.countdownRemaining
     && left.elapsedMs === right.elapsedMs
     && left.errorCode === right.errorCode
