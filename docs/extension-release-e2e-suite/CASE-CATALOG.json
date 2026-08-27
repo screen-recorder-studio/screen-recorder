@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "suite": "extension-release-e2e",
+  "stories": [
+    { "id": "US-01", "title": "首次安装与价值理解", "priority": "P1", "implementation": "partial" },
+    { "id": "US-02", "title": "选择正确的标准录制来源", "priority": "P0", "implementation": "implemented" },
+    { "id": "US-03", "title": "录制面向 GIF 的页面区域", "priority": "P0", "implementation": "implemented" },
+    { "id": "US-04", "title": "安全控制录制会话", "priority": "P0", "implementation": "implemented" },
+    { "id": "US-05", "title": "自动进入正确的 Studio 录制", "priority": "P0", "implementation": "implemented" },
+    { "id": "US-06", "title": "可靠预览与定位", "priority": "P0", "implementation": "implemented" },
+    { "id": "US-07", "title": "修剪时间与强调重点", "priority": "P0", "implementation": "implemented" },
+    { "id": "US-08", "title": "调整构图与品牌呈现", "priority": "P1", "implementation": "implemented" },
+    { "id": "US-09", "title": "导出通用视频", "priority": "P0", "implementation": "implemented" },
+    { "id": "US-10", "title": "导出可交付的邮件 GIF", "priority": "P0", "implementation": "partial" },
+    { "id": "US-11", "title": "管理本地录制", "priority": "P0", "implementation": "implemented" },
+    { "id": "US-12", "title": "从失败、重载和升级中恢复", "priority": "P0", "implementation": "partial" },
+    { "id": "US-13", "title": "信任本地优先和权限边界", "priority": "P0", "implementation": "partial" },
+    { "id": "US-14", "title": "使用可访问且本地化的界面", "priority": "P1", "implementation": "partial" },
+    { "id": "US-15", "title": "在目标设备上稳定完成任务", "priority": "P1", "implementation": "partial" }
+  ],
+  "cases": [
+    { "id": "GATE-001", "title": "全量自动化测试", "storyIds": ["US-12"], "priority": "P0", "cadence": ["smoke", "full", "extended"], "execution": "automated", "environments": ["ENV-CLI"], "data": ["BUILD"] },
+    { "id": "GATE-002", "title": "Svelte 与 TypeScript 检查", "storyIds": ["US-14"], "priority": "P0", "cadence": ["smoke", "full", "extended"], "execution": "automated", "environments": ["ENV-CLI"], "data": ["BUILD"] },
+    { "id": "GATE-003", "title": "正式扩展构建与发布日志策略", "storyIds": ["US-02", "US-03", "US-09", "US-10"], "priority": "P0", "cadence": ["smoke", "full", "extended"], "execution": "automated", "environments": ["ENV-CLI"], "data": ["BUILD"] },
+    { "id": "GATE-004", "title": "版本、Manifest、权限和发布声明一致性", "storyIds": ["US-13"], "priority": "P0", "cadence": ["smoke", "full", "extended"], "execution": "assisted", "environments": ["ENV-CLI"], "data": ["BUILD"] },
+    { "id": "GATE-005", "title": "用户故事套件结构校验", "storyIds": ["US-12"], "priority": "P0", "cadence": ["smoke", "full", "extended"], "execution": "automated", "environments": ["ENV-CLI"], "data": ["CATALOG"] },
+    { "id": "GATE-006", "title": "Git 与候选构建完整性", "storyIds": ["US-12"], "priority": "P0", "cadence": ["smoke", "full", "extended"], "execution": "assisted", "environments": ["ENV-CLI"], "data": ["BUILD"] },
+
+    { "id": "ONB-001", "title": "全新安装 Welcome", "storyIds": ["US-01", "US-13"], "priority": "P1", "cadence": ["full"], "execution": "manual", "environments": ["ENV-CLEAN"], "data": ["DATA-09"] },
+    { "id": "ONB-002", "title": "从 Welcome 完成第一次标准录制", "storyIds": ["US-01", "US-02", "US-05"], "priority": "P1", "cadence": ["full"], "execution": "manual", "environments": ["ENV-CLEAN"], "data": ["DATA-01"] },
+    { "id": "NAV-001", "title": "Action 到 Manager 和最近 Studio", "storyIds": ["US-11"], "priority": "P1", "cadence": ["full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-04"] },
+
+    { "id": "ENTRY-001", "title": "当前标签页主路径", "storyIds": ["US-02", "US-04", "US-05"], "priority": "P0", "cadence": ["smoke", "full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-01"] },
+    { "id": "ENTRY-002", "title": "窗口录制", "storyIds": ["US-02"], "priority": "P1", "cadence": ["full", "extended"], "execution": "manual", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE", "ENV-MULTI"], "data": ["DATA-01"] },
+    { "id": "ENTRY-003", "title": "整屏录制", "storyIds": ["US-02"], "priority": "P1", "cadence": ["full", "extended"], "execution": "manual", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE", "ENV-MULTI"], "data": ["DATA-01"] },
+    { "id": "ENTRY-004", "title": "Picker 取消与重试", "storyIds": ["US-02", "US-12"], "priority": "P0", "cadence": ["smoke", "full"], "execution": "manual", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-01"] },
+
+    { "id": "AREA-001", "title": "GIF 入口的可发现性与动作语义", "storyIds": ["US-03", "US-14"], "priority": "P0", "cadence": ["smoke", "full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-02"] },
+    { "id": "AREA-002", "title": "选区到动态 Studio 主路径", "storyIds": ["US-03", "US-05", "US-06", "US-10"], "priority": "P0", "cadence": ["smoke", "full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-02"] },
+    { "id": "AREA-003", "title": "取消、Esc 与重选", "storyIds": ["US-03", "US-12"], "priority": "P0", "cadence": ["full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-02"] },
+    { "id": "AREA-004", "title": "DPR、页面缩放和边界几何", "storyIds": ["US-03"], "priority": "P0", "cadence": ["full", "extended"], "execution": "assisted", "environments": ["ENV-HIDPI"], "data": ["DATA-03"] },
+    { "id": "AREA-005", "title": "滚动时固定视口语义", "storyIds": ["US-03"], "priority": "P1", "cadence": ["full"], "execution": "manual", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-02"] },
+    { "id": "AREA-006", "title": "Resize、导航和文档代次失效", "storyIds": ["US-03", "US-12"], "priority": "P1", "cadence": ["full"], "execution": "manual", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-02"] },
+    { "id": "AREA-007", "title": "受限页面 fail-closed", "storyIds": ["US-03", "US-12", "US-13"], "priority": "P0", "cadence": ["smoke", "full"], "execution": "manual", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-01"] },
+
+    { "id": "SESSION-001", "title": "倒计时与正式首帧", "storyIds": ["US-04"], "priority": "P0", "cadence": ["smoke", "full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-01", "DATA-02"] },
+    { "id": "SESSION-002", "title": "Popup 关闭与重开", "storyIds": ["US-04"], "priority": "P0", "cadence": ["smoke", "full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-01"] },
+    { "id": "SESSION-003", "title": "Pause/Resume active clock", "storyIds": ["US-04", "US-06"], "priority": "P0", "cadence": ["smoke", "full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-04"] },
+    { "id": "SESSION-004", "title": "Stop 与 finalize 幂等", "storyIds": ["US-04", "US-12"], "priority": "P0", "cadence": ["smoke", "full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-01"] },
+    { "id": "SESSION-005", "title": "来源主动结束", "storyIds": ["US-04", "US-12"], "priority": "P1", "cadence": ["full"], "execution": "manual", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-01"] },
+    { "id": "SESSION-006", "title": "Service Worker 回收与扩展重载", "storyIds": ["US-04", "US-12"], "priority": "P1", "cadence": ["full", "extended"], "execution": "manual", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-01"] },
+    { "id": "SESSION-007", "title": "并发启动与连续三轮资源释放", "storyIds": ["US-04", "US-12", "US-15"], "priority": "P1", "cadence": ["full", "extended"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE", "ENV-WIN-LOW"], "data": ["DATA-10"] },
+
+    { "id": "STUDIO-001", "title": "精确 recording 与 GIF intent 交接", "storyIds": ["US-05", "US-10"], "priority": "P0", "cadence": ["smoke", "full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-02"] },
+    { "id": "STUDIO-002", "title": "首帧、动态播放、暂停和终点", "storyIds": ["US-06"], "priority": "P0", "cadence": ["smoke", "full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-02"] },
+    { "id": "STUDIO-003", "title": "Seek、静态 Hold 与快速乱序定位", "storyIds": ["US-06", "US-07"], "priority": "P0", "cadence": ["smoke", "full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-04", "DATA-05"] },
+    { "id": "STUDIO-004", "title": "加载失败、旧录制与重试", "storyIds": ["US-06", "US-12"], "priority": "P1", "cadence": ["full", "extended"], "execution": "assisted", "environments": ["ENV-UPGRADE"], "data": ["DATA-06", "DATA-07"] },
+
+    { "id": "EDIT-001", "title": "Crop 与比例", "storyIds": ["US-08"], "priority": "P1", "cadence": ["full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-04", "DATA-08"] },
+    { "id": "EDIT-002", "title": "Trim 边界与重编辑", "storyIds": ["US-07"], "priority": "P0", "cadence": ["smoke", "full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-04"] },
+    { "id": "EDIT-003", "title": "Focus/Zoom 时序与焦点", "storyIds": ["US-07"], "priority": "P1", "cadence": ["full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-04", "DATA-05"] },
+    { "id": "EDIT-004", "title": "背景、Padding、圆角、阴影与持久化", "storyIds": ["US-08", "US-13"], "priority": "P1", "cadence": ["full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-08"] },
+    { "id": "EDIT-005", "title": "Original frame 与 Styled canvas 往返", "storyIds": ["US-08", "US-10"], "priority": "P0", "cadence": ["smoke", "full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-02"] },
+
+    { "id": "EXPORT-001", "title": "GIF intent 默认与邮件参数", "storyIds": ["US-10"], "priority": "P0", "cadence": ["smoke", "full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-02"] },
+    { "id": "EXPORT-002", "title": "GIF 必须真正动画且结构有效", "storyIds": ["US-03", "US-06", "US-10"], "priority": "P0", "cadence": ["smoke", "full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-02"] },
+    { "id": "EXPORT-003", "title": "GIF 体积建议、实际预算与内存拒绝", "storyIds": ["US-10", "US-15"], "priority": "P0", "cadence": ["smoke", "full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-02", "DATA-04"] },
+    { "id": "EXPORT-004", "title": "MP4 主路径", "storyIds": ["US-09"], "priority": "P0", "cadence": ["smoke", "full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-04"] },
+    { "id": "EXPORT-005", "title": "WebM 主路径", "storyIds": ["US-09"], "priority": "P1", "cadence": ["full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-04"] },
+    { "id": "EXPORT-006", "title": "组合编辑三格式 parity", "storyIds": ["US-07", "US-08", "US-09", "US-10"], "priority": "P1", "cadence": ["full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-04", "DATA-08"] },
+    { "id": "EXPORT-007", "title": "取消、失败、清理与重试", "storyIds": ["US-09", "US-10", "US-12"], "priority": "P0", "cadence": ["full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-04"] },
+
+    { "id": "MANAGER-001", "title": "列表、排序与打开精确录制", "storyIds": ["US-11"], "priority": "P0", "cadence": ["smoke", "full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-04"] },
+    { "id": "MANAGER-002", "title": "缩略图、残缺录制和刷新", "storyIds": ["US-11", "US-12"], "priority": "P1", "cadence": ["full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-07"] },
+    { "id": "MANAGER-003", "title": "单个与批量删除确认", "storyIds": ["US-11", "US-14"], "priority": "P0", "cadence": ["full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-04"] },
+    { "id": "MANAGER-004", "title": "浏览器重启与扩展升级后的数据保留", "storyIds": ["US-11", "US-12"], "priority": "P0", "cadence": ["full", "extended"], "execution": "manual", "environments": ["ENV-UPGRADE"], "data": ["DATA-06"] },
+
+    { "id": "TRUST-001", "title": "本地处理与网络观察", "storyIds": ["US-13"], "priority": "P0", "cadence": ["smoke", "full"], "execution": "manual", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-02", "DATA-08"] },
+    { "id": "TRUST-002", "title": "权限、受限页面与商店声明", "storyIds": ["US-13"], "priority": "P0", "cadence": ["full"], "execution": "assisted", "environments": ["ENV-CLI", "ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["BUILD", "DATA-01"] },
+    { "id": "A11Y-001", "title": "主旅程键盘与焦点", "storyIds": ["US-14"], "priority": "P1", "cadence": ["smoke", "full"], "execution": "manual", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-02"] },
+    { "id": "A11Y-002", "title": "对比度、明暗环境和窄宽度", "storyIds": ["US-14"], "priority": "P1", "cadence": ["full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-02", "DATA-09"] },
+    { "id": "I18N-001", "title": "英文、简中与缺失 key 回退", "storyIds": ["US-14"], "priority": "P1", "cadence": ["full"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE"], "data": ["DATA-09"] },
+
+    { "id": "PERF-001", "title": "Balanced 1080p 主旅程预算", "storyIds": ["US-15"], "priority": "P1", "cadence": ["full", "extended"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-STABLE", "ENV-WIN-LOW"], "data": ["DATA-02", "DATA-04"] },
+    { "id": "PERF-002", "title": "连续三轮与长时 Soak", "storyIds": ["US-04", "US-15"], "priority": "P1", "cadence": ["extended"], "execution": "assisted", "environments": ["ENV-MAC-STABLE", "ENV-WIN-LOW"], "data": ["DATA-10"] }
+  ]
+}

@@ -11,6 +11,7 @@
 		"check": "pnpm --filter extension check",
 		"check:watch": "pnpm --filter extension check:watch",
 		"test": "pnpm --filter extension test",
+		"test:e2e:catalog": "node docs/extension-release-e2e-suite/validate-suite.mjs",
 		"test:watch": "pnpm --filter extension test:watch",
 		"lab:gif": "pnpm --filter extension lab:gif",
 		"build:extension": "pnpm --filter extension build:extension",
