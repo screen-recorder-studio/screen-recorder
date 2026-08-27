@@ -37,7 +37,10 @@ import {
 import { classifyHoverDecodedFrame } from '../../studio/preview-hover-frame'
 import { previewDecodeBackpressureState } from '../../studio/preview-decode-backpressure'
 import { closeReplacedPreviewConfigBitmaps } from '../../studio/preview-owned-bitmaps'
-import { resolveCompositionSize } from '../../export/export-dimensions'
+import {
+  hasCompositionSizeChanged,
+  resolveCompositionSize
+} from '../../export/export-dimensions'
 
 interface CompositeMessage {
   type: 'init' | 'process' | 'play' | 'pause' | 'seek' | 'renderAtTime' | 'config' | 'appendWindow' | 'decodeSingleFrame' | 'preview-frame' | 'getCurrentFrameBitmap' | 'getSourceFrameBitmap' | 'dispose';
@@ -327,8 +330,8 @@ function initializeCanvas(width: number, height: number) {
 }
 
 // 计算输出尺寸
-function calculateOutputSize(config: BackgroundConfig, _sourceWidth: number, _sourceHeight: number) {
-  const { width, height } = resolveCompositionSize(config)
+function calculateOutputSize(config: BackgroundConfig, sourceWidth: number, sourceHeight: number) {
+  const { width, height } = resolveCompositionSize(config, { width: sourceWidth, height: sourceHeight })
   return { outputWidth: width, outputHeight: height }
 }
 
@@ -340,6 +343,10 @@ function calculateVideoLayout(
   videoWidth: number,
   videoHeight: number
 ): VideoLayout {
+  if (config.enabled === false) {
+    return { x: 0, y: 0, width: outputWidth, height: outputHeight }
+  }
+
   const padding = config.padding ?? 60;
   const inset = config.inset || 0; // 视频内缩距离
   const totalPadding = padding + inset;
@@ -480,6 +487,16 @@ function publishPreviewMemoryPlan(sourceDisplayWidth: number, sourceDisplayHeigh
 // 渲染背景
 function renderBackground(config: BackgroundConfig) {
   if (!ctx || !offscreenCanvas) return;
+  if (config.enabled === false) {
+    // The canvas is reused across presentation-mode changes. Clear the prior
+    // gradient/image explicitly so no styled pixels survive the round trip.
+    ctx.save()
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    ctx.fillStyle = '#000000'
+    ctx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height)
+    ctx.restore()
+    return
+  }
 
   if (config.type === 'gradient' && config.gradient) {
     // 使用新的渐变配置系统
@@ -1018,9 +1035,10 @@ function renderCompositeFrame(
     }
 
     // 3. 绘制阴影（如果配置了阴影）
-    const borderRadius = config.borderRadius || 0;
+    const backgroundEnabled = config.enabled !== false;
+    const borderRadius = backgroundEnabled ? (config.borderRadius || 0) : 0;
 
-    if (config.shadow) {
+    if (backgroundEnabled && config.shadow) {
       ctx.save();
       ctx.shadowOffsetX = config.shadow.offsetX;
       ctx.shadowOffsetY = config.shadow.offsetY;
@@ -2393,10 +2411,11 @@ self.onmessage = async (event: MessageEvent<CompositeMessage>) => {
           // 🔍 调试：输出 Zoom 配置（详细）
 
           // 检查是否需要重新计算输出尺寸
-          const needsCanvasResize = !oldConfig ||
-            oldConfig.outputRatio !== currentConfig.outputRatio ||
-            oldConfig.customWidth !== currentConfig.customWidth ||
-            oldConfig.customHeight !== currentConfig.customHeight;
+          const needsCanvasResize = !oldConfig || (videoInfo && hasCompositionSizeChanged(
+            oldConfig,
+            currentConfig,
+            { width: videoInfo.width, height: videoInfo.height }
+          ));
 
           if (needsCanvasResize && videoInfo) {
 

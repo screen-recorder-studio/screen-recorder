@@ -2,8 +2,8 @@
 
 ## 1. 文档信息
 
-- 文档状态：已实施、已验收 v1.0
-- 实施与验收日期：2026-08-24
+- 文档状态：已实施、已验收 v1.1
+- 实施与验收日期：2026-08-28
 - 工程基线：Screen Recorder Studio 0.6.12
 - 对应产品决策：[面向落地页与 EDM 的营销动效资产工作台](./PRODUCT-POSITIONING-MARKETING-MOTION.md)
 - 历史链路评估：[Element / Area 历史录制链路端到端评估](./ELEMENT-AREA-RECORDING-E2E-EVALUATION.md)
@@ -204,10 +204,13 @@ GIF 任务没有新建 GIF 专用录制目录，也没有在录制阶段保存 G
 Studio 没有切换成独立编辑器。当前变化是“交付上下文”：
 
 - 顶部显示 GIF delivery；
+- GIF intent 默认使用 Original frame，直接保留录制比例，不叠加背景、padding、圆角或阴影；
+- Original frame / Styled canvas 是可逆的显式模式，切换回原始画面时会同步恢复 source composition size；
 - 导出对话框默认选择 GIF；
 - 默认帧率为 10 fps；
-- 默认缩放选择能把源宽控制到 600 px 以内的最大预设档；
-- 默认 repeat metadata 为 2；
+- 输出尺寸以 Original、Email width 600px、Compact 480px、Small 320px 命名，并保证标注宽度与产物像素一致；
+- 默认 repeat metadata 为 2，对用户显示为总共播放 3 次；
+- 帧率、输出尺寸和循环是主要设置，调色精度与抖动收纳在 Advanced color settings；Worker 数量由实现自动管理；
 - 继续允许用户使用同一套裁剪、trim、背景、圆角、阴影和 zoom。
 
 这是最小但完整的产品闭环：用户从 GIF录制 进入后，不需要再次猜测导出格式。
@@ -236,8 +239,8 @@ gif.js 会在 render 前保留 RGBA 帧。导出前使用：
 
 - compositing 后直接传 ImageData；
 - 避免为同一帧额外创建中间 canvas/bitmap；
-- Worker 数量保持可配置；
-- 默认 25%/50% 等邮件友好缩放会显著降低每帧 RGBA 体积。
+- Worker 数量保持为自动实现细节，避免把并发调参责任转给普通用户；
+- 600/480/320px 结果档会显著降低每帧 RGBA 体积，并避免百分比档位产生 319px 等标注/产物偏差。
 
 ### 9.4 输出验证
 
@@ -309,15 +312,26 @@ gif.js 会在 render 前保留 RGBA 帧。导出前使用：
 
 | 检查 | 结果 |
 |---|---|
-| Vitest | 68 个测试文件通过 |
-| 测试数量 | 344 / 344 通过 |
+| Vitest | 80 个测试文件通过 |
+| 测试数量 | 416 / 416 通过 |
 | svelte-check | 0 errors |
-| 既有 warnings | 63，集中在 5 个既有 Svelte 文件 |
+| 既有 warnings | 18，集中在 4 个既有 Svelte 文件 |
 | GIF Lab production build | 通过 |
 | Extension build:extension | 通过 |
-| Release logging policy | 88 个 JavaScript bundles 通过 |
+| Release logging policy | 97 个 JavaScript bundles 通过 |
 
 ## 12. 浏览器端到端验收
+
+### 12.0 2026-08-27 Chrome 回归闭环
+
+- 复现并确认 `Styled canvas/渐变 → Original frame` 后背景仍显示是产品 bug，而非缓存或视觉误判；
+- 根因是 `VideoPreviewComposite.updateBackgroundConfig()` 的热更新序列化漏传 `enabled`，初始化路径正确但切换路径仍沿用旧合成状态；
+- 修复后实测 composition size 从 `1920×1080` 立即回到原始 `1920×1076`，背景、padding、圆角、shadow 同时消失；
+- GIF Lab 的 fixture 坐标改为在 resize/scroll 时重新计算，避免浏览器窗口变化后选区落到旧坐标；
+- 真实 cadence Area 录制包含 715 个源帧，Studio 播放与视觉计数均推进；
+- Original frame 下导出 8 秒 Small GIF：GIF89a、`320×179`、80 帧、总 delay 8.00 秒、80 个不同图像块、1,398,372 bytes；
+- 600px 档命名改为 `Email width`，Small/Email 的宽度使用四舍五入后的精确像素，不再出现标注 320 实际 319；
+- OPFS reader 错误会立即透传，不再被 30 秒等待伪装成泛化超时。
 
 ### 12.1 环境
 
@@ -400,11 +414,11 @@ gif.js 会在 render 前保留 RGBA 帧。导出前使用：
 | 与现有录制写入同一 OPFS | 通过 | 同一 initOpfsWriter 路径 |
 | Studio 打开指定 recording | 通过 | E2E URL id 与首帧 |
 | Studio 播放会推进 | 通过 | F0056 → F0078 |
-| GIF 默认值符合 EDM 首版 | 通过 | 10 fps / ≤600 px / repeat 2 |
+| GIF 默认值符合 EDM 首版 | 通过 | 10 fps / 精确 ≤600 px / repeat metadata 2（总播放 3 次） |
 | GIF 时间与结构正确 | 通过 | strict inspector |
 | GIF 内容实际变化 | 通过 | 60 / 60 unique image blocks |
 | GIF 浏览器播放会推进 | 通过 | F0067 → F0080 |
-| 完整测试与构建 | 通过 | 344 tests + build |
+| 完整测试与构建 | 通过 | 416 tests + check + build |
 
 ## 14. 剩余风险与下一步
 
@@ -419,6 +433,7 @@ gif.js 会在 render 前保留 RGBA 帧。导出前使用：
 3. 增加首帧、循环接缝和实际文件体积的 Studio readiness；
 4. 对长录制给出更早的 GIF 时长提示，默认鼓励 3–8 秒；
 5. 对 viewport resize、浏览器 zoom 和页面导航补更多失败关闭 E2E。
+6. 完成 Windows、屏幕阅读器、200% 文本缩放和 en/zh/fallback locale 的发布矩阵；当前只能视为 macOS Chromium 单平台的 GIF 切片 Go。
 
 ### P2：交付质量
 
@@ -464,13 +479,13 @@ Element Capture 仍不应与 Area 同期恢复。若未来需要，优先考虑�
 
 ## 17. 发布判断
 
-结论为 **Go，进入代码评审与发布准备**。
+结论为 **GIF Area 垂直切片 Go，进入单平台灰度发布准备**；这不等于整个扩展的跨平台 Full / Extended 用户故事矩阵已经全部通过。
 
 Go 的依据不是“按钮可点击”或“能下载一个 .gif 文件”，而是：
 
 - 动态源在录制时推进；
 - 相同动态源在 Studio 播放时推进；
-- 导出文件包含 60 个不同图像块；
+- 最新 8 秒导出文件包含 80 个不同图像块；
 - GIF 时间、循环和文件边界通过解析；
 - 同一文件在真实浏览器播放时推进；
 - 完整测试、类型检查和生产构建通过。

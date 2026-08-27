@@ -20,6 +20,12 @@
     estimateGifSizeRange
   } from '$lib/export/gif-export-estimate'
   import { resolveGifDeliveryDefaults } from '$lib/export/gif-delivery-defaults'
+  import {
+    GIF_AUTO_WORKERS,
+    GIF_LOOP_OPTIONS,
+    resolveGifScaledDimensions,
+    resolveGifOutputSizeOptions
+  } from '$lib/export/gif-export-settings'
   import { deriveGifDeliveryAdvisory } from '$lib/export/gif-delivery-advisory'
   import { resolveExportDialogHeading } from '$lib/export/export-dialog-presentation'
   import { resolveStudioVisualAccent } from '$lib/studio/studio-theme'
@@ -123,10 +129,10 @@
   let gifFps = $state(10)
   let gifQuality = $state(10)
   let gifScale = $state(75)
-  let gifWorkers = $state(2)
   let gifRepeat = $state(0)
   let gifDither = $state<string>('false')
   let gifTransparent = $state<string | null>(null)
+  let showGifAdvanced = $state(false)
 
   let wasOpen = false
   let dialogElement = $state<HTMLDivElement | null>(null)
@@ -141,6 +147,9 @@
         gifFps = defaults.fps
         gifScale = defaults.scalePercent
         gifRepeat = defaults.repeat
+        gifQuality = 10
+        gifDither = 'false'
+        showGifAdvanced = false
       }
       requestAnimationFrame(() => dialogElement?.focus({ preventScroll: true }))
     }
@@ -216,20 +225,12 @@
 
   // GIF quality options
   const gifQualityOptions = $derived([
-    { value: 1, label: t('export_gif_best') },
-    { value: 5, label: t('export_gif_high') },
-    { value: 10, label: t('export_gif_good') },
-    { value: 15, label: t('export_gif_fast') },
-    { value: 20, label: t('export_gif_fastest') }
+    { value: 5, label: 'Fine detail' },
+    { value: 10, label: 'Balanced' },
+    { value: 20, label: 'Faster' }
   ])
 
-  // GIF scale options
-  const gifScaleOptions = $derived([
-    { value: 100, label: t('export_scale_original') },
-    { value: 75, label: '75%' },
-    { value: 50, label: '50%' },
-    { value: 25, label: '25%' }
-  ])
+  const gifScaleOptions = $derived(resolveGifOutputSizeOptions(sourceInfo.width, sourceInfo.height))
 
   // Computed values
   const selectedResolution = $derived(
@@ -288,8 +289,13 @@
   }
 
   // GIF estimates
-  const gifOutputWidth = $derived(Math.floor(sourceInfo.width * (gifScale / 100)))
-  const gifOutputHeight = $derived(Math.floor(sourceInfo.height * (gifScale / 100)))
+  const gifOutputSize = $derived(resolveGifScaledDimensions(
+    sourceInfo.width,
+    sourceInfo.height,
+    gifScale / 100
+  ))
+  const gifOutputWidth = $derived(gifOutputSize.width)
+  const gifOutputHeight = $derived(gifOutputSize.height)
   const gifEstimatedFrames = $derived(estimateGifPresentationFrameCount({
     durationSeconds: displayDuration,
     targetFps: gifFps,
@@ -317,7 +323,7 @@
         fps: gifFps,
         quality: gifQuality,
         scale: gifScale / 100,
-        workers: gifWorkers,
+        workers: GIF_AUTO_WORKERS,
         repeat: gifRepeat,
         dither: gifDither === 'false' ? false : gifDither,
         transparent: gifTransparent
@@ -693,13 +699,66 @@
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                 bind:value={gifFps}
               >
-                {#each [5, 10, 15, 20, 25, 30] as fps}
+                {#each [5, 10, 15] as fps}
                   <option value={fps}>{fps} fps</option>
                 {/each}
               </select>
             </div>
             <div>
-              <label for="gif-quality" class="block text-sm font-medium text-gray-700 mb-2">{t('export_label_gif_quality')}</label>
+              <label for="gif-scale" class="block text-sm font-medium text-gray-700 mb-2">Output size</label>
+              <select
+                id="gif-scale"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                bind:value={gifScale}
+              >
+                {#each gifScaleOptions as opt}
+                  <option value={opt.scalePercent}>{opt.label} · {opt.width}×{opt.height}</option>
+                {/each}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label for="gif-repeat" class="block text-sm font-medium text-gray-700 mb-2">
+              {t('export_label_loop', undefined, { export_label_loop: 'Loop' })}
+            </label>
+            <select
+              id="gif-repeat"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              bind:value={gifRepeat}
+            >
+              {#each GIF_LOOP_OPTIONS as option}
+                <option value={option.value}>{option.label}</option>
+              {/each}
+            </select>
+          </div>
+
+          <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-950">
+            <div class="flex items-start gap-3">
+              <Zap class="mt-0.5 h-4 w-4 flex-none text-emerald-700" />
+              <div>
+                <p class="text-sm font-semibold">GIF compression is on</p>
+                <p class="mt-0.5 text-xs leading-5 text-emerald-800">
+                  Frames are sampled at {gifFps} fps, reduced to a 256-color palette, then compressed with GIF/LZW. Output size has the largest impact on file weight.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="flex w-full items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-left text-sm font-semibold text-gray-800 transition-colors hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            aria-expanded={showGifAdvanced}
+            onclick={() => { showGifAdvanced = !showGifAdvanced }}
+          >
+            <span>Advanced color settings</span>
+            <span class="text-xs font-medium text-gray-500">{showGifAdvanced ? 'Hide' : 'Show'}</span>
+          </button>
+
+          {#if showGifAdvanced}
+          <div class="grid grid-cols-2 gap-4 rounded-lg border border-gray-200 p-4">
+            <div>
+              <label for="gif-quality" class="block text-sm font-medium text-gray-700 mb-2">Color detail</label>
               <select
                 id="gif-quality"
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
@@ -710,36 +769,6 @@
                 {/each}
               </select>
             </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label for="gif-scale" class="block text-sm font-medium text-gray-700 mb-2">{t('export_label_scale')}</label>
-              <select
-                id="gif-scale"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                bind:value={gifScale}
-              >
-                {#each gifScaleOptions as opt}
-                  <option value={opt.value}>{opt.label}</option>
-                {/each}
-              </select>
-            </div>
-            <div>
-              <label for="gif-workers" class="block text-sm font-medium text-gray-700 mb-2">{t('export_label_workers')}</label>
-              <select
-                id="gif-workers"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                bind:value={gifWorkers}
-              >
-                {#each [1, 2, 4, 8] as w}
-                  <option value={w}>{t(w === 1 ? 'export_worker_singular' : 'export_worker_plural', String(w))}</option>
-                {/each}
-              </select>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
             <div>
               <label for="gif-dither" class="block text-sm font-medium text-gray-700 mb-2">{t('export_label_dither')}</label>
               <select
@@ -747,34 +776,14 @@
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                 bind:value={gifDither}
               >
-                <option value="false">{t('export_dither_none')}</option>
+                <option value="false">Off · best for interface recordings</option>
                 <option value="FloydSteinberg">Floyd-Steinberg</option>
-                <option value="FalseFloydSteinberg">False Floyd-Steinberg</option>
-                <option value="Stucki">Stucki</option>
                 <option value="Atkinson">Atkinson</option>
               </select>
             </div>
-            <div>
-              <label for="gif-repeat" class="block text-sm font-medium text-gray-700 mb-2">
-                {t('export_label_loop', undefined, { export_label_loop: 'Loop' })}
-              </label>
-              <select
-                id="gif-repeat"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                bind:value={gifRepeat}
-              >
-                <option value={0}>{t('export_loop_forever', undefined, { export_loop_forever: 'Forever' })}</option>
-                {#each [1, 2, 3, 5] as repeat}
-                  <option value={repeat}>{t('export_loop_repeat', String(repeat), {
-                    export_loop_repeat: {
-                      message: 'Repeat $COUNT$ times',
-                      placeholders: { count: { content: '$1' } }
-                    }
-                  })}</option>
-                {/each}
-              </select>
-            </div>
+            <p class="col-span-2 text-xs leading-5 text-gray-500">Dithering can smooth photographic gradients but may add texture to text and flat UI colors.</p>
           </div>
+          {/if}
 
           <!-- GIF Estimated Output -->
           <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">

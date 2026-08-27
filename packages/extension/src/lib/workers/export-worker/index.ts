@@ -27,6 +27,8 @@ import {
 import { H264_PROBE_CODECS, normalizeH264Dimensions } from '../../utils/h264-export-config'
 import { createGifFrameSchedule, type GifFrameScheduleEntry } from '../../export/gif-frame-schedule'
 import { assertGifExportWithinMemoryBudget, validateGifBlob } from '../../export/gif-export-preflight'
+import { resolveGifScaledDimensions } from '../../export/gif-export-settings'
+import { waitForWorkerMessage } from '../worker-message'
 
 import { Output, Mp4OutputFormat, BufferTarget, CanvasSource } from 'mediabunny'
 
@@ -62,27 +64,7 @@ const exportCancellation = new ExportCancellationController()
 let cancellationTask: Promise<void> | null = null
 
 // ---- OPFS data processing utilities ----
-function onceFromWorker<T = any>(worker: Worker, type: string, timeoutMs = 30000): Promise<T> {
-  return new Promise((resolve, reject) => {
-    let settled = false
-    const handler = (e: MessageEvent) => {
-      if (e.data?.type === type) {
-        if (settled) return
-        settled = true
-        clearTimeout(timer)
-        worker.removeEventListener('message', handler as any)
-        resolve(e.data as T)
-      }
-    }
-    const timer = setTimeout(() => {
-      if (settled) return
-      settled = true
-      worker.removeEventListener('message', handler as any)
-      reject(new Error(`Timeout waiting for worker message type '${type}' after ${timeoutMs}ms`))
-    }, timeoutMs)
-    worker.addEventListener('message', handler as any)
-  })
-}
+const onceFromWorker = waitForWorkerMessage
 
 // OPFS 驱动器状态
 let opfsReader: Worker | null = null
@@ -408,6 +390,12 @@ function calculateImageDrawParams(
 // 渲染背景（支持渐变和图片）
 function renderBackground(config: BackgroundConfig, width: number, height: number) {
   if (!canvasCtx) return
+
+  if (config.enabled === false) {
+    canvasCtx.fillStyle = '#000000'
+    canvasCtx.fillRect(0, 0, width, height)
+    return
+  }
 
   if (config.type === 'gradient' && config.gradient) {
     // 使用渐变背景
@@ -1868,8 +1856,13 @@ async function exportToGIF(options: ExportOptions): Promise<Blob> {
     ?? (isOpfsMode ? Math.ceil(totalOpfsFrames / stride) : Math.ceil(totalFrames / stride))
 
   // 计算输出尺寸
-  const outputWidth = Math.floor(offscreenCanvas.width * scale)
-  const outputHeight = Math.floor(offscreenCanvas.height * scale)
+  const outputSize = resolveGifScaledDimensions(
+    offscreenCanvas.width,
+    offscreenCanvas.height,
+    scale
+  )
+  const outputWidth = outputSize.width
+  const outputHeight = outputSize.height
   assertGifExportWithinMemoryBudget({ width: outputWidth, height: outputHeight, frameCount: expectedFrames })
 
   // 创建 GIF 策略（仅用于 extractImageData，不再收集帧）
@@ -2041,9 +2034,14 @@ function extractCurrentFrameImageData(gifStrategy: GifStrategy, scale: number): 
 
   let sourceCanvas: OffscreenCanvas = offscreenCanvas
   if (scale !== 1.0) {
+    const scaledSize = resolveGifScaledDimensions(
+      offscreenCanvas.width,
+      offscreenCanvas.height,
+      scale
+    )
     const scaledCanvas = new OffscreenCanvas(
-      Math.floor(offscreenCanvas.width * scale),
-      Math.floor(offscreenCanvas.height * scale)
+      scaledSize.width,
+      scaledSize.height
     )
     const scaledCtx = scaledCanvas.getContext('2d')
     if (scaledCtx) {

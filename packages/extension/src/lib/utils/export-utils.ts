@@ -70,6 +70,7 @@ export function convertBackgroundConfigForExport(
   if (!backgroundConfig) return undefined
 
   return {
+    enabled: backgroundConfig.enabled !== false,
     type: backgroundConfig.type,
     color: backgroundConfig.color,
     padding: backgroundConfig.padding,

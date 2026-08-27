@@ -138,7 +138,11 @@
   const captureInfo = $derived<SourceVideoInfo>(
     extractSourceInfo(encodedChunks, totalFramesAll, sourceFps, sourceDurationMs)
   )
-  const compositionSize = $derived(resolveCompositionSize(backgroundConfig))
+  const presentationConfig = $derived({
+    ...backgroundConfig,
+    videoCrop: videoCropStore.getCropConfig()
+  })
+  const compositionSize = $derived(resolveCompositionSize(presentationConfig, captureInfo))
   const sourceInfo = $derived<SourceVideoInfo>(
     resolveExportDialogSourceInfo(captureInfo, compositionSize)
   )
@@ -236,7 +240,7 @@
         encodedChunks,
         {
           format: 'gif',
-          includeBackground: !!plainBackgroundConfig,
+          includeBackground: plainBackgroundConfig?.enabled !== false,
           backgroundConfig: plainBackgroundConfig as any,
           quality: 'medium',
           source: opfsDirId ? ('opfs' as const) : ('chunks' as const),
@@ -500,7 +504,7 @@
         encodedChunks,
         withOpfsExportTarget({
           format: 'webm',
-          includeBackground: !!plainBackgroundConfig,
+          includeBackground: plainBackgroundConfig?.enabled !== false,
           backgroundConfig: exportDimensions.backgroundConfig as any,
           quality: qualityMap[options.quality] || 'high',
           bitrate: bitrateInBps,
@@ -632,7 +636,7 @@
         encodedChunks,
         withOpfsExportTarget({
           format: 'mp4',
-          includeBackground: !!plainBackgroundConfig,
+          includeBackground: plainBackgroundConfig?.enabled !== false,
           backgroundConfig: exportDimensions.backgroundConfig as any,
           quality: qualityMap[options.quality] || 'high',
           bitrate: bitrateInBps,
@@ -857,5 +861,5 @@
     totalFrames: exportProgress.totalFrames,
     estimatedTimeRemaining: exportProgress.estimatedTimeRemaining
   } : null}
-  hasBackground={!!backgroundConfig}
+  hasBackground={backgroundConfig.enabled !== false}
 />

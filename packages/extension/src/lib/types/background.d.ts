@@ -57,6 +57,8 @@ export interface ImagePreviewData {
 
 // 背景配置主接口
 export interface BackgroundConfig {
+  /** False renders the recording itself as the canvas, without decorative framing. */
+  enabled?: boolean
   type: 'solid-color' | 'gradient' | 'image' | 'wallpaper'
 
   // 纯色配置

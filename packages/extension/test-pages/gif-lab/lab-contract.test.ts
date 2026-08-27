@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
   GIF_LAB_CASE_IDS,
@@ -9,6 +10,8 @@ import {
   resolveGifLabCase,
   seededUnit
 } from './lab-contract'
+
+const labRuntimeSource = readFileSync(new URL('./gif-lab.ts', import.meta.url), 'utf8')
 
 describe('GIF Lab contract', () => {
   it('offers one deterministic fixture for every vertical-slice risk', () => {
@@ -95,5 +98,10 @@ describe('GIF Lab contract', () => {
     expect(new Set(first).size).toBeGreaterThan(4)
     expect(first.every((value) => value >= 0 && value < 1)).toBe(true)
     expect(seededUnit(20260825, 0)).not.toBe(first[0])
+  })
+
+  it('refreshes viewport-dependent region coordinates after resize or browser zoom', () => {
+    expect(labRuntimeSource).toContain("addEventListener('resize', scheduleFixtureMetadataRefresh)")
+    expect(labRuntimeSource).toContain('target.getBoundingClientRect()')
   })
 })

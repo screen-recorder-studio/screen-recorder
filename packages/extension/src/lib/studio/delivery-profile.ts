@@ -1,5 +1,9 @@
 export type StudioDeliveryProfile = 'video' | 'gif'
 
+export function resolveDefaultBackgroundEnabled(profile: StudioDeliveryProfile): boolean {
+  return profile !== 'gif'
+}
+
 export function resolveStudioDeliveryProfile(input: {
   meta: unknown
   urlIntent: string | null

@@ -16,6 +16,7 @@
   // Current configuration from store
   const currentConfig = $derived(backgroundConfigStore.config)
   const currentType = $derived(currentConfig.type)
+  const backgroundEnabled = $derived(currentConfig.enabled !== false)
 
   // Active tab state
   let activeTab = $state<BackgroundType>('wallpaper')
@@ -78,6 +79,33 @@
       <PaintBucket class="h-4 w-4 text-zinc-400" />
       <h3 class="studio-section-heading">{t('bg_title')}</h3>
     </div>
+
+    <div class="studio-segmented grid grid-cols-2 gap-0.5 p-1" role="group" aria-label="Canvas presentation">
+      <button
+        type="button"
+        class="rounded px-2.5 py-2 text-xs font-semibold transition-colors
+          {!backgroundEnabled
+            ? 'bg-zinc-700 text-zinc-100 shadow-sm ring-1 ring-white/10'
+            : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'}"
+        aria-pressed={!backgroundEnabled}
+        onclick={() => backgroundConfigStore.updateEnabled(false)}
+      >
+        Original frame
+      </button>
+      <button
+        type="button"
+        class="rounded px-2.5 py-2 text-xs font-semibold transition-colors
+          {backgroundEnabled
+            ? 'bg-zinc-700 text-blue-200 shadow-sm ring-1 ring-white/10'
+            : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'}"
+        aria-pressed={backgroundEnabled}
+        onclick={() => backgroundConfigStore.updateEnabled(true)}
+      >
+        Styled canvas
+      </button>
+    </div>
+
+    {#if backgroundEnabled}
     <div class="studio-segmented flex gap-0.5 p-1" role="tablist">
       {#each tabOptions as tab}
         {@const tabLabel = t(
@@ -105,9 +133,11 @@
         </button>
       {/each}
     </div>
+    {/if}
   </div>
 
   <!-- Content panels -->
+  {#if backgroundEnabled}
   <div class="min-h-0" role="tabpanel">
     {#if activeTab === 'solid-color'}
       <SolidColorPanel />
@@ -119,4 +149,9 @@
       <ImageUploadPanel />
     {/if}
   </div>
+  {:else}
+    <div class="rounded-lg border border-blue-400/20 bg-blue-500/5 px-3 py-3 text-xs leading-5 text-zinc-300">
+      The recording fills the canvas directly. Background, padding, rounded corners, and shadow are omitted.
+    </div>
+  {/if}
 </div>

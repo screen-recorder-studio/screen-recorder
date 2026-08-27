@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { resolveStudioDeliveryProfile } from './delivery-profile'
+import {
+  resolveDefaultBackgroundEnabled,
+  resolveStudioDeliveryProfile
+} from './delivery-profile'
 
 describe('Studio recording delivery profile', () => {
   it('treats OPFS metadata as truth for a GIF-intent recording', () => {
@@ -16,5 +19,15 @@ describe('Studio recording delivery profile', () => {
 
   it('defaults existing recordings to the shared video workflow', () => {
     expect(resolveStudioDeliveryProfile({ meta: null, urlIntent: null })).toBe('video')
+  })
+})
+
+describe('Studio presentation defaults', () => {
+  it('opens GIF-intent recordings as the original frame without decorative background', () => {
+    expect(resolveDefaultBackgroundEnabled('gif')).toBe(false)
+  })
+
+  it('preserves the styled canvas default for video recordings', () => {
+    expect(resolveDefaultBackgroundEnabled('video')).toBe(true)
   })
 })

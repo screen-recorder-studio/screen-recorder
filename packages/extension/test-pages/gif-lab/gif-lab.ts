@@ -27,6 +27,7 @@ let startedAt = performance.now()
 let pausedElapsedMs = 0
 let lastVisualKey = ''
 let lifecycleOffset = false
+let metadataRefreshRaf: number | null = null
 
 const scene = $('#scene')
 const target = $('#capture-target')
@@ -67,6 +68,8 @@ scrollButton.addEventListener('click', () => {
   target.scrollIntoView({ block: lifecycleOffset ? 'start' : 'center', behavior: 'instant' })
   scrollButton.textContent = lifecycleOffset ? 'Restore page height' : 'Scroll target into view'
 })
+window.addEventListener('resize', scheduleFixtureMetadataRefresh)
+window.addEventListener('scroll', scheduleFixtureMetadataRefresh, { passive: true })
 
 document.addEventListener('keydown', (event) => {
   if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement) return
@@ -258,6 +261,14 @@ function renderFixtureMetadata() {
       <strong>${item.label}</strong>
       <p>${item.description}</p>
     </article>`).join('')
+}
+
+function scheduleFixtureMetadataRefresh() {
+  if (metadataRefreshRaf !== null) cancelAnimationFrame(metadataRefreshRaf)
+  metadataRefreshRaf = requestAnimationFrame(() => {
+    metadataRefreshRaf = null
+    renderFixtureMetadata()
+  })
 }
 
 function motionLabel(expectation: 'static' | 'animated' | 'mixed') {

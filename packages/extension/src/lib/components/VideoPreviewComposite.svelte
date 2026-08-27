@@ -1116,6 +1116,7 @@
 
     // Convert Svelte 5 Proxy objects to plain objects
     const plainBackgroundConfig = {
+      enabled: backgroundConfig.enabled !== false,
       type: backgroundConfig.type,
 
     //
@@ -1766,6 +1767,7 @@
 
     // Convert Svelte 5's Proxy object to common object
     const plainConfig = {
+      enabled: newConfig.enabled !== false,
       type: newConfig.type,
       color: newConfig.color,
       padding: newConfig.padding,

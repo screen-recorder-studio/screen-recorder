@@ -11,6 +11,7 @@ import { imageBackgroundManager } from '../services/image-background-manager'
 
 // 默认背景配置 — 提供有辨识度的首屏视觉预设，避免白底原片观感
 const defaultBackgroundConfig: BackgroundConfig = {
+  enabled: true,
   type: 'gradient',
   color: '#667eea',
   gradient: {
@@ -737,6 +738,11 @@ function createBackgroundConfigStore() {
       return lastGradientConfig
     },
 
+    // 在“原始画面”和“样式画布”之间切换；保留样式配置便于无损恢复
+    updateEnabled(enabled: boolean) {
+      config = { ...config, enabled }
+    },
+
     // 更新背景颜色
     updateColor(color: string) {
       config = { ...config, color }
@@ -930,4 +936,3 @@ function createBackgroundConfigStore() {
 
 // 创建全局背景配置状态实例
 export const backgroundConfigStore = createBackgroundConfigStore()
-

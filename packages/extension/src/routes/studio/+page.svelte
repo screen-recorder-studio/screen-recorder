@@ -21,7 +21,11 @@
   import { emitJourneyEvent } from "$lib/observability/journey-events";
   import { createOnceReporter } from "$lib/observability/once-reporter";
   import { createFirstFrameGate } from "$lib/studio/first-frame-gate";
-  import { resolveStudioDeliveryProfile, type StudioDeliveryProfile } from "$lib/studio/delivery-profile";
+  import {
+    resolveDefaultBackgroundEnabled,
+    resolveStudioDeliveryProfile,
+    type StudioDeliveryProfile
+  } from "$lib/studio/delivery-profile";
   import {
     ReaderRequestCoordinator,
     type ReaderRequestPurpose,
@@ -344,7 +348,7 @@
     recordingStore.updateStatus("completed");
     recordingStore.setEngine("webcodecs");
     isResolvingInitialRecording = false
-    applyDefaultWallpaperEnhancement()
+    if (deliveryProfile === 'video') applyDefaultWallpaperEnhancement()
   }
 
   // 主窗口请求处理：统一走 computeFrameWindow，支持连续播放 / Seek
@@ -528,6 +532,7 @@
 
       if (type === "ready") {
         deliveryProfile = resolveStudioDeliveryProfile({ meta, urlIntent: urlIntentHint })
+        backgroundConfigStore.updateEnabled(resolveDefaultBackgroundEnabled(deliveryProfile))
         if (summary?.durationMs) durationMs = summary.durationMs;
         if (summary?.totalChunks) globalTotalFrames = summary.totalChunks;
         if (Number(summary?.fps) > 0) sourceFps = Number(summary.fps);
@@ -924,7 +929,13 @@
 
         <!-- Center video aspect ratio control -->
         <div class="justify-self-center">
+          {#if backgroundConfigStore.config.enabled !== false}
           <AspectRatioControl />
+          {:else}
+            <span class="inline-flex h-8 items-center rounded-md border border-zinc-700 bg-zinc-900 px-3 text-xs font-semibold text-zinc-300">
+              Original frame
+            </span>
+          {/if}
         </div>
 
         <!-- Right action buttons -->
@@ -1071,6 +1082,7 @@
         </div>
 
         <!-- Border radius configuration -->
+        {#if backgroundConfigStore.config.enabled !== false}
         <div>
           <BorderRadiusControl />
         </div>
@@ -1089,6 +1101,7 @@
         <div class="col-span-2 lg:col-span-1">
           <ShadowControl />
         </div>
+        {/if}
       </div>
     </div>
   </aside>
