@@ -563,8 +563,8 @@
           type="button"
           class="flex h-8 w-8 items-center justify-center rounded hover:bg-amber-100 transition-colors flex-shrink-0"
           onclick={clearWarning}
-          aria-label="Dismiss storage warning"
-          title="Dismiss storage warning"
+          aria-label={t('control_dismissStorageWarning')}
+          title={t('control_dismissStorageWarning')}
         >
           <X class="w-3.5 h-3.5 text-amber-600" />
         </button>
@@ -583,8 +583,8 @@
           type="button"
           class="flex h-8 w-8 items-center justify-center rounded hover:bg-red-100 transition-colors flex-shrink-0"
           onclick={clearError}
-          aria-label="Dismiss recording error"
-          title="Dismiss recording error"
+          aria-label={t('control_dismissRecordingError')}
+          title={t('control_dismissRecordingError')}
         >
           <X class="w-3.5 h-3.5 text-red-500" />
         </button>

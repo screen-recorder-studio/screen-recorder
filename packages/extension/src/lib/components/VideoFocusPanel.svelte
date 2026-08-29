@@ -2,6 +2,7 @@
   import { onMount } from 'svelte'
   import type { ZoomMode, ZoomEasing } from '$lib/stores/video-zoom.svelte'
   import { nudgeFocusPoint } from '$lib/studio/focus-point'
+  import { _t as t } from '$lib/utils/i18n'
 
   interface FocusPoint { x: number; y: number; space?: 'source' | 'layout' }
 
@@ -52,16 +53,16 @@
 
   // 🆕 P1: Zoom 模式选项
   const modeOptions: { value: ZoomMode; label: string; description: string }[] = [
-    { value: 'dolly', label: 'Dolly', description: 'Moves focus point to center' },
-    { value: 'anchor', label: 'Anchor', description: 'Focus point stays fixed' }
+    { value: 'dolly', label: t('focus_mode_dolly'), description: t('focus_mode_dolly_desc') },
+    { value: 'anchor', label: t('focus_mode_anchor'), description: t('focus_mode_anchor_desc') }
   ]
   let selectedMode = $state<ZoomMode>(initialMode)
 
   // 🆕 P1: 缓动类型选项
   const easingOptions: { value: ZoomEasing; label: string; description: string }[] = [
-    { value: 'smooth', label: 'Smooth', description: 'Ease in-out' },
-    { value: 'linear', label: 'Linear', description: 'Constant speed' },
-    { value: 'punch', label: 'Instant', description: 'Immediate jump' }
+    { value: 'smooth', label: t('focus_easing_smooth'), description: t('focus_easing_smooth_desc') },
+    { value: 'linear', label: t('focus_easing_linear'), description: t('focus_easing_linear_desc') },
+    { value: 'punch', label: t('focus_easing_instant'), description: t('focus_easing_instant_desc') }
   ]
   let selectedEasing = $state<ZoomEasing>(initialEasing)
 
@@ -353,7 +354,7 @@
     class="stage"
     bind:this={containerEl}
     role="group"
-    aria-label="Focus point preview. Use the focus point button or X and Y fields for keyboard adjustment."
+    aria-label={t('focus_stage_aria')}
     onpointerdown={onStagePointerDown}
     onpointermove={onPointerMove}
     onpointerup={onPointerUp}
@@ -368,7 +369,7 @@
           style={`left:${focus.x * display.width}px;top:${focus.y * display.height}px`}
           onpointerdown={onPointerDown}
           onkeydown={onFocusKeydown}
-          aria-label={`Focus point, X ${Math.round(focus.x * 100)} percent, Y ${Math.round(focus.y * 100)} percent. Use arrow keys to adjust; hold Shift for larger steps.`}
+          aria-label={t('focus_point_aria', [String(Math.round(focus.x * 100)), String(Math.round(focus.y * 100))])}
           title={`(${focus.x.toFixed(3)}, ${focus.y.toFixed(3)})`}
         >
           <span class="cross" aria-hidden="true"></span>
@@ -383,7 +384,7 @@
     <!-- 第一行：核心参数 -->
     <div class="toolbar-row">
       <div class="opt-group">
-        <label class="opt-label" for="mode-select">Mode</label>
+        <label class="opt-label" for="mode-select">{t('focus_label_mode')}</label>
         <select id="mode-select" class="opt-select" bind:value={selectedMode} title={modeOptions.find(o => o.value === selectedMode)?.description}>
           {#each modeOptions as opt}
             <option value={opt.value}>{opt.label}</option>
@@ -420,7 +421,7 @@
       </div>
 
       <div class="opt-group">
-        <label class="opt-label" for="scale-select">Scale</label>
+        <label class="opt-label" for="scale-select">{t('focus_label_scale')}</label>
         <select id="scale-select" class="opt-select" bind:value={selectedScale}>
           {#each scaleOptions as s}
             <option value={s}>{s}x</option>
@@ -429,7 +430,7 @@
       </div>
 
       <div class="opt-group">
-        <label class="opt-label" for="easing-select">Easing</label>
+        <label class="opt-label" for="easing-select">{t('focus_label_easing')}</label>
         <select id="easing-select" class="opt-select" bind:value={selectedEasing} title={easingOptions.find(o => o.value === selectedEasing)?.description}>
           {#each easingOptions as opt}
             <option value={opt.value}>{opt.label}</option>
@@ -438,10 +439,10 @@
       </div>
 
       <div class="opt-group">
-        <label class="opt-label" for="transition-select">Duration</label>
+        <label class="opt-label" for="transition-select">{t('focus_label_duration')}</label>
         <select id="transition-select" class="opt-select" bind:value={selectedTransitionDurationMs}>
           {#each transitionOptions as ms}
-            <option value={ms}>{ms === 0 ? 'None' : `${ms}ms`}</option>
+            <option value={ms}>{ms === 0 ? t('focus_duration_none') : `${ms}ms`}</option>
           {/each}
         </select>
       </div>
@@ -452,20 +453,20 @@
       <div class="toolbar-left">
         <span class="mode-hint">
           {#if selectedMode === 'dolly'}
-            Dolly: Focus point moves to center
+            {t('focus_mode_dolly_hint')}
           {:else}
-            Anchor: Focus point stays fixed
+            {t('focus_mode_anchor_hint')}
           {/if}
         </span>
         <!-- 🆕 P2: 背景同步放大开关 -->
-        <label class="sync-bg-label" title="When enabled, background zooms together with video">
+        <label class="sync-bg-label" title={t('focus_sync_background_desc')}>
           <input type="checkbox" bind:checked={selectedSyncBackground} />
-          <span>Sync BG</span>
+          <span>{t('focus_sync_background')}</span>
         </label>
       </div>
       <div class="toolbar-buttons">
-        <button class="btn btn-cancel" onclick={handleCancel}>Cancel</button>
-        <button class="btn btn-confirm" onclick={handleConfirm}>Confirm</button>
+        <button class="btn btn-cancel" onclick={handleCancel}>{t('common_cancel')}</button>
+        <button class="btn btn-confirm" onclick={handleConfirm}>{t('common_confirm')}</button>
       </div>
     </div>
   </div>

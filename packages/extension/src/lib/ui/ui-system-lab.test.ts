@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-const labSource = readFileSync(new URL('../../routes/lab/ui-system/+page.svelte', import.meta.url), 'utf8')
+const labSource = readFileSync(new URL('../../../test-pages/ui-system-lab/ui-system.svelte', import.meta.url), 'utf8')
 
 describe('UI System Lab coverage', () => {
   it.each([

@@ -2,6 +2,7 @@
   import { Check, X, RotateCcw, Crop, Lock, Unlock } from '@lucide/svelte'
   import { videoCropStore } from '$lib/stores/video-crop.svelte'
   import { resolveInitialCropBox } from '$lib/studio/crop-box'
+  import { _t as t } from '$lib/utils/i18n'
   
   interface Props {
     // 当前帧的 ImageBitmap
@@ -524,8 +525,8 @@
   <div class="flex flex-shrink-0 items-center justify-between border-b border-zinc-700 bg-zinc-900 p-3">
     <div class="flex items-center gap-2">
       <Crop class="w-4 h-4 text-blue-400" />
-      <span class="text-sm font-semibold text-zinc-100">Crop Video</span>
-      <span class="text-xs text-zinc-400">Drag, arrows to nudge (Shift=10px)</span>
+      <span class="text-sm font-semibold text-zinc-100">{t('crop_title')}</span>
+      <span class="text-xs text-zinc-400">{t('crop_nudge_hint')}</span>
     </div>
     
     <!-- Current dimensions inputs -->
@@ -574,7 +575,7 @@
         class:text-gray-500={!isAspectRatioLocked}
         class:hover:text-gray-300={!isAspectRatioLocked}
         onclick={() => isAspectRatioLocked = !isAspectRatioLocked}
-        title={isAspectRatioLocked ? "Unlock aspect ratio" : "Lock aspect ratio"}
+        title={isAspectRatioLocked ? t('crop_unlock_aspect') : t('crop_lock_aspect')}
       >
         {#if isAspectRatioLocked}
           <Lock class="w-3.5 h-3.5" />
@@ -653,7 +654,7 @@
     <div class="flex items-center justify-between gap-4">
       <!-- Aspect ratio presets -->
       <div class="flex items-center gap-2">
-        <span class="text-xs text-zinc-400">Aspect Ratio:</span>
+        <span class="text-xs text-zinc-400">{t('crop_aspect_ratio')}</span>
         <div class="flex gap-1">
           <button 
             class="rounded bg-zinc-800 px-3 py-1.5 text-xs text-zinc-200 transition hover:bg-zinc-700"
@@ -690,7 +691,7 @@
           onclick={resetCrop}
         >
           <RotateCcw class="w-4 h-4" />
-          Reset
+          {t('common_reset')}
         </button>
         
         <!-- Cancel -->
@@ -699,7 +700,7 @@
           onclick={cancelCrop}
         >
           <X class="w-4 h-4" />
-          Cancel
+          {t('common_cancel')}
         </button>
         
         <!-- Apply -->
@@ -708,7 +709,7 @@
           onclick={applyCrop}
         >
           <Check class="w-4 h-4" />
-          Apply
+          {t('common_apply')}
         </button>
       </div>
     </div>

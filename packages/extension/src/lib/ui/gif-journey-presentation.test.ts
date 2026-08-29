@@ -17,8 +17,8 @@ const previewCompositeSource = readFileSync(
 
 describe('GIF user-journey presentation contract', () => {
   it('offers an explicit, reversible original-frame mode', () => {
-    expect(backgroundPickerSource).toContain('Original frame')
-    expect(backgroundPickerSource).toContain('Styled canvas')
+    expect(backgroundPickerSource).toContain("t('bg_original_frame')")
+    expect(backgroundPickerSource).toContain("t('bg_styled_canvas')")
     expect(backgroundPickerSource).toContain('aria-pressed={!backgroundEnabled}')
     expect(backgroundPickerSource).toContain('backgroundConfigStore.updateEnabled(false)')
   })
@@ -40,9 +40,9 @@ describe('GIF user-journey presentation contract', () => {
   })
 
   it('keeps outcome settings primary and engineering settings out of the basic form', () => {
-    expect(exportDialogSource).toContain('Output size')
-    expect(exportDialogSource).toContain('GIF compression is on')
-    expect(exportDialogSource).toContain('Advanced color settings')
+    expect(exportDialogSource).toContain("t('export_label_output_size')")
+    expect(exportDialogSource).toContain("t('export_gif_compression_title')")
+    expect(exportDialogSource).toContain("t('export_gif_advanced_colors')")
     expect(exportDialogSource).not.toContain('id="gif-workers"')
   })
 })

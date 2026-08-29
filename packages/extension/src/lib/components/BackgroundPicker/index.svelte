@@ -80,7 +80,7 @@
       <h3 class="studio-section-heading">{t('bg_title')}</h3>
     </div>
 
-    <div class="studio-segmented grid grid-cols-2 gap-0.5 p-1" role="group" aria-label="Canvas presentation">
+    <div class="studio-segmented grid grid-cols-2 gap-0.5 p-1" role="group" aria-label={t('bg_canvas_presentation')}>
       <button
         type="button"
         class="rounded px-2.5 py-2 text-xs font-semibold transition-colors
@@ -90,7 +90,7 @@
         aria-pressed={!backgroundEnabled}
         onclick={() => backgroundConfigStore.updateEnabled(false)}
       >
-        Original frame
+        {t('bg_original_frame')}
       </button>
       <button
         type="button"
@@ -101,7 +101,7 @@
         aria-pressed={backgroundEnabled}
         onclick={() => backgroundConfigStore.updateEnabled(true)}
       >
-        Styled canvas
+        {t('bg_styled_canvas')}
       </button>
     </div>
 
@@ -151,7 +151,7 @@
   </div>
   {:else}
     <div class="rounded-lg border border-blue-400/20 bg-blue-500/5 px-3 py-3 text-xs leading-5 text-zinc-300">
-      The recording fills the canvas directly. Background, padding, rounded corners, and shadow are omitted.
+      {t('bg_original_frame_desc')}
     </div>
   {/if}
 </div>

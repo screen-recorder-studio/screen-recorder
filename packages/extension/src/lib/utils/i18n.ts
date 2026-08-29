@@ -230,7 +230,16 @@ async function loadLocaleMessages(lang: string): Promise<Record<string, ChromeI1
     return {}
   }
 
-  return messages
+  if (lang === 'en') return messages
+
+  // Chrome extension pages automatically fall back to default_locale when a
+  // translated catalog is missing a key. Mirror that behavior in preview/web
+  // mode so locale QA never leaks a raw message key after UI changes.
+  const englishMessages = await fetchLocaleMessages('en')
+  return {
+    ...(englishMessages || {}),
+    ...messages
+  }
 }
 
 /**
@@ -318,14 +327,16 @@ export function _t(
     if (message) return message
   }
 
-  // Try explicit fallback messages (passed as parameter)
-  if (fallbackMessages && key in fallbackMessages) {
-    return formatFallbackMessage(fallbackMessages[key], subs)
-  }
-
   // Try cached messages (loaded via initI18n for web mode)
   if (cachedMessages && key in cachedMessages) {
     return formatFallbackMessage(cachedMessages[key], subs)
+  }
+
+  // Component-local fallbacks are the final readable safety net. They must
+  // not shadow a locale catalog in preview/web mode, otherwise UI added with
+  // a fallback map appears in English even when the translated key exists.
+  if (fallbackMessages && key in fallbackMessages) {
+    return formatFallbackMessage(fallbackMessages[key], subs)
   }
 
   // Return key as last resort

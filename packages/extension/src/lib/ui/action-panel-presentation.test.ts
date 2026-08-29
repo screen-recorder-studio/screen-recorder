@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 const popupSource = readFileSync(new URL('../../routes/popup/+page.svelte', import.meta.url), 'utf8')
-const labSource = readFileSync(new URL('../../routes/lab/ui-system/+page.svelte', import.meta.url), 'utf8')
+const labSource = readFileSync(new URL('../../../test-pages/ui-system-lab/ui-system.svelte', import.meta.url), 'utf8')
 
 function gifActionMarkup() {
   const clickHandlerIndex = popupSource.indexOf('onclick={startGifAreaSelection}')
