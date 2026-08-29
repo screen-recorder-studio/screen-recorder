@@ -31,5 +31,7 @@ Chrome Web Store item: `bondbeldfibfmdjlcnomlaooklacmfpa`
 
 - Assessment: single-platform gray release candidate.
 - Public store version before upload: 0.6.12.
+- Chrome Web Store accepted the ZIP as draft version 0.6.13; its 54 locales and permission set match the published 0.6.12 package.
+- Dashboard handoff: ready at the `Submit for review` action; no review submission has been made yet.
 - Known boundary: a 49.9-second 600px/10fps GIF failed after the UI warned it was too heavy; trimming to 8 seconds exported a valid 600×337, 80-frame, 8-second GIF with three total plays.
 - Full Windows, WebM/three-format edit parity, complete Network HAR, and long soak were not executed in this run.
