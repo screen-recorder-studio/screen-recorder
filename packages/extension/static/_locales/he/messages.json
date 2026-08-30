@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "סטודיו מקליט מסך - ללא הגבלה, זום, וידאו ו-GIF" },
-  "appDesc": { "message": "הקלטת מסך יציבה ללא הגבלות זמן. עורך מובנה להתמקדות, חיתוך וייצוא חלק ל-MP4 או GIF איכותי." },
+  "appName": { "message": "Screen Recorder Studio – מקליט אזור ו-GIF" },
+  "appDesc": { "message": "הקליטו אזור בדף כ-GIF, או כרטיסיות, חלונות ומסכים. ערכו מקומית ואז ייצאו קובצי MP4, WebM ו-GIF מוכנים." },
   "common_close": { "message": "סגור" },
   "action_defaultTitle": { "message": "פתח לוח הקלטה" },
 

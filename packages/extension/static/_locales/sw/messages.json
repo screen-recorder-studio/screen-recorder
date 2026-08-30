@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Studio ya Kurekodi Skrini - Hakuna Kikomo, Zoom, Video na GIF" },
-  "appDesc": { "message": "Kurekodi skrini imara bila vikwazo vya wakati. Editor iliyojengwa ndani kwa zoom la utulivu, kunyoa, na kutoa hadi MP4 au GIF ya ubora wa juu." },
+  "appName": { "message": "Screen Recorder Studio – Kirekodi Eneo na GIF" },
+  "appDesc": { "message": "Rekodi eneo la ukurasa kama GIF, au vichupo, madirisha na skrini. Hariri ndani ya kifaa, kisha hamisha faili za MP4, WebM na GIF." },
   "common_close": { "message": "Funga" },
   "action_defaultTitle": { "message": "Fungua Kituo cha Kurekodi" },
   "control_headerTitle": { "message": "Kurekodi Skrini" },

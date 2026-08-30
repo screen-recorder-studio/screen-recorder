@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - Zoom, Video a GIF" },
-  "appDesc": { "message": "Stabilní nahrávání obrazovky bez časových limitů. Vestavěný editor pro snadné přiblížení, oříznutí a export do vysoce kvalitního MP4 nebo GIF." },
+  "appName": { "message": "Screen Recorder Studio – Záznam oblasti a GIF" },
+  "appDesc": { "message": "Nahrajte oblast stránky jako GIF nebo karty, okna a obrazovky. Upravte lokálně a exportujte hotové soubory MP4, WebM a GIF." },
   "common_close": { "message": "Zavřít" },
   "action_defaultTitle": { "message": "Otevřít panel nahrávání" },
 

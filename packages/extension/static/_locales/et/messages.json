@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - Piiramatu, Zoom, Video ja GIF" },
-  "appDesc": { "message": "Stabiilne ekraanisalvestus ilma ajapiiranguta. Sisseehitatud redaktor sujuvaks suumimiseks, kärpimiseks ja eksportimiseks MP4 või GIF-vormingusse." },
+  "appName": { "message": "Screen Recorder Studio – Ala- ja GIF-salvesti" },
+  "appDesc": { "message": "Salvesta leheala GIF-ina või vahelehed, aknad ja ekraanid. Töötle kohapeal ning ekspordi valmis MP4-, WebM- ja GIF-failid." },
   "common_close": { "message": "Sulge" },
   "action_defaultTitle": { "message": "Ava salvestuspaneel" },
 

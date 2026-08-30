@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - ಅಮಿತ, ಜೂಮ್, GIF" },
-  "appDesc": { "message": "ಸಮಯ ಮಿತಿಯಿಲ್ಲದ ಸ್ಥಿರ ತೆರೆ ರೆಕಾರ್ಡಿಂಗ್. ಅಂತರ್ನಿರ್ಮಿತ ಎಡಿಟರ್‌ನಿಂದ ಜೂಮ್, ಟ್ರಿಮ್ ಮಾಡಿ HD MP4 ಅಥವಾ GIF ಆಗಿ ಎಕ್ಸ್‌ಪೋರ್ಟ್ ಮಾಡಿ." },
+  "appName": { "message": "Screen Recorder Studio – ಪ್ರದೇಶ ಮತ್ತು GIF ರೆಕಾರ್ಡರ್" },
+  "appDesc": { "message": "ಪುಟದ ಪ್ರದೇಶವನ್ನು GIF ಆಗಿ; ಟ್ಯಾಬ್, ವಿಂಡೋ ಅಥವಾ ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡ್ ಮಾಡಿ. ಸ್ಥಳೀಯವಾಗಿ ಎಡಿಟ್ ಮಾಡಿ MP4, WebM, GIF ಎಕ್ಸ್‌ಪೋರ್ಟ್ ಮಾಡಿ." },
   "common_close": { "message": "ಮುಚ್ಚು" },
   "action_defaultTitle": { "message": "ರೆಕಾರ್ಡಿಂಗ್ ಪ್ಯಾನಲ್ ತೆರೆಯಿರಿ" },
   "control_headerTitle": { "message": "ಸ್ಕ್ರೀನ್ ರೆಕಾರ್ಡರ್" },

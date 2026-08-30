@@ -1,7 +1,7 @@
 {
 	"name": "extension",
 	"private": true,
-	"version": "0.6.13",
+	"version": "0.6.14",
 	"type": "module",
 	"description": "A Chrome extension for recording tabs, windows, screens, page regions, and elements",
 	"scripts": {
@@ -16,7 +16,7 @@
 		"lab:gif": "vite test-pages/gif-lab --host 127.0.0.1 --port 4174 --strictPort",
 		"build:extension": "pnpm run build && node scripts/build-content.mjs && node scripts/build-area-selector.mjs && node scripts/build-background.mjs && node scripts/build-worker.mjs && node scripts/build-opfs-writer.mjs && node scripts/build-opfs-writer-worker.mjs && node scripts/build-offscreen2.mjs && cp static/manifest.json build/ && node scripts/sanitize-static-vendor-logging.mjs && node scripts/verify-release-logging.mjs",
 		"build:extension:debug": "vite build --mode debug && node scripts/build-content.mjs --debug-logs && node scripts/build-area-selector.mjs --debug-logs && node scripts/build-background.mjs --debug-logs && node scripts/build-worker.mjs --debug-logs && node scripts/build-opfs-writer.mjs --debug-logs && node scripts/build-opfs-writer-worker.mjs --debug-logs && node scripts/build-offscreen2.mjs --debug-logs && cp static/manifest.json build/",
-		"package:extension": "pnpm run build:extension && cd build && zip -r ../screen-recorder-studio.zip ."
+		"package:extension": "pnpm run build:extension && cd build && zip -FS -r ../screen-recorder-studio.zip ."
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-static": "^3.0.9",

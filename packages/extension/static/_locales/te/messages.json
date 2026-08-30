@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - అపరిమితం, జூమ్, వీడియो & GIF" },
-  "appDesc": { "message": "సమయ పరిమితులు లేకుండా స్థిరమైన స్క్రీన్ రెకార్డింగ్. జూమ్, ట్రిమ్ మరియు HD MP4 లేదా GIF ఎక్స్‌పోర్ట్‌కు బిల్ట్-ఇన్ ఎడిటర్." },
+  "appName": { "message": "Screen Recorder Studio – ప్రాంతం & GIF రికార్డర్" },
+  "appDesc": { "message": "పేజీ ప్రాంతాన్ని GIFగా లేదా ట్యాబ్, విండో, స్క్రీన్‌లను రికార్డ్ చేయండి. లోకల్‌గా ఎడిట్ చేసి MP4, WebM, GIFగా ఎగుమతి చేయండి." },
   "common_close": { "message": "కట్‌టింగ్" },
   "action_defaultTitle": { "message": "రెకార్డింగ్ ప్యానల్‌ను ఓపెన్ చేయి" },
   "control_headerTitle": { "message": "స్క్రీన్ రెకార్డర్" },

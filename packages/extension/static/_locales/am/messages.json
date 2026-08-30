@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - ገደብ የሌለው እና አስተካክል" },
-  "appDesc": { "message": "ጊዜ ገደብ የሌለው ጠንካራ ስክሪን ቅጽበታዊ የማስተር መሣሪያ ማስጀመሪያ. በተካተተ አርታኢ በስርዓት ማስፋፋት፣ ማስቀጠል እና ወደ ከፍተኛ ጥራት MP4 ወይም GIF መላእክት." },
+  "appName": { "message": "Screen Recorder Studio – አካባቢ እና GIF መቅጃ" },
+  "appDesc": { "message": "የድረ ገጽ አካባቢን እንደ GIF ወይም ትሮችን፣ መስኮቶችንና ማያዎችን ይቅረጹ። በአካባቢው አርትዕ አድርገው MP4፣ WebM እና GIF ይላኩ።" },
   "common_close": { "message": "ዝጋ" },
   "action_defaultTitle": { "message": "መመዝገቢያ ፓነል ክፈት" },
   "control_headerTitle": { "message": "ስክሪን ሪኮርደር" },

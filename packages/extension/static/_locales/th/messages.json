@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - บันทึกวิดีโอไม่จำกัด" },
-  "appDesc": { "message": "การบันทึกหน้าจอที่เสถียรโดยไม่มีข้อจำกัดด้านเวลา ตัวแก้ไขในตัวเพื่อซูม ตัดแต่ง และส่งออกเป็น MP4 หรือ GIF คุณภาพสูงอย่างราบรื่น." },
+  "appName": { "message": "Screen Recorder Studio – บันทึกพื้นที่และ GIF" },
+  "appDesc": { "message": "บันทึกพื้นที่หน้าเว็บเป็น GIF หรือแท็บ หน้าต่าง และหน้าจอ แก้ไขในเครื่อง แล้วส่งออกไฟล์ MP4, WebM และ GIF ที่พร้อมใช้" },
   "common_close": { "message": "ปิด" },
   "action_defaultTitle": { "message": "เปิดแผงบันทึก" },
   "control_headerTitle": { "message": "โปรแกรมบันทึกหน้าจอ" },

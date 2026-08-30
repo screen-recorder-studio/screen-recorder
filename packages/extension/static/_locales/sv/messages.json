@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - Obegransat, Zoom, Video & GIF" },
-  "appDesc": { "message": "Stabil skärminspelning utan tidsgräns. Inbyggd redigerare för att enkelt zooma, beskära och exportera till MP4 eller GIF." },
+  "appName": { "message": "Screen Recorder Studio – Områdes- och GIF-inspelare" },
+  "appDesc": { "message": "Spela in ett sidområde som GIF, eller flikar, fönster och skärmar. Redigera lokalt och exportera färdiga MP4-, WebM- och GIF-filer." },
   "common_close": { "message": "Stang" },
   "action_defaultTitle": { "message": "Offna inspelningspanelen" },
 

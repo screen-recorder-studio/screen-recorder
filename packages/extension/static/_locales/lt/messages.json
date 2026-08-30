@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - Neribotas, Video" },
-  "appDesc": { "message": "Stabilus ekrano įrašymas be apribojimų. Redaktorius mastelinti, apkarpyti ir eksportuoti į MP4 ar GIF." },
+  "appName": { "message": "Screen Recorder Studio – Srities ir GIF įrašytuvas" },
+  "appDesc": { "message": "Įrašykite puslapio sritį kaip GIF arba skirtukus, langus ir ekranus. Redaguokite vietoje ir eksportuokite MP4, WebM bei GIF failus." },
   "common_close": { "message": "Uždaryti" },
   "action_defaultTitle": { "message": "Atidaryti įrašymo skydelį" },
 

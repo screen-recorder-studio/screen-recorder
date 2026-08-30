@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - Zoom, Video i GIF" },
-  "appDesc": { "message": "Stabilno snimanje zaslona bez vremenskih ograničenja. Ugrađeni editor za jednostavno zumiranje, izrezivanje i izvoz u visokokvalitetan MP4 ili GIF." },
+  "appName": { "message": "Screen Recorder Studio – Snimač područja i GIF-a" },
+  "appDesc": { "message": "Snimite područje stranice kao GIF ili kartice, prozore i zaslone. Uredite lokalno pa izvezite gotove MP4, WebM i GIF datoteke." },
   "common_close": { "message": "Zatvori" },
   "action_defaultTitle": { "message": "Otvori ploču za snimanje" },
 

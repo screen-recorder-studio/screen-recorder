@@ -1,0 +1,39 @@
+Geuza hatua muhimu ya bidhaa kuwa GIF au video iliyo wazi—kurekodi, kuhariri na kuhamisha hufanyika ndani ya Chrome kwenye kifaa chako, bila kupakia rekodi au kufungua kihariri tofauti cha video.
+
+REKODI KILICHO MUHIMU TU
+
+• Chagua eneo kwenye ukurasa wa wavuti unaotumika na ulirekodi kwa mtiririko mahususi wa GIF
+• Au rekodi kichupo cha kivinjari, dirisha la programu au skrini nzima
+• Kuhesabu muda huanza baada ya kuchagua chanzo, hivyo kidirisha cha mfumo cha kuchagua chanzo hakiingii kwenye rekodi
+
+BORESHA REKODI KATIKA STUDIO
+
+Baada ya kurekodi, Studio iliyojengewa ndani hufunguka na kukuwezesha:
+
+• kukata mwanzo na mwisho;
+• kupunguza fremu kwa usahihi;
+• kuongeza ukuzaji laini na maeneo ya kuzingatia;
+• kurekebisha mandharinyuma, nafasi, kona zilizoviringishwa na kivuli;
+• kuhakiki mpangilio wa mwisho kabla ya kuhamisha.
+
+HAMISHA KWA BARUA PEPE, WAVUTI AU KUSHIRIKI
+
+• GIF: mipangilio chaguomsingi ya upana, kasi ya fremu na marudio machache inayofaa barua pepe, pamoja na makadirio ya ukubwa kabla ya kuhamisha
+• MP4 (H.264): inatumika kwa upana kwa uchezaji na kushiriki
+• WebM: video yenye ufanisi kwa wavuti
+
+Hatua fupi na mahususi zinafaa zaidi kwa GIF. Kwa rekodi ndefu au yenye miondoko mingi, kata klipu katika Studio au chagua mipangilio myepesi ya matokeo.
+
+UCHAKATAJI WA NDANI NA FARAGHA
+
+Kurekodi, kuhariri na kuhamisha hufanyika ndani ya Chrome kwenye kifaa chako. Rekodi huhifadhiwa katika Origin Private File System ya kivinjari na zinaweza kufunguliwa tena kutoka kwa kidhibiti cha rekodi kilichojengewa ndani. Midia iliyonaswa haipakiiwi kwenye seva wakati wa kurekodi, kuhariri au kuhamisha.
+
+KWA HADITHI WAZI ZA BIDHAA
+
+• uzinduzi wa vipengele vya SaaS na maonyesho ya bidhaa;
+• video za usaidizi na ripoti za hitilafu;
+• hati za kiufundi na mafunzo ya kuanza;
+• maonyesho ya mifano ya usanifu;
+• mafunzo mafupi na klipu za mafunzo.
+
+Screen Recorder Studio ni programu huria yenye leseni ya MIT. Nasa sehemu muhimu, iboreshe katika Studio na uhamishe faili ya kawaida bila kuondoka Chrome.

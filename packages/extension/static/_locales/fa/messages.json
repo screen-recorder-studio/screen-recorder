@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "استودیو ضبط صفحه - نامحدود، زوم، ویدیو و GIF" },
-  "appDesc": { "message": "ضبط پایدار صفحه بدون محدودیت زمان. ویرایشگر داخلی برای زوم، برش و صدور روان به MP4 یا GIF با کیفیت بالا." },
+  "appName": { "message": "Screen Recorder Studio – ضبط ناحیه و GIF" },
+  "appDesc": { "message": "بخشی از صفحه را به‌صورت GIF یا برگه‌ها، پنجره‌ها و نمایشگرها را ضبط کنید. محلی ویرایش کنید و فایل‌های MP4، WebM و GIF بگیرید." },
   "common_close": { "message": "بستن" },
   "action_defaultTitle": { "message": "باز کردن پنل ضبط" },
 

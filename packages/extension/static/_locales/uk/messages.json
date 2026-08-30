@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - Безлімит, Зум, Відео" },
-  "appDesc": { "message": "Стабільний запис екрану без обмежень у часі. Вбудований редактор для легкого масштабування, обрізання та експорту у високоякісний MP4 або GIF." },
+  "appName": { "message": "Screen Recorder Studio – Запис області та GIF" },
+  "appDesc": { "message": "Запишіть область сторінки як GIF або вкладки, вікна й екрани. Редагуйте локально та експортуйте готові файли MP4, WebM і GIF." },
   "common_close": { "message": "Закрити" },
   "action_defaultTitle": { "message": "Відкрити панель запису" },
 

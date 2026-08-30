@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - अमर्याद, GIF" },
-  "appDesc": { "message": "वेळेची मर्यादा नसलेली स्थिर स्क्रીન रेકોર્ડિંગ. एडिटरने झूम, ट्रिम आणि MP4 किंवा GIF मध्ये एक्सपોર્ટ કરો." },
+  "appName": { "message": "Screen Recorder Studio – क्षेत्र आणि GIF रेकॉर्डर" },
+  "appDesc": { "message": "पेजचा भाग GIF म्हणून किंवा टॅब, विंडो व स्क्रीन रेकॉर्ड करा. लोकल एडिट करून MP4, WebM आणि GIF फाइल्स एक्सपोर्ट करा." },
   "common_close": { "message": "बंद करा" },
   "action_defaultTitle": { "message": "रिकॉर्डिंग पॅनल उघडा" },
   "control_headerTitle": { "message": "स्क्रीन रेकॉर्डर" },

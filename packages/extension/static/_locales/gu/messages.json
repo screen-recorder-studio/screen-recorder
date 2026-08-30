@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - અમર્યાદિત, GIF" },
-  "appDesc": { "message": "સ્થિર સ્ક્રીન રેકોર્ડિંગ સમય મર્યાદા વિના. બિલ્ટ-ઇન એડિટર સરળતાથી ઝૂમ, ટ્રિમ અને ઉચ્ચ-ગુણવત્તાવાળું MP4 અથવા GIF માં એક્સપોર્ટ કરો." },
+  "appName": { "message": "Screen Recorder Studio – વિસ્તાર અને GIF રેકોર્ડર" },
+  "appDesc": { "message": "પેજનો વિસ્તાર GIF તરીકે અથવા ટૅબ, વિન્ડો અને સ્ક્રીન રેકોર્ડ કરો. લોકલ રીતે એડિટ કરી MP4, WebM અને GIF ફાઇલ એક્સપોર્ટ કરો." },
   "common_close": { "message": "બંધ કરો" },
   "action_defaultTitle": { "message": "રેકોર્ડિંગ પેનલ ખોલો" },
   "control_headerTitle": { "message": "સ્ક્રીન રેકોર્ડર" },

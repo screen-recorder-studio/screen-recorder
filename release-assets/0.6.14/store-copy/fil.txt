@@ -1,0 +1,39 @@
+Gawing malinaw na GIF o video ang isang mahalagang daloy ng produkto—lokal na ginagawa sa Chrome ang pag-record, pag-edit, at pag-export, nang walang pag-upload ng recording o pagbubukas ng hiwalay na video editor.
+
+IREKORD LANG ANG MAHALAGA
+
+• Pumili ng bahagi sa isang suportadong web page at i-record ito para sa nakatuong GIF workflow
+• O i-record ang browser tab, window ng application, o buong screen
+• Magsisimula lang ang countdown pagkatapos piliin ang source, kaya hindi masasama sa recording ang system picker
+
+AYUSIN ITO SA STUDIO
+
+Pagkatapos ng bawat recording, bubukas ang built-in na Studio kung saan maaari mong:
+
+• i-trim ang simula at dulo;
+• i-crop nang eksakto ang frame;
+• magdagdag ng maayos na zoom at mga focus point;
+• ayusin ang background, padding, rounded corners, at shadow;
+• i-preview ang huling komposisyon bago mag-export.
+
+MAG-EXPORT PARA SA EMAIL, WEB, O PAGBABAHAGI
+
+• GIF: mga default para sa lapad, frame rate, at limitadong pag-loop na angkop sa email, kasama ang pagtatantiya ng laki bago mag-export
+• MP4 (H.264): malawak na compatibility para sa playback at pagbabahagi
+• WebM: episyenteng video para sa web
+
+Pinakamainam para sa GIF ang maiikli at nakatuong daloy. Para sa mas mahaba o maraming galaw na recording, maaari mong paikliin ang clip sa Studio o pumili ng mas magaan na output settings.
+
+LOKAL MUNA, PRIBADO ANG DATA
+
+Lokal na tumatakbo sa Chrome ang pag-record, pag-edit, at pag-export. Naka-save ang mga recording sa Origin Private File System ng browser at maaaring buksang muli mula sa built-in na recording manager. Hindi ina-upload sa server ang nakuhang media bilang bahagi ng recording, pag-edit, o pag-export.
+
+PARA SA MALINAW NA KUWENTO NG PRODUKTO
+
+• mga paglulunsad ng SaaS feature at product demo;
+• support video at bug report;
+• technical documentation at onboarding;
+• walkthrough ng design prototype;
+• maiikling tutorial at training clip.
+
+Ang Screen Recorder Studio ay open source at may MIT license. Irekord ang mahalagang bahagi, ayusin ito sa Studio, at mag-export ng standard na file nang hindi umaalis sa Chrome.

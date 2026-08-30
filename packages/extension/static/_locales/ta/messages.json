@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "திரை பதிவு ஸ்டுடியோ - அலைமதி, ஜூம், GIF" },
-  "appDesc": { "message": "நேர வரம்பு இல்லாத திரை பதிவு. உள்ளமைக்கப்பட்ட எடிட்டரில் ஜூம், டிரிம செய்து HD MP4 அல்லது GIF ஆக ஏற்றுமதி." },
+  "appName": { "message": "Screen Recorder Studio – பகுதி மற்றும் GIF பதிவி" },
+  "appDesc": { "message": "பக்கப் பகுதியை GIF ஆக அல்லது தாவல், சாளரம், திரையைப் பதிவு செய்க. உள்ளூரில் திருத்தி MP4, WebM, GIF ஆக ஏற்றுமதி செய்க." },
   "common_close": { "message": "மூடு" },
   "action_defaultTitle": { "message": "பதிவு ப্যானலைத் திறக்கவும்" },
   "control_headerTitle": { "message": "திரை பதிவி" },

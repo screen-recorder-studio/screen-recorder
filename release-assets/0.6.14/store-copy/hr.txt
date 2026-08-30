@@ -1,0 +1,39 @@
+Pretvorite važan tijek rada proizvoda u jasan GIF ili videozapis—snimanje, uređivanje i izvoz odvijaju se lokalno u Chromeu, bez prijenosa snimke na poslužitelj i bez zasebnog uređivača videozapisa.
+
+SNIMITE SAMO ONO ŠTO JE VAŽNO
+
+• Odaberite područje na podržanoj web-stranici i snimite ga za usmjereni GIF tijek rada
+• Ili snimite karticu preglednika, prozor aplikacije ili cijeli zaslon
+• Odbrojavanje počinje tek nakon odabira izvora pa se sistemski prozor za odabir ne pojavljuje u snimci
+
+DOVRŠITE SNIMKU U STUDIJU
+
+Nakon svakog snimanja otvara se ugrađeni Studio u kojem možete:
+
+• obrezati početak i kraj;
+• precizno izrezati kadar;
+• dodati glatko zumiranje i točke fokusa;
+• prilagoditi pozadinu, odmak, zaobljene kutove i sjenu;
+• pregledati završnu kompoziciju prije izvoza.
+
+IZVEZITE ZA E-POŠTU, WEB I DIJELJENJE
+
+• GIF: zadane vrijednosti širine, broja sličica i ograničenog ponavljanja prilagođene e-pošti, uz procjenu veličine prije izvoza
+• MP4 (H.264): široka kompatibilnost za reprodukciju i dijeljenje
+• WebM: učinkovit videozapis za web
+
+Kratki i usmjereni tijekovi najbolji su za GIF. Dulju snimku ili snimku s mnogo pokreta možete skratiti u Studiju ili izvesti uz lakše postavke.
+
+LOKALNA OBRADA I PRIVATNOST
+
+Snimanje, uređivanje i izvoz odvijaju se lokalno u Chromeu. Snimke se spremaju u Origin Private File System preglednika i mogu se ponovno otvoriti iz ugrađenog upravitelja snimki. Snimljeni medijski sadržaj ne prenosi se na poslužitelj tijekom snimanja, uređivanja ni izvoza.
+
+ZA JASNE PRIČE O PROIZVODU
+
+• predstavljanje SaaS značajki i demonstracije proizvoda;
+• videozapisi za podršku i prijave pogrešaka;
+• tehnička dokumentacija i uvođenje korisnika;
+• prikazi dizajnerskih prototipova;
+• kratke upute i materijali za obuku.
+
+Screen Recorder Studio ima MIT licencu i otvoreni izvorni kod. Snimite važan dio, doradite ga u Studiju i izvezite standardnu datoteku bez napuštanja Chromea.

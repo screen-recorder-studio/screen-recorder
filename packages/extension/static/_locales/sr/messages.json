@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - Неограничено, Зум" },
-  "appDesc": { "message": "Stabilno snimanje ekrana bez vremenskih ograničenja. Ugrađeni editor za jednostavno zumiranje, krojenje i izvoz u visokokvalitetni MP4 ili GIF." },
+  "appName": { "message": "Screen Recorder Studio – Снимач области и GIF-а" },
+  "appDesc": { "message": "Снимите област странице као GIF или картице, прозоре и екране. Уредите локално и извезите готове MP4, WebM и GIF датотеке." },
   "common_close": { "message": "Zatvori" },
   "action_defaultTitle": { "message": "Otvori panel za snimanje" },
 

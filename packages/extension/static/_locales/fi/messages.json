@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - Rajaton, Zoom, Video ja GIF" },
-  "appDesc": { "message": "Vakaa nappauksen tallennus ilman aikarajoituksia. Sisarretty editori tasaiseen zoomaamiseen, rajaamiseen ja vientiin MP4- tai GIF-muotoon." },
+  "appName": { "message": "Screen Recorder Studio – Alue- ja GIF-tallennin" },
+  "appDesc": { "message": "Tallenna sivualue GIFiksi tai välilehtiä, ikkunoita ja näyttöjä. Muokkaa paikallisesti ja vie valmiit MP4-, WebM- ja GIF-tiedostot." },
   "common_close": { "message": "Sulje" },
   "action_defaultTitle": { "message": "Avaa tallennuspaneeli" },
 

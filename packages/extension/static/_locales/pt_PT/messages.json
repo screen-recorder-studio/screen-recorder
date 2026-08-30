@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - Zoom, Video e GIF" },
-  "appDesc": { "message": "Gravação de ecrã estável sem limites de tempo. Editor integrado para zoom, corte e exportação facil para MP4 ou GIF de alta qualidade." },
+  "appName": { "message": "Screen Recorder Studio – Gravador de área e GIF" },
+  "appDesc": { "message": "Grave uma área da página como GIF ou capture separadores, janelas e ecrãs. Edite localmente e exporte ficheiros MP4, WebM e GIF." },
   "common_close": { "message": "Fechar" },
   "action_defaultTitle": { "message": "Abrir painel de gravação" },
 

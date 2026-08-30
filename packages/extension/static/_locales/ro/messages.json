@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - Zoom, Video și GIF" },
-  "appDesc": { "message": "Înregistrare stabilă a ecranului fără limite de timp. Editor integrat pentru zoom simplu, tăiere și export în MP4 sau GIF de înaltă calitate." },
+  "appName": { "message": "Screen Recorder Studio – Înregistrare zonă și GIF" },
+  "appDesc": { "message": "Înregistrați o zonă a paginii ca GIF sau file, ferestre și ecrane. Editați local, apoi exportați fișiere MP4, WebM și GIF finisate." },
   "common_close": { "message": "Închide" },
   "action_defaultTitle": { "message": "Deschide panoul de înregistrare" },
 

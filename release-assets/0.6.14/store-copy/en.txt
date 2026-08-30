@@ -1,0 +1,39 @@
+Turn a focused product flow into a polished GIF or video—without uploading your recording or opening a separate editor.
+
+RECORD THE RIGHT THING
+
+• Select an area on a supported web page and record it for a focused GIF workflow
+• Or capture a browser tab, application window, or your entire screen
+• Start the countdown only after choosing the source, keeping the system picker out of the recording
+
+POLISH IT IN STUDIO
+
+Every completed recording opens in the built-in Studio, where you can:
+
+• Trim the beginning and end
+• Crop the frame precisely
+• Add smooth zooms and focus points
+• Adjust the background, padding, rounded corners, and shadow
+• Preview the finished composition before export
+
+EXPORT FOR EMAIL, WEB, OR SHARING
+
+• GIF: email-oriented width, frame-rate, and finite-loop defaults, with estimated-size guidance before export
+• MP4 (H.264): broad playback and sharing compatibility
+• WebM: efficient video for the web
+
+Short, focused flows work best for GIF. For longer or high-motion recordings, Studio helps you trim the clip or choose lighter output settings.
+
+LOCAL-FIRST PRIVACY
+
+Recording, editing, and export run locally in Chrome. Recordings are stored in the browser's Origin Private File System and can be reopened from the built-in recording manager. Captured media is not uploaded to a server as part of the recording, editing, or export workflow.
+
+MADE FOR CLEAR PRODUCT STORIES
+
+• SaaS feature launches and product demos
+• Support videos and bug reports
+• Technical documentation and onboarding
+• Design prototype walkthroughs
+• Short tutorials and training clips
+
+Screen Recorder Studio is MIT licensed and open source. Capture the important part, polish it in Studio, and export a standard file without leaving Chrome.

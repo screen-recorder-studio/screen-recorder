@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - Onbeperkt, Zoom, Video & GIF" },
-  "appDesc": { "message": "Stabiele schermopname zonder tijdslimiet. Ingebouwde editor om naadloos te zoomen, bijsnijden en exporteren naar MP4 of GIF." },
+  "appName": { "message": "Screen Recorder Studio – Gebieds- en GIF-recorder" },
+  "appDesc": { "message": "Neem een paginagebied op als GIF, of tabbladen, vensters en schermen. Bewerk lokaal en exporteer MP4-, WebM- en GIF-bestanden." },
   "common_close": { "message": "Sluiten" },
   "action_defaultTitle": { "message": "Opnamepaneel openen" },
 

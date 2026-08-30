@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - Απεριόριστο, Zoom" },
-  "appDesc": { "message": "Σταθερή εγγραφή οθόνης χωρίς χρονικά όρια. Ενσωματωμένος επεξεργαστής για απρόσκοπτο ζουμ, κόψιμο και εξαγωγή σε MP4 ή GIF υψηλής ποιότητας." },
+  "appName": { "message": "Screen Recorder Studio – Εγγραφή περιοχής και GIF" },
+  "appDesc": { "message": "Εγγράψτε περιοχή σελίδας ως GIF ή καρτέλες, παράθυρα και οθόνες. Επεξεργαστείτε τοπικά και εξαγάγετε MP4, WebM και GIF." },
   "common_close": { "message": "Κλείσιμο" },
   "action_defaultTitle": { "message": "Άνοιγμα Πάνελ Εγγραφής" },
 

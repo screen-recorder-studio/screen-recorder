@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - Walang Limit, Zoom, Video & GIF" },
-  "appDesc": { "message": "Matatag na screen recording na walang limitasyon sa oras. May built-in editor para sa seamless na zoom, trim, at export sa high-quality na MP4 o GIF." },
+  "appName": { "message": "Screen Recorder Studio – Area at GIF Recorder" },
+  "appDesc": { "message": "Mag-record ng bahagi ng page bilang GIF, o ng mga tab, window, at screen. Mag-edit locally, saka mag-export ng MP4, WebM, at GIF." },
   "common_close": { "message": "Isara" },
   "action_defaultTitle": { "message": "Buksan ang Recording Panel" },
   "control_headerTitle": { "message": "Tagapag-record ng Screen" },

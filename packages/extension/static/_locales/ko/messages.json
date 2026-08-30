@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - 무제한, 줌, 비디오 & GIF 내보내기" },
-  "appDesc": { "message": "시간 제한 없는 안정적인 화면 녹화. 내장된 에디터로 부드럽게 줌, 자르기를 실행하고 고화질 MP4 또는 GIF로 내보내세요." },
+  "appName": { "message": "Screen Recorder Studio – 영역 및 GIF 레코더" },
+  "appDesc": { "message": "페이지 영역을 GIF로 녹화하거나 탭, 창, 전체 화면을 캡처하세요. 로컬에서 편집한 뒤 완성된 MP4, WebM, GIF 파일로 내보낼 수 있습니다." },
   "common_close": { "message": "닫기" },
   "action_defaultTitle": { "message": "녹화 패널 열기" },
 

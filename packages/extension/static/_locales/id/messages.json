@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - Tanpa Batas, Zoom, Video & GIF" },
-  "appDesc": { "message": "Perekaman layar stabil tanpa batas waktu. Editor bawaan untuk zoom, pangkas, dan ekspor MP4 atau GIF berkualitas tinggi." },
+  "appName": { "message": "Screen Recorder Studio – Perekam Area & GIF" },
+  "appDesc": { "message": "Rekam area halaman sebagai GIF, atau tab, jendela, dan layar. Edit secara lokal, lalu ekspor file MP4, WebM, dan GIF yang rapi." },
   "common_close": { "message": "Tutup" },
   "action_defaultTitle": { "message": "Buka Panel Perekaman" },
 

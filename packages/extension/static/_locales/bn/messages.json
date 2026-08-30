@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - অসীম, জুম, GIF" },
-  "appDesc": { "message": "সময়সীমা ছাড়াই স্থির স্ক্রিন রেকর্ডিং। অন্তর্নির্মিত এডিটরে জুম, ট্রিম করুন এবং HD MP4 বা GIF তে এক্সপোর্ট করুন।" },
+  "appName": { "message": "Screen Recorder Studio – এরিয়া ও GIF রেকর্ডার" },
+  "appDesc": { "message": "পেজের অংশ GIF হিসেবে বা ট্যাব, উইন্ডো ও স্ক্রিন রেকর্ড করুন। লোকাল এডিট করে MP4, WebM ও GIF ফাইল এক্সপোর্ট করুন।" },
   "common_close": { "message": "বন্ধ করুন" },
   "action_defaultTitle": { "message": "রেকর্ডিং প্যানেল খুলুন" },
   "control_headerTitle": { "message": "স্ক্রিন রেকর্ডার" },

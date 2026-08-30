@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - Ubegrenset, Zoom, Video og GIF" },
-  "appDesc": { "message": "Stabil skjerminnesopptak uten tidsbegrensning. Innebygd editor for a zoome, beskjare og eksportere til MP4 eller GIF." },
+  "appName": { "message": "Screen Recorder Studio – Område- og GIF-opptaker" },
+  "appDesc": { "message": "Ta opp et sideområde som GIF, eller faner, vinduer og skjermer. Rediger lokalt, og eksporter ferdige MP4-, WebM- og GIF-filer." },
   "common_close": { "message": "Lukk" },
   "action_defaultTitle": { "message": "AApne opptakspanel" },
 

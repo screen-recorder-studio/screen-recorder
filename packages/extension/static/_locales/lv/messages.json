@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - Bezierobežojumi" },
-  "appDesc": { "message": "Stabils ekrāna ieraksts bez ierobežojumiem. Redaktors tālummaiņai, apgriešanai un eksportēšanai uz MP4 vai GIF." },
+  "appName": { "message": "Screen Recorder Studio – Apgabala un GIF ierakstītājs" },
+  "appDesc": { "message": "Ierakstiet lapas apgabalu kā GIF vai cilnes, logus un ekrānus. Rediģējiet lokāli un eksportējiet gatavus MP4, WebM un GIF failus." },
   "common_close": { "message": "Aizvērt" },
   "action_defaultTitle": { "message": "Atvērt ierakstu paneli" },
 

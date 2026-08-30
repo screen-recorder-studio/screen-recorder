@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - Không giới hạn, Thu phóng, Video & GIF" },
-  "appDesc": { "message": "Quay màn hình ổn định không giới hạn thời gian. Trình chỉnh sửa tích hợp giúp thu phóng, cắt và xuất MP4 hoặc GIF chất lượng cao." },
+  "appName": { "message": "Screen Recorder Studio – Quay vùng & tạo GIF" },
+  "appDesc": { "message": "Quay một vùng trang thành GIF, hoặc quay tab, cửa sổ và màn hình. Chỉnh sửa cục bộ rồi xuất tệp MP4, WebM và GIF hoàn thiện." },
   "common_close": { "message": "Đóng" },
   "action_defaultTitle": { "message": "Mở bảng điều khiển quay phim" },
 

@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - Korlátlan, Zoom, Video és GIF" },
-  "appDesc": { "message": "Stabil képernyőfelvétel időkorlát nélkül. Beépített szerkesztő a zökkenőmentes nagyításhoz, vágáshoz és exportáláshoz MP4 vagy GIF formátumba." },
+  "appName": { "message": "Screen Recorder Studio – Terület- és GIF-rögzítő" },
+  "appDesc": { "message": "Rögzítsen oldalterületet GIF-ként, lapokat, ablakokat vagy képernyőket. Szerkessze helyben; exportáljon MP4, WebM és GIF fájlokat." },
   "common_close": { "message": "Bezár" },
   "action_defaultTitle": { "message": "Felvétel panel megnyitása" },
 

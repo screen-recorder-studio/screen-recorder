@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - Sınırsız, Yakınlaştırma, Video ve GIF" },
-  "appDesc": { "message": "Süre sınırı olmadan sorunsuz ekran kaydı. Yakınlaştırma, kırpma ve yüksek kaliteli MP4/GIF dışa aktarma için yerleşik düzenleyici." },
+  "appName": { "message": "Screen Recorder Studio – Alan ve GIF Kaydedici" },
+  "appDesc": { "message": "Sayfa alanını GIF olarak veya sekme, pencere ve ekranları kaydedin. Yerelde düzenleyip MP4, WebM ve GIF dosyaları aktarın." },
   "common_close": { "message": "Kapat" },
   "action_defaultTitle": { "message": "Kayıt panelini aç" },
 

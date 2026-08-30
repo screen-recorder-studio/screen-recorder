@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "استوديو مسجل الشاشة - غير محدود، تكبير، فيديو وصور متحركة" },
-  "appDesc": { "message": "تسجيل شاشة مستقر بدون حدود زمنية. محرر مدمج لتكبير وقص وتصدير سلس إلى MP4 أو GIF عالي الجودة." },
+  "appName": { "message": "Screen Recorder Studio – تسجيل منطقة وGIF" },
+  "appDesc": { "message": "سجّل منطقة من صفحة بصيغة GIF، أو التقط علامات تبويب ونوافذ وشاشات. حرّر محليًا ثم صدّر ملفات MP4 وWebM وGIF جاهزة." },
   "common_close": { "message": "إغلاق" },
   "action_defaultTitle": { "message": "فتح لوحة التسجيل" },
 

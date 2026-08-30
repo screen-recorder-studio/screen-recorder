@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - Безлимит, Зум, Видео и GIF" },
-  "appDesc": { "message": "Стабильная запись экрана без лимита времени. Встроенный редактор для масштабирования, обрезки и экспорта в качественный MP4 или GIF." },
+  "appName": { "message": "Screen Recorder Studio – Запись области и GIF" },
+  "appDesc": { "message": "Запишите область страницы как GIF или вкладки, окна и экраны. Редактируйте локально и экспортируйте готовые MP4, WebM и GIF." },
   "common_close": { "message": "Закрыть" },
   "action_defaultTitle": { "message": "Открыть панель записи" },
 

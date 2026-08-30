@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "Screen Recorder Studio - അപരിമിതം, സൂം, GIF" },
-  "appDesc": { "message": "സമയ പരിധികളില്ലാത്ത സ്ഥിരമായ സ്ക്രീന്‍ റെക്കോഡിംഗ്. എഡിറ്ററില്‍ ജൂം, ട്രിം, MP4 അല്ലെങ്കില്‍ GIF എക്സ്‌പോര്‍ട്ട്." },
+  "appName": { "message": "Screen Recorder Studio – ഏരിയ, GIF റെക്കോർഡർ" },
+  "appDesc": { "message": "പേജ് ഏരിയ GIF ആയി; ടാബ്, വിൻഡോ, സ്ക്രീൻ റെക്കോർഡ് ചെയ്യുക. ലോക്കലായി എഡിറ്റ് ചെയ്ത് MP4, WebM, GIF എക്സ്പോർട്ട് ചെയ്യുക." },
   "common_close": { "message": "അടയ്ക്കുക" },
   "action_defaultTitle": { "message": "റെക്കോഡിംഗ് പാനല്‍ തുറക്കുക" },
   "control_headerTitle": { "message": "സ്ക്രീന്‍ റെക്കോഡര്‍" },
